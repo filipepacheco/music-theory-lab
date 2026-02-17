@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Sans";
+  src: url("/fonts/JetBrainsSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* Colors - Dark mode palette */
+  --color-bg-primary: #0f1219;
+  --color-bg-secondary: #1a1f2e;
+  --color-bg-tertiary: #252b3b;
+  --color-bg-card: #1e2433;
+  --color-bg-hover: #2a3148;
+
+  --color-text-primary: #e8eaf0;
+  --color-text-secondary: #9ca3b4;
+  --color-text-muted: #7b8294;
+
+  --color-border-default: #2d3548;
+  --color-border-focus: #4f6ef7;
+
+  /* Accent */
+  --color-accent: #4f6ef7;
+  --color-accent-hover: #6b85f9;
+
+  /* Harmonic function colors */
+  --color-tonic: #3b82f6;
+  --color-tonic-light: #60a5fa;
+  --color-subdominant: #22c55e;
+  --color-subdominant-light: #4ade80;
+  --color-dominant: #f97316;
+  --color-dominant-light: #fb923c;
+
+  /* Piano colors */
+  --color-key-white: #f8f9fa;
+  --color-key-white-hover: #e9ecef;
+  --color-key-black: #1a1a2e;
+  --color-key-black-hover: #2d2d44;
+
+  /* Scale comparison colors */
+  --color-scale-a: #60a5fa;
+  --color-scale-b: #c084fc;
+  --color-scale-shared: #f59e0b;
+
+  /* Bass colors */
+  --color-fret-bg: #2a2a3e;
+  --color-fret-border: #3d3d55;
+  --color-string: #8b8b9e;
+
+  /* Section surface */
+  --color-bg-section: #161b28;
+
+  /* Elevation shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+
+  /* Harmonic function glows */
+  --color-tonic-glow: rgba(59, 130, 246, 0.25);
+  --color-subdominant-glow: rgba(34, 197, 94, 0.25);
+  --color-dominant-glow: rgba(249, 115, 22, 0.25);
+
+  /* Radius tokens */
+  --radius-card: 0.75rem;
+  --radius-section: 1rem;
+  --radius-button: 0.5rem;
+
+  /* Font families */
+  --font-heading: "JetBrains Mono", monospace;
+  --font-body: "IBM Plex Sans", "JetBrains Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+}
+
+/* Section panel - visual grouping for content zones */
+.section-panel {
+  background: var(--color-bg-section);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-section);
+  padding: 1.25rem;
+}
