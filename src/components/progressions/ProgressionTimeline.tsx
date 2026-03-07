@@ -22,7 +22,7 @@ export default function ProgressionTimeline() {
 
   if (customProgression.length === 0) {
     return (
-      <div className="border border-dashed border-border-default rounded-lg p-8 text-center">
+      <div className="border border-dashed border-border-default rounded-lg p-4 sm:p-8 text-center">
         <div className="text-2xl text-text-muted/40 mb-2">+</div>
         <p className="text-sm text-text-secondary">
           Clique nos acordes acima para montar sua progressao

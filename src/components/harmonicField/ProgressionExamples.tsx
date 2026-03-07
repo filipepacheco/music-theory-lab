@@ -200,11 +200,12 @@ export default function ProgressionExamples() {
   }, [onBeat, selectChord, setCurrentEighth, setPlayingProgression, stopMetronome]);
 
   return (
-    <div className="mt-4">
+    <div>
       <h3 className="font-heading text-sm text-text-secondary mb-3">
         Progressoes de Exemplo
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      {/* Mobile: horizontal scroll / Desktop: grid */}
+      <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:overflow-visible sm:pb-0">
         {PROGRESSION_EXAMPLES.map((prog) => {
           const isPlaying = playingId === prog.id;
           const preset = PRESET_MAP[prog.presetId];
@@ -214,18 +215,21 @@ export default function ProgressionExamples() {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => (isPlaying ? stop() : playProgression(prog))}
-              className={`text-left p-4 rounded-lg border transition-all cursor-pointer ${
+              className={`text-left p-3 sm:p-5 rounded-[10px] sm:rounded-xl border transition-all cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink ${
                 isPlaying
                   ? "border-accent bg-accent/10"
-                  : "border-border-default bg-bg-card hover:border-border-focus"
+                  : "bg-bg-card hover:border-border-focus"
               }`}
-              style={{ boxShadow: isPlaying ? "0 0 16px var(--color-tonic-glow)" : "var(--shadow-card)" }}
+              style={{
+                boxShadow: isPlaying ? "0 0 16px var(--color-tonic-glow)" : "var(--shadow-card)",
+                borderColor: isPlaying ? undefined : "rgba(255,255,255,0.1)",
+              }}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-heading text-sm text-text-primary">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2 sm:gap-2">
+                <span className="font-heading text-sm text-text-primary truncate min-w-0">
                   {prog.name}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex gap-1 shrink-0">
                   {preset && (
                     <span className="text-[10px] font-mono text-accent px-1.5 py-0.5 rounded bg-accent/10">
                       {preset.name}
@@ -240,7 +244,7 @@ export default function ProgressionExamples() {
                 </div>
               </div>
 
-              <div className="flex gap-1 mb-2">
+              <div className="flex gap-1 mb-2 sm:mb-3 flex-wrap">
                 {prog.steps.map((step, i) => (
                   <span
                     key={i}
@@ -267,7 +271,7 @@ export default function ProgressionExamples() {
                 ))}
               </div>
 
-              <p className="text-xs text-text-muted leading-relaxed">
+              <p className="text-xs text-text-muted leading-relaxed overflow-hidden" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                 {prog.description}
               </p>
 

@@ -24,12 +24,12 @@ export default function TeacherTip() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="bg-bg-card border border-border-default rounded-lg p-4 mt-4"
+          className="bg-bg-card border border-border-default rounded-[10px] sm:rounded-lg py-3 px-3.5 sm:p-4 mt-3 sm:mt-4 flex flex-col gap-1.5 sm:gap-0"
         >
-          <h4 className="font-heading text-sm text-accent mb-1">
+          <h4 className="font-heading text-[13px] sm:text-sm text-accent">
             {explanation.title}
           </h4>
-          <p className="text-sm text-text-secondary leading-relaxed">
+          <p className="text-[13px] sm:text-sm text-text-secondary leading-relaxed">
             {explanation.description}
           </p>
         </motion.div>

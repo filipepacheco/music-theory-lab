@@ -10,10 +10,10 @@ export default function ScoreBoard({ score, onReset }: ScoreBoardProps) {
     score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
 
   return (
-    <div className="flex items-center gap-4 flex-wrap">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3">
         <div className="flex flex-col items-center">
-          <span className="text-lg font-heading text-text-primary">
+          <span className="text-base sm:text-lg font-heading text-text-primary">
             {score.correct}/{score.total}
           </span>
           <span className="text-[10px] text-text-muted">Acertos</span>
@@ -31,7 +31,7 @@ export default function ScoreBoard({ score, onReset }: ScoreBoardProps) {
         )}
 
         <div className="flex flex-col items-center">
-          <span className="text-lg font-heading text-accent">
+          <span className="text-base sm:text-lg font-heading text-accent">
             {score.streak}
           </span>
           <span className="text-[10px] text-text-muted">Sequencia</span>
@@ -39,7 +39,7 @@ export default function ScoreBoard({ score, onReset }: ScoreBoardProps) {
 
         {score.bestStreak > 0 && (
           <div className="flex flex-col items-center">
-            <span className="text-lg font-heading text-text-secondary">
+            <span className="text-base sm:text-lg font-heading text-text-secondary">
               {score.bestStreak}
             </span>
             <span className="text-[10px] text-text-muted">Melhor</span>

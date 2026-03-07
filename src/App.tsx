@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "@/components/layout/Header";
 import KeySelector from "@/components/layout/KeySelector";
+import BottomNav from "@/components/layout/BottomNav";
 import HarmonicFieldModule from "@/components/harmonicField/HarmonicFieldModule";
 import ProgressionsModule from "@/components/progressions/ProgressionsModule";
 import ScalesModule from "@/components/scales/ScalesModule";
@@ -19,11 +20,11 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary">
+    <div className="min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0">
       <Header />
       <KeySelector />
 
-      <main className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8">
+      <main className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8 max-w-full">
         {activeModule === "harmonicField" && <HarmonicFieldModule />}
         {activeModule === "progressions" && <ProgressionsModule />}
         {activeModule === "scales" && <ScalesModule />}
@@ -60,13 +61,17 @@ export default function App() {
               >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
                   <Piano />
-                  <BassNeck />
+                  <div className="min-w-0 overflow-hidden">
+                    <BassNeck />
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </main>
+
+      <BottomNav />
     </div>
   );
 }

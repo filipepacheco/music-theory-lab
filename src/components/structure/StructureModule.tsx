@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   DndContext,
   DragOverlay,
@@ -11,10 +11,14 @@ import {
 } from '@dnd-kit/core';
 import { useAppStore } from '@/store/useAppStore';
 import { useStructureRecorder } from '@/hooks/useStructureRecorder';
+import { useStructures } from '@/hooks/useStructures';
+import {
+  STRUCTURE_PALETTE,
+  SECTION_SUGGESTIONS,
+} from '@/constants/structureColors';
 import StructureMetadataBar from './StructureMetadataBar';
 import StructureRecorder from './StructureRecorder';
-import BarTimeline, { BarOverlay } from './BarTimeline';
-import SectionAssigner from './SectionAssigner';
+import { BarOverlay } from './DraggableBar';
 import StructureSections, { SectionOverlay } from './StructureSections';
 import SaveStructureButton from './SaveStructureButton';
 import StructureList from './StructureList';
@@ -28,21 +32,46 @@ export default function StructureModule() {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
   const structureBars = useAppStore((s) => s.structureBars);
   const clearStructure = useAppStore((s) => s.clearStructure);
+  const addStructureSection = useAppStore((s) => s.addStructureSection);
   const moveBarToSection = useAppStore((s) => s.moveBarToSection);
-  const unassignBar = useAppStore((s) => s.unassignBar);
   const reorderStructureSection = useAppStore(
     (s) => s.reorderStructureSection,
   );
 
+  const { structures, isLoading, save, update, remove } = useStructures();
+
   const [dragging, setDragging] = useState<DragItem | null>(null);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [newSectionColor, setNewSectionColor] = useState(
+    STRUCTURE_PALETTE[0],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
-    })
+    }),
   );
 
   useStructureRecorder();
+
+  function handleAddSection() {
+    const name = newSectionName.trim();
+    if (!name) return;
+    addStructureSection(name, newSectionColor);
+    setNewSectionName('');
+    // Cycle to next color
+    const idx = STRUCTURE_PALETTE.indexOf(newSectionColor);
+    setNewSectionColor(
+      STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length],
+    );
+  }
+
+  function handleSuggestionClick(suggestion: { name: string; colorIndex: number }) {
+    addStructureSection(
+      suggestion.name,
+      STRUCTURE_PALETTE[suggestion.colorIndex],
+    );
+  }
 
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current;
@@ -67,18 +96,19 @@ export default function StructureModule() {
 
     if (dragType === 'bar') {
       const barId = active.id as string;
-      if (overId === 'bar-pool') {
-        unassignBar(barId);
-      } else if (overId.startsWith('section-')) {
+      if (overId.startsWith('section-')) {
         const sectionId = over.data.current?.sectionId as string;
         if (sectionId) moveBarToSection(barId, sectionId);
       }
     } else if (dragType === 'section') {
-      // Dropped on another section's drop zone -> reorder
       if (overId.startsWith('section-')) {
         const targetSectionId = over.data.current?.sectionId as string;
         const sourceSectionId = active.data.current?.sectionId as string;
-        if (targetSectionId && sourceSectionId && targetSectionId !== sourceSectionId) {
+        if (
+          targetSectionId &&
+          sourceSectionId &&
+          targetSectionId !== sourceSectionId
+        ) {
           reorderStructureSection(sourceSectionId, targetSectionId);
         }
       }
@@ -88,33 +118,92 @@ export default function StructureModule() {
   return (
     <section className="flex flex-col gap-6">
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h2 className="font-heading text-lg text-text-primary">
             Estrutura
           </h2>
-          {(activeStructureId || structureBars.length > 0) && (
-            <button
-              onClick={clearStructure}
-              className="text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-            >
-              Nova estrutura
-            </button>
-          )}
         </div>
 
-        <div className="section-panel flex flex-col gap-4">
+        <div className="section-panel flex flex-col gap-5">
+          {/* -- Metadata -- */}
           <StructureMetadataBar />
-          <StructureRecorder />
 
+          {/* -- Controls: compasso + add section -- */}
+          <div className="flex flex-col gap-4">
+            <StructureRecorder />
+
+            {/* New section creation */}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddSection();
+                  }}
+                  placeholder="Nome da secao..."
+                  className="bg-bg-tertiary/50 border border-border-default rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors w-40"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = STRUCTURE_PALETTE.indexOf(newSectionColor);
+                    setNewSectionColor(
+                      STRUCTURE_PALETTE[
+                        (idx + 1) % STRUCTURE_PALETTE.length
+                      ],
+                    );
+                  }}
+                  className="w-8 h-8 rounded-full border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0"
+                  style={{ backgroundColor: newSectionColor }}
+                  aria-label="Mudar cor"
+                />
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleAddSection}
+                  disabled={!newSectionName.trim()}
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  + Secao
+                </motion.button>
+              </div>
+
+              {/* Quick suggestion chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {SECTION_SUGGESTIONS.map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => handleSuggestionClick(s)}
+                    className="px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors cursor-pointer hover:brightness-110"
+                    style={{
+                      backgroundColor:
+                        STRUCTURE_PALETTE[s.colorIndex] + '15',
+                      borderColor:
+                        STRUCTURE_PALETTE[s.colorIndex] + '30',
+                      color: STRUCTURE_PALETTE[s.colorIndex],
+                    }}
+                  >
+                    + {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* -- Separator -- */}
+          <div className="border-t border-border-default" />
+
+          {/* -- Content: sections with DnD -- */}
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <BarTimeline />
-            <AnimatePresence>
-              <SectionAssigner />
-            </AnimatePresence>
             <StructureSections />
 
             <DragOverlay dropAnimation={null}>
@@ -127,13 +216,26 @@ export default function StructureModule() {
             </DragOverlay>
           </DndContext>
 
-          <div className="flex items-center gap-3">
-            <SaveStructureButton />
+          {/* -- Actions -- */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
+            <SaveStructureButton save={save} update={update} />
+            {(activeStructureId || structureBars.length > 0) && (
+              <button
+                onClick={clearStructure}
+                className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-red-400 border border-border-default hover:border-red-400/50 rounded-lg transition-colors cursor-pointer"
+              >
+                Limpar estrutura
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <StructureList />
+      <StructureList
+        structures={structures}
+        isLoading={isLoading}
+        remove={remove}
+      />
     </section>
   );
 }

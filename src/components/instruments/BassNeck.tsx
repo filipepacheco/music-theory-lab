@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { useSynth } from "@/hooks/useSynth";
 import { getNoteName, computeVoicingOctaveMap } from "@/utils/noteHelpers";
@@ -19,6 +19,7 @@ export default function BassNeck() {
   const highlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
   const rootNote = useAppStore((s) => s.rootNote);
   const { playNote } = useSynth();
+  const [showAllNotes, setShowAllNotes] = useState(false);
 
   const rootNoteName = highlightRootName ?? getNoteName(rootNote);
   const hasAnyHighlights = highlightedNotes.length > 0;
@@ -71,11 +72,23 @@ export default function BassNeck() {
   };
 
   return (
-    <div>
-      <h3 className="font-heading text-sm text-text-secondary mb-3">
-        Baixo (4 cordas)
-      </h3>
-      <div className="overflow-x-auto">
+    <div className="min-w-0">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-heading text-sm text-text-secondary">
+          Baixo (4 cordas)
+        </h3>
+        <button
+          onClick={() => setShowAllNotes(!showAllNotes)}
+          className={`text-xs font-medium px-2.5 py-1 rounded-md border transition-colors cursor-pointer ${
+            showAllNotes
+              ? "border-accent bg-accent/15 text-accent"
+              : "border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary"
+          }`}
+        >
+          {showAllNotes ? "Todas as notas" : "Apenas acordes"}
+        </button>
+      </div>
+      <div className="overflow-x-auto min-w-0">
         {/* Fret numbers */}
         <div
           className="grid gap-0 mb-1"
@@ -133,6 +146,7 @@ export default function BassNeck() {
                     noteName={noteName}
                     isHighlighted={isHighlighted}
                     hasAnyHighlights={hasAnyHighlights}
+                    showAllNotes={showAllNotes}
                     isOpenString={fret === 0}
                     hasFretMarker={
                       FRET_MARKERS.has(fret) && rowIdx === DISPLAY_ORDER.length - 1

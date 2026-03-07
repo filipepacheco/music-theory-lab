@@ -17,7 +17,7 @@ export default function ChordTypeQuiz({ quiz }: ChordTypeQuizProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-xs text-text-muted">
           Um acorde sera tocado. Identifique o tipo (maior, menor, diminuto,
           etc.).

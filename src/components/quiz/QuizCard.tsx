@@ -28,13 +28,13 @@ export default function QuizCard({
   return (
     <div className="space-y-4">
       {/* Prompt */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-sm text-text-secondary">{prompt}</p>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onReplay}
-          className="px-3 py-2 rounded-md text-sm bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer"
+          className="px-3 py-2 rounded-md text-sm bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer shrink-0"
         >
           Ouvir novamente
         </motion.button>

@@ -30,6 +30,7 @@ Note: `postinstall` copies `sql-wasm.wasm` to `public/` - run `npm install` afte
 - Tone.js for audio (`src/hooks/useSynth.ts`)
 - sql.js with IndexedDB for client-side persistence (`src/services/db.ts`)
 - Framer Motion for animations
+- @dnd-kit for drag-and-drop (bars and sections in structure module)
 - Path alias: `@` maps to `src/` - always use `@/` imports, never relative paths
 
 ## Architecture
@@ -38,24 +39,25 @@ Note: `postinstall` copies `sql-wasm.wasm` to `public/` - run `npm install` afte
 src/
   constants/    Music theory data (scales, chords, harmonicFields, progressions, tonePresets, etc.)
   utils/        Pure functions (musicTheory.ts, noteHelpers.ts, quizGenerator.ts)
-  hooks/        Side effects (useSynth, useMetronome, useKeyboardPiano, useSavedProgressions, useSongs, useQuiz)
-  services/     Persistence (db.ts - sql.js/IndexedDB singleton, tables: saved_progressions + songs)
+  hooks/        Side effects (useSynth, useMetronome, useKeyboardPiano, useSavedProgressions, useSongs, useQuiz, useStructures, useStructureRecorder)
+  services/     Persistence (db.ts - sql.js/IndexedDB singleton, tables: saved_progressions, songs, structures; deviceId.ts - localStorage UUID per device)
   store/        Zustand store (single file)
-  types/        TypeScript interfaces (Song, SongSection, HarmonicChord, AppState)
+  types/        TypeScript interfaces (Song, SongSection, SongStructure, StructureBar, StructureSection, HarmonicChord, AppState)
   components/
-    layout/         App shell: Header, KeySelector, PresetSelector, ModuleNav
+    layout/         App shell: Header, KeySelector, PresetSelector, ModuleNav, BottomNav (mobile sticky nav)
     instruments/    Piano + BassNeck (with memoized key/fret subcomponents)
     harmonicField/  Chord grid, chord cards, progression examples with beat timeline
     scales/         Scale selector, info display, and side-by-side comparison
     progressions/   Chord picker (diatonic + chromatic), timeline, analysis, playback, save/load
     quiz/           Four exercise types with quiz cards and scoreboard
     transcription/  Song sections, chord picking, playback controls, save/load
+    structure/      Song structure recorder: DraggableBar, StructureSections, ColorPicker, drag-and-drop
     shared/         Badge, MetronomeControl, SpeedControl, TeacherTip
 ```
 
 ### Module System
 
-Five modules controlled by `activeModule` in the store: `harmonicField`, `progressions`, `scales`, `quiz`, `transcription`. App.tsx conditionally renders the active module component. Switching modules clears all highlights and scale selections.
+Six modules controlled by `activeModule` in the store: `harmonicField`, `progressions`, `scales`, `quiz`, `transcription`, `structure`. App.tsx conditionally renders the active module component. Switching modules clears all highlights and scale selections.
 
 ### Data Flow
 
@@ -86,6 +88,8 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 
 **Scale comparison** uses a three-color system: `scale-a` (blue) for primary scale, `scale-b` (purple) for comparison, `scale-shared` (amber) for notes in both. These colors are CSS variables used for instrument highlights.
 
+**Song structure module** records the bar-level arrangement of a song. Users tap spacebar to record bars in real-time (100ms debounce via `useStructureRecorder`), then organize bars into named sections (intro, verso, refrao, etc.) using drag-and-drop (@dnd-kit). Each bar has a configurable time signature (2/4, 3/4, 4/4, 6/8). Sections support freeform comments. The store maintains `structureBars`, `structureSections`, and `selectedBarIds` (Set) with a `reindexBars()` helper that recalculates bar indices when sections change. State is shared between `SaveStructureButton` and `StructureList` via prop drilling from `StructureModule` (which owns the single `useStructures()` hook instance) to avoid stale state bugs from independent hook instances.
+
 ### Audio System (`useSynth`)
 
 - Global effects chain: Limiter(-6dB) -> Reverb -> Destination
@@ -108,9 +112,20 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 - Module-level singleton pattern: `initDB()` lazily initializes and seeds example progressions from `PROGRESSION_EXAMPLES`
 - `useSavedProgressions` hook wraps the DB API with React state and provides CRUD operations
 - `useSongs` hook wraps the songs CRUD API with React state for the transcription module
+- `useStructures` hook wraps the structures CRUD API with React state for the structure module
 - Example progressions are seeded once (flagged `is_example = 1`) and cannot be deleted by users
 - Songs table stores transcriptions with title, artist, key, mode, BPM, preset ID, and JSON sections
+- Structures table stores song arrangements with title, artist, bars (JSON), and sections (JSON)
 - The WASM binary is served from `/sql-wasm.wasm` (copied by postinstall script)
+
+### Cloud Sync (Vercel API Routes)
+
+Three serverless API routes in `api/` provide cloud sync via Turso (LibSQL):
+- `api/progressions.ts` - GET/POST/DELETE for saved progressions
+- `api/songs.ts` - GET/POST/DELETE for song transcriptions
+- `api/structures.ts` - GET/POST/DELETE for song structures
+
+All routes use the same pattern: inlined Turso client (no shared module), device_id-based ownership, batch upsert on POST. Requires `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables.
 
 ### Design Tokens (Tailwind v4)
 

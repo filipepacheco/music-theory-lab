@@ -1,16 +1,33 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
-import { useStructures } from '@/hooks/useStructures';
+import type { StructureBar, StructureSection } from '@/types';
 
-export default function SaveStructureButton() {
+interface Props {
+  save: (structure: {
+    title: string;
+    artist: string;
+    bars: StructureBar[];
+    sections: StructureSection[];
+  }) => Promise<string>;
+  update: (
+    id: string,
+    updates: Partial<{
+      title: string;
+      artist: string;
+      bars: StructureBar[];
+      sections: StructureSection[];
+    }>,
+  ) => Promise<void>;
+}
+
+export default function SaveStructureButton({ save, update }: Props) {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
   const structureTitle = useAppStore((s) => s.structureTitle);
   const structureArtist = useAppStore((s) => s.structureArtist);
   const structureBars = useAppStore((s) => s.structureBars);
   const structureSections = useAppStore((s) => s.structureSections);
 
-  const { save, update } = useStructures();
   const [saving, setSaving] = useState(false);
 
   const canSave =
@@ -47,7 +64,7 @@ export default function SaveStructureButton() {
       whileTap={{ scale: 0.97 }}
       onClick={handleSave}
       disabled={!canSave}
-      className="flex items-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+      className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-3 sm:py-2.5 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto"
     >
       <span>
         {saving

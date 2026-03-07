@@ -12,27 +12,17 @@ import type {
 import type { ProgressionStep } from "@/constants/progressions";
 import { getHarmonicField, getScaleNotes } from "@/utils/musicTheory";
 
-/** Reindex bars so numbers follow section order: section1 bars, section2 bars, ..., unassigned */
+/** Reindex bars so numbers follow section order: section1 bars, section2 bars, ... */
 function reindexBars(
   bars: StructureBar[],
   sections: StructureSection[],
 ): StructureBar[] {
   const barMap = new Map(bars.map((b) => [b.id, b]));
   const ordered: StructureBar[] = [];
-  const seen = new Set<string>();
   for (const section of sections) {
     for (const bid of section.barIds) {
       const bar = barMap.get(bid);
-      if (bar && !seen.has(bid)) {
-        ordered.push(bar);
-        seen.add(bid);
-      }
-    }
-  }
-  for (const bar of bars) {
-    if (!seen.has(bar.id)) {
-      ordered.push(bar);
-      seen.add(bar.id);
+      if (bar) ordered.push(bar);
     }
   }
   return ordered.map((b, i) => ({ ...b, index: i }));
@@ -83,7 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   structureTitle: '',
   structureArtist: '',
   activeTimeSignature: '4/4' as TimeSignature,
-  selectedBarIds: new Set<string>(),
+  focusedSectionId: null,
 
   setRootNote: (note) => {
     const { isMinor } = get();
@@ -373,30 +363,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   setStructureArtist: (artist) => set({ structureArtist: artist }),
   setActiveTimeSignature: (ts) => set({ activeTimeSignature: ts }),
 
-  addBar: () => {
-    const { structureBars, activeTimeSignature } = get();
+  addBarToSection: (sectionId) => {
+    const { structureBars, structureSections, activeTimeSignature } = get();
     const bar: StructureBar = {
       id: crypto.randomUUID(),
       index: structureBars.length,
       timeSignature: activeTimeSignature,
     };
-    set({ structureBars: [...structureBars, bar] });
+    const newSections = structureSections.map((s) =>
+      s.id === sectionId ? { ...s, barIds: [...s.barIds, bar.id] } : s,
+    );
+    const newBars = reindexBars([...structureBars, bar], newSections);
+    set({ structureBars: newBars, structureSections: newSections });
   },
 
   removeBar: (id) => {
-    const { structureBars, structureSections, selectedBarIds } = get();
-    const updated = structureBars
-      .filter((b) => b.id !== id)
-      .map((b, i) => ({ ...b, index: i }));
-    const updatedSections = structureSections
-      .map((s) => ({ ...s, barIds: s.barIds.filter((bid) => bid !== id) }))
-      .filter((s) => s.barIds.length > 0);
-    const newSelected = new Set(selectedBarIds);
-    newSelected.delete(id);
+    const { structureBars, structureSections } = get();
+    const updated = structureBars.filter((b) => b.id !== id);
+    const updatedSections = structureSections.map((s) => ({
+      ...s,
+      barIds: s.barIds.filter((bid) => bid !== id),
+    }));
     set({
-      structureBars: updated,
+      structureBars: reindexBars(updated, updatedSections),
       structureSections: updatedSections,
-      selectedBarIds: newSelected,
     });
   },
 
@@ -409,77 +399,49 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  selectBar: (id) => set({ selectedBarIds: new Set([id]) }),
-
-  selectBarRange: (id) => {
-    const { selectedBarIds, structureBars } = get();
-    if (selectedBarIds.size === 0) {
-      set({ selectedBarIds: new Set([id]) });
-      return;
-    }
-    const barIds = structureBars.map((b) => b.id);
-    const targetIdx = barIds.indexOf(id);
-    const selectedIndices = [...selectedBarIds]
-      .map((sid) => barIds.indexOf(sid))
-      .filter((i) => i >= 0);
-    const minIdx = Math.min(...selectedIndices);
-    const maxIdx = Math.max(...selectedIndices);
-    const start = Math.min(minIdx, targetIdx);
-    const end = Math.max(maxIdx, targetIdx);
-    const range = new Set(barIds.slice(start, end + 1));
-    set({ selectedBarIds: range });
-  },
-
-  toggleBar: (id) => {
-    const { selectedBarIds } = get();
-    const next = new Set(selectedBarIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    set({ selectedBarIds: next });
-  },
-
-  clearBarSelection: () => set({ selectedBarIds: new Set() }),
-
-  assignBarsToSection: (type, customLabel) => {
-    const { selectedBarIds, structureSections, structureBars } = get();
-    if (selectedBarIds.size === 0) return;
-    const barIdSet = selectedBarIds;
-    const cleaned = structureSections
-      .map((s) => ({
-        ...s,
-        barIds: s.barIds.filter((bid) => !barIdSet.has(bid)),
-      }))
-      .filter((s) => s.barIds.length > 0);
+  addStructureSection: (name, color) => {
+    const { structureSections } = get();
     const newSection: StructureSection = {
       id: crypto.randomUUID(),
-      type,
-      customLabel,
-      barIds: [...barIdSet],
+      name,
+      color,
+      barIds: [],
     };
-    const newSections = [...cleaned, newSection];
     set({
-      structureSections: newSections,
-      structureBars: reindexBars(structureBars, newSections),
-      selectedBarIds: new Set(),
+      structureSections: [...structureSections, newSection],
+      focusedSectionId: newSection.id,
     });
   },
 
   removeStructureSection: (id) => {
-    const { structureSections, structureBars } = get();
+    const { structureSections, structureBars, focusedSectionId } = get();
+    const sectionToRemove = structureSections.find((s) => s.id === id);
+    const removedBarIds = new Set(sectionToRemove?.barIds ?? []);
     const newSections = structureSections
       .filter((s) => s.id !== id)
       .map((s) => s.repeatOf === id ? { ...s, repeatOf: undefined } : s);
+    const newBars = structureBars.filter((b) => !removedBarIds.has(b.id));
     set({
       structureSections: newSections,
-      structureBars: reindexBars(structureBars, newSections),
+      structureBars: reindexBars(newBars, newSections),
+      focusedSectionId: focusedSectionId === id ? null : focusedSectionId,
     });
   },
 
-  setSectionRepeat: (sectionId, repeatOf) => {
+  setSectionName: (sectionId, name) => {
     const { structureSections } = get();
     set({
       structureSections: structureSections.map((s) =>
-        s.id === sectionId ? { ...s, repeatOf } : s,
+        s.id === sectionId ? { ...s, name } : s,
+      ),
+    });
+  },
+
+  setSectionColor: (sectionId, color) => {
+    const { structureSections } = get();
+    set({
+      structureSections: structureSections.map((s) =>
+        s.id === sectionId ? { ...s, color } : s,
       ),
     });
   },
@@ -493,18 +455,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  reorderBar: (activeId, overId) => {
-    const { structureBars } = get();
-    const oldIndex = structureBars.findIndex((b) => b.id === activeId);
-    const newIndex = structureBars.findIndex((b) => b.id === overId);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-    const updated = [...structureBars];
-    const [moved] = updated.splice(oldIndex, 1);
-    updated.splice(newIndex, 0, moved);
-    set({
-      structureBars: updated.map((b, i) => ({ ...b, index: i })),
-    });
-  },
+  setFocusedSection: (id) => set({ focusedSectionId: id }),
 
   reorderStructureSection: (activeId, overId) => {
     const { structureSections, structureBars } = get();
@@ -533,18 +484,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  unassignBar: (barId) => {
-    const { structureSections, structureBars } = get();
-    const newSections = structureSections.map((s) => ({
-      ...s,
-      barIds: s.barIds.filter((bid) => bid !== barId),
-    }));
-    set({
-      structureSections: newSections,
-      structureBars: reindexBars(structureBars, newSections),
-    });
-  },
-
   loadStructure: (structure: SongStructure) =>
     set({
       activeStructureId: structure.id,
@@ -552,7 +491,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       structureArtist: structure.artist,
       structureBars: structure.bars,
       structureSections: structure.sections,
-      selectedBarIds: new Set(),
+      focusedSectionId: null,
     }),
 
   clearStructure: () =>
@@ -562,7 +501,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       structureArtist: '',
       structureBars: [],
       structureSections: [],
-      selectedBarIds: new Set(),
+      focusedSectionId: null,
     }),
 
   setComparisonScale: (scaleId) => {

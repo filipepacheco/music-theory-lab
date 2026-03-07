@@ -1,12 +1,16 @@
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
-import { useStructures } from '@/hooks/useStructures';
-import { SECTION_COLORS } from '@/constants/songSections';
+import type { SongStructure } from '@/types';
 
-export default function StructureList() {
+interface Props {
+  structures: SongStructure[];
+  isLoading: boolean;
+  remove: (id: string) => Promise<void>;
+}
+
+export default function StructureList({ structures, isLoading, remove }: Props) {
   const loadStructure = useAppStore((s) => s.loadStructure);
   const activeStructureId = useAppStore((s) => s.activeStructureId);
-  const { structures, isLoading, remove } = useStructures();
 
   if (isLoading) {
     return (
@@ -25,7 +29,7 @@ export default function StructureList() {
       <h4 className="font-heading text-sm text-text-secondary mb-2">
         Estruturas salvas
       </h4>
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
         {structures.map((structure) => {
           const isActive = structure.id === activeStructureId;
           return (
@@ -59,12 +63,11 @@ export default function StructureList() {
                       key={sec.id}
                       className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                       style={{
-                        backgroundColor:
-                          SECTION_COLORS[sec.type] + '20',
-                        color: SECTION_COLORS[sec.type],
+                        backgroundColor: sec.color + '20',
+                        color: sec.color,
                       }}
                     >
-                      {sec.type}
+                      {sec.name}
                     </span>
                   ))}
                 </div>

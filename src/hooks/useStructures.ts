@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   initDB,
+  waitForSync,
   getAllStructures,
   saveStructure,
   updateStructure,
@@ -18,6 +19,12 @@ export function useStructures() {
     await initDB();
     if (cancelled.current) return;
     setStructures(getAllStructures());
+    // Re-read after cloud sync merges remote data
+    waitForSync().then(() => {
+      if (!cancelled.current) {
+        setStructures(getAllStructures());
+      }
+    });
   }, []);
 
   useEffect(() => {

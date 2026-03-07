@@ -17,7 +17,7 @@ export default function IntervalQuiz({ quiz }: IntervalQuizProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-xs text-text-muted">
           Duas notas serao tocadas em sequencia. Identifique o intervalo entre
           elas.

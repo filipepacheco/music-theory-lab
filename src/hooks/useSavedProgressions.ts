@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   initDB,
+  waitForSync,
   getAllProgressions,
   saveProgression,
   deleteProgression,
@@ -18,6 +19,9 @@ export function useSavedProgressions(mode?: 'major' | 'minor') {
     await initDB();
     if (cancelled.current) return;
     setProgressions(getAllProgressions(mode));
+    waitForSync().then(() => {
+      if (!cancelled.current) setProgressions(getAllProgressions(mode));
+    });
   }, [mode]);
 
   useEffect(() => {

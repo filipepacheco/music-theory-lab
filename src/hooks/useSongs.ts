@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   initDB,
+  waitForSync,
   getAllSongs,
   saveSong,
   updateSong,
@@ -18,6 +19,9 @@ export function useSongs() {
     await initDB();
     if (cancelled.current) return;
     setSongs(getAllSongs());
+    waitForSync().then(() => {
+      if (!cancelled.current) setSongs(getAllSongs());
+    });
   }, []);
 
   useEffect(() => {

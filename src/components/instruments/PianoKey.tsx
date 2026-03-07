@@ -29,7 +29,7 @@ const PianoKey = memo(function PianoKey({
       <button
         onPointerDown={handleClick}
         aria-label={`${noteName} (tecla preta)`}
-        className="absolute z-10 w-8 h-24 rounded-b-md border border-bg-tertiary transition-colors duration-75 flex flex-col items-center justify-end pb-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
+        className="absolute z-10 w-8 h-24 rounded-b-md border border-[#3a3a52] transition-colors duration-75 flex flex-col items-center justify-end pb-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent shadow-[0_2px_4px_rgba(0,0,0,0.4)]"
         style={{
           backgroundColor: pressed
             ? "var(--color-accent)"

@@ -6,6 +6,7 @@ interface BassFretProps {
   noteName: string;
   isHighlighted: boolean;
   hasAnyHighlights: boolean;
+  showAllNotes: boolean;
   isOpenString: boolean;
   hasFretMarker: boolean;
   isOctaveStart: boolean;
@@ -32,12 +33,15 @@ const BassFret = memo(function BassFret({
   noteName,
   isHighlighted,
   hasAnyHighlights,
+  showAllNotes,
   isOpenString,
   hasFretMarker,
   isOctaveStart,
   octave,
   onClick,
 }: BassFretProps) {
+  const shouldShowNote = isHighlighted || showAllNotes;
+
   return (
     <button
       onPointerDown={() => onClick(noteIndex, octave)}
@@ -58,21 +62,23 @@ const BassFret = memo(function BassFret({
 
       {/* Note indicator */}
       <div className="relative z-10">
-        {isHighlighted ? (
-          <NoteIndicator noteName={noteName} color={BASS_HIGHLIGHT_COLOR} size="lg" />
-        ) : (
-          <span
-            className={`w-7 h-7 rounded-full flex items-center justify-center font-mono font-bold text-xs shrink-0 ${hasAnyHighlights ? "text-bg-primary/50" : "text-bg-primary"}`}
-            style={{
-              backgroundColor:
-                (hasAnyHighlights ? DIMMED_OCTAVE_COLORS : OCTAVE_COLORS)[
-                  octave
-                ] ?? "rgba(255,255,255,0.3)",
-            }}
-          >
-            {noteName}
-          </span>
-        )}
+        {shouldShowNote ? (
+          isHighlighted ? (
+            <NoteIndicator noteName={noteName} color={BASS_HIGHLIGHT_COLOR} size="lg" />
+          ) : (
+            <span
+              className={`w-7 h-7 rounded-full flex items-center justify-center font-mono font-bold text-xs shrink-0 ${hasAnyHighlights ? "text-bg-primary/50" : "text-bg-primary"}`}
+              style={{
+                backgroundColor:
+                  (hasAnyHighlights ? DIMMED_OCTAVE_COLORS : OCTAVE_COLORS)[
+                    octave
+                  ] ?? "rgba(255,255,255,0.3)",
+              }}
+            >
+              {noteName}
+            </span>
+          )
+        ) : null}
       </div>
     </button>
   );

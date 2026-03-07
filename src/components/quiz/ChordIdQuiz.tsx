@@ -23,8 +23,8 @@ export default function ChordIdQuiz({ quiz }: ChordIdQuizProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <p className="text-xs text-text-muted">
             {keyLimited
               ? `Acordes do campo de ${keyLabel}.`

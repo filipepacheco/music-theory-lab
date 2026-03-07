@@ -10,6 +10,8 @@ import type {
   StructureBar,
   StructureSection,
 } from '@/types';
+import { STRUCTURE_PALETTE } from '@/constants/structureColors';
+import { SECTION_LABELS, SECTION_COLORS } from '@/constants/songSections';
 import {
   pushProgression,
   pushSong,
@@ -85,6 +87,7 @@ function saveToIDB(data: Uint8Array): Promise<void> {
 
 let db: Database | null = null;
 let initPromise: Promise<void> | null = null;
+let syncPromise: Promise<void> | null = null;
 
 function persist() {
   if (!db) return;
@@ -176,17 +179,23 @@ export async function initDB(): Promise<void> {
     }
 
     // Background sync (does not block init)
-    syncAll({
+    syncPromise = syncAll({
       getAllProgressions,
       getAllSongs,
       getAllStructures,
       upsertProgressionLocal,
       upsertSongLocal,
       upsertStructureLocal,
+      persistDB: persist,
     }).catch(() => {});
   })();
 
   return initPromise;
+}
+
+/** Resolves when background cloud sync is done (or immediately if no sync). */
+export function waitForSync(): Promise<void> {
+  return syncPromise ?? Promise.resolve();
 }
 
 export function getAllProgressions(
@@ -425,6 +434,53 @@ export function deleteSong(id: string): void {
 // Structures CRUD
 // ---------------------------------------------------------------------------
 
+/** Migrate legacy section format (type+customLabel) to new (name+color) */
+interface LegacySection {
+  id: string;
+  type?: string;
+  customLabel?: string;
+  name?: string;
+  color?: string;
+  barIds: string[];
+  repeatOf?: string;
+  comment?: string;
+}
+
+function migrateSection(raw: LegacySection): StructureSection {
+  if (raw.name !== undefined && raw.color !== undefined) {
+    return raw as StructureSection;
+  }
+  const sectionType = raw.type ?? 'custom';
+  return {
+    id: raw.id,
+    name: sectionType === 'custom' && raw.customLabel
+      ? raw.customLabel
+      : (SECTION_LABELS[sectionType as keyof typeof SECTION_LABELS] ?? sectionType),
+    color: SECTION_COLORS[sectionType as keyof typeof SECTION_COLORS] ?? STRUCTURE_PALETTE[0],
+    barIds: raw.barIds,
+    repeatOf: raw.repeatOf,
+    comment: raw.comment,
+  };
+}
+
+function migrateStructureData(
+  bars: StructureBar[],
+  rawSections: LegacySection[],
+): { bars: StructureBar[]; sections: StructureSection[] } {
+  const sections = rawSections.map(migrateSection);
+  const assignedIds = new Set(sections.flatMap((s) => s.barIds));
+  const unassigned = bars.filter((b) => !assignedIds.has(b.id));
+  if (unassigned.length > 0) {
+    sections.push({
+      id: crypto.randomUUID(),
+      name: 'Sem secao',
+      color: '#9ca3af',
+      barIds: unassigned.map((b) => b.id),
+    });
+  }
+  return { bars, sections };
+}
+
 export function getAllStructures(): SongStructure[] {
   if (!db) return [];
 
@@ -435,12 +491,15 @@ export function getAllStructures(): SongStructure[] {
 
   while (stmt.step()) {
     const row = stmt.getAsObject();
+    const rawBars = JSON.parse(row.bars as string) as StructureBar[];
+    const rawSections = JSON.parse(row.sections as string) as LegacySection[];
+    const migrated = migrateStructureData(rawBars, rawSections);
     results.push({
       id: row.id as string,
       title: row.title as string,
       artist: row.artist as string,
-      bars: JSON.parse(row.bars as string) as StructureBar[],
-      sections: JSON.parse(row.sections as string) as StructureSection[],
+      bars: migrated.bars,
+      sections: migrated.sections,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     });
@@ -610,12 +669,15 @@ function getStructureById(id: string): SongStructure | null {
   }
   const row = stmt.getAsObject();
   stmt.free();
+  const rawBars = JSON.parse(row.bars as string) as StructureBar[];
+  const rawSections = JSON.parse(row.sections as string) as LegacySection[];
+  const migrated = migrateStructureData(rawBars, rawSections);
   return {
     id: row.id as string,
     title: row.title as string,
     artist: row.artist as string,
-    bars: JSON.parse(row.bars as string) as StructureBar[],
-    sections: JSON.parse(row.sections as string) as StructureSection[],
+    bars: migrated.bars,
+    sections: migrated.sections,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -662,62 +724,63 @@ interface CloudStructure {
 
 function upsertProgressionLocal(r: CloudProgression): void {
   if (!db) return;
-  db.run(
+  const stmt = db.prepare(
     `INSERT OR REPLACE INTO saved_progressions
      (id, name, description, steps, mode, preset_id, bpm, is_example, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      r.id,
-      r.name,
-      r.description,
-      r.steps,
-      r.mode,
-      r.preset_id,
-      r.bpm,
-      r.is_example,
-      r.created_at,
-    ]
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  persist();
+  stmt.run([
+    r.id,
+    r.name,
+    r.description,
+    r.steps,
+    r.mode,
+    r.preset_id,
+    r.bpm,
+    r.is_example,
+    r.created_at,
+  ]);
+  stmt.free();
 }
 
 function upsertSongLocal(r: CloudSong): void {
   if (!db) return;
-  db.run(
+  const stmt = db.prepare(
     `INSERT OR REPLACE INTO songs
      (id, title, artist, key_note, mode, original_bpm, preset_id, sections, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      r.id,
-      r.title,
-      r.artist,
-      r.key_note,
-      r.mode,
-      r.original_bpm,
-      r.preset_id,
-      r.sections,
-      r.created_at,
-      r.updated_at,
-    ]
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  persist();
+  stmt.run([
+    r.id,
+    r.title,
+    r.artist,
+    r.key_note,
+    r.mode,
+    r.original_bpm,
+    r.preset_id,
+    r.sections,
+    r.created_at,
+    r.updated_at,
+  ]);
+  stmt.free();
 }
 
 function upsertStructureLocal(r: CloudStructure): void {
   if (!db) return;
-  db.run(
+  const stmt = db.prepare(
     `INSERT OR REPLACE INTO structures
      (id, title, artist, bars, sections, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      r.id,
-      r.title,
-      r.artist,
-      r.bars,
-      r.sections,
-      r.created_at,
-      r.updated_at,
-    ]
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
-  persist();
+  stmt.run([
+    r.id,
+    r.title,
+    r.artist,
+    r.bars,
+    r.sections,
+    r.created_at,
+    r.updated_at,
+  ]);
+  stmt.free();
 }
+

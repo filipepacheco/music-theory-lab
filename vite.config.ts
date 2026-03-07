@@ -10,4 +10,12 @@ export default defineConfig({
       "@": resolve(__dirname, "src"),
     },
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: "https://music-theory-lab-tau.vercel.app",
+        changeOrigin: true,
+      },
+    },
+  },
 });

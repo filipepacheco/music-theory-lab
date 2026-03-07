@@ -25,7 +25,7 @@ export default function DegreeQuiz({ quiz }: DegreeQuizProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-xs text-text-muted">
           Um acorde do campo harmonico de {rootName} {modeName} sera tocado.
           Identifique o grau.

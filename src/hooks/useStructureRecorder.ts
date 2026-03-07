@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 const DEBOUNCE_MS = 100;
 
 export function useStructureRecorder() {
-  const addBar = useAppStore((s) => s.addBar);
+  const addBarToSection = useAppStore((s) => s.addBarToSection);
   const lastTap = useRef(0);
 
   useEffect(() => {
@@ -19,10 +19,14 @@ export function useStructureRecorder() {
       const now = Date.now();
       if (now - lastTap.current < DEBOUNCE_MS) return;
       lastTap.current = now;
-      addBar();
+
+      const focusedSectionId = useAppStore.getState().focusedSectionId;
+      if (focusedSectionId) {
+        addBarToSection(focusedSectionId);
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addBar]);
+  }, [addBarToSection]);
 }

@@ -1,7 +1,6 @@
 import type { Song, SongStructure } from '@/types';
 import type { SavedProgression } from '@/services/db';
 import { getDeviceId } from '@/services/deviceId';
-
 const API_BASE = '/api';
 
 // ---------------------------------------------------------------------------
@@ -186,6 +185,7 @@ export async function syncAll(deps: {
   upsertProgressionLocal: (r: CloudProgression) => void;
   upsertSongLocal: (r: CloudSong) => void;
   upsertStructureLocal: (r: CloudStructure) => void;
+  persistDB: () => void;
 }): Promise<void> {
   const [cloudProgs, cloudSongs, cloudStructures] = await Promise.all([
     pullProgressions(),
@@ -248,4 +248,7 @@ export async function syncAll(deps: {
       pushStructure(ls).catch(() => {});
     }
   }
+
+  // Single persist after all upserts (instead of per-upsert)
+  deps.persistDB();
 }

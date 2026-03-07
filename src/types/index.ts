@@ -50,12 +50,13 @@ export interface StructureBar {
   id: string;
   index: number;
   timeSignature: TimeSignature;
+  color?: string;
 }
 
 export interface StructureSection {
   id: string;
-  type: SectionType;
-  customLabel?: string;
+  name: string;
+  color: string;
   barIds: string[];
   repeatOf?: string;
   comment?: string;
@@ -140,7 +141,7 @@ export interface AppState {
   structureTitle: string;
   structureArtist: string;
   activeTimeSignature: TimeSignature;
-  selectedBarIds: Set<string>;
+  focusedSectionId: string | null;
 
   // Actions
   setRootNote: (note: number) => void;
@@ -185,21 +186,17 @@ export interface AppState {
   setStructureTitle: (title: string) => void;
   setStructureArtist: (artist: string) => void;
   setActiveTimeSignature: (ts: TimeSignature) => void;
-  addBar: () => void;
+  addBarToSection: (sectionId: string) => void;
   removeBar: (id: string) => void;
   setBarTimeSignature: (id: string, ts: TimeSignature) => void;
-  selectBar: (id: string) => void;
-  selectBarRange: (id: string) => void;
-  toggleBar: (id: string) => void;
-  clearBarSelection: () => void;
-  assignBarsToSection: (type: SectionType, customLabel?: string) => void;
+  addStructureSection: (name: string, color: string) => void;
   removeStructureSection: (id: string) => void;
-  setSectionRepeat: (sectionId: string, repeatOf: string | undefined) => void;
+  setSectionName: (sectionId: string, name: string) => void;
+  setSectionColor: (sectionId: string, color: string) => void;
   setSectionComment: (sectionId: string, comment: string) => void;
-  reorderBar: (activeId: string, overId: string) => void;
+  setFocusedSection: (id: string | null) => void;
   reorderStructureSection: (activeId: string, overId: string) => void;
   moveBarToSection: (barId: string, sectionId: string) => void;
-  unassignBar: (barId: string) => void;
   loadStructure: (structure: SongStructure) => void;
   clearStructure: () => void;
 }

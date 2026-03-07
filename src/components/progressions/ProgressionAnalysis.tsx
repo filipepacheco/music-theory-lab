@@ -93,7 +93,7 @@ export default function ProgressionAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-lg p-4 space-y-3"
+        className="bg-bg-card border border-border-default rounded-lg p-3 sm:p-4 space-y-3"
       >
         <div className="flex items-center gap-2">
           <h4 className="font-heading text-sm text-text-primary">Analise</h4>
@@ -120,7 +120,7 @@ export default function ProgressionAnalysis() {
         <div className="space-y-1.5">
           {(["T", "SD", "D"] as const).map((fn) => (
             <div key={fn} className="flex items-center gap-2">
-              <span className="text-xs text-text-secondary w-24 shrink-0">
+              <span className="text-xs text-text-secondary w-20 sm:w-24 shrink-0">
                 {FUNCTION_LABELS[fn]}
               </span>
               <div className="flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden">

@@ -44,7 +44,7 @@ export default function PresetList() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => setShowSave(true)}
-          className="flex items-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer"
+          className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer w-full sm:w-auto"
         >
           <span>+</span>
           <span>Salvar progressao</span>
@@ -67,7 +67,7 @@ export default function PresetList() {
           <h3 className="font-heading text-sm text-text-secondary mb-2">
             Suas progressoes
           </h3>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap">
             {userSaved.map((prog) => (
               <motion.button
                 key={prog.id}
@@ -113,7 +113,7 @@ export default function PresetList() {
         <h4 className="font-heading text-sm text-text-secondary mb-2">
           Exemplos
         </h4>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap">
           {examples.map((prog) => (
             <motion.button
               key={prog.id}

@@ -14,7 +14,7 @@ interface BadgeProps {
 export default function Badge({ harmonicFunction }: BadgeProps) {
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${BADGE_STYLES[harmonicFunction]}`}
+      className={`inline-block px-2 py-0.5 rounded-sm sm:rounded-full text-[10px] font-medium ${BADGE_STYLES[harmonicFunction]}`}
     >
       {HARMONIC_FUNCTION_LABELS[harmonicFunction]}
     </span>
