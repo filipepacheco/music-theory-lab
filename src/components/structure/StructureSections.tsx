@@ -38,8 +38,7 @@ function SectionComment({
         }}
         onPointerDown={(e) => e.stopPropagation()}
         placeholder="Notas sobre esta secao..."
-        rows={3}
-        className="w-full px-2 py-1 rounded bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
+        className="w-full h-full min-h-[4rem] px-2 py-1 rounded bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
       />
     );
   }
@@ -49,7 +48,7 @@ function SectionComment({
       type="button"
       onClick={startEditing}
       onPointerDown={(e) => e.stopPropagation()}
-      className="text-left text-xs px-2 py-1 rounded hover:bg-bg-tertiary/50 transition-colors cursor-pointer"
+      className="text-left text-xs px-2 py-1 rounded hover:bg-bg-tertiary/50 transition-colors cursor-pointer flex-1"
     >
       {comment ? (
         <span className="text-text-secondary italic whitespace-pre-line">{comment}</span>
@@ -306,7 +305,7 @@ function DroppableSection({
         </div>
 
         {/* Right column: comment */}
-        <div className="flex-1 min-w-[120px]">
+        <div className="flex-1 min-w-[120px] self-stretch flex flex-col">
           <SectionComment
             comment={section.comment ?? ''}
             onChange={(value) => onSetComment(section.id, value)}

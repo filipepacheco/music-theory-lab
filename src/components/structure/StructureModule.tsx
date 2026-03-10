@@ -22,6 +22,7 @@ import { BarOverlay } from './DraggableBar';
 import StructureSections, { SectionOverlay } from './StructureSections';
 import SaveStructureButton from './SaveStructureButton';
 import StructureList from './StructureList';
+import { exportStructurePdf } from '@/utils/exportStructurePdf';
 import type { StructureBar, StructureSection } from '@/types';
 
 type DragItem =
@@ -31,6 +32,9 @@ type DragItem =
 export default function StructureModule() {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
   const structureBars = useAppStore((s) => s.structureBars);
+  const structureSections = useAppStore((s) => s.structureSections);
+  const structureTitle = useAppStore((s) => s.structureTitle);
+  const structureArtist = useAppStore((s) => s.structureArtist);
   const clearStructure = useAppStore((s) => s.clearStructure);
   const addStructureSection = useAppStore((s) => s.addStructureSection);
   const moveBarToSection = useAppStore((s) => s.moveBarToSection);
@@ -219,6 +223,22 @@ export default function StructureModule() {
           {/* -- Actions -- */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
             <SaveStructureButton save={save} update={update} />
+            {structureBars.length > 0 && (
+              <button
+                onClick={() => exportStructurePdf({
+                  title: structureTitle,
+                  artist: structureArtist,
+                  sections: structureSections,
+                  bars: structureBars,
+                })}
+                className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary border border-border-default hover:border-accent/50 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.046.752.097 1.126.153A2.212 2.212 0 0 1 18 8.653v4.097A2.25 2.25 0 0 1 15.75 15h-.75v3.25a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75V15h-.75A2.25 2.25 0 0 1 2 12.75V8.653c0-1.082.775-2.034 1.874-2.198.374-.056.75-.107 1.126-.153V2.75ZM7.5 10.5a.75.75 0 0 0-.75.75v6h6.5v-6a.75.75 0 0 0-.75-.75h-5ZM13.5 6.3V2.75a.25.25 0 0 0-.25-.25h-6.5a.25.25 0 0 0-.25.25V6.3c1.136-.095 2.284-.143 3.5-.143s2.364.048 3.5.143Z" clipRule="evenodd" />
+                </svg>
+                Exportar PDF
+              </button>
+            )}
             {(activeStructureId || structureBars.length > 0) && (
               <button
                 onClick={clearStructure}
@@ -236,6 +256,7 @@ export default function StructureModule() {
         isLoading={isLoading}
         remove={remove}
       />
+
     </section>
   );
 }
