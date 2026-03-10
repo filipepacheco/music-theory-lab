@@ -47,6 +47,7 @@ export function useStructures() {
     async (structure: {
       title: string;
       artist: string;
+      bpm: number;
       bars: StructureBar[];
       sections: StructureSection[];
     }) => {
@@ -70,6 +71,7 @@ export function useStructures() {
       updates: Partial<{
         title: string;
         artist: string;
+        bpm: number;
         bars: StructureBar[];
         sections: StructureSection[];
       }>

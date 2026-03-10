@@ -70,6 +70,7 @@ export async function pushStructure(
           id: structure.id,
           title: structure.title,
           artist: structure.artist,
+          bpm: structure.bpm,
           bars: JSON.stringify(structure.bars),
           sections: JSON.stringify(structure.sections),
           created_at: structure.createdAt,
@@ -141,6 +142,7 @@ interface CloudStructure {
   id: string;
   title: string;
   artist: string;
+  bpm: number;
   bars: string;
   sections: string;
   created_at: string;

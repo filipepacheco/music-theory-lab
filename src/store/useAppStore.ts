@@ -73,6 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeStructureId: null,
   structureTitle: '',
   structureArtist: '',
+  structureBpm: 120,
   activeTimeSignature: '4/4' as TimeSignature,
   focusedSectionId: null,
 
@@ -368,6 +369,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setStructureTitle: (title) => set({ structureTitle: title }),
   setStructureArtist: (artist) => set({ structureArtist: artist }),
+  setStructureBpm: (bpm) => set({ structureBpm: bpm }),
   setActiveTimeSignature: (ts) => set({ activeTimeSignature: ts }),
 
   addBarToSection: (sectionId) => {
@@ -540,6 +542,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeStructureId: structure.id,
       structureTitle: structure.title,
       structureArtist: structure.artist,
+      structureBpm: structure.bpm,
       structureBars: structure.bars,
       structureSections: structure.sections,
       focusedSectionId: null,
@@ -550,6 +553,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeStructureId: null,
       structureTitle: '',
       structureArtist: '',
+      structureBpm: 120,
       structureBars: [],
       structureSections: [],
       focusedSectionId: null,

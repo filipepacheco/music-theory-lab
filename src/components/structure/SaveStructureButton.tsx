@@ -7,6 +7,7 @@ interface Props {
   save: (structure: {
     title: string;
     artist: string;
+    bpm: number;
     bars: StructureBar[];
     sections: StructureSection[];
   }) => Promise<string>;
@@ -15,6 +16,7 @@ interface Props {
     updates: Partial<{
       title: string;
       artist: string;
+      bpm: number;
       bars: StructureBar[];
       sections: StructureSection[];
     }>,
@@ -25,6 +27,7 @@ export default function SaveStructureButton({ save, update }: Props) {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
   const structureTitle = useAppStore((s) => s.structureTitle);
   const structureArtist = useAppStore((s) => s.structureArtist);
+  const structureBpm = useAppStore((s) => s.structureBpm);
   const structureBars = useAppStore((s) => s.structureBars);
   const structureSections = useAppStore((s) => s.structureSections);
 
@@ -42,6 +45,7 @@ export default function SaveStructureButton({ save, update }: Props) {
     const data = {
       title: structureTitle.trim(),
       artist: structureArtist.trim(),
+      bpm: structureBpm,
       bars: structureBars,
       sections: structureSections,
     };

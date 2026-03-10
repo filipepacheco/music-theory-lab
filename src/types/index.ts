@@ -67,6 +67,7 @@ export interface SongStructure {
   id: string;
   title: string;
   artist: string;
+  bpm: number;
   bars: StructureBar[];
   sections: StructureSection[];
   createdAt: string;
@@ -142,6 +143,7 @@ export interface AppState {
   activeStructureId: string | null;
   structureTitle: string;
   structureArtist: string;
+  structureBpm: number;
   activeTimeSignature: TimeSignature;
   focusedSectionId: string | null;
 
@@ -188,6 +190,7 @@ export interface AppState {
   // Structure actions
   setStructureTitle: (title: string) => void;
   setStructureArtist: (artist: string) => void;
+  setStructureBpm: (bpm: number) => void;
   setActiveTimeSignature: (ts: TimeSignature) => void;
   addBarToSection: (sectionId: string) => void;
   removeBar: (id: string) => void;

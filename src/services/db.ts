@@ -145,12 +145,20 @@ export async function initDB(): Promise<void> {
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         artist TEXT NOT NULL DEFAULT '',
+        bpm INTEGER NOT NULL DEFAULT 120,
         bars TEXT NOT NULL DEFAULT '[]',
         sections TEXT NOT NULL DEFAULT '[]',
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
+
+    // Migration: add bpm column to existing structures table
+    try {
+      db.run(`ALTER TABLE structures ADD COLUMN bpm INTEGER NOT NULL DEFAULT 120`);
+    } catch {
+      // Column already exists
+    }
 
     // Seed examples on first run
     const [{ values }] = db.exec(
@@ -498,6 +506,7 @@ export function getAllStructures(): SongStructure[] {
       id: row.id as string,
       title: row.title as string,
       artist: row.artist as string,
+      bpm: (row.bpm as number) || 120,
       bars: migrated.bars,
       sections: migrated.sections,
       createdAt: row.created_at as string,
@@ -511,6 +520,7 @@ export function getAllStructures(): SongStructure[] {
 export function saveStructure(structure: {
   title: string;
   artist: string;
+  bpm: number;
   bars: StructureBar[];
   sections: StructureSection[];
 }): string {
@@ -518,14 +528,15 @@ export function saveStructure(structure: {
 
   const id = crypto.randomUUID();
   const stmt = db.prepare(
-    `INSERT INTO structures (id, title, artist, bars, sections)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO structures (id, title, artist, bpm, bars, sections)
+     VALUES (?, ?, ?, ?, ?, ?)`
   );
   try {
     stmt.run([
       id,
       structure.title,
       structure.artist || '',
+      structure.bpm,
       JSON.stringify(structure.bars),
       JSON.stringify(structure.sections),
     ]);
@@ -546,6 +557,7 @@ export function updateStructure(
   updates: Partial<{
     title: string;
     artist: string;
+    bpm: number;
     bars: StructureBar[];
     sections: StructureSection[];
   }>
@@ -562,6 +574,10 @@ export function updateStructure(
   if (updates.artist !== undefined) {
     fields.push('artist = ?');
     values.push(updates.artist);
+  }
+  if (updates.bpm !== undefined) {
+    fields.push('bpm = ?');
+    values.push(updates.bpm);
   }
   if (updates.bars !== undefined) {
     fields.push('bars = ?');
@@ -676,6 +692,7 @@ function getStructureById(id: string): SongStructure | null {
     id: row.id as string,
     title: row.title as string,
     artist: row.artist as string,
+    bpm: (row.bpm as number) || 120,
     bars: migrated.bars,
     sections: migrated.sections,
     createdAt: row.created_at as string,
@@ -716,6 +733,7 @@ interface CloudStructure {
   id: string;
   title: string;
   artist: string;
+  bpm: number;
   bars: string;
   sections: string;
   created_at: string;
@@ -769,13 +787,14 @@ function upsertStructureLocal(r: CloudStructure): void {
   if (!db) return;
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO structures
-     (id, title, artist, bars, sections, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+     (id, title, artist, bpm, bars, sections, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
   stmt.run([
     r.id,
     r.title,
     r.artist,
+    r.bpm ?? 120,
     r.bars,
     r.sections,
     r.created_at,

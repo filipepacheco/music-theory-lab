@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS structures (
   device_id TEXT NOT NULL,
   title TEXT NOT NULL,
   artist TEXT NOT NULL DEFAULT '',
+  bpm INTEGER NOT NULL DEFAULT 120,
   bars TEXT NOT NULL DEFAULT '[]',
   sections TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

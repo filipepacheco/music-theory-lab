@@ -36,13 +36,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const r of records) {
         await turso.execute({
           sql: `INSERT OR REPLACE INTO structures
-                (id, device_id, title, artist, bars, sections, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                (id, device_id, title, artist, bpm, bars, sections, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             r.id,
             device_id,
             r.title,
             r.artist ?? '',
+            r.bpm ?? 120,
             r.bars,
             r.sections,
             r.created_at ?? new Date().toISOString(),
