@@ -18,12 +18,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const deviceId = req.query.device_id as string;
-      if (!deviceId) return res.status(400).json({ error: 'device_id required' });
 
-      const result = await turso.execute({
-        sql: 'SELECT * FROM structures WHERE device_id = ?',
-        args: [deviceId],
-      });
+      const result = deviceId
+        ? await turso.execute({
+            sql: 'SELECT * FROM structures WHERE device_id = ?',
+            args: [deviceId],
+          })
+        : await turso.execute('SELECT * FROM structures');
 
       return res.status(200).json(result.rows);
     }

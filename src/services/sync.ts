@@ -166,10 +166,7 @@ export async function pullSongs(): Promise<CloudSong[]> {
 }
 
 export async function pullStructures(): Promise<CloudStructure[]> {
-  const deviceId = getDeviceId();
-  const res = await fetch(
-    `${API_BASE}/structures?device_id=${encodeURIComponent(deviceId)}`
-  );
+  const res = await fetch(`${API_BASE}/structures`);
   if (!res.ok) return [];
   return res.json();
 }
