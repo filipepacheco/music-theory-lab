@@ -16,8 +16,7 @@ export default function ModuleNav() {
 
   return (
     <nav
-      className="flex gap-0.5 rounded-lg p-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-full"
-      style={{ backgroundColor: "rgba(37,43,59,0.5)" }}
+      className="flex gap-0.5 rounded-lg p-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-full bg-bg-tertiary/50"
       role="navigation"
       aria-label="Modulos"
     >
@@ -33,7 +32,7 @@ export default function ModuleNav() {
                 ? "text-text-primary"
                 : "text-text-secondary hover:text-text-primary"
             }`}
-            style={isActive ? { backgroundColor: "#1E2433", boxShadow: "0 1px 2px rgba(0,0,0,0.2)" } : undefined}
+            style={isActive ? { backgroundColor: "var(--color-bg-card)", boxShadow: "var(--shadow-card)" } : undefined}
           >
             {mod.label}
           </button>

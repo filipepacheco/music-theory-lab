@@ -8,10 +8,12 @@ export function DraggableBar({
   bar,
   sectionColor,
   onRemove,
+  displayIndex,
 }: {
   bar: StructureBar;
   sectionColor?: string;
   onRemove?: () => void;
+  displayIndex?: number;
 }) {
   const setBarTimeSignature = useAppStore((s) => s.setBarTimeSignature);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -47,7 +49,7 @@ export function DraggableBar({
       {...attributes}
       {...listeners}
     >
-      <span className="text-[10px] sm:text-xs text-text-primary">{bar.index + 1}</span>
+      <span className="text-[10px] sm:text-xs text-text-primary">{displayIndex ?? bar.index + 1}</span>
       <span className={`text-[9px] leading-none hidden sm:inline ${bar.timeSignature === '4/4' ? 'text-text-muted/30' : 'text-text-muted'}`}>
         {bar.timeSignature}
       </span>

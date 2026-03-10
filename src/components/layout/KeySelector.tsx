@@ -35,7 +35,7 @@ export default function KeySelector() {
 
         {/* Mobile: compact "Tom C" pill */}
         <div className="flex sm:hidden items-center">
-          <div className="flex items-center bg-[#161B28] border border-border-default rounded-lg overflow-hidden">
+          <div className="flex items-center bg-bg-tertiary border border-border-default rounded-lg overflow-hidden">
             <span className="text-xs text-text-muted font-medium pl-2.5 pr-1">Tom</span>
             <select
               value={rootNote}

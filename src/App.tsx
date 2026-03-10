@@ -18,9 +18,10 @@ export default function App() {
   const setInstrumentsPanelOpen = useAppStore(
     (s) => s.setInstrumentsPanelOpen,
   );
+  const theme = useAppStore((s) => s.theme);
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0">
+    <div className={`min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0 ${theme === 'light' ? 'light' : ''}`}>
       <Header />
       <KeySelector />
 

@@ -54,6 +54,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedScaleId: null,
   comparisonScaleId: null,
   instrumentsPanelOpen: true,
+  theme: (localStorage.getItem('theme') as 'dark' | 'light') || 'dark',
 
   // Transcription
   activeSongId: null,
@@ -235,6 +236,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setInstrumentsPanelOpen: (open) => set({ instrumentsPanelOpen: open }),
 
+  toggleTheme: () => {
+    const next = get().theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    set({ theme: next });
+  },
+
   // --- Transcription actions ---
 
   loadSong: (song: Song) =>
@@ -413,6 +420,41 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  duplicateStructureSection: (sectionId) => {
+    const { structureSections, structureBars, activeTimeSignature } = get();
+    const source = structureSections.find((s) => s.id === sectionId);
+    if (!source) return;
+
+    const newBars: StructureBar[] = source.barIds.map((bid) => {
+      const original = structureBars.find((b) => b.id === bid);
+      return {
+        id: crypto.randomUUID(),
+        index: 0,
+        timeSignature: original?.timeSignature ?? activeTimeSignature,
+        color: original?.color,
+      };
+    });
+
+    const newSection: StructureSection = {
+      id: crypto.randomUUID(),
+      name: source.name,
+      color: source.color,
+      barIds: newBars.map((b) => b.id),
+      comment: source.comment,
+      barsPerRow: source.barsPerRow,
+    };
+
+    const insertIndex = structureSections.indexOf(source) + 1;
+    const newSections = [...structureSections];
+    newSections.splice(insertIndex, 0, newSection);
+
+    set({
+      structureSections: newSections,
+      structureBars: reindexBars([...structureBars, ...newBars], newSections),
+      focusedSectionId: newSection.id,
+    });
+  },
+
   removeStructureSection: (id) => {
     const { structureSections, structureBars, focusedSectionId } = get();
     const sectionToRemove = structureSections.find((s) => s.id === id);
@@ -451,6 +493,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       structureSections: structureSections.map((s) =>
         s.id === sectionId ? { ...s, comment } : s,
+      ),
+    });
+  },
+
+  setSectionBarsPerRow: (sectionId, barsPerRow) => {
+    const { structureSections } = get();
+    set({
+      structureSections: structureSections.map((s) =>
+        s.id === sectionId ? { ...s, barsPerRow } : s,
       ),
     });
   },

@@ -28,19 +28,18 @@ function SectionComment({
 
   if (editing) {
     return (
-      <input
+      <textarea
         autoFocus
-        type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') save();
           if (e.key === 'Escape') setEditing(false);
         }}
         onPointerDown={(e) => e.stopPropagation()}
         placeholder="Notas sobre esta secao..."
-        className="w-full px-2 py-1 rounded bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors"
+        rows={3}
+        className="w-full px-2 py-1 rounded bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
       />
     );
   }
@@ -53,7 +52,7 @@ function SectionComment({
       className="text-left text-xs px-2 py-1 rounded hover:bg-bg-tertiary/50 transition-colors cursor-pointer"
     >
       {comment ? (
-        <span className="text-text-secondary italic">{comment}</span>
+        <span className="text-text-secondary italic whitespace-pre-line">{comment}</span>
       ) : (
         <span className="text-text-muted/50 italic">+ anotacao</span>
       )}
@@ -157,6 +156,8 @@ function DroppableSection({
   const removeBar = useAppStore((s) => s.removeBar);
   const setSectionName = useAppStore((s) => s.setSectionName);
   const setSectionColor = useAppStore((s) => s.setSectionColor);
+  const setSectionBarsPerRow = useAppStore((s) => s.setSectionBarsPerRow);
+  const duplicateSection = useAppStore((s) => s.duplicateStructureSection);
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `section-${section.id}`,
@@ -206,62 +207,112 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
-      {/* Header row: drag handle + name + color picker + repeat */}
-      <div className="flex items-center gap-2">
-        <span
-          className="w-6 h-8 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing transition-colors select-none shrink-0"
-          {...attributes}
-          {...listeners}
-        >
-          &#9776;
-        </span>
+      {/* Horizontal layout: actions | bars grid | comment */}
+      <div className="flex gap-3 sm:gap-4">
+        {/* Left column: action buttons stacked vertically */}
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
+          <span
+            className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing transition-colors select-none"
+            {...attributes}
+            {...listeners}
+          >
+            &#9776;
+          </span>
 
-        <InlineSectionName
-          name={section.name}
-          color={color}
-          onChange={(name) => setSectionName(section.id, name)}
-        />
-
-        <ColorPicker
-          value={color}
-          onChange={(c) => setSectionColor(section.id, c)}
-          size="sm"
-        />
-
-      </div>
-
-      {/* Bars row */}
-      <div className="flex flex-wrap gap-1 sm:gap-1.5 items-center pl-5 sm:pl-0">
-        {sectionBars.map((bar) => (
-          <DraggableBar
-            key={bar.id}
-            bar={bar}
-            sectionColor={color}
-            onRemove={() => removeBar(bar.id)}
+          <InlineSectionName
+            name={section.name}
+            color={color}
+            onChange={(name) => setSectionName(section.id, name)}
           />
-        ))}
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            addBarToSection(section.id);
-          }}
-          className="w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg border border-dashed text-text-muted hover:text-accent hover:border-accent/50 transition-colors cursor-pointer"
-          style={{ borderColor: color + '30' }}
-          aria-label="Adicionar compasso"
+          <ColorPicker
+            value={color}
+            onChange={(c) => setSectionColor(section.id, c)}
+            size="sm"
+          />
+
+          <select
+            value={section.barsPerRow ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSectionBarsPerRow(section.id, val ? Number(val) : undefined);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default rounded px-1 py-0.5 text-text-muted hover:text-text-secondary transition-colors cursor-pointer focus:outline-none focus:border-accent w-full"
+            aria-label="Compassos por linha"
+          >
+            <option value="">Auto</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="8">8</option>
+            <option value="12">12</option>
+            <option value="16">16</option>
+          </select>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              aria-label={`Duplicar secao ${section.name}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                duplicateSection(section.id);
+              }}
+              className="text-[10px] sm:text-xs text-text-muted hover:text-accent transition-colors cursor-pointer"
+              title="Duplicar secao"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h5.5A1.5 1.5 0 0 1 14 3.5V9a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 9V3.5Z" />
+                <path d="M3.5 5.5A1.5 1.5 0 0 0 2 7v5.5A1.5 1.5 0 0 0 3.5 14H9a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 9 5.5H3.5Z" opacity=".5" />
+              </svg>
+            </button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                addBarToSection(section.id);
+              }}
+              className="w-5 h-5 flex items-center justify-center rounded border border-dashed text-text-muted hover:text-accent hover:border-accent/50 transition-colors cursor-pointer text-xs"
+              style={{ borderColor: color + '30' }}
+              aria-label="Adicionar compasso"
+            >
+              +
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Middle column: bars grid */}
+        <div
+          className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
+          style={section.barsPerRow ? {
+            maxWidth: `calc(${section.barsPerRow} * (2.75rem + 0.375rem))`,
+          } : undefined}
         >
-          <span className="text-lg leading-none">+</span>
-        </motion.button>
-      </div>
+          {sectionBars.map((bar, i) => (
+            <DraggableBar
+              key={bar.id}
+              bar={bar}
+              sectionColor={color}
+              onRemove={() => removeBar(bar.id)}
+              displayIndex={i + 1}
+            />
+          ))}
+        </div>
 
-      <SectionComment
-        comment={section.comment ?? ''}
-        onChange={(value) => onSetComment(section.id, value)}
-      />
+        {/* Right column: comment */}
+        <div className="flex-1 min-w-[120px]">
+          <SectionComment
+            comment={section.comment ?? ''}
+            onChange={(value) => onSetComment(section.id, value)}
+          />
+        </div>
+      </div>
 
       <button
         type="button"

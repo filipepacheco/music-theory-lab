@@ -46,8 +46,8 @@ function IconMais({ color }: { color: string }) {
   );
 }
 
-const ACTIVE_COLOR = "#3B82F6";
-const INACTIVE_COLOR = "#64748B";
+const ACTIVE_COLOR = "var(--color-accent)";
+const INACTIVE_COLOR = "var(--color-text-muted)";
 
 const MAIN_TABS: { id: ActiveModule; label: string; Icon: typeof IconCampo }[] = [
   { id: "harmonicField", label: "Campo", Icon: IconCampo },
@@ -87,7 +87,7 @@ export default function BottomNav() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-20 left-4 right-4 bg-[#161B28] border border-white/10 rounded-xl p-2 flex flex-col gap-1"
+              className="absolute bottom-20 left-4 right-4 bg-bg-secondary border border-border-default rounded-xl p-2 flex flex-col gap-1"
               onClick={(e) => e.stopPropagation()}
             >
               {MORE_TABS.map((tab) => (
@@ -99,8 +99,8 @@ export default function BottomNav() {
                   }}
                   className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                     activeModule === tab.id
-                      ? "bg-[#3B82F6]/15 text-[#3B82F6]"
-                      : "text-[#94A3B8] hover:text-white hover:bg-white/5"
+                      ? "bg-accent/15 text-accent"
+                      : "text-text-muted hover:text-text-primary hover:bg-bg-hover"
                   }`}
                 >
                   {tab.label}
@@ -115,8 +115,8 @@ export default function BottomNav() {
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 sm:hidden flex items-center justify-around"
         style={{
-          backgroundColor: "#161B28",
-          borderTop: "1px solid #2D3548",
+          backgroundColor: "var(--color-bg-secondary)",
+          borderTop: "1px solid var(--color-border-default)",
           paddingTop: 8,
           paddingBottom: 28,
           paddingLeft: 8,

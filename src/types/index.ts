@@ -60,6 +60,7 @@ export interface StructureSection {
   barIds: string[];
   repeatOf?: string;
   comment?: string;
+  barsPerRow?: number;
 }
 
 export interface SongStructure {
@@ -122,6 +123,7 @@ export interface AppState {
 
   // UI panels
   instrumentsPanelOpen: boolean;
+  theme: 'dark' | 'light';
 
   // Transcription
   activeSongId: string | null;
@@ -164,6 +166,7 @@ export interface AppState {
   selectScale: (scaleId: string | null) => void;
   setComparisonScale: (scaleId: string | null) => void;
   setInstrumentsPanelOpen: (open: boolean) => void;
+  toggleTheme: () => void;
 
   // Transcription actions
   loadSong: (song: Song) => void;
@@ -190,10 +193,12 @@ export interface AppState {
   removeBar: (id: string) => void;
   setBarTimeSignature: (id: string, ts: TimeSignature) => void;
   addStructureSection: (name: string, color: string) => void;
+  duplicateStructureSection: (id: string) => void;
   removeStructureSection: (id: string) => void;
   setSectionName: (sectionId: string, name: string) => void;
   setSectionColor: (sectionId: string, color: string) => void;
   setSectionComment: (sectionId: string, comment: string) => void;
+  setSectionBarsPerRow: (sectionId: string, barsPerRow: number | undefined) => void;
   setFocusedSection: (id: string | null) => void;
   reorderStructureSection: (activeId: string, overId: string) => void;
   moveBarToSection: (barId: string, sectionId: string) => void;
