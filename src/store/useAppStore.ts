@@ -401,10 +401,40 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setBarTimeSignature: (id, ts) => {
     const { structureBars } = get();
+    const dotCount = { '4/4': 8, '3/4': 6, '2/4': 4, '6/8': 6 }[ts];
+    set({
+      structureBars: structureBars.map((b) => {
+        if (b.id !== id) return b;
+        const accents = b.accents?.filter((i) => i < dotCount);
+        return {
+          ...b,
+          timeSignature: ts,
+          accents: accents && accents.length > 0 ? accents : undefined,
+        };
+      }),
+    });
+  },
+
+  setBarColor: (id, color) => {
+    const { structureBars } = get();
     set({
       structureBars: structureBars.map((b) =>
-        b.id === id ? { ...b, timeSignature: ts } : b,
+        b.id === id ? { ...b, color } : b,
       ),
+    });
+  },
+
+  toggleBarAccent: (barId, dotIndex) => {
+    const { structureBars } = get();
+    set({
+      structureBars: structureBars.map((b) => {
+        if (b.id !== barId) return b;
+        const accents = b.accents ?? [];
+        const next = accents.includes(dotIndex)
+          ? accents.filter((i) => i !== dotIndex)
+          : [...accents, dotIndex].sort((a, c) => a - c);
+        return { ...b, accents: next.length > 0 ? next : undefined };
+      }),
     });
   },
 

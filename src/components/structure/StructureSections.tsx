@@ -291,7 +291,7 @@ function DroppableSection({
         <div
           className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
           style={section.barsPerRow ? {
-            maxWidth: `calc(${section.barsPerRow} * (2.75rem + 0.375rem))`,
+            maxWidth: `calc(${section.barsPerRow} * (3.5rem + 0.375rem))`,
           } : undefined}
         >
           {sectionBars.map((bar, i) => (

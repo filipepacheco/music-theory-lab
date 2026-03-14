@@ -51,6 +51,7 @@ export interface StructureBar {
   index: number;
   timeSignature: TimeSignature;
   color?: string;
+  accents?: number[];
 }
 
 export interface StructureSection {
@@ -195,6 +196,8 @@ export interface AppState {
   addBarToSection: (sectionId: string) => void;
   removeBar: (id: string) => void;
   setBarTimeSignature: (id: string, ts: TimeSignature) => void;
+  setBarColor: (id: string, color: string | undefined) => void;
+  toggleBarAccent: (barId: string, dotIndex: number) => void;
   addStructureSection: (name: string, color: string) => void;
   duplicateStructureSection: (id: string) => void;
   removeStructureSection: (id: string) => void;
