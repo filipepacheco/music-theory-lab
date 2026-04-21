@@ -1,0 +1,11 @@
+# madmom 0.16.1 needs Cython at install time and uses deprecated numpy aliases
+# (np.float etc.) removed in numpy 1.24. Install flow:
+#   pip install -r requirements.txt
+#   python patch_madmom.py   # patches the installed madmom package in-place
+numpy>=1.26
+scipy>=1.12
+cython>=3
+madmom==0.16.1
+librosa
+mir_eval
+soundfile
