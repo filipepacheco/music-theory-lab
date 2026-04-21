@@ -6,10 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Music Theory Lab - interactive educational app for learning music theory (Portuguese/pt-BR). Features real audio playback via Tone.js, visual instruments (piano + bass fretboard), harmonic field analysis, chord progression builder with persistence, scale comparison, and metronome-synced playback.
 
-## Skills
-
-The `music-theory` skill (registered globally at `~/.claude/skills/music-theory/`) provides a validated theory reference. It auto-triggers on music theory tasks. Consult the reference file before implementing theory features - do not generate harmonic field data, tension rules, or scale formulas from memory.
-
 ## Commands
 
 ```bash
@@ -40,7 +36,7 @@ src/
   constants/    Music theory data (scales, chords, harmonicFields, progressions, tonePresets, etc.)
   utils/        Pure functions (musicTheory.ts, noteHelpers.ts, quizGenerator.ts)
   hooks/        Side effects (useSynth, useMetronome, useKeyboardPiano, useSavedProgressions, useSongs, useQuiz, useStructures, useStructureRecorder)
-  services/     Persistence (db.ts - sql.js/IndexedDB singleton, tables: saved_progressions, songs, structures; deviceId.ts - localStorage UUID per device)
+  services/     Persistence (db.ts - sql.js/IndexedDB singleton; sync.ts - bidirectional cloud sync; deviceId.ts - localStorage UUID per device)
   store/        Zustand store (single file)
   types/        TypeScript interfaces (Song, SongSection, SongStructure, StructureBar, StructureSection, HarmonicChord, AppState)
   components/
@@ -88,7 +84,7 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 
 **Scale comparison** uses a three-color system: `scale-a` (blue) for primary scale, `scale-b` (purple) for comparison, `scale-shared` (amber) for notes in both. These colors are CSS variables used for instrument highlights.
 
-**Song structure module** records the bar-level arrangement of a song. Users tap spacebar to record bars in real-time (100ms debounce via `useStructureRecorder`), then organize bars into named sections (intro, verso, refrao, etc.) using drag-and-drop (@dnd-kit). Each bar has a configurable time signature (2/4, 3/4, 4/4, 6/8). Sections support freeform comments. The store maintains `structureBars`, `structureSections`, and `selectedBarIds` (Set) with a `reindexBars()` helper that recalculates bar indices when sections change. State is shared between `SaveStructureButton` and `StructureList` via prop drilling from `StructureModule` (which owns the single `useStructures()` hook instance) to avoid stale state bugs from independent hook instances.
+**Song structure module** records the bar-level arrangement of a song. Users tap spacebar to record bars in real-time (100ms debounce via `useStructureRecorder`), then organize bars into named sections (intro, verso, refrao, etc.) using drag-and-drop (@dnd-kit). Each bar has a configurable time signature (2/4, 3/4, 4/4, 6/8). Sections support freeform comments and a `barsPerRow` layout setting. The store maintains `structureBars`, `structureSections`, `focusedSectionId`, and `selectedBarIds` (Set) with a `reindexBars()` helper that recalculates bar indices when sections change. State is shared between `SaveStructureButton` and `StructureList` via prop drilling from `StructureModule` (which owns the single `useStructures()` hook instance) to avoid stale state bugs from independent hook instances.
 
 ### Audio System (`useSynth`)
 
@@ -127,9 +123,15 @@ Three serverless API routes in `api/` provide cloud sync via Turso (LibSQL):
 
 All routes use the same pattern: inlined Turso client (no shared module), device_id-based ownership, batch upsert on POST. Requires `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables.
 
+Client-side sync lives in `src/services/sync.ts`. `syncAll()` is called on init and performs bidirectional merge: progressions use a simple union (each side pushes its local-only records); songs and structures use last-write-wins by `updated_at`. Push helpers (`pushProgression`, `pushSong`, `pushStructure`, `pushDelete*`) are fire-and-forget - errors are silently swallowed so sync failures never block the UI.
+
 ### Design Tokens (Tailwind v4)
 
 All colors, shadows, radii, and fonts are defined as CSS variables inside `@theme {}` in `src/styles/globals.css`. Tailwind v4 auto-generates utility classes from `@theme` variables - e.g., `--color-bg-card` becomes `bg-bg-card`, `--color-text-primary` becomes `text-text-primary`. To add a new token, add it inside the `@theme {}` block (not in a tailwind.config file, which does not exist). Custom fonts: `font-heading` (JetBrains Mono) and `font-body` (JetBrains Sans).
+
+### Theme
+
+The store holds `theme: 'dark' | 'light'` (initialized from `localStorage`) with a `toggleTheme()` action. The value is written back to `localStorage` and applied as a class on `<html>`. Dark/light mode CSS variable overrides are defined in `src/styles/globals.css`.
 
 ## Conventions
 
