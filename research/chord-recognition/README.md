@@ -35,14 +35,30 @@ Three models/pipelines to bake off, in order of setup friction:
 
 ```
 research/chord-recognition/
-  README.md              # this file
-  requirements.txt       # Python deps
-  analyze.py             # run a chord recognizer on an mp3
-  samples/               # test audio files (gitignored)
-  outputs/               # analysis results (gitignored)
+  README.md                  # this file
+  chord_recognition.ipynb    # Colab notebook (recommended entry point)
+  requirements.txt           # Python deps (Linux/macOS local setup)
+  analyze.py                 # CLI: run chord recognizer on an mp3
+  patch_madmom.py            # patches madmom for Python 3.10+ / numpy 1.24+
+  synth_test_audio.py        # generates a known-ground-truth WAV for smoke testing
+  FINDINGS.md                # append-only log of experiment results
+  samples/                   # test audio files (gitignored)
+  outputs/                   # analysis results (gitignored)
 ```
 
 ## Setup
+
+### Option A — Google Colab (recommended, works on any OS)
+
+Open `chord_recognition.ipynb` in Google Colab. It handles installation,
+patching, mp3 upload, analysis, and export in one notebook. No local setup
+required. Works on Windows, macOS, Linux.
+
+### Option B — Local (Linux / macOS only)
+
+madmom 0.16.1 has **no Windows wheels** and building from source on Windows
+requires MSVC Build Tools + Cython compilation, which is unreliable on Python
+3.12. On Linux/macOS:
 
 ```bash
 cd research/chord-recognition
@@ -53,9 +69,11 @@ pip install -r requirements.txt --no-build-isolation
 python patch_madmom.py
 ```
 
-**Why the patch step.** madmom's last release (0.16.1, 2018) predates Python 3.10 and numpy 1.24, and uses APIs removed in both: `collections.MutableSequence` and `np.float`/`np.int`/`np.bool`/`np.object`. `patch_madmom.py` rewrites these in-place in the installed package. It's idempotent — safe to rerun.
+**Why the patch step.** madmom's last release (2018) predates Python 3.10 and
+numpy 1.24, using APIs removed in both. `patch_madmom.py` rewrites them in-place
+in the installed package. Idempotent — safe to rerun.
 
-**Why `--no-build-isolation`.** madmom's setup.py calls numpy at build time; build isolation creates a fresh env where it isn't available.
+**Windows users**: use Colab (Option A) or WSL2 with Ubuntu.
 
 ## First experiment
 
@@ -68,7 +86,8 @@ python analyze.py samples/synth_progression.wav
 python analyze.py samples/your-song.mp3
 ```
 
-Output: printed list of `(start_sec, end_sec, label)` chord segments, plus the file written to `outputs/<name>.chords.txt` in mir_eval-compatible tab-separated format.
+Output: printed list of `(start_sec, end_sec, label)` chord segments, plus the
+file written to `outputs/<name>.chords.txt` in mir_eval-compatible tab-separated format.
 
 See `FINDINGS.md` for logged experiment results.
 
