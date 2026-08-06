@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Standalone research script (not part of the app) — see README.md",
   "scripts": {
-    "parse": "tsx parse.ts"
+    "parse": "tsx parse.ts",
+    "chords": "tsx chords.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

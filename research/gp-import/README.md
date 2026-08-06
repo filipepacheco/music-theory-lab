@@ -8,7 +8,9 @@ This lives in the `music-theory-lab` repo for convenience but is independent fro
 
 One question, in stages: **given a real `.gp` file, can we extract what's playing in each bar, and from that, a best-effort chord label?**
 
-This script answers the first stage only: parse + group. It walks a GP7 file's internal structure (`MasterBars -> Bars -> Voices -> Beats -> Notes`) and produces, per bar and per track, the set of MIDI pitches sounding in that bar. No chord-matching yet — that's a separate, still-open ticket ([#6](https://github.com/filipepacheco/music-theory-lab/issues/6)) that depends on seeing what this real data actually looks like.
+Both stages are done:
+- `parse.ts` walks a GP7 file's internal structure (`MasterBars -> Bars -> Voices -> Beats -> Notes`) and produces, per bar and per track, the set of MIDI pitches sounding in that bar.
+- `chords.ts` takes that and produces an actual chord label per bar — resolves **89%** of the sample file's 206 bars to a clean, recognizable chord (e.g. bars 13-37 resolve to a clean repeating `C#maj -> Bmaj -> G#min -> D#min` progression), 9% as `unclear`, and 2% as "no chord data" (both source tracks silent). See [issue #6](https://github.com/filipepacheco/music-theory-lab/issues/6) for the full algorithm design and the real-data evidence behind each choice.
 
 ## Scope
 
@@ -18,10 +20,14 @@ This script answers the first stage only: parse + group. It walks a GP7 file's i
 
 ## What it does
 
+**`gpif.ts`** — shared parsing, used by both scripts below:
 1. Unzips the `.gp` file and parses `Content/score.gpif`.
-2. Checks for a metadata fast-path first: does any track carry a `ChordCollection`/`DiagramCollection` dictionary with named chords, and do any beats reference one directly? (See [`CHORD-METADATA-FINDINGS.md`](CHORD-METADATA-FINDINGS.md) for how this is structured when present — confirmed via alphaTab's source, but author-dependent, not guaranteed.)
+2. Checks for a metadata fast-path: does any track carry a `ChordCollection`/`DiagramCollection` dictionary with named chords, and do any beats reference one directly? (See [`CHORD-METADATA-FINDINGS.md`](CHORD-METADATA-FINDINGS.md) for how this is structured when present — confirmed via alphaTab's source, but author-dependent, not guaranteed. Not present in the sample file.)
 3. Falls back to note-based extraction: walks every `MasterBar`, resolves each track's `Bar -> Voice(s) -> Beat(s) -> Note(s)`, and collects the MIDI pitches sounding in that bar.
-4. Prints a readable sample to the console and writes the full per-bar, per-track result to `outputs/<filename>.bars.json`.
+
+**`parse.ts`** — prints a readable sample and writes the full per-bar, per-track pitch data to `outputs/<filename>.bars.json`.
+
+**`chords.ts`** — the actual chord-per-bar output. Harmony track (Rhythm Guitar) and root track (Electric Bass) hardcoded by name for this sample file (see [#5](https://github.com/filipepacheco/music-theory-lab/issues/5)). Matches each bar's pitch-class set exactly against a fixed 12-chord vocabulary (maj, min, dim, aug, 5, maj7, min7, dom7, sus2, sus4, add9, minadd9) at any of 12 roots — no fuzzy/subset fallback, since that was tested and shown to produce mostly-spurious matches (see [#6](https://github.com/filipepacheco/music-theory-lab/issues/6)). Genuinely ambiguous bars (e.g. `{C#,F#,B}` = both F#sus4 and Bsus2) get tiebroken by the root track's lowest note; bars that don't resolve at all are labeled `unclear`; bars where both tracks are silent are labeled "no chord data." Writes `outputs/<filename>.chords.json`.
 
 ## Setup
 
@@ -33,8 +39,9 @@ npm install
 ## Run
 
 ```bash
-npm run parse                          # defaults to ~/Downloads/Resenha_do_arrocha_-_J_ESKINE.gp
-npm run parse -- /path/to/other.gp     # or point it at any other GP7 file
+npm run parse                          # per-bar, per-track raw pitch data
+npm run chords                         # per-bar chord labels
+npm run chords -- /path/to/other.gp    # or point either at any other GP7 file
 ```
 
 `outputs/` is gitignored — it holds real run output, not committed fixtures.
@@ -53,6 +60,8 @@ research/gp-import/
   README.md
   CHORD-METADATA-FINDINGS.md   # findings for issue #4
   package.json
-  parse.ts                     # the script
+  gpif.ts                      # shared parsing (issue #3, #4)
+  parse.ts                     # raw pitch dump (issue #3)
+  chords.ts                    # chord-per-bar output (issue #5, #6)
   outputs/                     # run output (gitignored)
 ```
