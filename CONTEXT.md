@@ -10,6 +10,14 @@ The track in a `.gp` file's data that carries full chord content per bar — alw
 
 The track providing a bass/root anchor per bar — often monophonic or near-monophonic (frequently a single note). Used alongside the harmony track, not merely as a gap-filler. Cannot alone determine chord quality. Identified by literal track name for v1 (e.g. `"Electric Bass (finger)"`).
 
+## Scale collection
+
+The unordered set of pitch classes a passage draws on (e.g. the seven notes `F# G# A# B C# D# E#`). **Not** a key: every mode of a collection shares its notes, so establishing that chords fit a collection says nothing about which note is home. Use this term whenever the evidence is only note-membership.
+
+## Tonal center
+
+The note that functions as home/resolution. Distinct from [[scale-collection]] and not derivable from it — determining it requires characteristic-note analysis (e.g. #4 vs 4 to separate Lydian from Ionian) or a human ear. Chord frequency is a signal, not proof: a candidate tonic appearing in 3% of bars is evidence *against* it.
+
 ## No chord data
 
 The explicit output label for a bar where **both** the harmony track and root track are silent — distinct from a bar that resolved to an *ambiguous* chord (which still gets a best-effort label, per the map's Notes). Not a fallback chain to other tracks; just an honest "nothing to work with here."

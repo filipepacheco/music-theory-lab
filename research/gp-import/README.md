@@ -46,6 +46,28 @@ npm run chords -- /path/to/other.gp    # or point either at any other GP7 file
 
 `outputs/` is gitignored — it holds real run output, not committed fixtures.
 
+## Verification result (issue [#8](https://github.com/filipepacheco/music-theory-lab/issues/8))
+
+Verified two ways — internal consistency, then external ground truth.
+
+**External (decisive)**: a human who knows the song confirmed by ear that the extracted loop `B -> G#m -> D#m -> C#` is correct, and that B is the tonal center. This is the check internal consistency structurally cannot do — it's the only thing that catches a systematic error such as a uniform transposition.
+
+**Internal**: all 183 resolved chords fit a single 7-note scale collection (0 outliers), and the progression is a perfectly regular 2-bars-per-chord loop. With B confirmed as tonic, the mode is **B Lydian** — E# (the #4) appears 50 times in the harmony track while E natural appears 3 times, and the seven most frequent pitch classes are exactly B/C#/D#/E#/F#/G#/A#. The chord set is I, II, iii, V, vi; the loop is I - vi - iii - II.
+
+**Caution — a scale collection is not a key.** An early version of this analysis reported the key as "F# major" purely because every chord fit that collection. But all seven modes of a collection share the same notes, so collection-fit establishes no tonal center; the F#-rooted chord appeared in only 5 of 183 bars, which should have been the tell. Determining the tonal center needed either a human ear or characteristic-note analysis (#4 vs 4). Consult `~/.claude/skills/music-theory/music-theory-reference.md` (§9 Modes, §2 Harmonic Fields) rather than deriving this from memory.
+
+**Accuracy breakdown of the 206 bars:**
+
+| Outcome | Bars | Assessment |
+|---|---|---|
+| Resolved to a chord | 183 (89%) | Correct — externally confirmed |
+| `unclear`, melodic run/fill (5-8 distinct pitch classes) | 10 (5%) | Correct — no chord exists to find |
+| `unclear`, bass-only single note | 5 (2%) | Correct — one note cannot imply quality |
+| `no chord data` (both tracks silent) | 5 (2%) | Correct — nothing to read |
+| `unclear`, real chord outside the vocabulary | 3 (1.5%) | **Genuine miss** — approx. B6/9, C#6, D#min(add11) |
+
+Effective correct behaviour: **198/206 (96%)**. The only real limitation is 3 bars using 6th/add11 chords absent from the 12-template vocabulary.
+
 ## Findings so far
 
 - Parsing works end-to-end against a real, non-trivial file (206 bars, 5 tracks, no chord metadata at all — pure note-based extraction required).
