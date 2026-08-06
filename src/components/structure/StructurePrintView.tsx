@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/useAppStore';
+import { DEFAULT_PRINT_BARS_PER_ROW, getSectionBars } from '@/utils/structureLayout';
 
 export default function StructurePrintView() {
   const title = useAppStore((s) => s.structureTitle);
@@ -24,12 +25,10 @@ export default function StructurePrintView() {
 
       <div className="print-sections">
         {sections.map((section) => {
-          const sectionBars = section.barIds
-            .map((id) => barMap.get(id))
-            .filter(Boolean);
+          const sectionBars = getSectionBars(section, barMap);
           if (sectionBars.length === 0) return null;
 
-          const barsPerRow = section.barsPerRow ?? 4;
+          const barsPerRow = section.barsPerRow ?? DEFAULT_PRINT_BARS_PER_ROW;
           let displayIndex = 1;
 
           return (
@@ -54,7 +53,6 @@ export default function StructurePrintView() {
                 }}
               >
                 {sectionBars.map((bar) => {
-                  if (!bar) return null;
                   const idx = displayIndex++;
                   const showTs = bar.timeSignature !== '4/4';
                   return (

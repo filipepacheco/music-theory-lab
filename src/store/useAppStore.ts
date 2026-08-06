@@ -11,6 +11,14 @@ import type {
 } from "@/types";
 import type { ProgressionStep } from "@/constants/progressions";
 import { getHarmonicField, getScaleNotes } from "@/utils/musicTheory";
+import {
+  initDB,
+  waitForSync,
+  getAllStructures,
+  saveStructure as dbSaveStructure,
+  updateStructure as dbUpdateStructure,
+  deleteStructure as dbDeleteStructure,
+} from "@/services/db";
 
 /** Reindex bars so numbers follow section order: section1 bars, section2 bars, ... */
 function reindexBars(
@@ -76,6 +84,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   structureBpm: 120,
   activeTimeSignature: '4/4' as TimeSignature,
   focusedSectionId: null,
+  savedStructures: [],
+  structuresLoading: true,
 
   setRootNote: (note) => {
     const { isMinor } = get();
@@ -588,6 +598,64 @@ export const useAppStore = create<AppState>((set, get) => ({
       structureSections: [],
       focusedSectionId: null,
     }),
+
+  // --- Saved structures actions ---
+
+  loadStructures: () => {
+    const { savedStructures, structuresLoading } = get();
+    if (savedStructures.length > 0 && !structuresLoading) return;
+
+    set({ structuresLoading: true });
+    initDB()
+      .then(() => {
+        set({ savedStructures: getAllStructures() });
+        // Re-read after cloud sync merges remote data. Deliberately not
+        // chained into the outer promise: the loading flag must clear on the
+        // first read, not wait for the network.
+        waitForSync()
+          .then(() => set({ savedStructures: getAllStructures() }))
+          .catch(() => {
+            // Sync merge failed; the first read already populated the list.
+          });
+      })
+      // DB unavailable (IndexedDB blocked in private browsing, quota
+      // exceeded, WASM load failure). Degrade to an empty list rather than
+      // an unhandled rejection - finally() still clears the loading flag,
+      // so the UI settles on "no structures" instead of a stuck spinner.
+      .catch(() => {})
+      .finally(() => set({ structuresLoading: false }));
+  },
+
+  createStructure: async (structure) => {
+    try {
+      await initDB();
+      const id = dbSaveStructure(structure);
+      set({ savedStructures: getAllStructures(), activeStructureId: id });
+      return id;
+    } catch {
+      throw new Error('Erro ao salvar estrutura');
+    }
+  },
+
+  updateStructureRecord: async (id, updates) => {
+    try {
+      await initDB();
+      dbUpdateStructure(id, updates);
+      set({ savedStructures: getAllStructures() });
+    } catch {
+      throw new Error('Erro ao atualizar estrutura');
+    }
+  },
+
+  removeStructureRecord: async (id) => {
+    try {
+      await initDB();
+      dbDeleteStructure(id);
+      set({ savedStructures: getAllStructures() });
+    } catch {
+      throw new Error('Erro ao remover estrutura');
+    }
+  },
 
   setComparisonScale: (scaleId) => {
     if (scaleId === null) {

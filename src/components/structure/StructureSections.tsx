@@ -4,7 +4,8 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useAppStore } from '@/store/useAppStore';
 import { DraggableBar } from './DraggableBar';
 import ColorPicker from './ColorPicker';
-import type { StructureSection } from '@/types';
+import { getSectionBars } from '@/utils/structureLayout';
+import type { StructureBar, StructureSection } from '@/types';
 
 function SectionComment({
   comment,
@@ -145,7 +146,7 @@ function DroppableSection({
   onFocus,
 }: {
   section: StructureSection;
-  bars: Map<string, ReturnType<typeof useAppStore.getState>['structureBars'][number]>;
+  bars: Map<string, StructureBar>;
   isFocused: boolean;
   onRemove: (id: string) => void;
   onSetComment: (id: string, comment: string) => void;
@@ -183,9 +184,7 @@ function DroppableSection({
 
   const color = section.color;
 
-  const sectionBars = section.barIds
-    .map((bid) => bars.get(bid))
-    .filter(Boolean) as ReturnType<typeof useAppStore.getState>['structureBars'];
+  const sectionBars = getSectionBars(section, bars);
 
   return (
     <motion.div

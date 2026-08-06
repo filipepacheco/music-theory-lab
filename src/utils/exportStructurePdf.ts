@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { getSectionBars } from './structureLayout';
 import type { StructureBar, StructureSection } from '@/types';
 
 export type PdfFormat = 'a4' | 'ipad-air';
@@ -353,9 +354,7 @@ export function exportStructurePdf({
   // -- Pre-calculate layouts --
   const layouts: SectionLayout[] = [];
   for (const section of sections) {
-    const sectionBars = section.barIds
-      .map((bid) => barMap.get(bid))
-      .filter(Boolean) as StructureBar[];
+    const sectionBars = getSectionBars(section, barMap);
     if (sectionBars.length === 0) continue;
     layouts.push(calcLayout(doc, section, sectionBars, cfg));
   }

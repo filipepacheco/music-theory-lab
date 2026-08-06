@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   DndContext,
@@ -11,7 +11,6 @@ import {
 } from '@dnd-kit/core';
 import { useAppStore } from '@/store/useAppStore';
 import { useStructureRecorder } from '@/hooks/useStructureRecorder';
-import { useStructures } from '@/hooks/useStructures';
 import {
   STRUCTURE_PALETTE,
   SECTION_SUGGESTIONS,
@@ -42,8 +41,11 @@ export default function StructureModule() {
   const reorderStructureSection = useAppStore(
     (s) => s.reorderStructureSection,
   );
+  const loadStructures = useAppStore((s) => s.loadStructures);
 
-  const { structures, isLoading, save, update, remove } = useStructures();
+  useEffect(() => {
+    loadStructures();
+  }, [loadStructures]);
 
   const [dragging, setDragging] = useState<DragItem | null>(null);
   const [newSectionName, setNewSectionName] = useState('');
@@ -224,7 +226,7 @@ export default function StructureModule() {
 
           {/* -- Actions -- */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
-            <SaveStructureButton save={save} update={update} />
+            <SaveStructureButton />
             {structureBars.length > 0 && (
               <div className="flex items-center gap-0">
                 <button
@@ -265,11 +267,7 @@ export default function StructureModule() {
         </div>
       </div>
 
-      <StructureList
-        structures={structures}
-        isLoading={isLoading}
-        remove={remove}
-      />
+      <StructureList />
 
     </section>
   );

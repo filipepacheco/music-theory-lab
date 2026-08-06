@@ -1,14 +1,10 @@
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
-import type { SongStructure } from '@/types';
 
-interface Props {
-  structures: SongStructure[];
-  isLoading: boolean;
-  remove: (id: string) => Promise<void>;
-}
-
-export default function StructureList({ structures, isLoading, remove }: Props) {
+export default function StructureList() {
+  const structures = useAppStore((s) => s.savedStructures);
+  const isLoading = useAppStore((s) => s.structuresLoading);
+  const removeStructureRecord = useAppStore((s) => s.removeStructureRecord);
   const loadStructure = useAppStore((s) => s.loadStructure);
   const activeStructureId = useAppStore((s) => s.activeStructureId);
 
@@ -83,7 +79,7 @@ export default function StructureList({ structures, isLoading, remove }: Props) 
                       `Remover "${structure.title}"?`,
                     )
                   )
-                    remove(structure.id);
+                    removeStructureRecord(structure.id);
                 }}
                 className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
               >

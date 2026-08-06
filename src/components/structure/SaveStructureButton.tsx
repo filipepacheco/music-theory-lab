@@ -1,35 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
-import type { StructureBar, StructureSection } from '@/types';
 
-interface Props {
-  save: (structure: {
-    title: string;
-    artist: string;
-    bpm: number;
-    bars: StructureBar[];
-    sections: StructureSection[];
-  }) => Promise<string>;
-  update: (
-    id: string,
-    updates: Partial<{
-      title: string;
-      artist: string;
-      bpm: number;
-      bars: StructureBar[];
-      sections: StructureSection[];
-    }>,
-  ) => Promise<void>;
-}
-
-export default function SaveStructureButton({ save, update }: Props) {
+export default function SaveStructureButton() {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
   const structureTitle = useAppStore((s) => s.structureTitle);
   const structureArtist = useAppStore((s) => s.structureArtist);
   const structureBpm = useAppStore((s) => s.structureBpm);
   const structureBars = useAppStore((s) => s.structureBars);
   const structureSections = useAppStore((s) => s.structureSections);
+  const createStructure = useAppStore((s) => s.createStructure);
+  const updateStructureRecord = useAppStore((s) => s.updateStructureRecord);
 
   const [saving, setSaving] = useState(false);
 
@@ -52,10 +33,9 @@ export default function SaveStructureButton({ save, update }: Props) {
 
     try {
       if (activeStructureId) {
-        await update(activeStructureId, data);
+        await updateStructureRecord(activeStructureId, data);
       } else {
-        const id = await save(data);
-        useAppStore.setState({ activeStructureId: id });
+        await createStructure(data);
       }
     } finally {
       setSaving(false);
