@@ -6,7 +6,7 @@
 // no beat splitting).
 //
 // Algorithm (decided in #6):
-//   1. Exact pitch-class-set match only, against a fixed 12-chord vocabulary,
+//   1. Exact pitch-class-set match only, against a fixed 18-chord vocabulary,
 //      at any of 12 roots. No fuzzy/subset fallback (tested, proven overfit —
 //      see issue #6 for the 100%-but-mostly-spurious subset-match finding).
 //   2. Harmony track (Rhythm Guitar) pitch classes are matched first.
@@ -41,7 +41,13 @@ const filePath = process.argv[2] ?? DEFAULT_SAMPLE;
 const HARMONY_TRACK = 'Rhythm Guitar - Acoustic Guitar (steel)';
 const ROOT_TRACK = 'Electric Bass (finger)';
 
-// --- Chord vocabulary (locked in #6 Q3 — kept as-is, no adjustment) ------
+// --- Chord vocabulary --------------------------------------------------
+//
+// The first 12 were locked in #6 Q3. The 6 below them were added afterwards to
+// cover the bars #8's verification flagged as genuine misses. Note this is a
+// fit to ONE file: each addition was driven by a specific bar in the sample,
+// so "no genuine misses left" is a statement about this file, not a general
+// claim. A second file will likely need more.
 
 const TEMPLATES: Record<string, number[]> = {
   maj: [0, 4, 7],
@@ -56,6 +62,23 @@ const TEMPLATES: Record<string, number[]> = {
   sus4: [0, 5, 7],
   add9: [0, 4, 7, 2],
   minadd9: [0, 3, 7, 2],
+  // Intervals per the theory reference §1.1: 6M = 9 semitones, 11 (4J) = 5.
+  // Note: a 6th chord is pitch-class-identical to the min7 a minor third
+  // below it (C6 == Am7, G#min7 == B6), so adding `6` makes every min7 bar
+  // ambiguous. The root-track tiebreak resolves those.
+  '6': [0, 4, 7, 9],
+  min6: [0, 3, 7, 9],
+  add11: [0, 4, 5, 7],
+  minadd11: [0, 3, 5, 7],
+  // Two shapes the sample file actually plays that the above miss. Both drop
+  // or displace a chord tone, so they need their own template rather than
+  // falling out of an existing one:
+  //   6no3 — root/5th/6th, no 3rd (§8.6.4: the 5th is the disposable tone, but
+  //          here it's the 3rd that's absent, so quality is undetermined by
+  //          ear alone; the root track's bass is what makes it readable).
+  //   sus4add9 — 1 9 11 5, a suspended voicing with the 9th on top.
+  '6no3': [0, 7, 9],
+  sus4add9: [0, 2, 5, 7],
 };
 
 interface Candidate {
