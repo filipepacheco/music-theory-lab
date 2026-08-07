@@ -86,6 +86,14 @@ export interface MasterBarInfo {
 
 export interface GpFile {
   gpVersion: string;
+  /**
+   * `<Score><Title>` as written in the file. Tabs are hand-entered, so this is
+   * a hint, not a fact - the sample file has the song name in `Artist` and the
+   * artist in `Title`. The user fixes it in the metadata bar after importing.
+   */
+  title: string;
+  /** `<Score><Artist>`. Same caveat as {@link title}. */
+  artist: string;
   trackNames: string[];
   masterBarCount: number;
   chordDictionaryFound: boolean;
@@ -95,6 +103,8 @@ export interface GpFile {
   results: BarPitches[];
   /** Convenience lookup: pitches for a given bar index + track name. */
   pitchesFor(barIndex: number, trackName: string): number[];
+  /** Convenience lookup: quarter-note beats for a bar, 4 when unknown. */
+  quarterNoteBeats(barIndex: number): number;
 }
 
 type AnyObj = Record<string, any>;
@@ -280,8 +290,14 @@ export function parseGpFile(data: Uint8Array): GpFile {
   for (const r of results)
     pitchIndex.set(`${r.barIndex}::${r.track}`, r.pitches);
 
+  // `parseTagValue` turns a numeric title into a number, hence the String().
+  const asTrimmedString = (v: unknown): string =>
+    v === undefined || v === null ? '' : String(v).trim();
+
   return {
     gpVersion: String(gpif.GPVersion),
+    title: asTrimmedString(gpif.Score?.Title),
+    artist: asTrimmedString(gpif.Score?.Artist),
     trackNames: tracks.map((t) => t.Name as string),
     masterBarCount: masterBarNodes.length,
     chordDictionaryFound,
@@ -289,5 +305,7 @@ export function parseGpFile(data: Uint8Array): GpFile {
     results,
     pitchesFor: (barIndex, trackName) =>
       pitchIndex.get(`${barIndex}::${trackName}`) ?? [],
+    quarterNoteBeats: (barIndex) =>
+      masterBars[barIndex]?.quarterNoteBeats ?? 4,
   };
 }
