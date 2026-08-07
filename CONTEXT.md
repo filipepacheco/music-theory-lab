@@ -20,4 +20,8 @@ The note that functions as home/resolution. Distinct from [[scale-collection]] a
 
 ## No chord data
 
-The explicit output label for a bar where **both** the harmony track and root track are silent — distinct from a bar that resolved to an *ambiguous* chord (which still gets a best-effort label, per the map's Notes). Not a fallback chain to other tracks; just an honest "nothing to work with here."
+The explicit output label for a bar where **both** the harmony track and root track are silent. Not a fallback chain to other tracks; just an honest "nothing to work with here." Distinct from an [[unclear-bar]], where notes *are* present but match no chord template.
+
+## Unclear bar
+
+A bar whose pitch-class set matches no chord template exactly, or matches several with no root-track note to break the tie. Carries **no** chord label at all — the no-fuzzy-fallback decision on [Decide chord-matching algorithm approach for ambiguous voicings](https://github.com/filipepacheco/music-theory-lab/issues/6) ruled out best-effort guessing as overfitting. Distinct from [[no-chord-data]]: an unclear bar has notes but no name for them.

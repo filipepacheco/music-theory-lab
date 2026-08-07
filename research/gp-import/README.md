@@ -10,7 +10,7 @@ One question, in stages: **given a real `.gp` file, can we extract what's playin
 
 Both stages are done:
 - `parse.ts` walks a GP7 file's internal structure (`MasterBars -> Bars -> Voices -> Beats -> Notes`) and produces, per bar and per track, the set of MIDI pitches sounding in that bar.
-- `chords.ts` takes that and produces an actual chord label per bar — resolves **89%** of the sample file's 206 bars to a clean, recognizable chord (e.g. bars 13-37 resolve to a clean repeating `C#maj -> Bmaj -> G#min -> D#min` progression), 9% as `unclear`, and 2% as "no chord data" (both source tracks silent). See [issue #6](https://github.com/filipepacheco/music-theory-lab/issues/6) for the full algorithm design and the real-data evidence behind each choice.
+- `chords.ts` takes that and produces an actual chord label per bar — resolves **90%** of the sample file's 206 bars to a clean, recognizable chord (e.g. bars 13-37 resolve to a clean repeating `C#maj -> Bmaj -> G#min -> D#min` progression), 7% as `unclear`, and 2% as "no chord data" (both source tracks silent). See [issue #6](https://github.com/filipepacheco/music-theory-lab/issues/6) for the full algorithm design and the real-data evidence behind each choice.
 
 ## Scope
 
@@ -27,7 +27,9 @@ Both stages are done:
 
 **`parse.ts`** — prints a readable sample and writes the full per-bar, per-track pitch data to `outputs/<filename>.bars.json`.
 
-**`chords.ts`** — the actual chord-per-bar output. Harmony track (Rhythm Guitar) and root track (Electric Bass) hardcoded by name for this sample file (see [#5](https://github.com/filipepacheco/music-theory-lab/issues/5)). Matches each bar's pitch-class set exactly against a fixed 12-chord vocabulary (maj, min, dim, aug, 5, maj7, min7, dom7, sus2, sus4, add9, minadd9) at any of 12 roots — no fuzzy/subset fallback, since that was tested and shown to produce mostly-spurious matches (see [#6](https://github.com/filipepacheco/music-theory-lab/issues/6)). Genuinely ambiguous bars (e.g. `{C#,F#,B}` = both F#sus4 and Bsus2) get tiebroken by the root track's lowest note; bars that don't resolve at all are labeled `unclear`; bars where both tracks are silent are labeled "no chord data." Writes `outputs/<filename>.chords.json`.
+**`chords.ts`** — the actual chord-per-bar output. Harmony track (Rhythm Guitar) and root track (Electric Bass) hardcoded by name for this sample file (see [#5](https://github.com/filipepacheco/music-theory-lab/issues/5)). Matches each bar's pitch-class set exactly against a fixed 18-chord vocabulary (maj, min, dim, aug, 5, maj7, min7, dom7, sus2, sus4, add9, minadd9, 6, min6, add11, minadd11, 6no3, sus4add9) at any of 12 roots — no fuzzy/subset fallback, since that was tested and shown to produce mostly-spurious matches (see [#6](https://github.com/filipepacheco/music-theory-lab/issues/6)). Genuinely ambiguous bars (e.g. `{C#,F#,B}` = both F#sus4 and Bsus2) get tiebroken by the root track's lowest note; bars that don't resolve at all are labeled `unclear`; bars where both tracks are silent are labeled "no chord data." Writes `outputs/<filename>.chords.json`.
+
+The last 6 templates were added after the #8 verification, each to cover a specific flagged bar. **This is a fit to one file** — "no genuine misses left" describes this sample, not the format. Adding `6`/`min6` also makes every min7 bar ambiguous (C6 and Am7 are the same pitch classes); the root-track tiebreak resolves those, verified by the 8 `G#min7` bars surviving intact.
 
 ## Setup
 
@@ -52,7 +54,7 @@ Verified two ways — internal consistency, then external ground truth.
 
 **External (decisive)**: a human who knows the song confirmed by ear that the extracted loop `B -> G#m -> D#m -> C#` is correct, and that B is the tonal center. This is the check internal consistency structurally cannot do — it's the only thing that catches a systematic error such as a uniform transposition.
 
-**Internal**: all 183 resolved chords fit a single 7-note scale collection (0 outliers), and the progression is a perfectly regular 2-bars-per-chord loop. With B confirmed as tonic, the mode is **B Lydian** — E# (the #4) appears 50 times in the harmony track while E natural appears 3 times, and the seven most frequent pitch classes are exactly B/C#/D#/E#/F#/G#/A#. The chord set is I, II, iii, V, vi; the loop is I - vi - iii - II.
+**Internal**: all 186 resolved chords fit a single 7-note scale collection (0 outliers), and the progression is a perfectly regular 2-bars-per-chord loop. With B confirmed as tonic, the mode is **B Lydian** — E# (the #4) appears 50 times in the harmony track while E natural appears 3 times, and the seven most frequent pitch classes are exactly B/C#/D#/E#/F#/G#/A#. The chord set is I, II, iii, V, vi; the loop is I - vi - iii - II.
 
 **Caution — a scale collection is not a key.** An early version of this analysis reported the key as "F# major" purely because every chord fit that collection. But all seven modes of a collection share the same notes, so collection-fit establishes no tonal center; the F#-rooted chord appeared in only 5 of 183 bars, which should have been the tell. Determining the tonal center needed either a human ear or characteristic-note analysis (#4 vs 4). Consult `~/.claude/skills/music-theory/music-theory-reference.md` (§9 Modes, §2 Harmonic Fields) rather than deriving this from memory.
 
@@ -60,13 +62,12 @@ Verified two ways — internal consistency, then external ground truth.
 
 | Outcome | Bars | Assessment |
 |---|---|---|
-| Resolved to a chord | 183 (89%) | Correct — externally confirmed |
+| Resolved to a chord | 186 (90%) | Correct — externally confirmed |
 | `unclear`, melodic run/fill (5-8 distinct pitch classes) | 10 (5%) | Correct — no chord exists to find |
 | `unclear`, bass-only single note | 5 (2%) | Correct — one note cannot imply quality |
 | `no chord data` (both tracks silent) | 5 (2%) | Correct — nothing to read |
-| `unclear`, real chord outside the vocabulary | 3 (1.5%) | **Genuine miss** — approx. B6/9, C#6, D#min(add11) |
 
-Effective correct behaviour: **198/206 (96%)**. The only real limitation is 3 bars using 6th/add11 chords absent from the 12-template vocabulary.
+Effective correct behaviour on this file: **206/206**. The 3 bars originally logged as genuine misses were the 6th/add11 shapes; the vocabulary now covers them and they resolve to `F#sus4add9` (48), `C#6no3` (118), `D#minadd11` (172). Read that 206/206 as "no known misses in the one file we have," not as an accuracy rate — the vocabulary was extended to fit this file, so a second file is the real test and hasn't been run.
 
 ## Findings so far
 
