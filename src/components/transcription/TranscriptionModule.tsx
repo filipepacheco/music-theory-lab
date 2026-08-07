@@ -10,6 +10,7 @@ import SaveSongButton from './SaveSongButton';
 import SongList from './SongList';
 import BeatTimeline from '@/components/harmonicField/BeatTimeline';
 import ProgressionChordStrip from '@/components/harmonicField/ProgressionChordStrip';
+import GpImportPrototype from './prototype/GpImportPrototype';
 
 export default function TranscriptionModule() {
   const songSections = useAppStore((s) => s.songSections);
@@ -41,6 +42,7 @@ export default function TranscriptionModule() {
         </div>
 
         <div className="section-panel flex flex-col gap-4">
+          {import.meta.env.DEV && <GpImportPrototype />}
           <SongMetadataBar />
           <SectionTabs playingSectionIndex={playingSectionIndex} />
           {songSections.length > 0 && <TranscriptionChordPicker />}
