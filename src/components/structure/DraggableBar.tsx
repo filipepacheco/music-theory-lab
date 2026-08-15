@@ -4,6 +4,7 @@ import { useDraggable } from '@dnd-kit/core';
 import type { StructureBar } from '@/types';
 import BeatDots from '@/components/structure/BeatDots';
 import BarEditorPopover from '@/components/structure/BarEditorPopover';
+import { effectiveBarColor } from '@/utils/structureLayout';
 
 export function DraggableBar({
   bar,
@@ -19,10 +20,11 @@ export function DraggableBar({
   const [editorOpen, setEditorOpen] = useState(false);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: bar.id,
-    data: { type: 'bar', bar },
+    data: { type: 'bar', bar, displayIndex },
   });
 
-  const effectiveColor = bar.color ?? sectionColor;
+  const effectiveColor = effectiveBarColor(bar.color, sectionColor);
+  const shownIndex = displayIndex ?? bar.index + 1;
 
   return (
     <div className="relative">
@@ -50,7 +52,7 @@ export function DraggableBar({
         {...listeners}
       >
         <span className="text-[10px] sm:text-xs text-text-primary leading-none">
-          {displayIndex ?? bar.index + 1}
+          {shownIndex}
         </span>
         <div className="hidden sm:flex mt-0.5">
           <BeatDots
@@ -62,7 +64,7 @@ export function DraggableBar({
         {onRemove && (
           <button
             type="button"
-            aria-label={`Remover compasso ${bar.index + 1}`}
+            aria-label={`Remover compasso ${shownIndex}`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
@@ -88,14 +90,17 @@ export function DraggableBar({
 }
 
 /** Floating overlay bar shown while dragging */
-export function BarOverlay({ bar }: { bar: StructureBar }) {
+export function BarOverlay({
+  bar,
+  displayIndex,
+}: {
+  bar: StructureBar;
+  displayIndex?: number;
+}) {
   return (
     <div className="w-14 h-10 sm:w-16 sm:h-12 flex flex-col items-center justify-center rounded-lg text-xs font-mono bg-bg-card border-2 border-accent shadow-lg opacity-90">
-      <span className="text-text-primary">{bar.index + 1}</span>
-      <BeatDots
-        timeSignature={bar.timeSignature}
-        accents={bar.accents}
-      />
+      <span className="text-text-primary">{displayIndex ?? bar.index + 1}</span>
+      <BeatDots timeSignature={bar.timeSignature} accents={bar.accents} />
     </div>
   );
 }

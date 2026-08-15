@@ -6,14 +6,15 @@
 //   - input is a `Uint8Array` (from a `File`), not a path — there is no `fs`
 //   - unzipping uses `fflate`, not `adm-zip` (Node-only)
 //
+// This module is an internal seam of the transcription module
+// (`src/services/transcribeGp.ts`): callers transcribe through `transcribeGp`,
+// not `parseGpFile`.
+//
 // See the map: https://github.com/filipepacheco/music-theory-lab/issues/9
 
 import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
-
-export const NOTE_NAMES = [
-  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
-];
+import { NOTE_NAMES } from '@/constants/notes';
 
 export function pitchClassName(midi: number): string {
   return NOTE_NAMES[((midi % 12) + 12) % 12];
@@ -23,14 +24,17 @@ export function pitchClassName(midi: number): string {
  * Why a file could not be read. The UI branches on this to say which problem
  * the user actually has: a `.gp5` is unsupported, a truncated download is
  * broken, and telling one story for both sends people looking in the wrong
- * place.
+ * place. `missing-track` is raised by the transcription module, not the
+ * parser: the file itself is fine, it just has no track with the name the
+ * transcription needs.
  */
 export type GpParseErrorKind =
   | 'legacy-binary' // .gp3/.gp4/.gp5 — a different format, not a broken file
   | 'gpx-container' // GP6 .gpx — BCFZ/BCFS container, also not zip+XML
   | 'not-a-zip' // not a zip at all
   | 'not-a-gp-file' // a zip, but no Content/score.gpif inside
-  | 'corrupt'; // zip or XML that should have parsed and did not
+  | 'corrupt' // zip or XML that should have parsed and did not
+  | 'missing-track'; // no track with the required name
 
 export class GpParseError extends Error {
   readonly kind: GpParseErrorKind;
@@ -78,8 +82,16 @@ const asArray = <T>(v: T | T[] | undefined): T[] =>
   v === undefined ? [] : Array.isArray(v) ? v : [v];
 
 const REPEATED_TAGS = new Set([
-  'Track', 'Staff', 'Property', 'Item', 'MasterBar', 'Bar', 'Voice', 'Beat',
-  'Note', 'Degree',
+  'Track',
+  'Staff',
+  'Property',
+  'Item',
+  'MasterBar',
+  'Bar',
+  'Voice',
+  'Beat',
+  'Note',
+  'Degree',
 ]);
 
 const GPIF_ENTRY = 'Content/score.gpif';
@@ -244,7 +256,8 @@ export function parseGpFile(data: Uint8Array): GpFile {
   });
 
   const pitchIndex = new Map<string, number[]>();
-  for (const r of results) pitchIndex.set(`${r.barIndex}::${r.track}`, r.pitches);
+  for (const r of results)
+    pitchIndex.set(`${r.barIndex}::${r.track}`, r.pitches);
 
   return {
     gpVersion: String(gpif.GPVersion),

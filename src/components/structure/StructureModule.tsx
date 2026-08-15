@@ -25,7 +25,7 @@ import { exportStructurePdf, type PdfFormat } from '@/utils/exportStructurePdf';
 import type { StructureBar, StructureSection } from '@/types';
 
 type DragItem =
-  | { type: 'bar'; bar: StructureBar }
+  | { type: 'bar'; bar: StructureBar; displayIndex?: number }
   | { type: 'section'; section: StructureSection };
 
 export default function StructureModule() {
@@ -38,9 +38,7 @@ export default function StructureModule() {
   const clearStructure = useAppStore((s) => s.clearStructure);
   const addStructureSection = useAppStore((s) => s.addStructureSection);
   const moveBarToSection = useAppStore((s) => s.moveBarToSection);
-  const reorderStructureSection = useAppStore(
-    (s) => s.reorderStructureSection,
-  );
+  const reorderStructureSection = useAppStore((s) => s.reorderStructureSection);
   const loadStructures = useAppStore((s) => s.loadStructures);
 
   useEffect(() => {
@@ -49,9 +47,7 @@ export default function StructureModule() {
 
   const [dragging, setDragging] = useState<DragItem | null>(null);
   const [newSectionName, setNewSectionName] = useState('');
-  const [newSectionColor, setNewSectionColor] = useState(
-    STRUCTURE_PALETTE[0],
-  );
+  const [newSectionColor, setNewSectionColor] = useState(STRUCTURE_PALETTE[0]);
   const [pdfFormat, setPdfFormat] = useState<PdfFormat>('ipad-air');
 
   const sensors = useSensors(
@@ -69,12 +65,13 @@ export default function StructureModule() {
     setNewSectionName('');
     // Cycle to next color
     const idx = STRUCTURE_PALETTE.indexOf(newSectionColor);
-    setNewSectionColor(
-      STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length],
-    );
+    setNewSectionColor(STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length]);
   }
 
-  function handleSuggestionClick(suggestion: { name: string; colorIndex: number }) {
+  function handleSuggestionClick(suggestion: {
+    name: string;
+    colorIndex: number;
+  }) {
     addStructureSection(
       suggestion.name,
       STRUCTURE_PALETTE[suggestion.colorIndex],
@@ -84,7 +81,11 @@ export default function StructureModule() {
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current;
     if (data?.type === 'bar') {
-      setDragging({ type: 'bar', bar: data.bar as StructureBar });
+      setDragging({
+        type: 'bar',
+        bar: data.bar as StructureBar,
+        displayIndex: data.displayIndex as number | undefined,
+      });
     } else if (data?.type === 'section') {
       setDragging({
         type: 'section',
@@ -100,25 +101,22 @@ export default function StructureModule() {
     const { active, over } = event;
     if (!over) return;
 
-    const overId = over.id as string;
+    const overData = over.data.current;
+    if (overData?.type !== 'section-drop') return;
 
     if (dragType === 'bar') {
       const barId = active.id as string;
-      if (overId.startsWith('section-')) {
-        const sectionId = over.data.current?.sectionId as string;
-        if (sectionId) moveBarToSection(barId, sectionId);
-      }
+      const sectionId = overData.sectionId as string;
+      if (sectionId) moveBarToSection(barId, sectionId);
     } else if (dragType === 'section') {
-      if (overId.startsWith('section-')) {
-        const targetSectionId = over.data.current?.sectionId as string;
-        const sourceSectionId = active.data.current?.sectionId as string;
-        if (
-          targetSectionId &&
-          sourceSectionId &&
-          targetSectionId !== sourceSectionId
-        ) {
-          reorderStructureSection(sourceSectionId, targetSectionId);
-        }
+      const targetSectionId = overData.sectionId as string;
+      const sourceSectionId = active.data.current?.sectionId as string;
+      if (
+        targetSectionId &&
+        sourceSectionId &&
+        targetSectionId !== sourceSectionId
+      ) {
+        reorderStructureSection(sourceSectionId, targetSectionId);
       }
     }
   }
@@ -127,9 +125,7 @@ export default function StructureModule() {
     <section className="flex flex-col gap-6">
       <div>
         <div className="mb-4">
-          <h2 className="font-heading text-lg text-text-primary">
-            Estrutura
-          </h2>
+          <h2 className="font-heading text-lg text-text-primary">Estrutura</h2>
         </div>
 
         <div className="section-panel flex flex-col gap-5">
@@ -159,9 +155,7 @@ export default function StructureModule() {
                   onClick={() => {
                     const idx = STRUCTURE_PALETTE.indexOf(newSectionColor);
                     setNewSectionColor(
-                      STRUCTURE_PALETTE[
-                        (idx + 1) % STRUCTURE_PALETTE.length
-                      ],
+                      STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length],
                     );
                   }}
                   className="w-8 h-8 rounded-full border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0"
@@ -189,10 +183,8 @@ export default function StructureModule() {
                     onClick={() => handleSuggestionClick(s)}
                     className="px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors cursor-pointer hover:brightness-110"
                     style={{
-                      backgroundColor:
-                        STRUCTURE_PALETTE[s.colorIndex] + '15',
-                      borderColor:
-                        STRUCTURE_PALETTE[s.colorIndex] + '30',
+                      backgroundColor: STRUCTURE_PALETTE[s.colorIndex] + '15',
+                      borderColor: STRUCTURE_PALETTE[s.colorIndex] + '30',
                       color: STRUCTURE_PALETTE[s.colorIndex],
                     }}
                   >
@@ -216,7 +208,10 @@ export default function StructureModule() {
 
             <DragOverlay dropAnimation={null}>
               {dragging?.type === 'bar' && (
-                <BarOverlay bar={dragging.bar} />
+                <BarOverlay
+                  bar={dragging.bar}
+                  displayIndex={dragging.displayIndex}
+                />
               )}
               {dragging?.type === 'section' && (
                 <SectionOverlay section={dragging.section} />
@@ -230,18 +225,29 @@ export default function StructureModule() {
             {structureBars.length > 0 && (
               <div className="flex items-center gap-0">
                 <button
-                  onClick={() => exportStructurePdf({
-                    title: structureTitle,
-                    artist: structureArtist,
-                    bpm: structureBpm,
-                    sections: structureSections,
-                    bars: structureBars,
-                    format: pdfFormat,
-                  })}
+                  onClick={() =>
+                    exportStructurePdf({
+                      title: structureTitle,
+                      artist: structureArtist,
+                      bpm: structureBpm,
+                      sections: structureSections,
+                      bars: structureBars,
+                      format: pdfFormat,
+                    })
+                  }
                   className="text-center px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary border border-border-default hover:border-accent/50 rounded-l-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.046.752.097 1.126.153A2.212 2.212 0 0 1 18 8.653v4.097A2.25 2.25 0 0 1 15.75 15h-.75v3.25a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75V15h-.75A2.25 2.25 0 0 1 2 12.75V8.653c0-1.082.775-2.034 1.874-2.198.374-.056.75-.107 1.126-.153V2.75ZM7.5 10.5a.75.75 0 0 0-.75.75v6h6.5v-6a.75.75 0 0 0-.75-.75h-5ZM13.5 6.3V2.75a.25.25 0 0 0-.25-.25h-6.5a.25.25 0 0 0-.25.25V6.3c1.136-.095 2.284-.143 3.5-.143s2.364.048 3.5.143Z" clipRule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.046.752.097 1.126.153A2.212 2.212 0 0 1 18 8.653v4.097A2.25 2.25 0 0 1 15.75 15h-.75v3.25a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75V15h-.75A2.25 2.25 0 0 1 2 12.75V8.653c0-1.082.775-2.034 1.874-2.198.374-.056.75-.107 1.126-.153V2.75ZM7.5 10.5a.75.75 0 0 0-.75.75v6h6.5v-6a.75.75 0 0 0-.75-.75h-5ZM13.5 6.3V2.75a.25.25 0 0 0-.25-.25h-6.5a.25.25 0 0 0-.25.25V6.3c1.136-.095 2.284-.143 3.5-.143s2.364.048 3.5.143Z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   PDF
                 </button>
@@ -268,7 +274,6 @@ export default function StructureModule() {
       </div>
 
       <StructureList />
-
     </section>
   );
 }

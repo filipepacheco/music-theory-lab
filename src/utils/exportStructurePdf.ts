@@ -1,5 +1,11 @@
 import jsPDF from 'jspdf';
-import { getSectionBars } from './structureLayout';
+import {
+  dotsForTimeSignature,
+  effectiveBarColor,
+  hexToRgb,
+  lightenRgb,
+  getSectionBars,
+} from './structureLayout';
 import type { StructureBar, StructureSection } from '@/types';
 
 export type PdfFormat = 'a4' | 'ipad-air';
@@ -13,7 +19,7 @@ interface ExportOptions {
   format?: PdfFormat;
 }
 
-interface FormatConfig {
+export interface FormatConfig {
   pageW: number;
   pageH: number;
   margin: number;
@@ -38,7 +44,7 @@ interface FormatConfig {
   commentBesideMinW: number;
 }
 
-const FORMATS: Record<PdfFormat, FormatConfig> = {
+export const FORMATS: Record<PdfFormat, FormatConfig> = {
   a4: {
     pageW: 210,
     pageH: 297,
@@ -89,25 +95,7 @@ const FORMATS: Record<PdfFormat, FormatConfig> = {
   },
 };
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [
-    parseInt(h.substring(0, 2), 16),
-    parseInt(h.substring(2, 4), 16),
-    parseInt(h.substring(4, 6), 16),
-  ];
-}
-
-function lightenColor(hex: string, amount: number): [number, number, number] {
-  const [r, g, b] = hexToRgb(hex);
-  return [
-    Math.min(255, r + (255 - r) * amount),
-    Math.min(255, g + (255 - g) * amount),
-    Math.min(255, b + (255 - b) * amount),
-  ];
-}
-
-interface SectionLayout {
+export interface SectionLayout {
   section: StructureSection;
   sectionBars: StructureBar[];
   barsPerRow: number;
@@ -118,19 +106,24 @@ interface SectionLayout {
   totalH: number;
 }
 
-function calcLayout(
-  doc: jsPDF,
+type WrapText = (text: string, maxWidth: number) => string[];
+
+/**
+ * Pure layout for one section: bar grid geometry and comment placement for a
+ * page format. `wrapText` is injected so tests can cross this seam without
+ * jsPDF — the export path passes `doc.splitTextToSize` bound to the document.
+ */
+export function calcSectionLayout(
   section: StructureSection,
   sectionBars: StructureBar[],
   cfg: FormatConfig,
+  wrapText: WrapText,
 ): SectionLayout {
   const colW =
-    (cfg.pageW - cfg.margin * 2 - cfg.colGap * (cfg.numCols - 1)) /
-    cfg.numCols;
+    (cfg.pageW - cfg.margin * 2 - cfg.colGap * (cfg.numCols - 1)) / cfg.numCols;
 
   const barsPerRow =
-    section.barsPerRow ??
-    Math.floor((colW * 0.45) / (cfg.barW + cfg.barGap));
+    section.barsPerRow ?? Math.floor((colW * 0.45) / (cfg.barW + cfg.barGap));
   const rowCount = Math.ceil(sectionBars.length / barsPerRow);
   const colCount = Math.min(sectionBars.length, barsPerRow);
   const gridW = colCount * (cfg.barW + cfg.barGap) - cfg.barGap;
@@ -141,10 +134,7 @@ function calcLayout(
   const commentMaxW = commentBeside ? availableBesideW : colW;
 
   const commentLines = section.comment
-    ? doc
-        .setFont('helvetica', 'italic')
-        .setFontSize(cfg.commentFontSize)
-        .splitTextToSize(section.comment, commentMaxW)
+    ? wrapText(section.comment, commentMaxW)
     : [];
   const commentH = commentLines.length * cfg.commentLineHeight;
 
@@ -153,9 +143,7 @@ function calcLayout(
     totalH = cfg.barsTopOffset + Math.max(barsH, commentH);
   } else {
     totalH =
-      cfg.barsTopOffset +
-      barsH +
-      (commentLines.length > 0 ? 2 + commentH : 0);
+      cfg.barsTopOffset + barsH + (commentLines.length > 0 ? 2 + commentH : 0);
   }
 
   return {
@@ -170,6 +158,23 @@ function calcLayout(
   };
 }
 
+/** Layouts for every non-empty section, in section order. Pure. */
+export function layoutSections(
+  sections: StructureSection[],
+  bars: StructureBar[],
+  cfg: FormatConfig,
+  wrapText: WrapText,
+): SectionLayout[] {
+  const barMap = new Map(bars.map((b) => [b.id, b]));
+  const layouts: SectionLayout[] = [];
+  for (const section of sections) {
+    const sectionBars = getSectionBars(section, barMap);
+    if (sectionBars.length === 0) continue;
+    layouts.push(calcSectionLayout(section, sectionBars, cfg, wrapText));
+  }
+  return layouts;
+}
+
 function renderSection(
   doc: jsPDF,
   layout: SectionLayout,
@@ -177,9 +182,17 @@ function renderSection(
   y: number,
   cfg: FormatConfig,
 ) {
-  const { section, sectionBars, barsPerRow, gridW, commentLines, commentBeside, barsH } = layout;
+  const {
+    section,
+    sectionBars,
+    barsPerRow,
+    gridW,
+    commentLines,
+    commentBeside,
+    barsH,
+  } = layout;
   const [r, g, b] = hexToRgb(section.color);
-  const [lr, lg, lb] = lightenColor(section.color, 0.85);
+  const [lr, lg, lb] = lightenRgb(section.color, 0.85);
 
   // Badge
   doc.setFont('helvetica', 'bold');
@@ -214,15 +227,8 @@ function renderSection(
   const barsTopY = y + cfg.barsTopOffset;
 
   // Bars grid
-  const sectionFillRgb = lightenColor(section.color, 0.88);
-  const sectionBorderRgb = lightenColor(section.color, 0.6);
-
-  const dotCounts: Record<string, number> = {
-    '4/4': 8,
-    '3/4': 6,
-    '2/4': 4,
-    '6/8': 6,
-  };
+  const sectionFillRgb = lightenRgb(section.color, 0.88);
+  const sectionBorderRgb = lightenRgb(section.color, 0.6);
 
   for (let i = 0; i < sectionBars.length; i++) {
     const col = i % barsPerRow;
@@ -232,12 +238,12 @@ function renderSection(
     const bar = sectionBars[i]!;
 
     // Per-bar color or section color
-    const barColor = bar.color ?? section.color;
+    const barColor = effectiveBarColor(bar.color, section.color)!;
     const [blr, blg, blb] = bar.color
-      ? lightenColor(bar.color, 0.88)
+      ? lightenRgb(bar.color, 0.88)
       : sectionFillRgb;
     const [bdr, bdg, bdb] = bar.color
-      ? lightenColor(bar.color, 0.6)
+      ? lightenRgb(bar.color, 0.6)
       : sectionBorderRgb;
 
     doc.setFillColor(blr, blg, blb);
@@ -254,7 +260,7 @@ function renderSection(
     doc.text(numStr, bx + (cfg.barW - numW) / 2, by + cfg.barH * 0.38);
 
     // Beat dots - single row
-    const dotCount = dotCounts[bar.timeSignature] ?? 8;
+    const dotCount = dotsForTimeSignature(bar.timeSignature);
     const accentSet = new Set(bar.accents ?? []);
     const dotR = cfg.barH * 0.04;
     const accentR = cfg.barH * 0.06;
@@ -312,10 +318,13 @@ export function exportStructurePdf({
     unit: 'mm',
     format: [cfg.pageW, cfg.pageH],
   });
-  const barMap = new Map(bars.map((b) => [b.id, b]));
+  const wrapText: WrapText = (text, maxWidth) => {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(cfg.commentFontSize);
+    return doc.splitTextToSize(text, maxWidth);
+  };
   const colW =
-    (cfg.pageW - cfg.margin * 2 - cfg.colGap * (cfg.numCols - 1)) /
-    cfg.numCols;
+    (cfg.pageW - cfg.margin * 2 - cfg.colGap * (cfg.numCols - 1)) / cfg.numCols;
 
   let headerH = 0;
 
@@ -352,12 +361,7 @@ export function exportStructurePdf({
   headerH = ty - cfg.margin;
 
   // -- Pre-calculate layouts --
-  const layouts: SectionLayout[] = [];
-  for (const section of sections) {
-    const sectionBars = getSectionBars(section, barMap);
-    if (sectionBars.length === 0) continue;
-    layouts.push(calcLayout(doc, section, sectionBars, cfg));
-  }
+  const layouts = layoutSections(sections, bars, cfg, wrapText);
 
   // -- Flow sections into columns (fill left first, then right) --
   let col = 0;

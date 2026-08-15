@@ -1,11 +1,5 @@
 import type { TimeSignature } from '@/types';
-
-const DOT_COUNTS: Record<TimeSignature, number> = {
-  '4/4': 8,
-  '3/4': 6,
-  '2/4': 4,
-  '6/8': 6,
-};
+import { dotsForTimeSignature } from '@/utils/structureLayout';
 
 interface BeatDotsProps {
   timeSignature: TimeSignature;
@@ -18,7 +12,7 @@ export default function BeatDots({
   accents,
   color,
 }: BeatDotsProps) {
-  const count = DOT_COUNTS[timeSignature];
+  const count = dotsForTimeSignature(timeSignature);
   const accentSet = new Set(accents ?? []);
 
   return (
@@ -41,7 +35,9 @@ export default function BeatDots({
             style={{
               backgroundColor: isAccent
                 ? (color ?? 'var(--color-text-primary)')
-                : (color ? color + '40' : 'var(--color-text-muted)'),
+                : color
+                  ? color + '40'
+                  : 'var(--color-text-muted)',
               opacity: isAccent ? 1 : isDownbeat ? 0.45 : 0.25,
             }}
           />
@@ -50,5 +46,3 @@ export default function BeatDots({
     </div>
   );
 }
-
-export { DOT_COUNTS };

@@ -1,13 +1,13 @@
-import { CHORD_TYPES } from "@/constants/chords";
-import { getPreferredRootName } from "@/utils/noteHelpers";
-import { getHarmonicField } from "@/utils/musicTheory";
+import { CHORD_TYPES } from '@/constants/chords';
+import { getPreferredRootName } from '@/utils/noteHelpers';
+import { getHarmonicField } from '@/utils/musicTheory';
 import {
   INTERVAL_NAMES,
   ROMAN_NUMERALS_MAJOR,
   ROMAN_NUMERALS_MINOR,
-} from "@/constants/quizData";
+} from '@/constants/quizData';
 
-export type QuizMode = "interval" | "chordType" | "degree" | "chordId";
+export type QuizMode = 'interval' | 'chordType' | 'degree' | 'chordId';
 
 export interface QuizQuestion {
   type: QuizMode;
@@ -23,6 +23,8 @@ export interface QuizQuestion {
   options: string[];
   /** Key for tips lookup */
   tipKey: string | number;
+  /** Tonic notes for degree-mode replay reference (captured at generation) */
+  referenceNotes?: number[];
 }
 
 function randomInt(min: number, max: number): number {
@@ -61,7 +63,7 @@ export function generateIntervalQuestion(): QuizQuestion {
   const options = shuffle([correct.label, ...distractors]);
 
   return {
-    type: "interval",
+    type: 'interval',
     notes: [rootNote, secondNote],
     octave: 4,
     sequential: true,
@@ -74,7 +76,7 @@ export function generateIntervalQuestion(): QuizQuestion {
 export function generateChordTypeQuestion(): QuizQuestion {
   const rootNote = randomInt(0, 11);
   // Quiz chord types: major, minor, dim, aug, maj7, min7, dom7
-  const quizTypes = ["major", "minor", "dim", "aug", "maj7", "min7", "dom7"];
+  const quizTypes = ['major', 'minor', 'dim', 'aug', 'maj7', 'min7', 'dom7'];
   const chosenId = quizTypes[randomInt(0, quizTypes.length - 1)];
   const chord = CHORD_TYPES[chosenId];
 
@@ -84,7 +86,7 @@ export function generateChordTypeQuestion(): QuizQuestion {
   const options = shuffle([chord.label, ...distractors]);
 
   return {
-    type: "chordType",
+    type: 'chordType',
     notes,
     octave: 3,
     sequential: false,
@@ -94,7 +96,11 @@ export function generateChordTypeQuestion(): QuizQuestion {
   };
 }
 
-export function generateDegreeQuestion(isMinor: boolean): QuizQuestion {
+export function generateDegreeQuestion(
+  rootNote: number,
+  isMinor: boolean,
+): QuizQuestion {
+  const field = getHarmonicField(rootNote, isMinor);
   const numerals = isMinor ? ROMAN_NUMERALS_MINOR : ROMAN_NUMERALS_MAJOR;
   // Pick a random degree (0-6)
   const degree = randomInt(0, 6);
@@ -102,9 +108,15 @@ export function generateDegreeQuestion(isMinor: boolean): QuizQuestion {
   const distractors = pickDistractors(correct, [...numerals], 3);
   const options = shuffle([correct, ...distractors]);
 
+  // Notes are resolved at generation, so playback can't drift when the key
+  // changes between generate and play.
+  const chord = field[degree];
+  const tonic = field[0];
+
   return {
-    type: "degree",
-    notes: [], // Will be resolved from harmonicField at play time
+    type: 'degree',
+    notes: chord.notes,
+    referenceNotes: tonic.notes,
     octave: 3,
     sequential: false,
     correctAnswer: correct,
@@ -125,13 +137,13 @@ export function generateChordIdQuestion(
     return generateDiatonicChordIdQuestion(keyContext);
   }
 
-  const quizTypes = ["major", "minor", "dom7", "maj7", "min7", "dim"];
+  const quizTypes = ['major', 'minor', 'dom7', 'maj7', 'min7', 'dim'];
   const rootNote = randomInt(0, 11);
   const chosenId = quizTypes[randomInt(0, quizTypes.length - 1)];
   const chord = CHORD_TYPES[chosenId];
   const notes = chord.intervals.map((i) => (rootNote + i) % 12);
   const rootName = getPreferredRootName(rootNote);
-  const correctLabel = `${rootName}${chord.symbol || ""}`;
+  const correctLabel = `${rootName}${chord.symbol || ''}`;
 
   // Build distractors that are plausible
   const distractors: string[] = [];
@@ -140,7 +152,7 @@ export function generateChordIdQuestion(
   // 1. Same root, different type
   const otherTypes = quizTypes.filter((id) => id !== chosenId);
   const sameRootType = otherTypes[randomInt(0, otherTypes.length - 1)];
-  const sameRootLabel = `${rootName}${CHORD_TYPES[sameRootType].symbol || ""}`;
+  const sameRootLabel = `${rootName}${CHORD_TYPES[sameRootType].symbol || ''}`;
   if (!used.has(sameRootLabel)) {
     distractors.push(sameRootLabel);
     used.add(sameRootLabel);
@@ -156,7 +168,7 @@ export function generateChordIdQuestion(
   ];
   for (const nr of nearbyRoots) {
     if (distractors.length >= 2) break;
-    const label = `${getPreferredRootName(nr)}${chord.symbol || ""}`;
+    const label = `${getPreferredRootName(nr)}${chord.symbol || ''}`;
     if (!used.has(label)) {
       distractors.push(label);
       used.add(label);
@@ -167,7 +179,7 @@ export function generateChordIdQuestion(
   while (distractors.length < 3) {
     const rr = randomInt(0, 11);
     const rt = quizTypes[randomInt(0, quizTypes.length - 1)];
-    const label = `${getPreferredRootName(rr)}${CHORD_TYPES[rt].symbol || ""}`;
+    const label = `${getPreferredRootName(rr)}${CHORD_TYPES[rt].symbol || ''}`;
     if (!used.has(label)) {
       distractors.push(label);
       used.add(label);
@@ -177,7 +189,7 @@ export function generateChordIdQuestion(
   const options = shuffle([correctLabel, ...distractors.slice(0, 3)]);
 
   return {
-    type: "chordId",
+    type: 'chordId',
     notes,
     octave: 3,
     sequential: false,
@@ -203,10 +215,10 @@ function generateDiatonicChordIdQuestion(
   const chordTypeEntry = Object.entries(CHORD_TYPES).find(
     ([, ct]) => ct.symbol === chord.chordSymbol,
   );
-  const tipKey = chordTypeEntry ? chordTypeEntry[0] : "major";
+  const tipKey = chordTypeEntry ? chordTypeEntry[0] : 'major';
 
   return {
-    type: "chordId",
+    type: 'chordId',
     notes: chord.notes,
     octave: 3,
     sequential: false,
@@ -218,17 +230,17 @@ function generateDiatonicChordIdQuestion(
 
 export function generateQuestion(
   mode: QuizMode,
-  isMinor: boolean,
-  chordIdKeyContext?: ChordIdKeyContext,
+  keyContext: ChordIdKeyContext,
+  opts?: { limitToKey?: boolean },
 ): QuizQuestion {
   switch (mode) {
-    case "interval":
+    case 'interval':
       return generateIntervalQuestion();
-    case "chordType":
+    case 'chordType':
       return generateChordTypeQuestion();
-    case "degree":
-      return generateDegreeQuestion(isMinor);
-    case "chordId":
-      return generateChordIdQuestion(chordIdKeyContext);
+    case 'degree':
+      return generateDegreeQuestion(keyContext.rootNote, keyContext.isMinor);
+    case 'chordId':
+      return generateChordIdQuestion(opts?.limitToKey ? keyContext : undefined);
   }
 }

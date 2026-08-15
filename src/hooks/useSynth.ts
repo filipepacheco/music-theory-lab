@@ -1,13 +1,13 @@
-import { useRef, useCallback } from "react";
-import * as Tone from "tone";
-import { noteToToneString } from "@/utils/noteHelpers";
-import { PRESET_MAP, DEFAULT_PRESET_ID } from "@/constants/tonePresets";
+import { useRef, useCallback } from 'react';
+import * as Tone from 'tone';
+import { noteToToneString, ascendVoicing } from '@/utils/noteHelpers';
+import { PRESET_MAP, DEFAULT_PRESET_ID } from '@/constants/tonePresets';
 import type {
   TonePreset,
   SynthPreset,
   SamplerPreset,
-} from "@/constants/tonePresets";
-import { useAppStore } from "@/store/useAppStore";
+} from '@/constants/tonePresets';
+import { useAppStore } from '@/store/useAppStore';
 
 // --- Shared effects chain ---
 
@@ -59,9 +59,9 @@ function loadSampler(preset: SamplerPreset): SamplerEntry {
 }
 
 // Eagerly start loading all sampler presets
-import { TONE_PRESETS } from "@/constants/tonePresets";
+import { TONE_PRESETS } from '@/constants/tonePresets';
 for (const preset of TONE_PRESETS) {
-  if (preset.type === "sampler") {
+  if (preset.type === 'sampler') {
     loadSampler(preset);
   }
 }
@@ -88,17 +88,9 @@ function createFallbackSynth(preset: SamplerPreset): Tone.PolySynth {
 // --- Voicing ---
 
 function voiceChord(noteIndices: number[], octave: number): string[] {
-  const voiced: string[] = [];
-  let currentOctave = octave;
-  let prevSemitone = -1;
-  for (const n of noteIndices) {
-    if (n <= prevSemitone) {
-      currentOctave++;
-    }
-    voiced.push(noteToToneString(n, currentOctave));
-    prevSemitone = n;
-  }
-  return voiced;
+  return ascendVoicing(noteIndices, octave).map(({ note, octave: o }) =>
+    noteToToneString(note, o),
+  );
 }
 
 // --- Helpers ---
@@ -111,7 +103,7 @@ function resolvePreset(presetId?: string): TonePreset {
 
 /** Returns a loaded Sampler if preset is sampler-type and samples are ready, else null. */
 function getReadySampler(preset: TonePreset): Tone.Sampler | null {
-  if (preset.type !== "sampler") return null;
+  if (preset.type !== 'sampler') return null;
   const entry = loadSampler(preset);
   if (!entry.loaded) return null;
   reverb.wet.value = preset.reverbWet;
@@ -130,7 +122,7 @@ export function useSynth() {
   /** Get or create a PolySynth for individual note playback. */
   function getOrCreateNoteSynth(preset: TonePreset): Tone.PolySynth {
     const cacheKey =
-      preset.type === "synth" ? preset.id : preset.id + "__fallback";
+      preset.type === 'synth' ? preset.id : preset.id + '__fallback';
 
     if (noteSynthRef.current && notePresetIdRef.current === cacheKey) {
       return noteSynthRef.current;
@@ -141,7 +133,7 @@ export function useSynth() {
     reverb.wet.value = preset.reverbWet;
 
     noteSynthRef.current =
-      preset.type === "synth"
+      preset.type === 'synth'
         ? createSynth(preset)
         : createFallbackSynth(preset);
     notePresetIdRef.current = cacheKey;
@@ -149,7 +141,7 @@ export function useSynth() {
   }
 
   const playNote = useCallback(
-    (noteIndex: number, octave: number = 4, duration: string = "8n") => {
+    (noteIndex: number, octave: number = 4, duration: string = '8n') => {
       ensureAudio();
       const note = noteToToneString(noteIndex, octave);
       const preset = resolvePreset();
@@ -172,7 +164,7 @@ export function useSynth() {
     (
       noteIndices: number[],
       octave: number = 3,
-      duration: string = "2n",
+      duration: string = '2n',
       presetId?: string,
       time?: number,
     ) => {
@@ -198,7 +190,7 @@ export function useSynth() {
 
       reverb.wet.value = preset.reverbWet;
       const synth =
-        preset.type === "synth"
+        preset.type === 'synth'
           ? createSynth(preset)
           : createFallbackSynth(preset);
       chordSynthsRef.current.push(synth);
@@ -207,36 +199,33 @@ export function useSynth() {
     [],
   );
 
-  const playScale = useCallback(
-    (noteIndices: number[], octave: number = 4) => {
-      ensureAudio();
-      const preset = resolvePreset();
+  const playScale = useCallback((noteIndices: number[], octave: number = 4) => {
+    ensureAudio();
+    const preset = resolvePreset();
 
-      const sampler = getReadySampler(preset);
-      if (sampler) {
-        const now = Tone.now();
-        noteIndices.forEach((n, i) => {
-          sampler.triggerAttackRelease(
-            noteToToneString(n, octave),
-            "8n",
-            now + i * 0.3,
-          );
-        });
-        return;
-      }
-
-      const synth = getOrCreateNoteSynth(preset);
+    const sampler = getReadySampler(preset);
+    if (sampler) {
       const now = Tone.now();
       noteIndices.forEach((n, i) => {
-        synth.triggerAttackRelease(
+        sampler.triggerAttackRelease(
           noteToToneString(n, octave),
-          "8n",
+          '8n',
           now + i * 0.3,
         );
       });
-    },
-    [],
-  );
+      return;
+    }
+
+    const synth = getOrCreateNoteSynth(preset);
+    const now = Tone.now();
+    noteIndices.forEach((n, i) => {
+      synth.triggerAttackRelease(
+        noteToToneString(n, octave),
+        '8n',
+        now + i * 0.3,
+      );
+    });
+  }, []);
 
   const stopAll = useCallback(() => {
     // Stop sampler if active

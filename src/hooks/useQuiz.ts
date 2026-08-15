@@ -1,13 +1,16 @@
-import { useState, useCallback } from "react";
-import { useSynth } from "@/hooks/useSynth";
-import { useAppStore } from "@/store/useAppStore";
-import { getPreferredRootName, computeVoicingOctaveMap } from "@/utils/noteHelpers";
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSynth } from '@/hooks/useSynth';
+import { useAppStore } from '@/store/useAppStore';
+import {
+  getPreferredRootName,
+  computeVoicingOctaveMap,
+  ascendVoicing,
+} from '@/utils/noteHelpers';
 import {
   generateQuestion,
   type QuizMode,
   type QuizQuestion,
-  type ChordIdKeyContext,
-} from "@/utils/quizGenerator";
+} from '@/utils/quizGenerator';
 
 export interface QuizScore {
   correct: number;
@@ -33,7 +36,7 @@ const INITIAL_SCORE: QuizScore = {
 };
 
 export function useQuiz() {
-  const [mode, setMode] = useState<QuizMode>("interval");
+  const [mode, setMode] = useState<QuizMode>('interval');
   const [question, setQuestion] = useState<QuizQuestion | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -42,52 +45,62 @@ export function useQuiz() {
   const [keyLimited, setKeyLimited] = useState(false);
 
   const { playNote, playChord } = useSynth();
-  const isMinor = useAppStore((s) => s.isMinor);
   const rootNote = useAppStore((s) => s.rootNote);
-  const harmonicField = useAppStore((s) => s.harmonicField);
+  const isMinor = useAppStore((s) => s.isMinor);
   const selectChord = useAppStore((s) => s.selectChord);
   const setHighlightedNotes = useAppStore((s) => s.setHighlightedNotes);
 
+  // Pending playback timers. Cleared on mode change / key toggle so stale
+  // audio from a dead question never fires.
+  const timersRef = useRef<number[]>([]);
+  const schedule = useCallback((fn: () => void, ms: number) => {
+    timersRef.current.push(window.setTimeout(fn, ms));
+  }, []);
+  const cancelPending = useCallback(() => {
+    for (const t of timersRef.current) clearTimeout(t);
+    timersRef.current = [];
+  }, []);
+
+  useEffect(() => cancelPending, [cancelPending]);
+
   const playQuestion = useCallback(
     (q: QuizQuestion) => {
-      if (q.type === "degree") {
-        // Resolve notes from harmonic field
+      if (q.type === 'degree') {
         const degree = q.tipKey as number;
-        const chord = harmonicField[degree];
-        if (chord) {
-          playChord(chord.notes, q.octave);
-          selectChord(degree);
-        }
+        playChord(q.notes, q.octave);
+        selectChord(degree);
         return;
       }
 
       if (q.sequential) {
-        // Play notes one by one (intervals)
-        // If second note wraps around (mod 12), play it an octave higher
-        // so ascending intervals always sound ascending
-        const secondOctave =
-          q.notes[1] <= q.notes[0] ? q.octave + 1 : q.octave;
-        playNote(q.notes[0], q.octave);
-        setTimeout(() => {
-          playNote(q.notes[1], secondOctave);
-        }, 500);
+        // Play notes one by one (intervals), ascending: the shared voicing
+        // rule bumps the second note an octave when it wraps around.
+        const voiced = ascendVoicing(q.notes, q.octave);
+        playNote(voiced[0].note, voiced[0].octave);
+        schedule(() => playNote(voiced[1].note, voiced[1].octave), 500);
       } else {
         // Play all notes at once (chords)
         playChord(q.notes, q.octave);
         const chordRootName = getPreferredRootName(q.notes[0]);
         const octaveMap = computeVoicingOctaveMap(q.notes, q.octave);
-        setHighlightedNotes(q.notes, "var(--color-accent)", chordRootName, octaveMap);
+        setHighlightedNotes(
+          q.notes,
+          'var(--color-accent)',
+          chordRootName,
+          octaveMap,
+        );
       }
     },
-    [harmonicField, playNote, playChord, selectChord, setHighlightedNotes],
+    [playNote, playChord, selectChord, setHighlightedNotes, schedule],
   );
 
   const newQuestion = useCallback(() => {
-    const chordIdKeyContext: ChordIdKeyContext | undefined =
-      mode === "chordId" && keyLimited
-        ? { rootNote, isMinor }
-        : undefined;
-    const q = generateQuestion(mode, isMinor, chordIdKeyContext);
+    cancelPending();
+    const q = generateQuestion(
+      mode,
+      { rootNote, isMinor },
+      { limitToKey: keyLimited },
+    );
     setQuestion(q);
     setSelectedAnswer(null);
     setIsCorrect(null);
@@ -95,26 +108,30 @@ export function useQuiz() {
     selectChord(null);
 
     // Auto-play with a small delay for UI to update
-    setTimeout(() => playQuestion(q), 300);
-  }, [mode, isMinor, rootNote, keyLimited, playQuestion, selectChord]);
+    schedule(() => playQuestion(q), 300);
+  }, [
+    mode,
+    rootNote,
+    isMinor,
+    keyLimited,
+    playQuestion,
+    selectChord,
+    schedule,
+    cancelPending,
+  ]);
 
   const replayQuestion = useCallback(() => {
-    if (question) {
-      // For degree quiz, play tonic first as reference
-      if (question.type === "degree") {
-        const tonic = harmonicField[0];
-        if (tonic) {
-          playChord(tonic.notes, question.octave);
-          selectChord(0);
-          setTimeout(() => {
-            playQuestion(question);
-          }, 1200);
-        }
-      } else {
-        playQuestion(question);
-      }
+    if (!question) return;
+    cancelPending();
+    if (question.type === 'degree' && question.referenceNotes) {
+      // Play tonic first as reference
+      playChord(question.referenceNotes, question.octave);
+      selectChord(0);
+      schedule(() => playQuestion(question), 1200);
+    } else {
+      playQuestion(question);
     }
-  }, [question, harmonicField, playChord, selectChord, playQuestion]);
+  }, [question, playChord, selectChord, playQuestion, schedule, cancelPending]);
 
   const answer = useCallback(
     (selected: string) => {
@@ -135,29 +152,18 @@ export function useQuiz() {
         };
       });
 
-      // If wrong, replay the correct answer after a short delay
-      if (!correct && question.type !== "degree") {
-        setTimeout(() => {
-          if (question.sequential) {
-            const secondOctave =
-              question.notes[1] <= question.notes[0]
-                ? question.octave + 1
-                : question.octave;
-            playNote(question.notes[0], question.octave);
-            setTimeout(() => {
-              playNote(question.notes[1], secondOctave);
-            }, 500);
-          } else {
-            playChord(question.notes, question.octave);
-          }
-        }, 800);
+      // If wrong, replay the correct answer after a short delay — the same
+      // playback path, so the two can't drift.
+      if (!correct) {
+        schedule(() => playQuestion(question), 800);
       }
     },
-    [question, showingResult, playNote, playChord],
+    [question, showingResult, playQuestion, schedule],
   );
 
   const changeMode = useCallback(
     (newMode: QuizMode) => {
+      cancelPending();
       setMode(newMode);
       setQuestion(null);
       setSelectedAnswer(null);
@@ -166,7 +172,7 @@ export function useQuiz() {
       setScore(INITIAL_SCORE);
       selectChord(null);
     },
-    [selectChord],
+    [selectChord, cancelPending],
   );
 
   const resetScore = useCallback(() => {
@@ -174,13 +180,14 @@ export function useQuiz() {
   }, []);
 
   const toggleKeyLimited = useCallback(() => {
+    cancelPending();
     setKeyLimited((prev) => !prev);
     setQuestion(null);
     setSelectedAnswer(null);
     setIsCorrect(null);
     setShowingResult(false);
     setScore(INITIAL_SCORE);
-  }, []);
+  }, [cancelPending]);
 
   return {
     mode,

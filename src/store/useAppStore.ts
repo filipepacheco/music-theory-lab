@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 import type {
   AppState,
   SongSection,
@@ -8,9 +8,10 @@ import type {
   TimeSignature,
   StructureBar,
   StructureSection,
-} from "@/types";
-import type { ProgressionStep } from "@/constants/progressions";
-import { getHarmonicField, getScaleNotes } from "@/utils/musicTheory";
+} from '@/types';
+import type { ProgressionStep } from '@/constants/progressions';
+import { getHarmonicField, getScaleNotes } from '@/utils/musicTheory';
+import { dotsForTimeSignature } from '@/utils/structureLayout';
 import {
   initDB,
   waitForSync,
@@ -18,7 +19,7 @@ import {
   saveStructure as dbSaveStructure,
   updateStructure as dbUpdateStructure,
   deleteStructure as dbDeleteStructure,
-} from "@/services/db";
+} from '@/services/db';
 
 /** Reindex bars so numbers follow section order: section1 bars, section2 bars, ... */
 function reindexBars(
@@ -37,22 +38,22 @@ function reindexBars(
 }
 
 const FUNCTION_COLORS: Record<string, string> = {
-  T: "var(--color-tonic)",
-  SD: "var(--color-subdominant)",
-  D: "var(--color-dominant)",
+  T: 'var(--color-tonic)',
+  SD: 'var(--color-subdominant)',
+  D: 'var(--color-dominant)',
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
   rootNote: 0, // C
   isMinor: false,
-  activeModule: "harmonicField",
+  activeModule: 'harmonicField',
   harmonicField: getHarmonicField(0, false),
   selectedChordIndex: null,
   highlightedNotes: [],
   highlightColors: {},
   highlightRootName: null,
   highlightOctaveMap: null,
-  activePresetId: "piano",
+  activePresetId: 'piano',
   bpm: 90,
   isMetronomeOn: false,
   currentBeat: -1,
@@ -134,7 +135,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const chord = harmonicField[index];
     if (!chord) return;
 
-    const color = FUNCTION_COLORS[chord.harmonicFunction] ?? "#fff";
+    const color = FUNCTION_COLORS[chord.harmonicFunction] ?? '#fff';
     const colors: Record<number, string> = {};
     chord.notes.forEach((n) => {
       colors[n] = color;
@@ -224,9 +225,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       for (const n of allNotes) {
         const inA = notesA.includes(n);
         const inB = setB.has(n);
-        if (inA && inB) colors[n] = "var(--color-scale-shared)";
-        else if (inA) colors[n] = "var(--color-scale-a)";
-        else colors[n] = "var(--color-scale-b)";
+        if (inA && inB) colors[n] = 'var(--color-scale-shared)';
+        else if (inA) colors[n] = 'var(--color-scale-a)';
+        else colors[n] = 'var(--color-scale-b)';
       }
       set({
         selectedScaleId: scaleId,
@@ -235,7 +236,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
     } else {
       for (const n of notesA) {
-        colors[n] = "var(--color-scale-a)";
+        colors[n] = 'var(--color-scale-a)';
       }
       set({
         selectedScaleId: scaleId,
@@ -333,7 +334,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ songSections: updated });
   },
 
-  setSongStepBeats: (sectionIndex: number, stepIndex: number, beats: number) => {
+  setSongStepBeats: (
+    sectionIndex: number,
+    stepIndex: number,
+    beats: number,
+  ) => {
     const { songSections } = get();
     const section = songSections[sectionIndex];
     if (!section) return;
@@ -351,7 +356,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ songSections: updated });
   },
 
-  setSongStepConfidence: (sectionIndex: number, stepIndex: number, confidence) => {
+  setSongStepConfidence: (
+    sectionIndex: number,
+    stepIndex: number,
+    confidence,
+  ) => {
     const { songSections } = get();
     const section = songSections[sectionIndex];
     if (!section) return;
@@ -411,7 +420,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setBarTimeSignature: (id, ts) => {
     const { structureBars } = get();
-    const dotCount = { '4/4': 8, '3/4': 6, '2/4': 4, '6/8': 6 }[ts];
+    const dotCount = dotsForTimeSignature(ts);
     set({
       structureBars: structureBars.map((b) => {
         if (b.id !== id) return b;
@@ -474,6 +483,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         index: 0,
         timeSignature: original?.timeSignature ?? activeTimeSignature,
         color: original?.color,
+        accents: original?.accents,
       };
     });
 
@@ -503,7 +513,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const removedBarIds = new Set(sectionToRemove?.barIds ?? []);
     const newSections = structureSections
       .filter((s) => s.id !== id)
-      .map((s) => s.repeatOf === id ? { ...s, repeatOf: undefined } : s);
+      .map((s) => (s.repeatOf === id ? { ...s, repeatOf: undefined } : s));
     const newBars = structureBars.filter((b) => !removedBarIds.has(b.id));
     set({
       structureSections: newSections,
@@ -664,7 +674,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const notesA = getScaleNotes(rootNote, selectedScaleId);
         const colors: Record<number, string> = {};
         for (const n of notesA) {
-          colors[n] = "var(--color-scale-a)";
+          colors[n] = 'var(--color-scale-a)';
         }
         set({
           comparisonScaleId: null,
@@ -693,9 +703,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     for (const n of allNotes) {
       const inA = setA.has(n);
       const inB = notesB.includes(n);
-      if (inA && inB) colors[n] = "var(--color-scale-shared)";
-      else if (inA) colors[n] = "var(--color-scale-a)";
-      else colors[n] = "var(--color-scale-b)";
+      if (inA && inB) colors[n] = 'var(--color-scale-shared)';
+      else if (inA) colors[n] = 'var(--color-scale-a)';
+      else colors[n] = 'var(--color-scale-b)';
     }
     set({
       comparisonScaleId: scaleId,

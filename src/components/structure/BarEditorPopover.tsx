@@ -5,14 +5,11 @@ import {
   TIME_SIGNATURES,
   STRUCTURE_PALETTE,
 } from '@/constants/structureColors';
+import {
+  dotsForTimeSignature,
+  effectiveBarColor,
+} from '@/utils/structureLayout';
 import type { StructureBar } from '@/types';
-
-const DOT_COUNTS: Record<string, number> = {
-  '4/4': 8,
-  '3/4': 6,
-  '2/4': 4,
-  '6/8': 6,
-};
 
 interface BarEditorPopoverProps {
   bar: StructureBar;
@@ -30,8 +27,8 @@ export default function BarEditorPopover({
   const setBarColor = useAppStore((s) => s.setBarColor);
   const toggleBarAccent = useAppStore((s) => s.toggleBarAccent);
 
-  const effectiveColor = bar.color ?? sectionColor;
-  const dotCount = DOT_COUNTS[bar.timeSignature] ?? 8;
+  const effectiveColor = effectiveBarColor(bar.color, sectionColor);
+  const dotCount = dotsForTimeSignature(bar.timeSignature);
   const perRow = dotCount / 2;
   const accentSet = new Set(bar.accents ?? []);
 

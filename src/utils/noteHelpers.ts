@@ -1,4 +1,4 @@
-import { NOTE_NAMES, NOTE_NAMES_FLAT, FLAT_KEYS } from "@/constants/notes";
+import { NOTE_NAMES, NOTE_NAMES_FLAT, FLAT_KEYS } from '@/constants/notes';
 
 /**
  * Get the display name of a note index (0-11), choosing sharps or flats
@@ -43,6 +43,34 @@ export function getPreferredRootName(noteIndex: number): string {
   return NOTE_NAMES[idx];
 }
 
+export interface VoicedNote {
+  note: number;
+  octave: number;
+}
+
+/**
+ * The ascending-voicing rule: walk note indices in order and bump the octave
+ * each time a note wraps around (index decreases), so the sequence always
+ * rises. Returns the octave-bumped sequence; adapters map it onto a UI
+ * octave map (computeVoicingOctaveMap) or Tone note strings (useSynth).
+ */
+export function ascendVoicing(
+  noteIndices: number[],
+  baseOctave: number,
+): VoicedNote[] {
+  const voiced: VoicedNote[] = [];
+  let currentOctave = baseOctave;
+  let prevSemitone = -1;
+  for (const n of noteIndices) {
+    if (n <= prevSemitone) {
+      currentOctave++;
+    }
+    voiced.push({ note: n, octave: currentOctave });
+    prevSemitone = n;
+  }
+  return voiced;
+}
+
 /**
  * Compute a per-note octave map matching the chord voicing used for audio
  * playback. Notes that wrap around (index decreases) get bumped to the next
@@ -53,14 +81,8 @@ export function computeVoicingOctaveMap(
   baseOctave: number,
 ): Record<number, number> {
   const map: Record<number, number> = {};
-  let currentOctave = baseOctave;
-  let prevSemitone = -1;
-  for (const n of noteIndices) {
-    if (n <= prevSemitone) {
-      currentOctave++;
-    }
-    map[n] = currentOctave;
-    prevSemitone = n;
+  for (const { note, octave } of ascendVoicing(noteIndices, baseOctave)) {
+    map[note] = octave;
   }
   return map;
 }

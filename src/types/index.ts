@@ -1,16 +1,16 @@
-import type { HarmonicFunction } from "@/constants/harmonicFields";
+import type { HarmonicChord } from '@/utils/musicTheory';
 import type {
   ProgressionExample,
   ProgressionStep,
-} from "@/constants/progressions";
+} from '@/constants/progressions';
 
 export type ActiveModule =
-  | "harmonicField"
-  | "progressions"
-  | "scales"
-  | "quiz"
-  | "transcription"
-  | "structure";
+  | 'harmonicField'
+  | 'progressions'
+  | 'scales'
+  | 'quiz'
+  | 'transcription'
+  | 'structure';
 
 export type ChordConfidence = 'sure' | 'unsure';
 
@@ -73,17 +73,6 @@ export interface SongStructure {
   sections: StructureSection[];
   createdAt: string;
   updatedAt: string;
-}
-
-export interface HarmonicChord {
-  degree: number;
-  romanNumeral: string;
-  chordName: string;
-  notes: number[];
-  noteNames: string[];
-  harmonicFunction: HarmonicFunction;
-  intervals: number[];
-  chordSymbol: string;
 }
 
 export interface AppState {
@@ -157,7 +146,12 @@ export interface AppState {
   setIsMinor: (isMinor: boolean) => void;
   setActiveModule: (module: ActiveModule) => void;
   selectChord: (index: number | null) => void;
-  setHighlightedNotes: (notes: number[], color: string, rootName?: string, octaveMap?: Record<number, number>) => void;
+  setHighlightedNotes: (
+    notes: number[],
+    color: string,
+    rootName?: string,
+    octaveMap?: Record<number, number>,
+  ) => void;
   clearHighlights: () => void;
   setActivePresetId: (id: string) => void;
   setBpm: (bpm: number) => void;
@@ -185,8 +179,16 @@ export interface AppState {
   setActiveSectionIndex: (index: number) => void;
   addSongStep: (sectionIndex: number, step: ProgressionStep) => void;
   removeSongStep: (sectionIndex: number, stepIndex: number) => void;
-  setSongStepBeats: (sectionIndex: number, stepIndex: number, beats: number) => void;
-  setSongStepConfidence: (sectionIndex: number, stepIndex: number, confidence: ChordConfidence) => void;
+  setSongStepBeats: (
+    sectionIndex: number,
+    stepIndex: number,
+    beats: number,
+  ) => void;
+  setSongStepConfidence: (
+    sectionIndex: number,
+    stepIndex: number,
+    confidence: ChordConfidence,
+  ) => void;
 
   // Practice actions
   setPracticeSpeed: (percent: number) => void;
@@ -208,7 +210,10 @@ export interface AppState {
   setSectionName: (sectionId: string, name: string) => void;
   setSectionColor: (sectionId: string, color: string) => void;
   setSectionComment: (sectionId: string, comment: string) => void;
-  setSectionBarsPerRow: (sectionId: string, barsPerRow: number | undefined) => void;
+  setSectionBarsPerRow: (
+    sectionId: string,
+    barsPerRow: number | undefined,
+  ) => void;
   setFocusedSection: (id: string | null) => void;
   reorderStructureSection: (activeId: string, overId: string) => void;
   moveBarToSection: (barId: string, sectionId: string) => void;

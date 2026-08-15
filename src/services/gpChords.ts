@@ -21,8 +21,12 @@
 // labels are built in the UI.
 //
 // See the map: https://github.com/filipepacheco/music-theory-lab/issues/9
+//
+// This module is an internal seam of the transcription module
+// (`src/services/transcribeGp.ts`): callers transcribe through `transcribeGp`,
+// not `matchBar`.
 
-import { NOTE_NAMES } from '@/services/gpFile';
+import { NOTE_NAMES } from '@/constants/notes';
 
 /**
  * Fitted bar-by-bar to a single song. Each entry past the first twelve was
@@ -88,7 +92,10 @@ function exactMatches(pcs: Set<number>): ChordMatch[] {
   for (let root = 0; root < 12; root++) {
     for (const [quality, intervals] of Object.entries(CHORD_TEMPLATES)) {
       const template = new Set(intervals.map((i) => (i + root) % 12));
-      if (template.size === pcs.size && [...template].every((p) => pcs.has(p))) {
+      if (
+        template.size === pcs.size &&
+        [...template].every((p) => pcs.has(p))
+      ) {
         out.push({ root, quality, intervals });
       }
     }
