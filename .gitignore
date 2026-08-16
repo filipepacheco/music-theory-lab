@@ -28,5 +28,9 @@ public/sql-wasm.wasm
 .vercel
 .claude/
 
+# Secrets
+.env
+.env.*
+
 # Screenshots
 *.png
