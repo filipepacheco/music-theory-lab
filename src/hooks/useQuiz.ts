@@ -1,6 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import { useSynth } from '@/hooks/useSynth';
 import { useAppStore } from '@/store/useAppStore';
+import {
+  createInitialQuizSessionState,
+  quizSessionReducer,
+} from '@/domain/quizSession';
+import type { QuizSessionState } from '@/domain/quizSession';
 import {
   getPreferredRootName,
   computeVoicingOctaveMap,
@@ -12,37 +17,24 @@ import {
   type QuizQuestion,
 } from '@/utils/quizGenerator';
 
-export interface QuizScore {
-  correct: number;
-  total: number;
-  streak: number;
-  bestStreak: number;
-}
-
-export interface QuizState {
-  mode: QuizMode;
-  question: QuizQuestion | null;
-  selectedAnswer: string | null;
-  isCorrect: boolean | null;
-  score: QuizScore;
-  showingResult: boolean;
-}
-
-const INITIAL_SCORE: QuizScore = {
-  correct: 0,
-  total: 0,
-  streak: 0,
-  bestStreak: 0,
-};
+export type { QuizScore } from '@/domain/quizSession';
+export type QuizState = QuizSessionState;
 
 export function useQuiz() {
-  const [mode, setMode] = useState<QuizMode>('interval');
-  const [question, setQuestion] = useState<QuizQuestion | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [showingResult, setShowingResult] = useState(false);
-  const [score, setScore] = useState<QuizScore>(INITIAL_SCORE);
-  const [keyLimited, setKeyLimited] = useState(false);
+  const [session, dispatch] = useReducer(
+    quizSessionReducer,
+    undefined,
+    createInitialQuizSessionState,
+  );
+  const {
+    mode,
+    question,
+    selectedAnswer,
+    isCorrect,
+    score,
+    showingResult,
+    keyLimited,
+  } = session;
 
   const { playNote, playChord } = useSynth();
   const rootNote = useAppStore((s) => s.rootNote);
@@ -101,10 +93,7 @@ export function useQuiz() {
       { rootNote, isMinor },
       { limitToKey: keyLimited },
     );
-    setQuestion(q);
-    setSelectedAnswer(null);
-    setIsCorrect(null);
-    setShowingResult(false);
+    dispatch({ type: 'questionGenerated', question: q });
     selectChord(null);
 
     // Auto-play with a small delay for UI to update
@@ -138,19 +127,7 @@ export function useQuiz() {
       if (!question || showingResult) return;
 
       const correct = selected === question.correctAnswer;
-      setSelectedAnswer(selected);
-      setIsCorrect(correct);
-      setShowingResult(true);
-
-      setScore((prev) => {
-        const newStreak = correct ? prev.streak + 1 : 0;
-        return {
-          correct: prev.correct + (correct ? 1 : 0),
-          total: prev.total + 1,
-          streak: newStreak,
-          bestStreak: Math.max(prev.bestStreak, newStreak),
-        };
-      });
+      dispatch({ type: 'answer', selectedAnswer: selected });
 
       // If wrong, replay the correct answer after a short delay — the same
       // playback path, so the two can't drift.
@@ -164,29 +141,19 @@ export function useQuiz() {
   const changeMode = useCallback(
     (newMode: QuizMode) => {
       cancelPending();
-      setMode(newMode);
-      setQuestion(null);
-      setSelectedAnswer(null);
-      setIsCorrect(null);
-      setShowingResult(false);
-      setScore(INITIAL_SCORE);
+      dispatch({ type: 'changeMode', mode: newMode });
       selectChord(null);
     },
     [selectChord, cancelPending],
   );
 
   const resetScore = useCallback(() => {
-    setScore(INITIAL_SCORE);
+    dispatch({ type: 'resetScore' });
   }, []);
 
   const toggleKeyLimited = useCallback(() => {
     cancelPending();
-    setKeyLimited((prev) => !prev);
-    setQuestion(null);
-    setSelectedAnswer(null);
-    setIsCorrect(null);
-    setShowingResult(false);
-    setScore(INITIAL_SCORE);
+    dispatch({ type: 'toggleKeyLimited' });
   }, [cancelPending]);
 
   return {

@@ -4,22 +4,12 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useSynth } from '@/hooks/useSynth';
 import { useMetronome } from '@/hooks/useMetronome';
+import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
 import SpeedControl from '@/components/shared/SpeedControl';
-import type { ProgressionStep, ProgressionExample } from '@/constants/progressions';
-
-function findStepAtEighth(
-  cycleEighth: number,
-  stepEighths: number[]
-): [number, number] {
-  let accumulated = 0;
-  for (let i = 0; i < stepEighths.length; i++) {
-    if (cycleEighth < accumulated + stepEighths[i]) {
-      return [i, accumulated];
-    }
-    accumulated += stepEighths[i];
-  }
-  return [0, 0];
-}
+import type {
+  ProgressionStep,
+  ProgressionExample,
+} from '@/constants/progressions';
 
 export default function SongPlaybackControls({
   onPlayingSectionChange,
@@ -97,7 +87,7 @@ export default function SongPlaybackControls({
       const effectiveBpm = Math.round((originalBpm * percent) / 100);
       setBpm(effectiveBpm);
     },
-    [originalBpm, setPracticeSpeed, setBpm]
+    [originalBpm, setPracticeSpeed, setBpm],
   );
 
   const play = useCallback(() => {
@@ -133,7 +123,7 @@ export default function SongPlaybackControls({
       for (const section of songSections) {
         const sectionEighths = section.steps.reduce(
           (sum, s) => sum + Math.round((s.beats ?? 4) * 2),
-          0
+          0,
         );
         sectionBoundaries.push({
           start: eighthOffset,
@@ -170,64 +160,31 @@ export default function SongPlaybackControls({
 
       eighthCountRef.current += 2;
       const p = progRef.current;
-      const stepEighths = p.steps.map((s) =>
-        Math.round((s.beats ?? 4) * 2)
-      );
-      const totalEighths = stepEighths.reduce((a, b) => a + b, 0);
       const eighthDuration = Tone.Time('8n').toSeconds();
+      const events = createEighthPlaybackEvents(
+        p.steps,
+        eighthCountRef.current,
+        time,
+        eighthDuration,
+      );
 
-      for (let sub = 0; sub < 2; sub++) {
-        const globalEighth = eighthCountRef.current + sub;
-        const cycleEighth =
-          ((globalEighth % totalEighths) + totalEighths) % totalEighths;
-        const scheduleTime = time + sub * eighthDuration;
+      for (const event of events) {
+        if (event.type === 'timeline') {
+          Tone.getDraw().schedule(() => {
+            setCurrentEighth(event.cycleEighth);
 
-        Tone.getDraw().schedule(() => {
-          setCurrentEighth(cycleEighth);
-
-          // Highlight which section is playing in full-song mode
-          if (!loopSection && sectionBoundaries.length > 0) {
-            for (let si = 0; si < sectionBoundaries.length; si++) {
-              const b = sectionBoundaries[si];
-              if (cycleEighth >= b.start && cycleEighth < b.end) {
-                onPlayingSectionChange?.(si);
-                break;
+            if (!loopSection && sectionBoundaries.length > 0) {
+              for (let si = 0; si < sectionBoundaries.length; si++) {
+                const b = sectionBoundaries[si];
+                if (event.cycleEighth >= b.start && event.cycleEighth < b.end) {
+                  onPlayingSectionChange?.(si);
+                  break;
+                }
               }
             }
-          }
-        }, scheduleTime);
-
-        const [stepIdx, accumulated] = findStepAtEighth(
-          cycleEighth,
-          stepEighths
-        );
-        const isFirstEighthOfStep = cycleEighth === accumulated;
-        const stepOffset = p.steps[stepIdx].offsetEighths ?? 0;
-
-        if (stepOffset === 0 && isFirstEighthOfStep) {
-          playStep(stepIdx, scheduleTime);
-        } else if (stepOffset > 0 && isFirstEighthOfStep) {
-          playStep(stepIdx, scheduleTime + stepOffset * eighthDuration);
-        } else if (
-          stepOffset < 0 &&
-          isFirstEighthOfStep &&
-          globalEighth <= 0
-        ) {
-          playStep(stepIdx, scheduleTime);
-        }
-
-        const nextCycleEighth = (cycleEighth + 1) % totalEighths;
-        const [nextStepIdx, nextAccumulated] = findStepAtEighth(
-          nextCycleEighth,
-          stepEighths
-        );
-        const nextOffset = p.steps[nextStepIdx].offsetEighths ?? 0;
-        if (nextCycleEighth === nextAccumulated && nextOffset < 0) {
-          const anticipationTime =
-            scheduleTime + eighthDuration + nextOffset * eighthDuration;
-          if (anticipationTime >= scheduleTime) {
-            playStep(nextStepIdx, anticipationTime);
-          }
+          }, event.scheduleTime);
+        } else {
+          playStep(event.stepIndex, event.scheduleTime);
         }
       }
     });
@@ -273,11 +230,7 @@ export default function SongPlaybackControls({
           <span className="flex items-center gap-2">
             <span>{isPlaying ? '\u25A0' : '\u25B6'}</span>
             <span>
-              {isPlaying
-                ? 'Parar'
-                : loopSection
-                  ? 'Tocar Secao'
-                  : 'Tocar Tudo'}
+              {isPlaying ? 'Parar' : loopSection ? 'Tocar Secao' : 'Tocar Tudo'}
             </span>
           </span>
         </motion.button>

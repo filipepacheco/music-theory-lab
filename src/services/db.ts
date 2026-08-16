@@ -10,6 +10,13 @@ import type {
   StructureBar,
   StructureSection,
 } from '@/types';
+import type {
+  CloudProgression,
+  CloudSong,
+  CloudStructure,
+  SavedProgression,
+} from '@/domain/savedLibrary';
+export type { SavedProgression } from '@/domain/savedLibrary';
 import { STRUCTURE_PALETTE } from '@/constants/structureColors';
 import { SECTION_LABELS, SECTION_COLORS } from '@/constants/songSections';
 import {
@@ -25,18 +32,6 @@ import {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export interface SavedProgression {
-  id: string;
-  name: string;
-  description: string;
-  steps: ProgressionStep[];
-  mode: 'major' | 'minor';
-  presetId: string;
-  bpm: number;
-  isExample: boolean;
-  createdAt: string;
-}
 
 // ---------------------------------------------------------------------------
 // IndexedDB helpers (raw Uint8Array storage)
@@ -155,21 +150,23 @@ export async function initDB(): Promise<void> {
 
     // Migration: add bpm column to existing structures table
     try {
-      db.run(`ALTER TABLE structures ADD COLUMN bpm INTEGER NOT NULL DEFAULT 120`);
+      db.run(
+        `ALTER TABLE structures ADD COLUMN bpm INTEGER NOT NULL DEFAULT 120`,
+      );
     } catch {
       // Column already exists
     }
 
     // Seed examples on first run
     const [{ values }] = db.exec(
-      "SELECT COUNT(*) FROM saved_progressions WHERE is_example = 1"
+      'SELECT COUNT(*) FROM saved_progressions WHERE is_example = 1',
     );
     const exampleCount = (values[0]?.[0] as number) ?? 0;
 
     if (exampleCount === 0) {
       const stmt = db.prepare(
         `INSERT INTO saved_progressions (id, name, description, steps, mode, preset_id, bpm, is_example)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
       );
       for (const ex of PROGRESSION_EXAMPLES) {
         stmt.run([
@@ -207,7 +204,7 @@ export function waitForSync(): Promise<void> {
 }
 
 export function getAllProgressions(
-  mode?: 'major' | 'minor'
+  mode?: 'major' | 'minor',
 ): SavedProgression[] {
   if (!db) return [];
 
@@ -250,7 +247,7 @@ export function saveProgression(prog: {
   const id = crypto.randomUUID();
   const stmt = db.prepare(
     `INSERT INTO saved_progressions (id, name, description, steps, mode, preset_id, bpm, is_example)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
   );
   try {
     stmt.run([
@@ -275,7 +272,7 @@ export function saveProgression(prog: {
 export function deleteProgression(id: string): void {
   if (!db) return;
   const stmt = db.prepare(
-    `DELETE FROM saved_progressions WHERE id = ? AND is_example = 0`
+    `DELETE FROM saved_progressions WHERE id = ? AND is_example = 0`,
   );
   try {
     stmt.run([id]);
@@ -295,9 +292,7 @@ export function deleteProgression(id: string): void {
 export function getAllSongs(): Song[] {
   if (!db) return [];
 
-  const stmt = db.prepare(
-    `SELECT * FROM songs ORDER BY updated_at DESC`
-  );
+  const stmt = db.prepare(`SELECT * FROM songs ORDER BY updated_at DESC`);
   const results: Song[] = [];
 
   while (stmt.step()) {
@@ -333,7 +328,7 @@ export function saveSong(song: {
   const id = crypto.randomUUID();
   const stmt = db.prepare(
     `INSERT INTO songs (id, title, artist, key_note, mode, original_bpm, preset_id, sections)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   try {
     stmt.run([
@@ -368,7 +363,7 @@ export function updateSong(
     originalBpm: number;
     presetId: string;
     sections: SongSection[];
-  }>
+  }>,
 ): void {
   if (!db) return;
 
@@ -409,9 +404,7 @@ export function updateSong(
   fields.push("updated_at = datetime('now')");
   values.push(id);
 
-  const stmt = db.prepare(
-    `UPDATE songs SET ${fields.join(', ')} WHERE id = ?`
-  );
+  const stmt = db.prepare(`UPDATE songs SET ${fields.join(', ')} WHERE id = ?`);
   try {
     stmt.run(values);
   } finally {
@@ -461,10 +454,14 @@ function migrateSection(raw: LegacySection): StructureSection {
   const sectionType = raw.type ?? 'custom';
   return {
     id: raw.id,
-    name: sectionType === 'custom' && raw.customLabel
-      ? raw.customLabel
-      : (SECTION_LABELS[sectionType as keyof typeof SECTION_LABELS] ?? sectionType),
-    color: SECTION_COLORS[sectionType as keyof typeof SECTION_COLORS] ?? STRUCTURE_PALETTE[0],
+    name:
+      sectionType === 'custom' && raw.customLabel
+        ? raw.customLabel
+        : (SECTION_LABELS[sectionType as keyof typeof SECTION_LABELS] ??
+          sectionType),
+    color:
+      SECTION_COLORS[sectionType as keyof typeof SECTION_COLORS] ??
+      STRUCTURE_PALETTE[0],
     barIds: raw.barIds,
     repeatOf: raw.repeatOf,
     comment: raw.comment,
@@ -492,9 +489,7 @@ function migrateStructureData(
 export function getAllStructures(): SongStructure[] {
   if (!db) return [];
 
-  const stmt = db.prepare(
-    `SELECT * FROM structures ORDER BY updated_at DESC`
-  );
+  const stmt = db.prepare(`SELECT * FROM structures ORDER BY updated_at DESC`);
   const results: SongStructure[] = [];
 
   while (stmt.step()) {
@@ -529,7 +524,7 @@ export function saveStructure(structure: {
   const id = crypto.randomUUID();
   const stmt = db.prepare(
     `INSERT INTO structures (id, title, artist, bpm, bars, sections)
-     VALUES (?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?)`,
   );
   try {
     stmt.run([
@@ -560,7 +555,7 @@ export function updateStructure(
     bpm: number;
     bars: StructureBar[];
     sections: StructureSection[];
-  }>
+  }>,
 ): void {
   if (!db) return;
 
@@ -594,7 +589,7 @@ export function updateStructure(
   values.push(id);
 
   const stmt = db.prepare(
-    `UPDATE structures SET ${fields.join(', ')} WHERE id = ?`
+    `UPDATE structures SET ${fields.join(', ')} WHERE id = ?`,
   );
   try {
     stmt.run(values);
@@ -628,9 +623,7 @@ export function deleteStructure(id: string): void {
 
 function getProgressionById(id: string): SavedProgression | null {
   if (!db) return null;
-  const stmt = db.prepare(
-    `SELECT * FROM saved_progressions WHERE id = ?`
-  );
+  const stmt = db.prepare(`SELECT * FROM saved_progressions WHERE id = ?`);
   stmt.bind([id]);
   if (!stmt.step()) {
     stmt.free();
@@ -704,48 +697,12 @@ function getStructureById(id: string): SongStructure | null {
 // Upsert helpers (used by syncAll merge)
 // ---------------------------------------------------------------------------
 
-interface CloudProgression {
-  id: string;
-  name: string;
-  description: string;
-  steps: string;
-  mode: string;
-  preset_id: string;
-  bpm: number;
-  is_example: number;
-  created_at: string;
-}
-
-interface CloudSong {
-  id: string;
-  title: string;
-  artist: string;
-  key_note: number;
-  mode: string;
-  original_bpm: number;
-  preset_id: string;
-  sections: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface CloudStructure {
-  id: string;
-  title: string;
-  artist: string;
-  bpm: number;
-  bars: string;
-  sections: string;
-  created_at: string;
-  updated_at: string;
-}
-
 function upsertProgressionLocal(r: CloudProgression): void {
   if (!db) return;
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO saved_progressions
      (id, name, description, steps, mode, preset_id, bpm, is_example, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   stmt.run([
     r.id,
@@ -766,7 +723,7 @@ function upsertSongLocal(r: CloudSong): void {
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO songs
      (id, title, artist, key_note, mode, original_bpm, preset_id, sections, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   stmt.run([
     r.id,
@@ -788,7 +745,7 @@ function upsertStructureLocal(r: CloudStructure): void {
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO structures
      (id, title, artist, bpm, bars, sections, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   stmt.run([
     r.id,
@@ -802,4 +759,3 @@ function upsertStructureLocal(r: CloudStructure): void {
   ]);
   stmt.free();
 }
-

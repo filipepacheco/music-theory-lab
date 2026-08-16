@@ -51,6 +51,23 @@ export interface GpTranscription {
   bars: TranscribedBar[];
 }
 
+export interface GpInspection {
+  gpVersion: string;
+  trackNames: string[];
+  masterBarCount: number;
+  chordDictionaryFound: boolean;
+}
+
+export function inspectGp(data: Uint8Array): GpInspection {
+  const parsed = parseGpFile(data);
+  return {
+    gpVersion: parsed.gpVersion,
+    trackNames: parsed.trackNames,
+    masterBarCount: parsed.masterBarCount,
+    chordDictionaryFound: parsed.chordDictionaryFound,
+  };
+}
+
 export function transcribeGp(
   data: Uint8Array,
   options: TranscribeOptions = {},

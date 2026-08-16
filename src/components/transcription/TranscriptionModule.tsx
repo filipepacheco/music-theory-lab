@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import SongMetadataBar from './SongMetadataBar';
+import GpImportControl from './GpImportControl';
 import SectionTabs from './SectionTabs';
 import TranscriptionChordPicker from './TranscriptionChordPicker';
 import SectionTimeline from './SectionTimeline';
@@ -42,6 +43,7 @@ export default function TranscriptionModule() {
 
         <div className="section-panel flex flex-col gap-4">
           <SongMetadataBar />
+          <GpImportControl />
           <SectionTabs playingSectionIndex={playingSectionIndex} />
           {songSections.length > 0 && <TranscriptionChordPicker />}
           {songSections.length > 0 && <SectionTimeline />}

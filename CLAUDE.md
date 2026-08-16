@@ -15,10 +15,13 @@ Music Theory Lab - interactive educational app for learning music theory (Portug
 ```bash
 npm run dev      # Vite dev server with HMR
 npm run build    # tsc + vite build (type-checks then bundles)
+npm test         # Vitest unit test suite
 npm run preview  # Preview production build
 ```
 
-No test runner or linter configured. Prettier is available (`npx prettier --write .`): single quotes, 80 char width, 2-space indent.
+Vitest covers pure domain behavior; no linter is configured. Prettier is
+available (`npx prettier --write .`): single quotes, 80 char width, 2-space
+indent.
 
 Note: `postinstall` copies `sql-wasm.wasm` to `public/` - run `npm install` after cloning.
 
@@ -27,8 +30,8 @@ Note: `postinstall` copies `sql-wasm.wasm` to `public/` - run `npm install` afte
 - React 19, TypeScript (strict mode), Vite 5
 - Tailwind CSS v4 (uses `@theme` directive in `src/styles/globals.css`, NOT a tailwind.config file)
 - Zustand for state (`src/store/useAppStore.ts` - single store)
-- Tone.js for audio (`src/hooks/useSynth.ts`)
-- sql.js with IndexedDB for client-side persistence (`src/services/db.ts`)
+- Tone.js for audio (`src/services/playbackEngine.ts`, adapted by `useSynth`)
+- sql.js with IndexedDB for client-side persistence (`src/services/db.ts`, exposed through `savedLibrary`)
 - Framer Motion for animations
 - @dnd-kit for drag-and-drop (bars and sections in structure module)
 - Path alias: `@` maps to `src/` - always use `@/` imports, never relative paths
@@ -38,9 +41,10 @@ Note: `postinstall` copies `sql-wasm.wasm` to `public/` - run `npm install` afte
 ```
 src/
   constants/    Music theory data (scales, chords, harmonicFields, progressions, tonePresets, etc.)
+  domain/       Pure application rules (structure documents, quiz sessions, playback schedules, sync merges)
   utils/        Pure functions (musicTheory.ts, noteHelpers.ts, quizGenerator.ts)
-  hooks/        Side effects (useSynth, useMetronome, useKeyboardPiano, useSavedProgressions, useSongs, useQuiz, useStructures, useStructureRecorder)
-  services/     Persistence (db.ts - sql.js/IndexedDB singleton; sync.ts - bidirectional cloud sync; deviceId.ts - localStorage UUID per device)
+  hooks/        UI adapters and side effects (useSynth, useMetronome, useKeyboardPiano, useSavedProgressions, useSongs, useQuiz, useStructures, useStructureRecorder)
+  services/     Infrastructure (playbackEngine.ts, db.ts, savedLibrary.ts, sync.ts, gpFile.ts, gpChords.ts, transcribeGp.ts, deviceId.ts)
   store/        Zustand store (single file)
   types/        TypeScript interfaces (Song, SongSection, SongStructure, StructureBar, StructureSection, HarmonicChord, AppState)
   components/
@@ -84,14 +88,17 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 
 **Song transcription** uses `SongSection` objects (intro, verso, refrao, etc.) with per-section step arrays. Songs are persisted in a separate `songs` table with JSON-serialized sections. The `SongPlaybackControls` supports loop-by-section or full-song playback with a speed control slider (50-150% BPM).
 
-**Quiz module** has four exercise types: interval identification, chord type recognition, chord ID (name the chord played), and degree recognition within a key. `useQuiz` hook manages quiz state, `quizGenerator.ts` produces randomized questions, and `quizData.ts` holds answer options and labels.
+**GP import** accepts GP7 `.gp` files in the transcription module. `transcribeGp` parses the selected harmony/root tracks and the UI maps every bar into an editable imported section. Resolved bars become chromatic steps; unclear and silent bars remain as unsure, silent steps. The first resolved chord is only a playback reference root, not a tonal-center inference.
+
+**Quiz module** has four exercise types: interval identification, chord type recognition, chord ID (name the chord played), and degree recognition within a key. `quizSession.ts` owns pure session transitions and scoring; `useQuiz` adapts it to Tone/Zustand side effects. `quizGenerator.ts` produces randomized questions, and `quizData.ts` holds answer options and labels.
 
 **Scale comparison** uses a three-color system: `scale-a` (blue) for primary scale, `scale-b` (purple) for comparison, `scale-shared` (amber) for notes in both. These colors are CSS variables used for instrument highlights.
 
-**Song structure module** records the bar-level arrangement of a song. Users tap spacebar to record bars in real-time (100ms debounce via `useStructureRecorder`), then organize bars into named sections (intro, verso, refrao, etc.) using drag-and-drop (@dnd-kit). Each bar has a configurable time signature (2/4, 3/4, 4/4, 6/8). Sections support freeform comments and a `barsPerRow` layout setting. The store maintains `structureBars`, `structureSections`, `focusedSectionId`, and `selectedBarIds` (Set) with a `reindexBars()` helper that recalculates bar indices when sections change. State is shared between `SaveStructureButton` and `StructureList` via prop drilling from `StructureModule` (which owns the single `useStructures()` hook instance) to avoid stale state bugs from independent hook instances.
+**Song structure module** records the bar-level arrangement of a song. Users tap spacebar to record bars in real-time (100ms debounce via `useStructureRecorder`), then organize bars into named sections (intro, verso, refrao, etc.) using drag-and-drop (@dnd-kit). Each bar has a configurable time signature (2/4, 3/4, 4/4, 6/8). Sections support freeform comments and a `barsPerRow` layout setting. `structureDocument.ts` owns the pure document commands; the Zustand store is a thin adapter that maintains `structureBars`, `structureSections`, and `focusedSectionId`.
 
-### Audio System (`useSynth`)
+### Audio System (`playbackEngine`)
 
+- `playbackEngine.ts` owns Tone.js effects, sampler caching, fallback synths, voicing, and lifecycle cleanup; `useSynth` only supplies the active preset and exposes React callbacks
 - Global effects chain: Limiter(-6dB) -> Reverb -> Destination
 - `playNote()` for single notes, `playChord()` for simultaneous notes, `playScale()` for sequential notes
 - `playChord` creates a fresh PolySynth per invocation to avoid polyphony issues, auto-disposes after 2s
@@ -108,11 +115,11 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 
 ### Persistence (sql.js)
 
-- `src/services/db.ts` manages a sql.js SQLite database stored in IndexedDB as a binary blob
+- `src/services/db.ts` manages a sql.js SQLite database stored in IndexedDB as a binary blob; `src/services/savedLibrary.ts` is the stable CRUD façade used by hooks and the store
 - Module-level singleton pattern: `initDB()` lazily initializes and seeds example progressions from `PROGRESSION_EXAMPLES`
-- `useSavedProgressions` hook wraps the DB API with React state and provides CRUD operations
-- `useSongs` hook wraps the songs CRUD API with React state for the transcription module
-- `useStructures` hook wraps the structures CRUD API with React state for the structure module
+- `useSavedProgressions` hook wraps the saved-library façade with React state and provides CRUD operations
+- `useSongs` hook wraps the songs façade with React state for the transcription module
+- Structure persistence in the store uses the structures façade, keeping the database implementation behind one boundary
 - Example progressions are seeded once (flagged `is_example = 1`) and cannot be deleted by users
 - Songs table stores transcriptions with title, artist, key, mode, BPM, preset ID, and JSON sections
 - Structures table stores song arrangements with title, artist, bars (JSON), and sections (JSON)
@@ -121,6 +128,7 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 ### Cloud Sync (Vercel API Routes)
 
 Three serverless API routes in `api/` provide cloud sync via Turso (LibSQL):
+
 - `api/progressions.ts` - GET/POST/DELETE for saved progressions
 - `api/songs.ts` - GET/POST/DELETE for song transcriptions
 - `api/structures.ts` - GET/POST/DELETE for song structures

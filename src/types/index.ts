@@ -171,6 +171,12 @@ export interface AppState {
 
   // Transcription actions
   loadSong: (song: Song) => void;
+  loadImportedSong: (data: {
+    title: string;
+    artist: string;
+    key: number;
+    sections: SongSection[];
+  }) => void;
   clearSong: () => void;
   setSongTitle: (title: string) => void;
   setSongArtist: (artist: string) => void;

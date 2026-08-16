@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  initDB,
-  waitForSync,
-  getAllProgressions,
-  saveProgression,
-  deleteProgression,
-  type SavedProgression,
-} from '@/services/db';
+import { savedLibrary, type SavedProgression } from '@/services/savedLibrary';
 import type { ProgressionStep } from '@/constants/progressions';
 
 export function useSavedProgressions(mode?: 'major' | 'minor') {
@@ -16,11 +9,13 @@ export function useSavedProgressions(mode?: 'major' | 'minor') {
   const cancelled = useRef(false);
 
   const refresh = useCallback(async () => {
-    await initDB();
+    await savedLibrary.initialize();
     if (cancelled.current) return;
-    setProgressions(getAllProgressions(mode));
-    waitForSync().then(() => {
-      if (!cancelled.current) setProgressions(getAllProgressions(mode));
+    setProgressions(savedLibrary.progressions.list(mode));
+    savedLibrary.waitUntilSynchronized().then(() => {
+      if (!cancelled.current) {
+        setProgressions(savedLibrary.progressions.list(mode));
+      }
     });
   }, [mode]);
 
@@ -50,10 +45,10 @@ export function useSavedProgressions(mode?: 'major' | 'minor') {
       bpm: number;
     }) => {
       try {
-        await initDB();
-        saveProgression(prog);
+        await savedLibrary.initialize();
+        savedLibrary.progressions.save(prog);
         if (!cancelled.current) {
-          setProgressions(getAllProgressions(mode));
+          setProgressions(savedLibrary.progressions.list(mode));
         }
       } catch {
         throw new Error('Erro ao salvar progressao');
@@ -65,10 +60,10 @@ export function useSavedProgressions(mode?: 'major' | 'minor') {
   const remove = useCallback(
     async (id: string) => {
       try {
-        await initDB();
-        deleteProgression(id);
+        await savedLibrary.initialize();
+        savedLibrary.progressions.remove(id);
         if (!cancelled.current) {
-          setProgressions(getAllProgressions(mode));
+          setProgressions(savedLibrary.progressions.list(mode));
         }
       } catch {
         throw new Error('Erro ao remover progressao');

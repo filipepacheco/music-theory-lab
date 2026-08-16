@@ -1,28 +1,11 @@
-import { useCallback, useRef, useEffect } from "react";
-import * as Tone from "tone";
-import { motion } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { useSynth } from "@/hooks/useSynth";
-import { useMetronome } from "@/hooks/useMetronome";
-import type { ProgressionExample } from "@/constants/progressions";
-
-/**
- * Find which step a given eighth-note position belongs to.
- * Returns [stepIndex, accumulatedEighthsBeforeStep].
- */
-function findStepAtEighth(
-  cycleEighth: number,
-  stepEighths: number[],
-): [number, number] {
-  let accumulated = 0;
-  for (let i = 0; i < stepEighths.length; i++) {
-    if (cycleEighth < accumulated + stepEighths[i]) {
-      return [i, accumulated];
-    }
-    accumulated += stepEighths[i];
-  }
-  return [0, 0];
-}
+import { useCallback, useRef, useEffect } from 'react';
+import * as Tone from 'tone';
+import { motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { useSynth } from '@/hooks/useSynth';
+import { useMetronome } from '@/hooks/useMetronome';
+import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
+import type { ProgressionExample } from '@/constants/progressions';
 
 export default function PlaybackControls() {
   const customProgression = useAppStore((s) => s.customProgression);
@@ -78,11 +61,11 @@ export default function PlaybackControls() {
     }
 
     const prog: ProgressionExample = {
-      id: "__custom__",
-      name: "Custom",
-      description: "",
+      id: '__custom__',
+      name: 'Custom',
+      description: '',
       steps: customProgression,
-      mode: isMinor ? "minor" : "major",
+      mode: isMinor ? 'minor' : 'major',
       presetId: activePresetId,
       bpm,
     };
@@ -98,7 +81,7 @@ export default function PlaybackControls() {
         const field = useAppStore.getState().harmonicField;
         const chord = field[step.degree];
         if (chord) {
-          playChord(chord.notes, 3, "2n", activePresetId, scheduleTime);
+          playChord(chord.notes, 3, '2n', activePresetId, scheduleTime);
         }
         Tone.getDraw().schedule(() => {
           selectChord(step.degree);
@@ -106,10 +89,10 @@ export default function PlaybackControls() {
       } else if (step.intervals) {
         const rn = useAppStore.getState().rootNote;
         const notes = step.intervals.map((i) => (rn + i) % 12);
-        playChord(notes, 3, "2n", activePresetId, scheduleTime);
+        playChord(notes, 3, '2n', activePresetId, scheduleTime);
         Tone.getDraw().schedule(() => {
           selectChord(null);
-          setHighlightedNotes(notes, "var(--color-accent)");
+          setHighlightedNotes(notes, 'var(--color-accent)');
         }, scheduleTime);
       }
     };
@@ -119,60 +102,21 @@ export default function PlaybackControls() {
 
       eighthCountRef.current += 2;
       const p = progRef.current;
-      // Convert all step durations to integer eighth counts
-      const stepEighths = p.steps.map((s) =>
-        Math.round((s.beats ?? 4) * 2),
+      const eighthDuration = Tone.Time('8n').toSeconds();
+      const events = createEighthPlaybackEvents(
+        p.steps,
+        eighthCountRef.current,
+        time,
+        eighthDuration,
       );
-      const totalEighths = stepEighths.reduce((a, b) => a + b, 0);
-      const eighthDuration = Tone.Time("8n").toSeconds();
 
-      // Process both eighth-note positions in this quarter note
-      for (let sub = 0; sub < 2; sub++) {
-        const globalEighth = eighthCountRef.current + sub;
-        const cycleEighth =
-          ((globalEighth % totalEighths) + totalEighths) % totalEighths;
-        const scheduleTime = time + sub * eighthDuration;
-
-        // Update timeline cursor
-        Tone.getDraw().schedule(() => {
-          setCurrentEighth(cycleEighth);
-        }, scheduleTime);
-
-        // Find which step owns this eighth
-        const [stepIdx, accumulated] = findStepAtEighth(
-          cycleEighth,
-          stepEighths,
-        );
-        const isFirstEighthOfStep = cycleEighth === accumulated;
-        const stepOffset = p.steps[stepIdx].offsetEighths ?? 0;
-
-        // Play step on its first eighth (with offset handling)
-        if (stepOffset === 0 && isFirstEighthOfStep) {
-          playStep(stepIdx, scheduleTime);
-        } else if (stepOffset > 0 && isFirstEighthOfStep) {
-          playStep(stepIdx, scheduleTime + stepOffset * eighthDuration);
-        } else if (
-          stepOffset < 0 &&
-          isFirstEighthOfStep &&
-          globalEighth <= 0
-        ) {
-          // First step with negative offset on very first beat: play on downbeat
-          playStep(stepIdx, scheduleTime);
-        }
-
-        // Look ahead: check if NEXT eighth starts a step with anticipation
-        const nextCycleEighth = (cycleEighth + 1) % totalEighths;
-        const [nextStepIdx, nextAccumulated] = findStepAtEighth(
-          nextCycleEighth,
-          stepEighths,
-        );
-        const nextOffset = p.steps[nextStepIdx].offsetEighths ?? 0;
-        if (nextCycleEighth === nextAccumulated && nextOffset < 0) {
-          const anticipationTime =
-            scheduleTime + eighthDuration + nextOffset * eighthDuration;
-          if (anticipationTime >= scheduleTime) {
-            playStep(nextStepIdx, anticipationTime);
-          }
+      for (const event of events) {
+        if (event.type === 'timeline') {
+          Tone.getDraw().schedule(() => {
+            setCurrentEighth(event.cycleEighth);
+          }, event.scheduleTime);
+        } else {
+          playStep(event.stepIndex, event.scheduleTime);
         }
       }
     });
@@ -196,7 +140,7 @@ export default function PlaybackControls() {
     setPlayingProgression,
   ]);
 
-  const isPlaying = playingProgression?.id === "__custom__";
+  const isPlaying = playingProgression?.id === '__custom__';
 
   return (
     <div className="flex items-center gap-3">
@@ -207,14 +151,16 @@ export default function PlaybackControls() {
         whileTap={{ scale: 0.97 }}
         className={`px-4 sm:px-6 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
           isPlaying
-            ? "bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.3)]"
-            : "bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)]"
+            ? 'bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.3)]'
+            : 'bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)]'
         }`}
       >
         <span className="flex items-center gap-2">
-          <span>{isPlaying ? "\u25A0" : "\u25B6"}</span>
-          <span className="hidden sm:inline">{isPlaying ? "Parar" : "Tocar Progressao"}</span>
-          <span className="sm:hidden">{isPlaying ? "Parar" : "Tocar"}</span>
+          <span>{isPlaying ? '\u25A0' : '\u25B6'}</span>
+          <span className="hidden sm:inline">
+            {isPlaying ? 'Parar' : 'Tocar Progressao'}
+          </span>
+          <span className="sm:hidden">{isPlaying ? 'Parar' : 'Tocar'}</span>
         </span>
       </motion.button>
 

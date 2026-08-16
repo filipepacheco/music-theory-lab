@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  initDB,
-  waitForSync,
-  getAllSongs,
-  saveSong,
-  updateSong,
-  deleteSong,
-} from '@/services/db';
+import { savedLibrary } from '@/services/savedLibrary';
 import type { Song, SongSection } from '@/types';
 
 export function useSongs() {
@@ -16,11 +9,11 @@ export function useSongs() {
   const cancelled = useRef(false);
 
   const refresh = useCallback(async () => {
-    await initDB();
+    await savedLibrary.initialize();
     if (cancelled.current) return;
-    setSongs(getAllSongs());
-    waitForSync().then(() => {
-      if (!cancelled.current) setSongs(getAllSongs());
+    setSongs(savedLibrary.songs.list());
+    savedLibrary.waitUntilSynchronized().then(() => {
+      if (!cancelled.current) setSongs(savedLibrary.songs.list());
     });
   }, []);
 
@@ -51,17 +44,17 @@ export function useSongs() {
       sections: SongSection[];
     }) => {
       try {
-        await initDB();
-        const id = saveSong(song);
+        await savedLibrary.initialize();
+        const id = savedLibrary.songs.save(song);
         if (!cancelled.current) {
-          setSongs(getAllSongs());
+          setSongs(savedLibrary.songs.list());
         }
         return id;
       } catch {
         throw new Error('Erro ao salvar musica');
       }
     },
-    []
+    [],
   );
 
   const update = useCallback(
@@ -75,27 +68,27 @@ export function useSongs() {
         originalBpm: number;
         presetId: string;
         sections: SongSection[];
-      }>
+      }>,
     ) => {
       try {
-        await initDB();
-        updateSong(id, updates);
+        await savedLibrary.initialize();
+        savedLibrary.songs.update(id, updates);
         if (!cancelled.current) {
-          setSongs(getAllSongs());
+          setSongs(savedLibrary.songs.list());
         }
       } catch {
         throw new Error('Erro ao atualizar musica');
       }
     },
-    []
+    [],
   );
 
   const remove = useCallback(async (id: string) => {
     try {
-      await initDB();
-      deleteSong(id);
+      await savedLibrary.initialize();
+      savedLibrary.songs.remove(id);
       if (!cancelled.current) {
-        setSongs(getAllSongs());
+        setSongs(savedLibrary.songs.list());
       }
     } catch {
       throw new Error('Erro ao remover musica');

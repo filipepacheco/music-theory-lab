@@ -6,36 +6,11 @@ import type {
   Song,
   SongStructure,
   TimeSignature,
-  StructureBar,
-  StructureSection,
 } from '@/types';
 import type { ProgressionStep } from '@/constants/progressions';
 import { getHarmonicField, getScaleNotes } from '@/utils/musicTheory';
-import { dotsForTimeSignature } from '@/utils/structureLayout';
-import {
-  initDB,
-  waitForSync,
-  getAllStructures,
-  saveStructure as dbSaveStructure,
-  updateStructure as dbUpdateStructure,
-  deleteStructure as dbDeleteStructure,
-} from '@/services/db';
-
-/** Reindex bars so numbers follow section order: section1 bars, section2 bars, ... */
-function reindexBars(
-  bars: StructureBar[],
-  sections: StructureSection[],
-): StructureBar[] {
-  const barMap = new Map(bars.map((b) => [b.id, b]));
-  const ordered: StructureBar[] = [];
-  for (const section of sections) {
-    for (const bid of section.barIds) {
-      const bar = barMap.get(bid);
-      if (bar) ordered.push(bar);
-    }
-  }
-  return ordered.map((b, i) => ({ ...b, index: i }));
-}
+import { structureDocument } from '@/domain/structureDocument';
+import { savedLibrary } from '@/services/savedLibrary';
 
 const FUNCTION_COLORS: Record<string, string> = {
   T: 'var(--color-tonic)',
@@ -271,6 +246,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       highlightColors: {},
     }),
 
+  loadImportedSong: ({ title, artist, key, sections }) => {
+    const { isMinor } = get();
+    set({
+      activeSongId: null,
+      songTitle: title,
+      songArtist: artist,
+      songSections: sections,
+      activeSectionIndex: 0,
+      rootNote: key,
+      harmonicField: getHarmonicField(key, isMinor),
+      selectedChordIndex: null,
+      highlightedNotes: [],
+      highlightColors: {},
+    });
+  },
+
   clearSong: () =>
     set({
       activeSongId: null,
@@ -393,197 +384,163 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addBarToSection: (sectionId) => {
     const { structureBars, structureSections, activeTimeSignature } = get();
-    const bar: StructureBar = {
-      id: crypto.randomUUID(),
-      index: structureBars.length,
-      timeSignature: activeTimeSignature,
-    };
-    const newSections = structureSections.map((s) =>
-      s.id === sectionId ? { ...s, barIds: [...s.barIds, bar.id] } : s,
+    const next = structureDocument.addBar(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      activeTimeSignature,
     );
-    const newBars = reindexBars([...structureBars, bar], newSections);
-    set({ structureBars: newBars, structureSections: newSections });
+    set({ structureBars: next.bars, structureSections: next.sections });
   },
 
   removeBar: (id) => {
     const { structureBars, structureSections } = get();
-    const updated = structureBars.filter((b) => b.id !== id);
-    const updatedSections = structureSections.map((s) => ({
-      ...s,
-      barIds: s.barIds.filter((bid) => bid !== id),
-    }));
+    const next = structureDocument.removeBar(
+      { bars: structureBars, sections: structureSections },
+      id,
+    );
     set({
-      structureBars: reindexBars(updated, updatedSections),
-      structureSections: updatedSections,
+      structureBars: next.bars,
+      structureSections: next.sections,
     });
   },
 
   setBarTimeSignature: (id, ts) => {
-    const { structureBars } = get();
-    const dotCount = dotsForTimeSignature(ts);
-    set({
-      structureBars: structureBars.map((b) => {
-        if (b.id !== id) return b;
-        const accents = b.accents?.filter((i) => i < dotCount);
-        return {
-          ...b,
-          timeSignature: ts,
-          accents: accents && accents.length > 0 ? accents : undefined,
-        };
-      }),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setBarTimeSignature(
+      { bars: structureBars, sections: structureSections },
+      id,
+      ts,
+    );
+    set({ structureBars: next.bars });
   },
 
   setBarColor: (id, color) => {
-    const { structureBars } = get();
-    set({
-      structureBars: structureBars.map((b) =>
-        b.id === id ? { ...b, color } : b,
-      ),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setBarColor(
+      { bars: structureBars, sections: structureSections },
+      id,
+      color,
+    );
+    set({ structureBars: next.bars });
   },
 
   toggleBarAccent: (barId, dotIndex) => {
-    const { structureBars } = get();
-    set({
-      structureBars: structureBars.map((b) => {
-        if (b.id !== barId) return b;
-        const accents = b.accents ?? [];
-        const next = accents.includes(dotIndex)
-          ? accents.filter((i) => i !== dotIndex)
-          : [...accents, dotIndex].sort((a, c) => a - c);
-        return { ...b, accents: next.length > 0 ? next : undefined };
-      }),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.toggleBarAccent(
+      { bars: structureBars, sections: structureSections },
+      barId,
+      dotIndex,
+    );
+    set({ structureBars: next.bars });
   },
 
   addStructureSection: (name, color) => {
     const { structureSections } = get();
-    const newSection: StructureSection = {
-      id: crypto.randomUUID(),
+    const next = structureDocument.addSection(
+      { bars: get().structureBars, sections: structureSections },
       name,
       color,
-      barIds: [],
-    };
+    );
     set({
-      structureSections: [...structureSections, newSection],
-      focusedSectionId: newSection.id,
+      structureSections: next.sections,
+      focusedSectionId: next.focusedSectionId,
     });
   },
 
   duplicateStructureSection: (sectionId) => {
     const { structureSections, structureBars, activeTimeSignature } = get();
-    const source = structureSections.find((s) => s.id === sectionId);
-    if (!source) return;
-
-    const newBars: StructureBar[] = source.barIds.map((bid) => {
-      const original = structureBars.find((b) => b.id === bid);
-      return {
-        id: crypto.randomUUID(),
-        index: 0,
-        timeSignature: original?.timeSignature ?? activeTimeSignature,
-        color: original?.color,
-        accents: original?.accents,
-      };
-    });
-
-    const newSection: StructureSection = {
-      id: crypto.randomUUID(),
-      name: source.name,
-      color: source.color,
-      barIds: newBars.map((b) => b.id),
-      comment: source.comment,
-      barsPerRow: source.barsPerRow,
-    };
-
-    const insertIndex = structureSections.indexOf(source) + 1;
-    const newSections = [...structureSections];
-    newSections.splice(insertIndex, 0, newSection);
-
+    const next = structureDocument.duplicateSection(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      activeTimeSignature,
+    );
+    if (!next) return;
     set({
-      structureSections: newSections,
-      structureBars: reindexBars([...structureBars, ...newBars], newSections),
-      focusedSectionId: newSection.id,
+      structureSections: next.sections,
+      structureBars: next.bars,
+      focusedSectionId: next.focusedSectionId,
     });
   },
 
   removeStructureSection: (id) => {
     const { structureSections, structureBars, focusedSectionId } = get();
-    const sectionToRemove = structureSections.find((s) => s.id === id);
-    const removedBarIds = new Set(sectionToRemove?.barIds ?? []);
-    const newSections = structureSections
-      .filter((s) => s.id !== id)
-      .map((s) => (s.repeatOf === id ? { ...s, repeatOf: undefined } : s));
-    const newBars = structureBars.filter((b) => !removedBarIds.has(b.id));
+    const next = structureDocument.removeSection(
+      { bars: structureBars, sections: structureSections },
+      id,
+      focusedSectionId,
+    );
     set({
-      structureSections: newSections,
-      structureBars: reindexBars(newBars, newSections),
-      focusedSectionId: focusedSectionId === id ? null : focusedSectionId,
+      structureSections: next.sections,
+      structureBars: next.bars,
+      focusedSectionId: next.focusedSectionId,
     });
   },
 
   setSectionName: (sectionId, name) => {
-    const { structureSections } = get();
-    set({
-      structureSections: structureSections.map((s) =>
-        s.id === sectionId ? { ...s, name } : s,
-      ),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setSectionName(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      name,
+    );
+    set({ structureSections: next.sections });
   },
 
   setSectionColor: (sectionId, color) => {
-    const { structureSections } = get();
-    set({
-      structureSections: structureSections.map((s) =>
-        s.id === sectionId ? { ...s, color } : s,
-      ),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setSectionColor(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      color,
+    );
+    set({ structureSections: next.sections });
   },
 
   setSectionComment: (sectionId, comment) => {
-    const { structureSections } = get();
-    set({
-      structureSections: structureSections.map((s) =>
-        s.id === sectionId ? { ...s, comment } : s,
-      ),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setSectionComment(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      comment,
+    );
+    set({ structureSections: next.sections });
   },
 
   setSectionBarsPerRow: (sectionId, barsPerRow) => {
-    const { structureSections } = get();
-    set({
-      structureSections: structureSections.map((s) =>
-        s.id === sectionId ? { ...s, barsPerRow } : s,
-      ),
-    });
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setSectionBarsPerRow(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      barsPerRow,
+    );
+    set({ structureSections: next.sections });
   },
 
   setFocusedSection: (id) => set({ focusedSectionId: id }),
 
   reorderStructureSection: (activeId, overId) => {
     const { structureSections, structureBars } = get();
-    const oldIndex = structureSections.findIndex((s) => s.id === activeId);
-    const newIndex = structureSections.findIndex((s) => s.id === overId);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-    const updated = [...structureSections];
-    const [moved] = updated.splice(oldIndex, 1);
-    updated.splice(newIndex, 0, moved);
+    const next = structureDocument.reorderSections(
+      { bars: structureBars, sections: structureSections },
+      activeId,
+      overId,
+    );
     set({
-      structureSections: updated,
-      structureBars: reindexBars(structureBars, updated),
+      structureSections: next.sections,
+      structureBars: next.bars,
     });
   },
 
   moveBarToSection: (barId, sectionId) => {
     const { structureSections, structureBars } = get();
-    const newSections = structureSections.map((s) => {
-      const without = s.barIds.filter((bid) => bid !== barId);
-      if (s.id === sectionId) return { ...s, barIds: [...without, barId] };
-      return { ...s, barIds: without };
-    });
+    const next = structureDocument.moveBarToSection(
+      { bars: structureBars, sections: structureSections },
+      barId,
+      sectionId,
+    );
     set({
-      structureSections: newSections,
-      structureBars: reindexBars(structureBars, newSections),
+      structureSections: next.sections,
+      structureBars: next.bars,
     });
   },
 
@@ -616,14 +573,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (savedStructures.length > 0 && !structuresLoading) return;
 
     set({ structuresLoading: true });
-    initDB()
+    savedLibrary
+      .initialize()
       .then(() => {
-        set({ savedStructures: getAllStructures() });
+        set({ savedStructures: savedLibrary.structures.list() });
         // Re-read after cloud sync merges remote data. Deliberately not
         // chained into the outer promise: the loading flag must clear on the
         // first read, not wait for the network.
-        waitForSync()
-          .then(() => set({ savedStructures: getAllStructures() }))
+        savedLibrary
+          .waitUntilSynchronized()
+          .then(() => set({ savedStructures: savedLibrary.structures.list() }))
           .catch(() => {
             // Sync merge failed; the first read already populated the list.
           });
@@ -638,9 +597,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   createStructure: async (structure) => {
     try {
-      await initDB();
-      const id = dbSaveStructure(structure);
-      set({ savedStructures: getAllStructures(), activeStructureId: id });
+      await savedLibrary.initialize();
+      const id = savedLibrary.structures.save(structure);
+      set({
+        savedStructures: savedLibrary.structures.list(),
+        activeStructureId: id,
+      });
       return id;
     } catch {
       throw new Error('Erro ao salvar estrutura');
@@ -649,9 +611,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateStructureRecord: async (id, updates) => {
     try {
-      await initDB();
-      dbUpdateStructure(id, updates);
-      set({ savedStructures: getAllStructures() });
+      await savedLibrary.initialize();
+      savedLibrary.structures.update(id, updates);
+      set({ savedStructures: savedLibrary.structures.list() });
     } catch {
       throw new Error('Erro ao atualizar estrutura');
     }
@@ -659,9 +621,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   removeStructureRecord: async (id) => {
     try {
-      await initDB();
-      dbDeleteStructure(id);
-      set({ savedStructures: getAllStructures() });
+      await savedLibrary.initialize();
+      savedLibrary.structures.remove(id);
+      set({ savedStructures: savedLibrary.structures.list() });
     } catch {
       throw new Error('Erro ao remover estrutura');
     }
