@@ -5,6 +5,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useSynth } from '@/hooks/useSynth';
 import { useMetronome } from '@/hooks/useMetronome';
 import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
+import { resolveStep } from '@/domain/stepResolution';
 import SpeedControl from '@/components/shared/SpeedControl';
 import type {
   ProgressionStep,
@@ -134,25 +135,22 @@ export default function SongPlaybackControls({
     }
 
     const playStep = (idx: number, scheduleTime: number) => {
-      const step = prog.steps[idx];
-      if (step.degree !== null) {
-        const field = useAppStore.getState().harmonicField;
-        const chord = field[step.degree];
-        if (chord) {
-          playChord(chord.notes, 3, '2n', activePresetId, scheduleTime);
-        }
-        Tone.getDraw().schedule(() => {
-          selectChord(step.degree);
-        }, scheduleTime);
-      } else if (step.intervals) {
-        const rn = useAppStore.getState().rootNote;
-        const notes = step.intervals.map((i) => (rn + i) % 12);
-        playChord(notes, 3, '2n', activePresetId, scheduleTime);
-        Tone.getDraw().schedule(() => {
-          selectChord(null);
-          setHighlightedNotes(notes, 'var(--color-accent)');
-        }, scheduleTime);
+      const resolved = resolveStep(
+        prog.steps[idx],
+        useAppStore.getState().harmonicField,
+        useAppStore.getState().rootNote,
+      );
+      if (resolved.notes.length > 0) {
+        playChord(resolved.notes, 3, '2n', activePresetId, scheduleTime);
       }
+      Tone.getDraw().schedule(() => {
+        if (resolved.degree !== null) {
+          selectChord(resolved.degree);
+        } else if (resolved.notes.length > 0) {
+          selectChord(null);
+          setHighlightedNotes(resolved.notes, 'var(--color-accent)');
+        }
+      }, scheduleTime);
     };
 
     onBeat((_beat, time) => {

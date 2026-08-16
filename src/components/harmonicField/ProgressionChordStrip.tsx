@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
-import { getNoteName } from "@/utils/noteHelpers";
+import { resolveStep } from "@/domain/stepResolution";
+import { FUNCTION_COLORS } from "@/constants/functionColors";
 import type { HarmonicFunction } from "@/constants/harmonicFields";
 
 const FUNCTION_BG: Record<string, string> = {
@@ -14,12 +15,6 @@ const FUNCTION_BG_ACTIVE: Record<string, string> = {
   T: "rgba(59, 130, 246, 0.35)",
   SD: "rgba(34, 197, 94, 0.35)",
   D: "rgba(249, 115, 22, 0.35)",
-};
-
-const FUNCTION_BORDER: Record<string, string> = {
-  T: "var(--color-tonic)",
-  SD: "var(--color-subdominant)",
-  D: "var(--color-dominant)",
 };
 
 const FUNCTION_LABELS: Record<string, string> = {
@@ -44,32 +39,15 @@ export default function ProgressionChordStrip() {
 
   const steps = useMemo<StepInfo[]>(() => {
     if (!prog) return [];
-    const rootName = getNoteName(rootNote);
 
     return prog.steps.map((step) => {
-      const beats = step.beats ?? 4;
-
-      if (step.degree !== null && harmonicField[step.degree]) {
-        const chord = harmonicField[step.degree];
-        return {
-          label: step.label,
-          chordName: chord.chordName,
-          noteNames: chord.noteNames,
-          harmonicFunction: chord.harmonicFunction,
-          beats,
-        };
-      }
-
-      // Chromatic / custom chord
-      const notes = step.intervals
-        ? step.intervals.map((i) => (rootNote + i) % 12)
-        : [];
+      const resolved = resolveStep(step, harmonicField, rootNote);
       return {
         label: step.label,
-        chordName: step.label,
-        noteNames: notes.map((n) => getNoteName(n, rootName)),
-        harmonicFunction: null,
-        beats,
+        chordName: resolved.chordName,
+        noteNames: resolved.noteNames,
+        harmonicFunction: resolved.harmonicFunction,
+        beats: step.beats ?? 4,
       };
     });
   }, [prog, harmonicField, rootNote]);
@@ -102,7 +80,7 @@ export default function ProgressionChordStrip() {
         {steps.map((step, idx) => {
           const isActive = idx === activeStepIdx;
           const fn = step.harmonicFunction;
-          const borderColor = fn ? FUNCTION_BORDER[fn] : "var(--color-accent)";
+          const borderColor = fn ? FUNCTION_COLORS[fn] : "var(--color-accent)";
           const bg = isActive
             ? fn
               ? FUNCTION_BG_ACTIVE[fn]

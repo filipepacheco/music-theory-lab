@@ -11,12 +11,7 @@ import type { ProgressionStep } from '@/constants/progressions';
 import { getHarmonicField, getScaleNotes } from '@/utils/musicTheory';
 import { structureDocument } from '@/domain/structureDocument';
 import { savedLibrary } from '@/services/savedLibrary';
-
-const FUNCTION_COLORS: Record<string, string> = {
-  T: 'var(--color-tonic)',
-  SD: 'var(--color-subdominant)',
-  D: 'var(--color-dominant)',
-};
+import { FUNCTION_COLORS } from '@/constants/functionColors';
 
 export const useAppStore = create<AppState>((set, get) => ({
   rootNote: 0, // C

@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useSynth } from '@/hooks/useSynth';
 import { useMetronome } from '@/hooks/useMetronome';
 import { createBeatPlaybackEvents } from '@/domain/playbackSchedule';
+import { resolveStep } from '@/domain/stepResolution';
 
 export default function ProgressionExamples() {
   const selectChord = useAppStore((s) => s.selectChord);
@@ -80,27 +81,23 @@ export default function ProgressionExamples() {
         idx: number,
         scheduleTime: number,
       ) => {
-        const step = p.steps[idx];
-        if (step.degree !== null) {
-          const field = useAppStore.getState().harmonicField;
-          const chord = field[step.degree];
-          if (chord) {
-            playChord(chord.notes, 3, '2n', p.presetId, scheduleTime);
-          }
-          Tone.getDraw().schedule(() => {
-            setCurrentStep(idx);
-            selectChord(step.degree);
-          }, scheduleTime);
-        } else if (step.intervals) {
-          const rootNote = useAppStore.getState().rootNote;
-          const notes = step.intervals.map((i) => (rootNote + i) % 12);
-          playChord(notes, 3, '2n', p.presetId, scheduleTime);
-          Tone.getDraw().schedule(() => {
-            setCurrentStep(idx);
-            selectChord(null);
-            setHighlightedNotes(notes, 'var(--color-accent)');
-          }, scheduleTime);
+        const resolved = resolveStep(
+          p.steps[idx],
+          useAppStore.getState().harmonicField,
+          useAppStore.getState().rootNote,
+        );
+        if (resolved.notes.length > 0) {
+          playChord(resolved.notes, 3, '2n', p.presetId, scheduleTime);
         }
+        Tone.getDraw().schedule(() => {
+          setCurrentStep(idx);
+          if (resolved.degree !== null) {
+            selectChord(resolved.degree);
+          } else if (resolved.notes.length > 0) {
+            selectChord(null);
+            setHighlightedNotes(resolved.notes, 'var(--color-accent)');
+          }
+        }, scheduleTime);
       };
 
       onBeat((_beat, time) => {

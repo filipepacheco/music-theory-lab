@@ -1,13 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
-import { getNoteName } from "@/utils/noteHelpers";
-import type { HarmonicFunction } from "@/constants/harmonicFields";
-
-const FUNCTION_BORDER: Record<string, string> = {
-  T: "var(--color-tonic)",
-  SD: "var(--color-subdominant)",
-  D: "var(--color-dominant)",
-};
+import { resolveStep } from "@/domain/stepResolution";
+import { FUNCTION_COLORS } from "@/constants/functionColors";
 
 export default function ProgressionTimeline() {
   const customProgression = useAppStore((s) => s.customProgression);
@@ -18,7 +12,6 @@ export default function ProgressionTimeline() {
   const clearProgression = useAppStore((s) => s.clearProgression);
   const harmonicField = useAppStore((s) => s.harmonicField);
   const rootNote = useAppStore((s) => s.rootNote);
-  const rootName = getNoteName(rootNote);
 
   if (customProgression.length === 0) {
     return (
@@ -62,23 +55,9 @@ export default function ProgressionTimeline() {
       >
         <AnimatePresence mode="popLayout">
           {customProgression.map((step, idx) => {
-            let hFunc: HarmonicFunction | null = null;
-            let chordName = step.label;
-            let noteNames: string[] = [];
-
-            if (step.degree !== null && harmonicField[step.degree]) {
-              const chord = harmonicField[step.degree];
-              hFunc = chord.harmonicFunction;
-              chordName = chord.chordName;
-              noteNames = chord.noteNames;
-            } else if (step.intervals) {
-              noteNames = step.intervals.map((i) =>
-                getNoteName((rootNote + i) % 12, rootName),
-              );
-            }
-
-            const borderColor = hFunc
-              ? FUNCTION_BORDER[hFunc]
+            const resolved = resolveStep(step, harmonicField, rootNote);
+            const borderColor = resolved.harmonicFunction
+              ? FUNCTION_COLORS[resolved.harmonicFunction]
               : "var(--color-accent)";
             const beats = step.beats ?? 4;
 
@@ -110,10 +89,10 @@ export default function ProgressionTimeline() {
                   {step.label}
                 </span>
                 <span className="font-mono text-[10px] text-text-secondary">
-                  {chordName}
+                  {resolved.chordName}
                 </span>
                 <span className="font-mono text-[10px] text-text-muted">
-                  {noteNames.join(" ")}
+                  {resolved.noteNames.join(" ")}
                 </span>
 
                 {/* Beat controls */}

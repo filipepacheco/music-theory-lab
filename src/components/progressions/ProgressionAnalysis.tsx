@@ -1,17 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
+import { FUNCTION_COLORS } from "@/constants/functionColors";
 import type { HarmonicFunction } from "@/constants/harmonicFields";
 
 const FUNCTION_LABELS: Record<string, string> = {
   T: "Tonica",
   SD: "Subdominante",
   D: "Dominante",
-};
-
-const FUNCTION_COLORS: Record<string, string> = {
-  T: "var(--color-tonic)",
-  SD: "var(--color-subdominant)",
-  D: "var(--color-dominant)",
 };
 
 function analyzeProgression(
