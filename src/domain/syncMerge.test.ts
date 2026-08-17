@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { mergeLastWriteWins, mergeProgressions } from './savedLibrary';
-import type { SavedProgression } from './savedLibrary';
+import { mergeLastWriteWins, mergeProgressions } from './syncMerge';
+import type { SavedProgression } from './syncMerge';
 
 const progression = (id: string): SavedProgression => ({
   id,

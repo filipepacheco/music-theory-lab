@@ -15,10 +15,9 @@ import type {
   CloudSong,
   CloudStructure,
   SavedProgression,
-} from '@/domain/savedLibrary';
-export type { SavedProgression } from '@/domain/savedLibrary';
+} from '@/domain/syncMerge';
+export type { SavedProgression } from '@/domain/syncMerge';
 import { migrateStructureData, type LegacySection } from '@/domain/migrations';
-import { syncAll } from '@/services/sync';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,12 +72,16 @@ function saveToIDB(data: Uint8Array): Promise<void> {
 
 let db: Database | null = null;
 let initPromise: Promise<void> | null = null;
-let syncPromise: Promise<void> | null = null;
 
-function persist() {
+/** Export the database to IndexedDB (exposed for the sync merge's single flush). */
+export function persistDB() {
   if (!db) return;
   const data = db.export();
   saveToIDB(data);
+}
+
+function persist() {
+  persistDB();
 }
 
 // ---------------------------------------------------------------------------
@@ -173,25 +176,9 @@ export async function initDB(): Promise<void> {
       stmt.free();
       persist();
     }
-
-    // Background sync (does not block init)
-    syncPromise = syncAll({
-      getAllProgressions,
-      getAllSongs,
-      getAllStructures,
-      upsertProgressionLocal,
-      upsertSongLocal,
-      upsertStructureLocal,
-      persistDB: persist,
-    }).catch(() => {});
   })();
 
   return initPromise;
-}
-
-/** Resolves when background cloud sync is done (or immediately if no sync). */
-export function waitForSync(): Promise<void> {
-  return syncPromise ?? Promise.resolve();
 }
 
 export function getAllProgressions(
@@ -614,7 +601,7 @@ function getStructureById(id: string): SongStructure | null {
 // Upsert helpers (used by syncAll merge)
 // ---------------------------------------------------------------------------
 
-function upsertProgressionLocal(r: CloudProgression): void {
+export function upsertProgressionLocal(r: CloudProgression): void {
   if (!db) return;
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO saved_progressions
@@ -635,7 +622,7 @@ function upsertProgressionLocal(r: CloudProgression): void {
   stmt.free();
 }
 
-function upsertSongLocal(r: CloudSong): void {
+export function upsertSongLocal(r: CloudSong): void {
   if (!db) return;
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO songs
@@ -657,7 +644,7 @@ function upsertSongLocal(r: CloudSong): void {
   stmt.free();
 }
 
-function upsertStructureLocal(r: CloudStructure): void {
+export function upsertStructureLocal(r: CloudStructure): void {
   if (!db) return;
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO structures

@@ -6,12 +6,15 @@ import {
   getAllSongs,
   getAllStructures,
   initDB,
+  persistDB,
   saveProgression,
   saveSong,
   saveStructure,
   updateSong,
   updateStructure,
-  waitForSync,
+  upsertProgressionLocal,
+  upsertSongLocal,
+  upsertStructureLocal,
 } from '@/services/db';
 import {
   pushDeleteProgression,
@@ -20,6 +23,7 @@ import {
   pushProgression,
   pushSong,
   pushStructure,
+  syncAll,
 } from '@/services/sync';
 
 export type { SavedProgression } from '@/services/db';
@@ -27,7 +31,8 @@ export type { SavedProgression } from '@/services/db';
 /**
  * Every operation self-initializes the database, so callers never need to
  * know the initialization protocol. CRUD also fires a best-effort cloud
- * push; db.ts stays a pure persistence adapter.
+ * push; db.ts stays a pure persistence adapter. Initialize also kicks the
+ * one-shot background cloud sync.
  */
 async function withDb<T>(operation: () => T): Promise<T> {
   await initDB();
@@ -38,9 +43,35 @@ function pushAfter<T>(record: T | null, push: (record: T) => Promise<void>) {
   if (record) push(record).catch(() => {});
 }
 
+let syncPromise: Promise<void> | null = null;
+
+async function initialize(): Promise<void> {
+  await initDB();
+  if (!syncPromise) {
+    syncPromise = syncAll({
+      progressions: {
+        listLocal: getAllProgressions,
+        applyCloud: upsertProgressionLocal,
+        push: pushProgression,
+      },
+      songs: {
+        listLocal: getAllSongs,
+        applyCloud: upsertSongLocal,
+        push: pushSong,
+      },
+      structures: {
+        listLocal: getAllStructures,
+        applyCloud: upsertStructureLocal,
+        push: pushStructure,
+      },
+      persist: persistDB,
+    }).catch(() => {});
+  }
+}
+
 export const savedLibrary = {
-  initialize: initDB,
-  waitUntilSynchronized: waitForSync,
+  initialize,
+  waitUntilSynchronized: () => syncPromise ?? Promise.resolve(),
 
   progressions: {
     list: (mode?: 'major' | 'minor') =>
