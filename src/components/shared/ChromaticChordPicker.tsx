@@ -3,9 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NOTE_NAMES } from '@/constants/notes';
 import { CHORD_TYPES } from '@/constants/chords';
 import { CHROMATIC_CATEGORIES } from '@/constants/chromaticChords';
-import { getNoteName } from '@/utils/noteHelpers';
+import {
+  MAX_PROGRESSION_STEPS,
+  type ProgressionStep,
+} from '@/constants/progressions';
+import { getNoteName, getPreferredRootName } from '@/utils/noteHelpers';
 import { useAppStore } from '@/store/useAppStore';
 import { useSynth } from '@/hooks/useSynth';
+import {
+  buildCommonChromaticStep,
+  buildManualChromaticStep,
+} from '@/domain/chromaticStep';
 
 const CHORD_TYPE_IDS = [
   'major',
@@ -18,9 +26,20 @@ const CHORD_TYPE_IDS = [
   'halfDim7',
 ] as const;
 
-export default function ChromaticChordPicker() {
-  const addProgressionStep = useAppStore((s) => s.addProgressionStep);
-  const customProgression = useAppStore((s) => s.customProgression);
+interface ChromaticChordPickerProps {
+  stepCount: number;
+  onSelect: (step: ProgressionStep) => void;
+}
+
+/**
+ * Chromatic chord picker: manual root+type selection and pre-organized
+ * common chromatic chords. Builds steps via the chromatic-step
+ * construction module; callers only supply their add leaf.
+ */
+export default function ChromaticChordPicker({
+  stepCount,
+  onSelect,
+}: ChromaticChordPickerProps) {
   const rootNote = useAppStore((s) => s.rootNote);
   const { playChord } = useSynth();
 
@@ -28,31 +47,23 @@ export default function ChromaticChordPicker() {
   const [selectedRoot, setSelectedRoot] = useState<number | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  const rootName = getNoteName(rootNote);
+  const rootName = getPreferredRootName(rootNote);
+  const hasRoom = stepCount < MAX_PROGRESSION_STEPS;
 
   const handleRootClick = (noteIndex: number) => {
     setSelectedRoot(noteIndex === selectedRoot ? null : noteIndex);
   };
 
   const handleTypeClick = (chordTypeId: string) => {
-    if (selectedRoot === null) return;
-    if (customProgression.length >= 64) return;
+    if (selectedRoot === null || !hasRoom) return;
 
-    const chordType = CHORD_TYPES[chordTypeId];
-    const intervals = chordType.intervals.map(
-      (i) => (selectedRoot + i) % 12
+    const built = buildManualChromaticStep(
+      selectedRoot,
+      chordTypeId,
+      rootNote,
     );
-    const chordRootName = getNoteName(selectedRoot, rootName);
-    const label = `${chordRootName}${chordType.symbol}`;
-
-    playChord(intervals);
-    addProgressionStep({
-      degree: null,
-      label,
-      intervals: chordType.intervals.map(
-        (i) => (selectedRoot - rootNote + i + 12) % 12
-      ),
-    });
+    playChord(built.notes);
+    onSelect(built.step);
 
     setSelectedRoot(null);
   };
@@ -60,24 +71,18 @@ export default function ChromaticChordPicker() {
   const handleCommonChordClick = (
     chordLabel: string,
     rootOffset: number,
-    chordTypeId: string
+    chordTypeId: string,
   ) => {
-    if (customProgression.length >= 64) return;
+    if (!hasRoom) return;
 
-    const chordType = CHORD_TYPES[chordTypeId];
-    const chordRoot = (rootNote + rootOffset) % 12;
-    const intervals = chordType.intervals.map(
-      (i) => (chordRoot + i) % 12
+    const built = buildCommonChromaticStep(
+      chordLabel,
+      rootOffset,
+      chordTypeId,
+      rootNote,
     );
-
-    playChord(intervals);
-    addProgressionStep({
-      degree: null,
-      label: chordLabel,
-      intervals: chordType.intervals.map(
-        (i) => (rootOffset + i) % 12
-      ),
-    });
+    playChord(built.notes);
+    onSelect(built.step);
   };
 
   return (
@@ -145,7 +150,7 @@ export default function ChromaticChordPicker() {
                         const ct = CHORD_TYPES[typeId];
                         const chordRootName = getNoteName(
                           selectedRoot,
-                          rootName
+                          rootName,
                         );
                         return (
                           <button
@@ -166,7 +171,7 @@ export default function ChromaticChordPicker() {
               {/* Common chromatic chords */}
               <div>
                 <span className="text-[10px] text-text-muted block mb-1.5">
-                  Acordes comuns (na tonalidade de {getNoteName(rootNote)})
+                  Acordes comuns (na tonalidade de {getNoteName(rootNote, rootName)})
                 </span>
                 <div className="space-y-2">
                   {CHROMATIC_CATEGORIES.map((cat) => (
@@ -174,7 +179,7 @@ export default function ChromaticChordPicker() {
                       <button
                         onClick={() =>
                           setExpandedCategory(
-                            expandedCategory === cat.id ? null : cat.id
+                            expandedCategory === cat.id ? null : cat.id,
                           )
                         }
                         className="flex items-center gap-1 text-[11px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer mb-1"
@@ -213,7 +218,7 @@ export default function ChromaticChordPicker() {
                                       handleCommonChordClick(
                                         chord.label,
                                         chord.rootOffset,
-                                        chord.chordTypeId
+                                        chord.chordTypeId,
                                       )
                                     }
                                     className="px-2.5 py-1.5 rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent/20 hover:text-accent transition-all cursor-pointer"

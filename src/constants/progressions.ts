@@ -25,6 +25,9 @@ export interface ProgressionExample {
   bpm: number;
 }
 
+/** Custom progressions and song sections are capped at 64 steps. */
+export const MAX_PROGRESSION_STEPS = 64;
+
 export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
   {
     id: "cadencia-basica",
