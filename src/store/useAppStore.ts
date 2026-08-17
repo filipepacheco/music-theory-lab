@@ -10,8 +10,53 @@ import type {
 import type { ProgressionStep } from '@/constants/progressions';
 import { getHarmonicField, getScaleNotes } from '@/utils/musicTheory';
 import { structureDocument } from '@/domain/structureDocument';
+import { transcriptionDocument } from '@/domain/transcriptionDocument';
+import { appendStep, removeStep, setStepBeats } from '@/domain/stepList';
+import {
+  classifyScaleNotes,
+  type ScaleHighlightKind,
+} from '@/domain/scaleHighlights';
 import { savedLibrary } from '@/services/savedLibrary';
 import { FUNCTION_COLORS } from '@/constants/functionColors';
+
+const SCALE_HIGHLIGHT_COLORS: Record<ScaleHighlightKind, string> = {
+  a: 'var(--color-scale-a)',
+  b: 'var(--color-scale-b)',
+  shared: 'var(--color-scale-shared)',
+};
+
+function highlightFromScaleNotes(notesA: number[], notesB: number[] | null) {
+  const { notes, kinds } = classifyScaleNotes(notesA, notesB);
+  const colors: Record<number, string> = {};
+  kinds.forEach((kind, index) => {
+    colors[notes[index]] = SCALE_HIGHLIGHT_COLORS[kind];
+  });
+  return { highlightedNotes: notes, highlightColors: colors };
+}
+
+function applySongState(song: {
+  title: string;
+  artist: string;
+  key: number;
+  mode: 'major' | 'minor';
+  sections: SongSection[];
+  id: string | null;
+}) {
+  const isMinor = song.mode === 'minor';
+  return {
+    activeSongId: song.id,
+    songTitle: song.title,
+    songArtist: song.artist,
+    songSections: song.sections,
+    activeSectionIndex: 0,
+    rootNote: song.key,
+    isMinor,
+    harmonicField: getHarmonicField(song.key, isMinor),
+    selectedChordIndex: null,
+    highlightedNotes: [],
+    highlightColors: {},
+  };
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   rootNote: 0, // C
@@ -147,28 +192,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCurrentEighth: (eighth) => set({ currentEighth: eighth }),
   setPlayingProgression: (prog) => set({ playingProgression: prog }),
 
-  addProgressionStep: (step) => {
-    const { customProgression } = get();
-    if (customProgression.length >= 64) return;
-    set({ customProgression: [...customProgression, step] });
-  },
+  addProgressionStep: (step) =>
+    set({ customProgression: appendStep(get().customProgression, step) }),
 
-  removeProgressionStep: (index) => {
-    const { customProgression } = get();
-    set({
-      customProgression: customProgression.filter((_, i) => i !== index),
-    });
-  },
+  removeProgressionStep: (index) =>
+    set({ customProgression: removeStep(get().customProgression, index) }),
 
-  setProgressionStepBeats: (index, beats) => {
-    const { customProgression } = get();
-    const clamped = Math.max(0.5, Math.min(8, Math.round(beats * 2) / 2));
+  setProgressionStepBeats: (index, beats) =>
     set({
-      customProgression: customProgression.map((step, i) =>
-        i === index ? { ...step, beats: clamped } : step,
-      ),
-    });
-  },
+      customProgression: setStepBeats(get().customProgression, index, beats),
+    }),
 
   clearProgression: () => set({ customProgression: [] }),
 
@@ -186,34 +219,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const { rootNote, comparisonScaleId } = get();
     const notesA = getScaleNotes(rootNote, scaleId);
-    const colors: Record<number, string> = {};
-
-    if (comparisonScaleId) {
-      const notesB = getScaleNotes(rootNote, comparisonScaleId);
-      const setB = new Set(notesB);
-      const allNotes = [...new Set([...notesA, ...notesB])];
-      for (const n of allNotes) {
-        const inA = notesA.includes(n);
-        const inB = setB.has(n);
-        if (inA && inB) colors[n] = 'var(--color-scale-shared)';
-        else if (inA) colors[n] = 'var(--color-scale-a)';
-        else colors[n] = 'var(--color-scale-b)';
-      }
-      set({
-        selectedScaleId: scaleId,
-        highlightedNotes: allNotes,
-        highlightColors: colors,
-      });
-    } else {
-      for (const n of notesA) {
-        colors[n] = 'var(--color-scale-a)';
-      }
-      set({
-        selectedScaleId: scaleId,
-        highlightedNotes: notesA,
-        highlightColors: colors,
-      });
-    }
+    const notesB = comparisonScaleId
+      ? getScaleNotes(rootNote, comparisonScaleId)
+      : null;
+    set({
+      selectedScaleId: scaleId,
+      ...highlightFromScaleNotes(notesA, notesB),
+    });
   },
 
   setInstrumentsPanelOpen: (open) => set({ instrumentsPanelOpen: open }),
@@ -227,35 +239,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   // --- Transcription actions ---
 
   loadSong: (song: Song) =>
-    set({
-      activeSongId: song.id,
-      songTitle: song.title,
-      songArtist: song.artist,
-      songSections: song.sections,
-      activeSectionIndex: 0,
-      rootNote: song.key,
-      isMinor: song.mode === 'minor',
-      harmonicField: getHarmonicField(song.key, song.mode === 'minor'),
-      selectedChordIndex: null,
-      highlightedNotes: [],
-      highlightColors: {},
-    }),
+    set(
+      applySongState({
+        title: song.title,
+        artist: song.artist,
+        key: song.key,
+        mode: song.mode,
+        sections: song.sections,
+        id: song.id,
+      }),
+    ),
 
-  loadImportedSong: ({ title, artist, key, sections }) => {
-    const { isMinor } = get();
-    set({
-      activeSongId: null,
-      songTitle: title,
-      songArtist: artist,
-      songSections: sections,
-      activeSectionIndex: 0,
-      rootNote: key,
-      harmonicField: getHarmonicField(key, isMinor),
-      selectedChordIndex: null,
-      highlightedNotes: [],
-      highlightColors: {},
-    });
-  },
+  loadImportedSong: ({ title, artist, key, sections }) =>
+    set(
+      applySongState({
+        title,
+        artist,
+        key,
+        mode: get().isMinor ? 'minor' : 'major',
+        sections,
+        id: null,
+      }),
+    ),
 
   clearSong: () =>
     set({
@@ -270,54 +275,50 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSongArtist: (artist) => set({ songArtist: artist }),
 
   addSection: (type: SectionType, customLabel?: string) => {
-    const { songSections } = get();
-    const newSection: SongSection = {
-      id: crypto.randomUUID(),
+    const { songSections, activeSectionIndex } = get();
+    const next = transcriptionDocument.addSection(
+      { sections: songSections, activeSectionIndex },
       type,
       customLabel,
-      steps: [],
-    };
+    );
     set({
-      songSections: [...songSections, newSection],
-      activeSectionIndex: songSections.length,
+      songSections: next.sections,
+      activeSectionIndex: next.activeSectionIndex,
     });
   },
 
   removeSection: (index: number) => {
     const { songSections, activeSectionIndex } = get();
-    if (songSections.length <= 1) {
-      set({ songSections: [], activeSectionIndex: 0 });
-      return;
-    }
-    const updated = songSections.filter((_, i) => i !== index);
+    const next = transcriptionDocument.removeSection(
+      { sections: songSections, activeSectionIndex },
+      index,
+    );
     set({
-      songSections: updated,
-      activeSectionIndex: Math.min(activeSectionIndex, updated.length - 1),
+      songSections: next.sections,
+      activeSectionIndex: next.activeSectionIndex,
     });
   },
 
   setActiveSectionIndex: (index: number) => set({ activeSectionIndex: index }),
 
   addSongStep: (sectionIndex: number, step: ProgressionStep) => {
-    const { songSections } = get();
-    const section = songSections[sectionIndex];
-    if (!section || section.steps.length >= 64) return;
-    const updated = songSections.map((s, i) =>
-      i === sectionIndex ? { ...s, steps: [...s.steps, step] } : s,
+    const { songSections, activeSectionIndex } = get();
+    const next = transcriptionDocument.addStepToSection(
+      { sections: songSections, activeSectionIndex },
+      sectionIndex,
+      step,
     );
-    set({ songSections: updated });
+    set({ songSections: next.sections });
   },
 
   removeSongStep: (sectionIndex: number, stepIndex: number) => {
-    const { songSections } = get();
-    const section = songSections[sectionIndex];
-    if (!section) return;
-    const updated = songSections.map((s, i) =>
-      i === sectionIndex
-        ? { ...s, steps: s.steps.filter((_, si) => si !== stepIndex) }
-        : s,
+    const { songSections, activeSectionIndex } = get();
+    const next = transcriptionDocument.removeStepFromSection(
+      { sections: songSections, activeSectionIndex },
+      sectionIndex,
+      stepIndex,
     );
-    set({ songSections: updated });
+    set({ songSections: next.sections });
   },
 
   setSongStepBeats: (
@@ -325,21 +326,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     stepIndex: number,
     beats: number,
   ) => {
-    const { songSections } = get();
-    const section = songSections[sectionIndex];
-    if (!section) return;
-    const clamped = Math.max(0.5, Math.min(8, Math.round(beats * 2) / 2));
-    const updated = songSections.map((s, i) =>
-      i === sectionIndex
-        ? {
-            ...s,
-            steps: s.steps.map((step, si) =>
-              si === stepIndex ? { ...step, beats: clamped } : step,
-            ),
-          }
-        : s,
+    const { songSections, activeSectionIndex } = get();
+    const next = transcriptionDocument.setStepBeatsInSection(
+      { sections: songSections, activeSectionIndex },
+      sectionIndex,
+      stepIndex,
+      beats,
     );
-    set({ songSections: updated });
+    set({ songSections: next.sections });
   },
 
   setSongStepConfidence: (
@@ -347,20 +341,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     stepIndex: number,
     confidence,
   ) => {
-    const { songSections } = get();
-    const section = songSections[sectionIndex];
-    if (!section) return;
-    const updated = songSections.map((s, i) =>
-      i === sectionIndex
-        ? {
-            ...s,
-            steps: s.steps.map((step, si) =>
-              si === stepIndex ? { ...step, confidence } : step,
-            ),
-          }
-        : s,
+    const { songSections, activeSectionIndex } = get();
+    const next = transcriptionDocument.setStepConfidenceInSection(
+      { sections: songSections, activeSectionIndex },
+      sectionIndex,
+      stepIndex,
+      confidence,
     );
-    set({ songSections: updated });
+    set({ songSections: next.sections });
   },
 
   // --- Practice actions ---
@@ -629,14 +617,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { selectedScaleId, rootNote } = get();
       if (selectedScaleId) {
         const notesA = getScaleNotes(rootNote, selectedScaleId);
-        const colors: Record<number, string> = {};
-        for (const n of notesA) {
-          colors[n] = 'var(--color-scale-a)';
-        }
         set({
           comparisonScaleId: null,
-          highlightedNotes: notesA,
-          highlightColors: colors,
+          ...highlightFromScaleNotes(notesA, null),
         });
       } else {
         set({
@@ -654,20 +637,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const notesA = getScaleNotes(rootNote, selectedScaleId);
     const notesB = getScaleNotes(rootNote, scaleId);
-    const setA = new Set(notesA);
-    const allNotes = [...new Set([...notesA, ...notesB])];
-    const colors: Record<number, string> = {};
-    for (const n of allNotes) {
-      const inA = setA.has(n);
-      const inB = notesB.includes(n);
-      if (inA && inB) colors[n] = 'var(--color-scale-shared)';
-      else if (inA) colors[n] = 'var(--color-scale-a)';
-      else colors[n] = 'var(--color-scale-b)';
-    }
     set({
       comparisonScaleId: scaleId,
-      highlightedNotes: allNotes,
-      highlightColors: colors,
+      ...highlightFromScaleNotes(notesA, notesB),
     });
   },
 }));
