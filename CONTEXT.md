@@ -36,6 +36,14 @@ The browser transcription flow accepts GP7 `.gp` files, lets the user choose the
 The editable song arrangement made of ordered sections and their bars. Use this term for the arrangement being recorded, reorganized, or exported.
 _Avoid_: structure state, arrangement data
 
+**Transcription document**:
+The working song being transcribed or reviewed — its ordered sections, the
+steps inside each section, and the active section index. The transcription
+module's counterpart of the [[structure-document]]; every mutation goes through
+the `transcriptionDocument` module. Step lists also share the cap-and-clamp
+rules of the progression builder.
+_Avoid_: song state, transcription screen
+
 **Quiz session**:
 One active run of music-theory questions, including its current question, answer result, score, streak, and replay state.
 _Avoid_: quiz state, quiz screen
