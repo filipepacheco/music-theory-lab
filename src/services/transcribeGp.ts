@@ -7,9 +7,17 @@
 // The v1 track-sourcing policy is literal track names, per CONTEXT.md — pass
 // different names only when the policy changes.
 //
+// The file is parsed exactly once: `inspectGp` returns the parsed handle
+// inside the inspection, and `transcribeGp` consumes that handle, so the
+// two-phase UI flow never re-parses the same bytes.
+//
 // See the map: https://github.com/filipepacheco/music-theory-lab/issues/9
 
-import { parseGpFile, GpParseError } from '@/services/gpFile';
+import {
+  parseGpFile,
+  GpParseError,
+  type GpFile,
+} from '@/services/gpFile';
 import { matchBar, chordLabel, type BarChordResult } from '@/services/gpChords';
 
 /**
@@ -56,6 +64,28 @@ export interface GpInspection {
   trackNames: string[];
   masterBarCount: number;
   chordDictionaryFound: boolean;
+  /** The parsed file, kept so transcription reuses this parse. */
+  parsed: GpFile;
+}
+
+export interface TrackDefaults {
+  harmonyTrackName: string;
+  rootTrackName: string;
+}
+
+/**
+ * v1 defaulting policy: prefer the literal default track names when the
+ * file has them; otherwise fall back to the first (harmony) and second or
+ * first (root) tracks.
+ */
+export function defaultTrackNames(trackNames: string[]): TrackDefaults {
+  const harmonyTrackName = trackNames.includes(DEFAULT_HARMONY_TRACK_NAME)
+    ? DEFAULT_HARMONY_TRACK_NAME
+    : trackNames[0];
+  const rootTrackName = trackNames.includes(DEFAULT_ROOT_TRACK_NAME)
+    ? DEFAULT_ROOT_TRACK_NAME
+    : (trackNames[1] ?? trackNames[0]);
+  return { harmonyTrackName, rootTrackName };
 }
 
 export function inspectGp(data: Uint8Array): GpInspection {
@@ -65,14 +95,15 @@ export function inspectGp(data: Uint8Array): GpInspection {
     trackNames: parsed.trackNames,
     masterBarCount: parsed.masterBarCount,
     chordDictionaryFound: parsed.chordDictionaryFound,
+    parsed,
   };
 }
 
 export function transcribeGp(
-  data: Uint8Array,
+  inspection: GpInspection,
   options: TranscribeOptions = {},
 ): GpTranscription {
-  const parsed = parseGpFile(data);
+  const parsed = inspection.parsed;
   const harmonyTrackName =
     options.harmonyTrackName ?? DEFAULT_HARMONY_TRACK_NAME;
   const rootTrackName = options.rootTrackName ?? DEFAULT_ROOT_TRACK_NAME;

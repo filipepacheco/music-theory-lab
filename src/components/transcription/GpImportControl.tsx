@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { mapGpTranscription } from '@/domain/gpImport';
 import {
-  DEFAULT_HARMONY_TRACK_NAME,
-  DEFAULT_ROOT_TRACK_NAME,
+  defaultTrackNames,
   inspectGp,
   transcribeGp,
+  type GpInspection,
 } from '@/services/transcribeGp';
-import { GpParseError } from '@/services/gpFile';
+import { gpParseErrorMessage } from '@/services/gpFile';
 import { useAppStore } from '@/store/useAppStore';
 
 interface ImportSummary {
@@ -15,43 +15,22 @@ interface ImportSummary {
   silentBars: number;
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof GpParseError) {
-    switch (error.kind) {
-      case 'legacy-binary':
-        return 'Este arquivo e um GP3/GP4/GP5. No momento, apenas GP7 (.gp) e aceito.';
-      case 'gpx-container':
-        return 'Este arquivo e um GP6 (.gpx). No momento, apenas GP7 (.gp) e aceito.';
-      case 'not-a-zip':
-        return 'O arquivo nao e um pacote Guitar Pro GP7 valido.';
-      case 'not-a-gp-file':
-        return 'O pacote nao contem Content/score.gpif.';
-      case 'missing-track':
-        return error.message;
-      case 'corrupt':
-        return 'Nao foi possivel ler o XML interno do arquivo Guitar Pro.';
-    }
-  }
-  return 'Nao foi possivel importar este arquivo Guitar Pro.';
-}
-
 function fileTitle(fileName: string): string {
   return fileName.replace(/\.gp$/i, '') || 'Transcricao importada';
 }
 
 export default function GpImportControl() {
   const loadImportedSong = useAppStore((state) => state.loadImportedSong);
-  const [fileData, setFileData] = useState<Uint8Array | null>(null);
+  const [inspection, setInspection] = useState<GpInspection | null>(null);
   const [fileName, setFileName] = useState('');
-  const [trackNames, setTrackNames] = useState<string[]>([]);
   const [harmonyTrackName, setHarmonyTrackName] = useState('');
   const [rootTrackName, setRootTrackName] = useState('');
-  const [masterBarCount, setMasterBarCount] = useState(0);
-  const [hasChordDictionary, setHasChordDictionary] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+
+  const trackNames = inspection?.trackNames ?? [];
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -64,46 +43,33 @@ export default function GpImportControl() {
     setSummary(null);
     try {
       const data = new Uint8Array(await file.arrayBuffer());
-      const inspection = inspectGp(data);
-      if (inspection.trackNames.length === 0) {
+      const nextInspection = inspectGp(data);
+      if (nextInspection.trackNames.length === 0) {
         throw new Error('O arquivo nao possui faixas para analisar.');
       }
 
-      const defaultHarmony = inspection.trackNames.includes(
-        DEFAULT_HARMONY_TRACK_NAME,
-      )
-        ? DEFAULT_HARMONY_TRACK_NAME
-        : inspection.trackNames[0];
-      const defaultRoot = inspection.trackNames.includes(
-        DEFAULT_ROOT_TRACK_NAME,
-      )
-        ? DEFAULT_ROOT_TRACK_NAME
-        : (inspection.trackNames[1] ?? inspection.trackNames[0]);
+      const defaults = defaultTrackNames(nextInspection.trackNames);
 
-      setFileData(data);
+      setInspection(nextInspection);
       setFileName(file.name);
-      setTrackNames(inspection.trackNames);
-      setHarmonyTrackName(defaultHarmony);
-      setRootTrackName(defaultRoot);
-      setMasterBarCount(inspection.masterBarCount);
-      setHasChordDictionary(inspection.chordDictionaryFound);
+      setHarmonyTrackName(defaults.harmonyTrackName);
+      setRootTrackName(defaults.rootTrackName);
     } catch (readError) {
-      setFileData(null);
+      setInspection(null);
       setFileName('');
-      setTrackNames([]);
-      setError(errorMessage(readError));
+      setError(gpParseErrorMessage(readError));
     } finally {
       setIsReading(false);
     }
   };
 
   const handleImport = () => {
-    if (!fileData || !harmonyTrackName || !rootTrackName) return;
+    if (!inspection || !harmonyTrackName || !rootTrackName) return;
 
     setIsImporting(true);
     setError(null);
     try {
-      const transcription = transcribeGp(fileData, {
+      const transcription = transcribeGp(inspection, {
         harmonyTrackName,
         rootTrackName,
       });
@@ -123,7 +89,7 @@ export default function GpImportControl() {
         silentBars: imported.silentBars,
       });
     } catch (importError) {
-      setError(errorMessage(importError));
+      setError(gpParseErrorMessage(importError));
     } finally {
       setIsImporting(false);
     }
@@ -156,7 +122,7 @@ export default function GpImportControl() {
         <div className="space-y-3">
           <div className="text-xs text-text-secondary">
             <span className="font-medium text-text-primary">{fileName}</span> ·{' '}
-            {masterBarCount} compassos
+            {inspection?.masterBarCount} compassos
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -204,7 +170,7 @@ export default function GpImportControl() {
               {isImporting ? 'Importando...' : 'Carregar transcricao'}
             </button>
             <span className="text-[10px] text-text-muted">
-              {hasChordDictionary
+              {inspection?.chordDictionaryFound
                 ? 'O arquivo possui nomes de acordes anotados; a analise por notas continua disponivel.'
                 : 'Os acordes serao inferidos pelas notas das faixas selecionadas.'}
             </span>

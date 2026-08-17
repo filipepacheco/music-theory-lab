@@ -46,6 +46,27 @@ export class GpParseError extends Error {
   }
 }
 
+/** User-facing (pt-BR) message for a GP import failure, keyed by error kind. */
+export function gpParseErrorMessage(error: unknown): string {
+  if (error instanceof GpParseError) {
+    switch (error.kind) {
+      case 'legacy-binary':
+        return 'Este arquivo e um GP3/GP4/GP5. No momento, apenas GP7 (.gp) e aceito.';
+      case 'gpx-container':
+        return 'Este arquivo e um GP6 (.gpx). No momento, apenas GP7 (.gp) e aceito.';
+      case 'not-a-zip':
+        return 'O arquivo nao e um pacote Guitar Pro GP7 valido.';
+      case 'not-a-gp-file':
+        return 'O pacote nao contem Content/score.gpif.';
+      case 'missing-track':
+        return error.message;
+      case 'corrupt':
+        return 'Nao foi possivel ler o XML interno do arquivo Guitar Pro.';
+    }
+  }
+  return 'Nao foi possivel importar este arquivo Guitar Pro.';
+}
+
 export interface BarPitches {
   barIndex: number;
   track: string;
