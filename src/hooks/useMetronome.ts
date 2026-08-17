@@ -28,7 +28,7 @@ export function useMetronome() {
 
   const loopRef = useRef<Tone.Loop | null>(null);
   const beatRef = useRef(0);
-  const onBeatRef = useRef<BeatCallback | null>(null);
+  const listenersRef = useRef<Set<BeatCallback>>(new Set());
 
   // Keep Transport BPM in sync
   useEffect(() => {
@@ -62,8 +62,8 @@ export function useMetronome() {
         clickLow.triggerAttackRelease("C4", "32n", time);
       }
 
-      // Fire audio callback directly in the loop for precise timing
-      onBeatRef.current?.(beat, time);
+      // Fire audio callbacks directly in the loop for precise timing
+      listenersRef.current.forEach((cb) => cb(beat, time));
 
       // Update UI on the main thread (visual only)
       Tone.getDraw().schedule(() => {
@@ -101,9 +101,13 @@ export function useMetronome() {
     }
   }, [isMetronomeOn, start, stop]);
 
-  // Register a callback for measure boundaries (beat 0)
-  const onBeat = useCallback((cb: BeatCallback | null) => {
-    onBeatRef.current = cb;
+  // Register a beat callback. Returns an unsubscribe function; the
+  // metronome supports any number of concurrent listeners.
+  const onBeat = useCallback((cb: BeatCallback) => {
+    listenersRef.current.add(cb);
+    return () => {
+      listenersRef.current.delete(cb);
+    };
   }, []);
 
   // Cleanup on unmount
