@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   DndContext,
@@ -39,11 +39,6 @@ export default function StructureModule() {
   const addStructureSection = useAppStore((s) => s.addStructureSection);
   const moveBarToSection = useAppStore((s) => s.moveBarToSection);
   const reorderStructureSection = useAppStore((s) => s.reorderStructureSection);
-  const loadStructures = useAppStore((s) => s.loadStructures);
-
-  useEffect(() => {
-    loadStructures();
-  }, [loadStructures]);
 
   const [dragging, setDragging] = useState<DragItem | null>(null);
   const [newSectionName, setNewSectionName] = useState('');

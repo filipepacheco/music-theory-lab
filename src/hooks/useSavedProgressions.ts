@@ -1,76 +1,48 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { savedLibrary, type SavedProgression } from '@/services/savedLibrary';
+import { useMemo } from 'react';
+import { useCollection } from '@/hooks/useCollection';
+import { savedLibrary } from '@/services/savedLibrary';
 import type { ProgressionStep } from '@/constants/progressions';
 
+export type ProgressionInput = {
+  name: string;
+  description: string;
+  steps: ProgressionStep[];
+  mode: 'major' | 'minor';
+  presetId: string;
+  bpm: number;
+};
+
+const progressionLabels = {
+  load: 'Erro ao carregar progressoes',
+  save: 'Erro ao salvar progressao',
+  update: 'Erro ao atualizar progressao',
+  remove: 'Erro ao remover progressao',
+};
+
 export function useSavedProgressions(mode?: 'major' | 'minor') {
-  const [progressions, setProgressions] = useState<SavedProgression[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const cancelled = useRef(false);
-
-  const refresh = useCallback(async () => {
-    await savedLibrary.initialize();
-    if (cancelled.current) return;
-    setProgressions(savedLibrary.progressions.list(mode));
-    savedLibrary.waitUntilSynchronized().then(() => {
-      if (!cancelled.current) {
-        setProgressions(savedLibrary.progressions.list(mode));
-      }
-    });
-  }, [mode]);
-
-  useEffect(() => {
-    cancelled.current = false;
-    setIsLoading(true);
-    setError(null);
-    refresh()
-      .catch(() => {
-        if (!cancelled.current) setError('Erro ao carregar progressoes');
-      })
-      .finally(() => {
-        if (!cancelled.current) setIsLoading(false);
-      });
-    return () => {
-      cancelled.current = true;
-    };
-  }, [refresh]);
-
-  const save = useCallback(
-    async (prog: {
-      name: string;
-      description: string;
-      steps: ProgressionStep[];
-      mode: 'major' | 'minor';
-      presetId: string;
-      bpm: number;
-    }) => {
-      try {
-        await savedLibrary.initialize();
-        savedLibrary.progressions.save(prog);
-        if (!cancelled.current) {
-          setProgressions(savedLibrary.progressions.list(mode));
-        }
-      } catch {
-        throw new Error('Erro ao salvar progressao');
-      }
-    },
+  const collection = useMemo(
+    () => ({
+      list: () => savedLibrary.progressions.list(mode),
+      save: (prog: ProgressionInput) => savedLibrary.progressions.save(prog),
+      remove: (id: string) => savedLibrary.progressions.remove(id),
+    }),
     [mode],
   );
 
-  const remove = useCallback(
-    async (id: string) => {
-      try {
-        await savedLibrary.initialize();
-        savedLibrary.progressions.remove(id);
-        if (!cancelled.current) {
-          setProgressions(savedLibrary.progressions.list(mode));
-        }
-      } catch {
-        throw new Error('Erro ao remover progressao');
-      }
-    },
-    [mode],
+  const { items, isLoading, error, save, remove } = useCollection(
+    collection,
+    progressionLabels,
   );
 
-  return { progressions, isLoading, error, save, remove };
+  const saveProgression = async (prog: ProgressionInput): Promise<void> => {
+    await save(prog);
+  };
+
+  return {
+    progressions: items,
+    isLoading,
+    error,
+    save: saveProgression,
+    remove,
+  };
 }

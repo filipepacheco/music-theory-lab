@@ -16,7 +16,6 @@ import {
   classifyScaleNotes,
   type ScaleHighlightKind,
 } from '@/domain/scaleHighlights';
-import { savedLibrary } from '@/services/savedLibrary';
 import { FUNCTION_COLORS } from '@/constants/functionColors';
 
 const SCALE_HIGHLIGHT_COLORS: Record<ScaleHighlightKind, string> = {
@@ -100,8 +99,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   structureBpm: 120,
   activeTimeSignature: '4/4' as TimeSignature,
   focusedSectionId: null,
-  savedStructures: [],
-  structuresLoading: true,
 
   setRootNote: (note) => {
     const { isMinor } = get();
@@ -551,66 +548,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // --- Saved structures actions ---
 
-  loadStructures: () => {
-    const { savedStructures, structuresLoading } = get();
-    if (savedStructures.length > 0 && !structuresLoading) return;
-
-    set({ structuresLoading: true });
-    savedLibrary
-      .initialize()
-      .then(() => {
-        set({ savedStructures: savedLibrary.structures.list() });
-        // Re-read after cloud sync merges remote data. Deliberately not
-        // chained into the outer promise: the loading flag must clear on the
-        // first read, not wait for the network.
-        savedLibrary
-          .waitUntilSynchronized()
-          .then(() => set({ savedStructures: savedLibrary.structures.list() }))
-          .catch(() => {
-            // Sync merge failed; the first read already populated the list.
-          });
-      })
-      // DB unavailable (IndexedDB blocked in private browsing, quota
-      // exceeded, WASM load failure). Degrade to an empty list rather than
-      // an unhandled rejection - finally() still clears the loading flag,
-      // so the UI settles on "no structures" instead of a stuck spinner.
-      .catch(() => {})
-      .finally(() => set({ structuresLoading: false }));
-  },
-
-  createStructure: async (structure) => {
-    try {
-      await savedLibrary.initialize();
-      const id = savedLibrary.structures.save(structure);
-      set({
-        savedStructures: savedLibrary.structures.list(),
-        activeStructureId: id,
-      });
-      return id;
-    } catch {
-      throw new Error('Erro ao salvar estrutura');
-    }
-  },
-
-  updateStructureRecord: async (id, updates) => {
-    try {
-      await savedLibrary.initialize();
-      savedLibrary.structures.update(id, updates);
-      set({ savedStructures: savedLibrary.structures.list() });
-    } catch {
-      throw new Error('Erro ao atualizar estrutura');
-    }
-  },
-
-  removeStructureRecord: async (id) => {
-    try {
-      await savedLibrary.initialize();
-      savedLibrary.structures.remove(id);
-      set({ savedStructures: savedLibrary.structures.list() });
-    } catch {
-      throw new Error('Erro ao remover estrutura');
-    }
-  },
+  setActiveStructureId: (id) => set({ activeStructureId: id }),
 
   setComparisonScale: (scaleId) => {
     if (scaleId === null) {

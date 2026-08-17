@@ -137,10 +137,6 @@ export interface AppState {
   activeTimeSignature: TimeSignature;
   focusedSectionId: string | null;
 
-  // Saved structures (persisted list)
-  savedStructures: SongStructure[];
-  structuresLoading: boolean;
-
   // Actions
   setRootNote: (note: number) => void;
   setIsMinor: (isMinor: boolean) => void;
@@ -227,23 +223,5 @@ export interface AppState {
   clearStructure: () => void;
 
   // Saved structures actions
-  loadStructures: () => void;
-  createStructure: (structure: {
-    title: string;
-    artist: string;
-    bpm: number;
-    bars: StructureBar[];
-    sections: StructureSection[];
-  }) => Promise<string>;
-  updateStructureRecord: (
-    id: string,
-    updates: Partial<{
-      title: string;
-      artist: string;
-      bpm: number;
-      bars: StructureBar[];
-      sections: StructureSection[];
-    }>,
-  ) => Promise<void>;
-  removeStructureRecord: (id: string) => Promise<void>;
+  setActiveStructureId: (id: string | null) => void;
 }

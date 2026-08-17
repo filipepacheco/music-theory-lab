@@ -17,17 +17,8 @@ import type {
   SavedProgression,
 } from '@/domain/savedLibrary';
 export type { SavedProgression } from '@/domain/savedLibrary';
-import { STRUCTURE_PALETTE } from '@/constants/structureColors';
-import { SECTION_LABELS, SECTION_COLORS } from '@/constants/songSections';
-import {
-  pushProgression,
-  pushSong,
-  pushStructure,
-  pushDeleteProgression,
-  pushDeleteSong,
-  pushDeleteStructure,
-  syncAll,
-} from '@/services/sync';
+import { migrateStructureData, type LegacySection } from '@/domain/migrations';
+import { syncAll } from '@/services/sync';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -241,8 +232,8 @@ export function saveProgression(prog: {
   mode: 'major' | 'minor';
   presetId: string;
   bpm: number;
-}): void {
-  if (!db) return;
+}): SavedProgression | null {
+  if (!db) return null;
 
   const id = crypto.randomUUID();
   const stmt = db.prepare(
@@ -264,9 +255,7 @@ export function saveProgression(prog: {
   }
   persist();
 
-  // Fire-and-forget cloud sync
-  const saved = getProgressionById(id);
-  if (saved) pushProgression(saved).catch(() => {});
+  return getProgressionById(id);
 }
 
 export function deleteProgression(id: string): void {
@@ -280,9 +269,6 @@ export function deleteProgression(id: string): void {
     stmt.free();
   }
   persist();
-
-  // Fire-and-forget cloud sync
-  pushDeleteProgression(id).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
@@ -322,8 +308,8 @@ export function saveSong(song: {
   originalBpm: number;
   presetId: string;
   sections: SongSection[];
-}): string {
-  if (!db) return '';
+}): Song | null {
+  if (!db) return null;
 
   const id = crypto.randomUUID();
   const stmt = db.prepare(
@@ -346,11 +332,7 @@ export function saveSong(song: {
   }
   persist();
 
-  // Fire-and-forget cloud sync
-  const saved = getSongById(id);
-  if (saved) pushSong(saved).catch(() => {});
-
-  return id;
+  return getSongById(id);
 }
 
 export function updateSong(
@@ -364,8 +346,8 @@ export function updateSong(
     presetId: string;
     sections: SongSection[];
   }>,
-): void {
-  if (!db) return;
+): Song | null {
+  if (!db) return null;
 
   const fields: string[] = [];
   const values: (string | number)[] = [];
@@ -399,7 +381,7 @@ export function updateSong(
     values.push(JSON.stringify(updates.sections));
   }
 
-  if (fields.length === 0) return;
+  if (fields.length === 0) return null;
 
   fields.push("updated_at = datetime('now')");
   values.push(id);
@@ -412,9 +394,7 @@ export function updateSong(
   }
   persist();
 
-  // Fire-and-forget cloud sync
-  const saved = getSongById(id);
-  if (saved) pushSong(saved).catch(() => {});
+  return getSongById(id);
 }
 
 export function deleteSong(id: string): void {
@@ -426,65 +406,11 @@ export function deleteSong(id: string): void {
     stmt.free();
   }
   persist();
-
-  // Fire-and-forget cloud sync
-  pushDeleteSong(id).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
 // Structures CRUD
 // ---------------------------------------------------------------------------
-
-/** Migrate legacy section format (type+customLabel) to new (name+color) */
-interface LegacySection {
-  id: string;
-  type?: string;
-  customLabel?: string;
-  name?: string;
-  color?: string;
-  barIds: string[];
-  repeatOf?: string;
-  comment?: string;
-}
-
-function migrateSection(raw: LegacySection): StructureSection {
-  if (raw.name !== undefined && raw.color !== undefined) {
-    return raw as StructureSection;
-  }
-  const sectionType = raw.type ?? 'custom';
-  return {
-    id: raw.id,
-    name:
-      sectionType === 'custom' && raw.customLabel
-        ? raw.customLabel
-        : (SECTION_LABELS[sectionType as keyof typeof SECTION_LABELS] ??
-          sectionType),
-    color:
-      SECTION_COLORS[sectionType as keyof typeof SECTION_COLORS] ??
-      STRUCTURE_PALETTE[0],
-    barIds: raw.barIds,
-    repeatOf: raw.repeatOf,
-    comment: raw.comment,
-  };
-}
-
-function migrateStructureData(
-  bars: StructureBar[],
-  rawSections: LegacySection[],
-): { bars: StructureBar[]; sections: StructureSection[] } {
-  const sections = rawSections.map(migrateSection);
-  const assignedIds = new Set(sections.flatMap((s) => s.barIds));
-  const unassigned = bars.filter((b) => !assignedIds.has(b.id));
-  if (unassigned.length > 0) {
-    sections.push({
-      id: crypto.randomUUID(),
-      name: 'Sem secao',
-      color: '#9ca3af',
-      barIds: unassigned.map((b) => b.id),
-    });
-  }
-  return { bars, sections };
-}
 
 export function getAllStructures(): SongStructure[] {
   if (!db) return [];
@@ -518,8 +444,8 @@ export function saveStructure(structure: {
   bpm: number;
   bars: StructureBar[];
   sections: StructureSection[];
-}): string {
-  if (!db) return '';
+}): SongStructure | null {
+  if (!db) return null;
 
   const id = crypto.randomUUID();
   const stmt = db.prepare(
@@ -540,11 +466,7 @@ export function saveStructure(structure: {
   }
   persist();
 
-  // Fire-and-forget cloud sync
-  const saved = getStructureById(id);
-  if (saved) pushStructure(saved).catch(() => {});
-
-  return id;
+  return getStructureById(id);
 }
 
 export function updateStructure(
@@ -556,8 +478,8 @@ export function updateStructure(
     bars: StructureBar[];
     sections: StructureSection[];
   }>,
-): void {
-  if (!db) return;
+): SongStructure | null {
+  if (!db) return null;
 
   const fields: string[] = [];
   const values: (string | number)[] = [];
@@ -583,7 +505,7 @@ export function updateStructure(
     values.push(JSON.stringify(updates.sections));
   }
 
-  if (fields.length === 0) return;
+  if (fields.length === 0) return null;
 
   fields.push("updated_at = datetime('now')");
   values.push(id);
@@ -598,9 +520,7 @@ export function updateStructure(
   }
   persist();
 
-  // Fire-and-forget cloud sync
-  const saved = getStructureById(id);
-  if (saved) pushStructure(saved).catch(() => {});
+  return getStructureById(id);
 }
 
 export function deleteStructure(id: string): void {
@@ -612,9 +532,6 @@ export function deleteStructure(id: string): void {
     stmt.free();
   }
   persist();
-
-  // Fire-and-forget cloud sync
-  pushDeleteStructure(id).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------

@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
+import { useStructures } from '@/hooks/useStructures';
 
 export default function SaveStructureButton() {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
+  const setActiveStructureId = useAppStore((s) => s.setActiveStructureId);
   const structureTitle = useAppStore((s) => s.structureTitle);
   const structureArtist = useAppStore((s) => s.structureArtist);
   const structureBpm = useAppStore((s) => s.structureBpm);
   const structureBars = useAppStore((s) => s.structureBars);
   const structureSections = useAppStore((s) => s.structureSections);
-  const createStructure = useAppStore((s) => s.createStructure);
-  const updateStructureRecord = useAppStore((s) => s.updateStructureRecord);
+  const { save, update } = useStructures();
 
   const [saving, setSaving] = useState(false);
 
@@ -33,9 +34,10 @@ export default function SaveStructureButton() {
 
     try {
       if (activeStructureId) {
-        await updateStructureRecord(activeStructureId, data);
+        await update(activeStructureId, data);
       } else {
-        await createStructure(data);
+        const id = await save(data);
+        if (id) setActiveStructureId(id);
       }
     } finally {
       setSaving(false);
