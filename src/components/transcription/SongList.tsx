@@ -60,7 +60,7 @@ export default function SongList() {
                       color: SECTION_COLORS[sec.type],
                     }}
                   >
-                    {sec.type}
+                    {sec.customLabel || sec.type}
                   </span>
                 ))}
               </div>

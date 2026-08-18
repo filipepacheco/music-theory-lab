@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { getNoteName } from '@/utils/noteHelpers';
-import GpImportControl from './GpImportControl';
+import GpImportPanel from './GpImportPanel';
 import TranscriptionChordPicker from './TranscriptionChordPicker';
 import TranscriptionReviewWorkspace from './TranscriptionReviewWorkspace';
 import SongPlaybackControls from './SongPlaybackControls';
@@ -102,7 +102,7 @@ export default function TranscriptionModule() {
             <HearKeyButton />
           </div>
 
-          <GpImportControl />
+          <GpImportPanel />
 
           <TranscriptionReviewWorkspace />
 
