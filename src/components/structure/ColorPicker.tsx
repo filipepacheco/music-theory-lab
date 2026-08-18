@@ -49,7 +49,7 @@ export default function ColorPicker({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.12 }}
-            className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2 bg-bg-card border border-border-default rounded-lg p-2.5 shadow-lg"
+            className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2 bg-bg-card border border-border-default rounded-button p-2.5 shadow-lg"
           >
             <div className="grid grid-cols-6 gap-1.5">
               {STRUCTURE_PALETTE.map((color) => (

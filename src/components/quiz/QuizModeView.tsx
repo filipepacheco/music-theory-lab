@@ -65,7 +65,7 @@ export default function QuizModeView({ quiz, config }: QuizModeViewProps) {
           )}
           <button
             onClick={quiz.newQuestion}
-            className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)] cursor-pointer"
+            className="px-6 py-2.5 rounded-button text-sm font-semibold bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)] cursor-pointer"
           >
             Comecar
           </button>

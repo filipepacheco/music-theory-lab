@@ -33,7 +33,7 @@ export default function StructureList() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => loadStructure(structure)}
-              className={`group relative text-left px-4 py-3 rounded-lg border transition-all cursor-pointer ${
+              className={`group relative text-left px-4 py-3 rounded-button border transition-all cursor-pointer ${
                 isActive
                   ? 'border-accent bg-accent/10'
                   : 'border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)]'

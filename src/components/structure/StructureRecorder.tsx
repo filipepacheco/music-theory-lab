@@ -19,7 +19,7 @@ export default function StructureRecorder() {
           <span className="text-xs text-text-secondary font-medium">
             Compasso:
           </span>
-          <div className="flex gap-1 bg-bg-tertiary/50 rounded-lg p-1">
+          <div className="flex gap-1 bg-bg-tertiary/50 rounded-button p-1">
             {TIME_SIGNATURES.map((ts) => (
               <button
                 key={ts}
@@ -43,7 +43,7 @@ export default function StructureRecorder() {
             if (focusedSectionId) addBarToSection(focusedSectionId);
           }}
           disabled={!focusedSectionId}
-          className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-button text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           + Compasso
         </motion.button>

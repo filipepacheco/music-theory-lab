@@ -142,7 +142,7 @@ export default function StructureModule() {
                     if (e.key === 'Enter') handleAddSection();
                   }}
                   placeholder="Nome da secao..."
-                  className="bg-bg-tertiary/50 border border-border-default rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors w-40"
+                  className="bg-bg-tertiary/50 border border-border-default rounded-button px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors w-40"
                 />
 
                 <button
@@ -163,7 +163,7 @@ export default function StructureModule() {
                   whileTap={{ scale: 0.97 }}
                   onClick={handleAddSection}
                   disabled={!newSectionName.trim()}
-                  className="px-5 py-2.5 rounded-lg text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 rounded-button text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   + Secao
                 </motion.button>
@@ -259,7 +259,7 @@ export default function StructureModule() {
             {(activeStructureId || structureBars.length > 0) && (
               <button
                 onClick={clearStructure}
-                className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-red-400 border border-border-default hover:border-red-400/50 rounded-lg transition-colors cursor-pointer"
+                className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-red-400 border border-border-default hover:border-red-400/50 rounded-button transition-colors cursor-pointer"
               >
                 Limpar estrutura
               </button>

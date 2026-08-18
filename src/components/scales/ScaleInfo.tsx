@@ -139,7 +139,7 @@ export default function ScaleInfo() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="bg-bg-card border border-border-default rounded-lg p-4 space-y-4"
+          className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
         >
           <ScaleDetail
             scaleId={selectedScaleId}

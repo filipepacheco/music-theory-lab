@@ -88,7 +88,7 @@ export default function ProgressionAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-lg p-3 sm:p-4 space-y-3"
+        className="bg-bg-card border border-border-default rounded-button p-3 sm:p-4 space-y-3"
       >
         <div className="flex items-center gap-2">
           <h4 className="font-heading text-sm text-text-primary">Analise</h4>

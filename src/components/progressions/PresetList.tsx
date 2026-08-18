@@ -44,7 +44,7 @@ export default function PresetList() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => setShowSave(true)}
-          className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer w-full sm:w-auto"
+          className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-button border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer w-full sm:w-auto"
         >
           <span>+</span>
           <span>Salvar progressao</span>
@@ -74,7 +74,7 @@ export default function PresetList() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => loadProgression(prog)}
-                className="group relative text-left px-4 py-3 rounded-lg border border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)] transition-all cursor-pointer"
+                className="group relative text-left px-4 py-3 rounded-button border border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)] transition-all cursor-pointer"
               >
                 <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent transition-colors">
                   {prog.name}
@@ -120,7 +120,7 @@ export default function PresetList() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => loadProgression(prog)}
-              className="group text-left px-4 py-3 rounded-lg border border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)] transition-all cursor-pointer"
+              className="group text-left px-4 py-3 rounded-button border border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)] transition-all cursor-pointer"
             >
               <span className="font-heading text-xs text-text-primary block group-hover:text-accent transition-colors">
                 {prog.name}

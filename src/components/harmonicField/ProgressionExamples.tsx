@@ -43,7 +43,7 @@ export default function ProgressionExamples() {
                       bpm: prog.bpm,
                     })
               }
-              className={`text-left p-3 sm:p-5 rounded-[10px] sm:rounded-xl border transition-all cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink ${
+              className={`text-left p-3 sm:p-5 rounded-[10px] sm:rounded-card border transition-all cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink ${
                 isPlaying
                   ? 'border-accent bg-accent/10'
                   : 'bg-bg-card hover:border-border-focus'

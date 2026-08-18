@@ -40,7 +40,7 @@ export default function QuizOptions({
             onClick={() => onSelect(option)}
             disabled={showingResult}
             aria-label={option}
-            className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all cursor-pointer disabled:cursor-default ${style}`}
+            className={`px-4 py-3 rounded-button border text-sm font-medium transition-all cursor-pointer disabled:cursor-default ${style}`}
           >
             {showingResult && option === correctAnswer && (
               <span className="mr-1.5" aria-hidden="true">&#10003;</span>

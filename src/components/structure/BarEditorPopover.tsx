@@ -55,7 +55,7 @@ export default function BarEditorPopover({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: -4 }}
       transition={{ duration: 0.12 }}
-      className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-bg-card border border-border-default rounded-xl p-3 shadow-xl min-w-[200px]"
+      className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-bg-card border border-border-default rounded-card p-3 shadow-xl min-w-[200px]"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* Time signature */}

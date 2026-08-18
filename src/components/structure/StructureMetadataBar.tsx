@@ -15,14 +15,14 @@ export default function StructureMetadataBar() {
         value={structureTitle}
         onChange={(e) => setStructureTitle(e.target.value)}
         placeholder="Titulo da musica"
-        className="w-full sm:flex-1 sm:min-w-[180px] px-3 py-2.5 rounded-lg bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+        className="w-full sm:flex-1 sm:min-w-[180px] px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
       />
       <input
         type="text"
         value={structureArtist}
         onChange={(e) => setStructureArtist(e.target.value)}
         placeholder="Artista"
-        className="w-full sm:flex-1 sm:min-w-[140px] px-3 py-2.5 rounded-lg bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+        className="w-full sm:flex-1 sm:min-w-[140px] px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
       />
       <div className="flex items-center gap-1.5">
         <input
@@ -34,7 +34,7 @@ export default function StructureMetadataBar() {
           }}
           min={20}
           max={300}
-          className="w-20 px-3 py-2.5 rounded-lg bg-bg-tertiary border border-border-default text-sm text-text-primary text-center focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+          className="w-20 px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary text-center focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
         />
         <span className="text-xs text-text-muted">BPM</span>
       </div>

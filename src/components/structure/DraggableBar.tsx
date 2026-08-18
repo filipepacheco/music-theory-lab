@@ -33,7 +33,7 @@ export function DraggableBar({
         layout
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: isDragging ? 0.3 : 1 }}
-        className="group relative w-10 h-7 sm:w-14 sm:h-10 flex flex-col items-center justify-center rounded-lg text-xs font-mono cursor-grab select-none transition-shadow active:cursor-grabbing"
+        className="group relative w-10 h-7 sm:w-14 sm:h-10 flex flex-col items-center justify-center rounded-button text-xs font-mono cursor-grab select-none transition-shadow active:cursor-grabbing"
         style={{
           backgroundColor: effectiveColor
             ? effectiveColor + '20'
@@ -98,7 +98,7 @@ export function BarOverlay({
   displayIndex?: number;
 }) {
   return (
-    <div className="w-14 h-10 sm:w-16 sm:h-12 flex flex-col items-center justify-center rounded-lg text-xs font-mono bg-bg-card border-2 border-accent shadow-lg opacity-90">
+    <div className="w-14 h-10 sm:w-16 sm:h-12 flex flex-col items-center justify-center rounded-button text-xs font-mono bg-bg-card border-2 border-accent shadow-lg opacity-90">
       <span className="text-text-primary">{displayIndex ?? bar.index + 1}</span>
       <BeatDots timeSignature={bar.timeSignature} accents={bar.accents} />
     </div>

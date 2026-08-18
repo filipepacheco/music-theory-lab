@@ -121,7 +121,7 @@ function InlineSectionName({
 export function SectionOverlay({ section }: { section: StructureSection }) {
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-accent bg-bg-card shadow-lg opacity-90"
+      className="flex items-center gap-2 px-3 py-2 rounded-button border-2 border-accent bg-bg-card shadow-lg opacity-90"
     >
       <span className="text-text-muted text-xs cursor-grabbing">&#9776;</span>
       <span
@@ -191,7 +191,7 @@ function DroppableSection({
       ref={mergedRef}
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 rounded-lg border transition-all ${
+      className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 rounded-button border transition-all ${
         isOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''
       } ${isFocused ? 'ring-2 ring-accent/60 shadow-[0_0_12px_var(--color-accent)/15]' : ''}`}
       style={{

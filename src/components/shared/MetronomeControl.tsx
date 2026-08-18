@@ -11,7 +11,7 @@ export default function MetronomeControl() {
     <div className="flex items-center gap-2 sm:gap-3">
       <button
         onClick={toggle}
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-button text-sm font-medium transition-colors cursor-pointer border ${
           isMetronomeOn
             ? "border-accent bg-accent/15 text-accent"
             : "border-border-default bg-bg-tertiary text-text-secondary hover:text-text-primary"
@@ -40,7 +40,7 @@ export default function MetronomeControl() {
         <button
           onClick={() => setBpm(Math.max(40, bpm - 5))}
           aria-label="Diminuir BPM"
-          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
+          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-button bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
         >
           -
         </button>
@@ -50,7 +50,7 @@ export default function MetronomeControl() {
         <button
           onClick={() => setBpm(Math.min(200, bpm + 5))}
           aria-label="Aumentar BPM"
-          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
+          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-button bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
         >
           +
         </button>

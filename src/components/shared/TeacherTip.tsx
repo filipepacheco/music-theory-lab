@@ -24,7 +24,7 @@ export default function TeacherTip() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="bg-bg-card border border-border-default rounded-[10px] sm:rounded-lg py-3 px-3.5 sm:p-4 mt-3 sm:mt-4 flex flex-col gap-1.5 sm:gap-0"
+          className="bg-bg-card border border-border-default rounded-[10px] sm:rounded-button py-3 px-3.5 sm:p-4 mt-3 sm:mt-4 flex flex-col gap-1.5 sm:gap-0"
         >
           <h4 className="font-heading text-[13px] sm:text-sm text-accent">
             {explanation.title}

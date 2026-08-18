@@ -35,7 +35,7 @@ export default function KeySelector() {
 
         {/* Mobile: compact "Tom C" pill */}
         <div className="flex sm:hidden items-center">
-          <div className="flex items-center bg-bg-tertiary border border-border-default rounded-lg overflow-hidden">
+          <div className="flex items-center bg-bg-tertiary border border-border-default rounded-button overflow-hidden">
             <span className="text-xs text-text-muted font-medium pl-2.5 pr-1">Tom</span>
             <select
               value={rootNote}
@@ -53,7 +53,7 @@ export default function KeySelector() {
         </div>
 
         {/* Mode toggle - shared but with responsive sizing */}
-        <div className="flex rounded-lg overflow-hidden border border-border-default">
+        <div className="flex rounded-button overflow-hidden border border-border-default">
           <button
             onClick={() => setIsMinor(false)}
             className={`px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm font-medium transition-colors cursor-pointer ${

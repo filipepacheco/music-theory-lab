@@ -47,7 +47,7 @@ export default function ScaleComparison() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-lg p-4 space-y-4"
+        className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
       >
         <h4 className="font-heading text-sm text-text-primary">Comparacao</h4>
 

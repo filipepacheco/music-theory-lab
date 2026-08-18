@@ -16,7 +16,7 @@ export default function ModuleNav() {
 
   return (
     <nav
-      className="flex gap-0.5 rounded-lg p-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-full bg-bg-tertiary/50"
+      className="flex gap-0.5 rounded-button p-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-full bg-bg-tertiary/50"
       role="navigation"
       aria-label="Modulos"
     >
@@ -27,7 +27,7 @@ export default function ModuleNav() {
             key={mod.id}
             onClick={() => setActiveModule(mod.id)}
             aria-current={isActive ? "page" : undefined}
-            className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-[13px] font-medium transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-button text-[11px] sm:text-[13px] font-medium transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               isActive
                 ? "text-text-primary"
                 : "text-text-secondary hover:text-text-primary"

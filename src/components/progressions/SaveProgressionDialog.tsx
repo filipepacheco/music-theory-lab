@@ -75,7 +75,7 @@ export default function SaveProgressionDialog({
           exit={{ opacity: 0, height: 0 }}
           className="overflow-hidden"
         >
-          <div role="dialog" aria-label="Salvar progressao" className="bg-bg-secondary/60 border border-accent/20 rounded-lg p-4 space-y-3">
+          <div role="dialog" aria-label="Salvar progressao" className="bg-bg-secondary/60 border border-accent/20 rounded-button p-4 space-y-3">
             <h3 className="font-heading text-sm text-text-primary flex items-center gap-1.5">
               <span className="text-accent">+</span>
               Salvar progressao
@@ -88,7 +88,7 @@ export default function SaveProgressionDialog({
               maxLength={60}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="w-full bg-bg-tertiary border border-border-default rounded-button px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               autoFocus
             />
 
@@ -99,7 +99,7 @@ export default function SaveProgressionDialog({
               maxLength={200}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="w-full bg-bg-tertiary border border-border-default rounded-button px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
 
             <div className="flex gap-2 justify-end">

@@ -26,7 +26,7 @@ export default function QuizModule() {
               <button
                 key={qm.id}
                 onClick={() => quiz.changeMode(qm.id)}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer border shrink-0 ${
+                className={`px-3 sm:px-4 py-2 rounded-button text-sm font-medium transition-all cursor-pointer border shrink-0 ${
                   quiz.mode === qm.id
                     ? 'border-accent bg-accent/15 text-accent'
                     : 'border-border-default bg-bg-card text-text-secondary hover:text-text-primary hover:border-accent/30'

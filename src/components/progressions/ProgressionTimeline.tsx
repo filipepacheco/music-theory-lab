@@ -15,7 +15,7 @@ export default function ProgressionTimeline() {
 
   if (customProgression.length === 0) {
     return (
-      <div className="border border-dashed border-border-default rounded-lg p-4 sm:p-8 text-center">
+      <div className="border border-dashed border-border-default rounded-button p-4 sm:p-8 text-center">
         <div className="text-2xl text-text-muted/40 mb-2">+</div>
         <p className="text-sm text-text-secondary">
           Clique nos acordes acima para montar sua progressao
@@ -69,7 +69,7 @@ export default function ProgressionTimeline() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.15 }}
-                className="relative flex flex-col items-center gap-0.5 px-3 py-3 rounded-lg bg-bg-card border min-w-[80px] group"
+                className="relative flex flex-col items-center gap-0.5 px-3 py-3 rounded-button bg-bg-card border min-w-[80px] group"
                 style={{ borderColor }}
               >
                 {/* Remove button */}
