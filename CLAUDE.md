@@ -44,7 +44,7 @@ src/
   domain/       Pure application rules (structure documents, quiz sessions, playback schedules, sync merges)
   utils/        Pure functions (musicTheory.ts, noteHelpers.ts, quizGenerator.ts)
   hooks/        UI adapters and side effects (useSynth, useMetronome, useKeyboardPiano, useSavedProgressions, useSongs, useQuiz, useStructures, useStructureRecorder)
-  services/     Infrastructure (playbackEngine.ts, db.ts, savedLibrary.ts, sync.ts, gpFile.ts, gpChords.ts, transcribeGp.ts, deviceId.ts)
+  services/     Infrastructure (playbackEngine.ts, db.ts, savedLibrary.ts, sync.ts, gpFile.ts, gpChords.ts, gpImport.ts, deviceId.ts)
   store/        Zustand store (single file)
   types/        TypeScript interfaces (Song, SongSection, SongStructure, StructureBar, StructureSection, HarmonicChord, AppState)
   components/
@@ -88,7 +88,7 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 
 **Song transcription** uses `SongSection` objects (intro, verso, refrao, etc.) with per-section step arrays. Songs are persisted in a separate `songs` table with JSON-serialized sections. The `SongPlaybackControls` supports loop-by-section or full-song playback with a speed control slider (50-150% BPM).
 
-**GP import** accepts GP7 `.gp` files in the transcription module. `transcribeGp` parses the selected harmony/root tracks and the UI maps every bar into an editable imported section. Resolved bars become chromatic steps; unclear and silent bars remain as unsure, silent steps. The first resolved chord is only a playback reference root, not a tonal-center inference.
+**GP import** accepts GP7/GP8 `.gp` files in the transcription module. `gpFile.ts` parses the container and exposes per-bar pitches, time signatures, and title/artist hints; `gpChords.ts` matches bars against the chord vocabulary; `gpImport.ts` assembles the parsed bars plus a chosen key into a saved Song (UI: `GpImportPanel`, split layout with a live per-bar preview). Unclear and silent bars carry the previous chord marked unsure; sections are split mechanically into 64-step chunks named "Parte N".
 
 **Quiz module** has four exercise types: interval identification, chord type recognition, chord ID (name the chord played), and degree recognition within a key. `quizSession.ts` owns pure session transitions and scoring; `useQuiz` adapts it to Tone/Zustand side effects. `quizGenerator.ts` produces randomized questions, and `quizData.ts` holds answer options and labels.
 

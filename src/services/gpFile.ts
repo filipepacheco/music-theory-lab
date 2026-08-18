@@ -6,9 +6,9 @@
 //   - input is a `Uint8Array` (from a `File`), not a path — there is no `fs`
 //   - unzipping uses `fflate`, not `adm-zip` (Node-only)
 //
-// This module is an internal seam of the transcription module
-// (`src/services/transcribeGp.ts`): callers transcribe through `transcribeGp`,
-// not `parseGpFile`.
+// This module is an internal seam of the GP import flow: the panel assembles
+// through `gpImport.ts`, which calls `parseGpFile` and `matchBar` — never the
+// raw parser.
 //
 // See the map: https://github.com/filipepacheco/music-theory-lab/issues/9
 
@@ -33,8 +33,7 @@ export type GpParseErrorKind =
   | 'gpx-container' // GP6 .gpx — BCFZ/BCFS container, also not zip+XML
   | 'not-a-zip' // not a zip at all
   | 'not-a-gp-file' // a zip, but no Content/score.gpif inside
-  | 'corrupt' // zip or XML that should have parsed and did not
-  | 'missing-track'; // no track with the required name
+  | 'corrupt'; // zip or XML that should have parsed and did not
 
 export class GpParseError extends Error {
   readonly kind: GpParseErrorKind;
@@ -51,17 +50,15 @@ export function gpParseErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) {
     switch (error.kind) {
       case 'legacy-binary':
-        return 'Este arquivo e um GP3/GP4/GP5. No momento, apenas GP7 (.gp) e aceito.';
+        return 'Formato antigo do Guitar Pro (.gp3/.gp4/.gp5). Apenas arquivos .gp do Guitar Pro 7 ou 8 sao suportados.';
       case 'gpx-container':
-        return 'Este arquivo e um GP6 (.gpx). No momento, apenas GP7 (.gp) e aceito.';
+        return 'Arquivo .gpx do Guitar Pro 6. Apenas arquivos .gp do Guitar Pro 7 ou 8 sao suportados.';
       case 'not-a-zip':
-        return 'O arquivo nao e um pacote Guitar Pro GP7 valido.';
+        return 'Este arquivo nao parece ser um arquivo do Guitar Pro.';
       case 'not-a-gp-file':
-        return 'O pacote nao contem Content/score.gpif.';
-      case 'missing-track':
-        return error.message;
+        return 'O arquivo esta compactado, mas nao contem uma partitura do Guitar Pro.';
       case 'corrupt':
-        return 'Nao foi possivel ler o XML interno do arquivo Guitar Pro.';
+        return 'O arquivo parece estar corrompido e nao pode ser lido.';
     }
   }
   return 'Nao foi possivel importar este arquivo Guitar Pro.';

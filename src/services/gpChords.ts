@@ -22,9 +22,8 @@
 //
 // See the map: https://github.com/filipepacheco/music-theory-lab/issues/9
 //
-// This module is an internal seam of the transcription module
-// (`src/services/transcribeGp.ts`): callers transcribe through `transcribeGp`,
-// not `matchBar`.
+// This module is an internal seam of the GP import flow: the panel assembles
+// through `gpImport.ts`, which calls `matchBar` — never the matcher directly.
 
 import { NOTE_NAMES } from '@/constants/notes';
 
