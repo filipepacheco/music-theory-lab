@@ -37,8 +37,8 @@ export const QUIZ_MODE_CONFIGS: Record<QuizMode, QuizModeConfig> = {
     label: 'Intervalos',
     modeDescription: 'Identifique o intervalo entre duas notas',
     description: () =>
-      'Duas notas serao tocadas em sequencia. Identifique o intervalo entre elas.',
-    prompt: () => 'Qual intervalo voce ouviu?',
+      'Duas notas serão tocadas em sequência. Identifique o intervalo entre elas.',
+    prompt: () => 'Qual intervalo você ouviu?',
     tipsFor: () => INTERVAL_TIPS,
     tipKeyIsNumber: true,
   },
@@ -46,20 +46,20 @@ export const QUIZ_MODE_CONFIGS: Record<QuizMode, QuizModeConfig> = {
     label: 'Tipo de Acorde',
     modeDescription: 'Identifique o tipo de acorde tocado',
     description: () =>
-      'Um acorde sera tocado. Identifique o tipo (maior, menor, diminuto, etc.).',
-    prompt: () => 'Que tipo de acorde voce ouviu?',
+      'Um acorde será tocado. Identifique o tipo (maior, menor, diminuto, etc.).',
+    prompt: () => 'Que tipo de acorde você ouviu?',
     tipsFor: () => CHORD_TYPE_TIPS,
     tipKeyIsNumber: false,
   },
   degree: {
     label: 'Grau no Campo',
-    modeDescription: 'Identifique o grau no campo harmonico',
+    modeDescription: 'Identifique o grau no campo harmônico',
     description: (ctx) =>
-      `Um acorde do campo harmonico de ${ctx.keyLabel} sera tocado. Identifique o grau.`,
+      `Um acorde do campo harmônico de ${ctx.keyLabel} será tocado. Identifique o grau.`,
     prompt: (ctx) => `Qual grau de ${ctx.keyLabel}?`,
     tipsFor: (ctx) => (ctx.isMinor ? DEGREE_TIPS_MINOR : DEGREE_TIPS),
     tipKeyIsNumber: true,
-    startHint: 'O I grau (tonica) sera tocado primeiro como referencia.',
+    startHint: 'O I grau (tônica) será tocado primeiro como referência.',
   },
   chordId: {
     label: 'Identificar Acorde',
@@ -67,8 +67,8 @@ export const QUIZ_MODE_CONFIGS: Record<QuizMode, QuizModeConfig> = {
     description: (ctx) =>
       ctx.keyLimited
         ? `Acordes do campo de ${ctx.keyLabel}.`
-        : 'Acorde aleatorio. Identifique nota + tipo.',
-    prompt: () => 'Qual acorde voce ouviu?',
+        : 'Acorde aleatório. Identifique nota + tipo.',
+    prompt: () => 'Qual acorde você ouviu?',
     tipsFor: () => CHORD_ID_TIPS,
     tipKeyIsNumber: false,
     showKeyToggle: true,

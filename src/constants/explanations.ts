@@ -1,7 +1,7 @@
 import type { HarmonicFunction } from "./harmonicFields";
 
 export const HARMONIC_FUNCTION_LABELS: Record<HarmonicFunction, string> = {
-  T: "Tonica",
+  T: "Tônica",
   SD: "Subdominante",
   D: "Dominante",
 };
@@ -15,89 +15,89 @@ export interface DegreeExplanation {
 export const DEGREE_EXPLANATIONS_MAJOR: DegreeExplanation[] = [
   {
     degree: 1,
-    title: "I grau - Tonica",
+    title: "I grau - Tônica",
     description:
-      "O centro tonal. E o acorde de repouso, para onde a musica tende a resolver. Transmite sensacao de estabilidade e conclusao.",
+      "O centro tonal. É o acorde de repouso, para onde a música tende a resolver. Transmite sensação de estabilidade e conclusão.",
   },
   {
     degree: 2,
-    title: "II grau - Supertonica",
+    title: "II grau - Supertônica",
     description:
-      "Funcao subdominante. Prepara o caminho para a dominante. Muito usado na progressao ii-V-I, uma das mais importantes da musica.",
+      "Função subdominante. Prepara o caminho para a dominante. Muito usado na progressão ii-V-I, uma das mais importantes da música.",
   },
   {
     degree: 3,
     title: "III grau - Mediante",
     description:
-      "Funcao tonica. Compartilha notas com o I grau e pode substituí-lo, criando variacao sem perder a sensacao de repouso.",
+      "Função tônica. Compartilha notas com o I grau e pode substituí-lo, criando variação sem perder a sensação de repouso.",
   },
   {
     degree: 4,
     title: "IV grau - Subdominante",
     description:
-      "Cria movimento e tensao moderada. E o acorde de 'partida' - nos afasta da tonica sem a urgencia da dominante.",
+      "Cria movimento e tensão moderada. É o acorde de 'partida' - nos afasta da tônica sem a urgência da dominante.",
   },
   {
     degree: 5,
     title: "V grau - Dominante",
     description:
-      "Gera a maior tensao harmonica. Contem o tritono (intervalo entre a 3a e a 7a) que 'pede' resolucao para a tonica.",
+      "Gera a maior tensão harmônica. Contém o trítono (intervalo entre a 3ª e a 7ª) que 'pede' resolução para a tônica.",
   },
   {
     degree: 6,
     title: "VI grau - Superdominante",
     description:
-      "Funcao tonica. E a relativa menor da tonalidade maior. Usado para criar resolucoes inesperadas (cadencia deceptiva).",
+      "Função tônica. É a relativa menor da tonalidade maior. Usado para criar resoluções inesperadas (cadência deceptiva).",
   },
   {
     degree: 7,
-    title: "VII grau - Sensivel",
+    title: "VII grau - Sensível",
     description:
-      "Funcao dominante. Acorde diminuto que contem o tritono e tende fortemente a resolver no I grau. Substituto do V7.",
+      "Função dominante. Acorde diminuto que contém o trítono e tende fortemente a resolver no I grau. Substituto do V7.",
   },
 ];
 
 export const DEGREE_EXPLANATIONS_MINOR: DegreeExplanation[] = [
   {
     degree: 1,
-    title: "I grau - Tonica menor",
+    title: "I grau - Tônica menor",
     description:
-      "Centro tonal da tonalidade menor. Transmite uma sonoridade mais sombria e introspectiva que a tonica maior.",
+      "Centro tonal da tonalidade menor. Transmite uma sonoridade mais sombria e introspectiva que a tônica maior.",
   },
   {
     degree: 2,
-    title: "II grau - Supertonica",
+    title: "II grau - Supertônica",
     description:
-      "Meio-diminuto na tonalidade menor. Funcao subdominante, prepara o V grau. Muito usado em progressoes de jazz e bossa nova.",
+      "Meio-diminuto na tonalidade menor. Função subdominante, prepara o V grau. Muito usado em progressões de jazz e bossa nova.",
   },
   {
     degree: 3,
     title: "III grau - Mediante",
     description:
-      "E a relativa maior da tonalidade menor. Oferece um momento de 'luz' dentro do contexto menor.",
+      "É a relativa maior da tonalidade menor. Oferece um momento de 'luz' dentro do contexto menor.",
   },
   {
     degree: 4,
     title: "IV grau - Subdominante menor",
     description:
-      "Acorde menor com funcao subdominante. Cria uma tensao mais escura e melancolica que o IV grau maior.",
+      "Acorde menor com função subdominante. Cria uma tensão mais escura e melancólica que o IV grau maior.",
   },
   {
     degree: 5,
     title: "V grau - Dominante menor",
     description:
-      "Na forma natural, e um acorde menor (sem tritono). Para criar resolucao forte, usa-se a dominante da menor harmonica (V7).",
+      "Na forma natural, é um acorde menor (sem trítono). Para criar resolução forte, usa-se a dominante da menor harmônica (V7).",
   },
   {
     degree: 6,
     title: "VI grau - Submediante",
     description:
-      "Acorde maior com funcao subdominante. Oferece contraste e pode ser usado como ponto de partida para modulacoes.",
+      "Acorde maior com função subdominante. Oferece contraste e pode ser usado como ponto de partida para modulações.",
   },
   {
     degree: 7,
-    title: "VII grau - Subtonica",
+    title: "VII grau - Subtônica",
     description:
-      "Acorde de tipo dominante (com 7a menor) mas com funcao subdominante - nao possui a sensivel (nota meio tom abaixo da tonica) necessaria para funcao dominante real. Chamado 'subtonica' porque esta um tom inteiro abaixo da tonica.",
+      "Acorde de tipo dominante (com 7ª menor) mas com função subdominante - não possui a sensível (nota meio tom abaixo da tônica) necessária para função dominante real. Chamado 'subtônica' porque está um tom inteiro abaixo da tônica.",
   },
 ];

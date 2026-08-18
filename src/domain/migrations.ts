@@ -38,7 +38,7 @@ export function migrateSection(raw: LegacySection): StructureSection {
 
 /**
  * Migrate a persisted structure document: legacy sections get name+color,
- * and bars not assigned to any section are collected under "Sem secao".
+ * and bars not assigned to any section are collected under "Sem seção".
  */
 export function migrateStructureData(
   bars: StructureBar[],
@@ -50,7 +50,7 @@ export function migrateStructureData(
   if (unassigned.length > 0) {
     sections.push({
       id: crypto.randomUUID(),
-      name: 'Sem secao',
+      name: 'Sem seção',
       color: '#9ca3af',
       barIds: unassigned.map((b) => b.id),
     });

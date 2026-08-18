@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-16 — Design-token conformance and pt-BR pass
+
+### User-visible
+
+- **Added**: `--radius-control` (0.375rem) design token; selects, chips, and
+  toggles now consume the token system.
+- **Fixed**: key pickers (header and GP import panel) display the preferred
+  key spelling — Bb, Eb, Ab… — matching the flat spellings used everywhere
+  else.
+- **Fixed**: the unsure-chord indicator now uses the same amber family as the
+  rest of the review UI (was yellow).
+- **Fixed**: user-facing copy restored to proper pt-BR diacritics across all
+  modules, constants, and messages ("seção", "música", "progressão",
+  "tônica", "Cadência Básica", …). Quiz answer labels stay consistent with
+  the generator.
+- **Removed**: dead code (`constants/index.ts` barrel, transcription
+  `SectionTabs`/`SongMetadataBar`).
+
+### Architecture
+
+- The entire app now consumes the `@theme` radius tokens (`rounded-button` /
+  `rounded-card` / `rounded-section` / `rounded-control`) — no stock Tailwind
+  radius classes remain in rendered code.
+- Instrument palette tokenized: `--color-octave-1/2/3` (+ `-dim`),
+  `--color-octave-fallback`, `--color-bass-highlight`,
+  `--color-key-black-border`, `--shadow-key`.
+- UI audit artifacts committed under `design-plans/` (surface registry,
+  findings, attack plan, execution plans).
+
 ## 2026-08-16 — Deep-module architecture pass
 
 ### User-visible

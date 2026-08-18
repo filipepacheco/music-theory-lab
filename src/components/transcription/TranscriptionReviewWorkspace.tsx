@@ -367,7 +367,7 @@ export default function TranscriptionReviewWorkspace() {
                     selectedDetails.noteNames.map((note) => (
                       <span
                         key={note}
-                        className="rounded-md bg-bg-tertiary px-2.5 py-1.5 font-mono text-xs text-text-primary"
+                        className="rounded-control bg-bg-tertiary px-2.5 py-1.5 font-mono text-xs text-text-primary"
                       >
                         {note}
                       </span>

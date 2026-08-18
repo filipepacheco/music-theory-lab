@@ -31,7 +31,7 @@ export default function PresetList() {
   if (isLoading) {
     return (
       <div className="text-xs text-text-muted py-2">
-        Carregando progressoes...
+        Carregando progressões...
       </div>
     );
   }
@@ -47,7 +47,7 @@ export default function PresetList() {
           className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-button border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer w-full sm:w-auto"
         >
           <span>+</span>
-          <span>Salvar progressao</span>
+          <span>Salvar progressão</span>
         </motion.button>
       )}
 
@@ -65,7 +65,7 @@ export default function PresetList() {
       {userSaved.length > 0 && (
         <div>
           <h3 className="font-heading text-sm text-text-secondary mb-2">
-            Suas progressoes
+            Suas progressões
           </h3>
           <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap">
             {userSaved.map((prog) => (

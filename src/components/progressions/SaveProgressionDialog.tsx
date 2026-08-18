@@ -75,16 +75,16 @@ export default function SaveProgressionDialog({
           exit={{ opacity: 0, height: 0 }}
           className="overflow-hidden"
         >
-          <div role="dialog" aria-label="Salvar progressao" className="bg-bg-secondary/60 border border-accent/20 rounded-button p-4 space-y-3">
+          <div role="dialog" aria-label="Salvar progressão" className="bg-bg-secondary/60 border border-accent/20 rounded-button p-4 space-y-3">
             <h3 className="font-heading text-sm text-text-primary flex items-center gap-1.5">
               <span className="text-accent">+</span>
-              Salvar progressao
+              Salvar progressão
             </h3>
 
             <input
               type="text"
               placeholder="Nome (obrigatorio)"
-              aria-label="Nome da progressao"
+              aria-label="Nome da progressão"
               maxLength={60}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -94,8 +94,8 @@ export default function SaveProgressionDialog({
 
             <input
               type="text"
-              placeholder="Descricao (opcional)"
-              aria-label="Descricao da progressao"
+              placeholder="Descrição (opcional)"
+              aria-label="Descrição da progressão"
               maxLength={200}
               value={description}
               onChange={(e) => setDescription(e.target.value)}

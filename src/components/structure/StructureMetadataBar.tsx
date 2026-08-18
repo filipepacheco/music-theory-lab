@@ -14,7 +14,7 @@ export default function StructureMetadataBar() {
         type="text"
         value={structureTitle}
         onChange={(e) => setStructureTitle(e.target.value)}
-        placeholder="Titulo da musica"
+        placeholder="Título da música"
         className="w-full sm:flex-1 sm:min-w-[180px] px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
       />
       <input

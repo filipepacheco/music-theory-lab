@@ -18,7 +18,7 @@ export default function ProgressionsModule() {
     <section className="flex flex-col gap-4 sm:gap-6">
       <div>
         <h2 className="font-heading text-lg text-text-primary mb-4">
-          Construtor de Progressoes
+          Construtor de Progressões
         </h2>
 
         <div className="section-panel flex flex-col gap-4">

@@ -57,7 +57,7 @@ const MAIN_TABS: { id: ActiveModule; label: string; Icon: typeof IconCampo }[] =
 ];
 
 const MORE_TABS: { id: ActiveModule; label: string }[] = [
-  { id: "transcription", label: "Transcricao" },
+  { id: "transcription", label: "Transcrição" },
   { id: "structure", label: "Estrutura" },
 ];
 
@@ -123,7 +123,7 @@ export default function BottomNav() {
           paddingRight: 8,
         }}
         role="navigation"
-        aria-label="Navegacao principal"
+        aria-label="Navegação principal"
       >
         {MAIN_TABS.map((tab) => {
           const isActive = activeModule === tab.id;

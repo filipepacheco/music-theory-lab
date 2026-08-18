@@ -7,7 +7,7 @@ export default function ProgressionChordPicker() {
 
   return (
     <DiatonicChordStrip
-      title="Acordes disponiveis"
+      title="Acordes disponíveis"
       stepCount={customProgression.length}
       onSelect={addProgressionStep}
     />

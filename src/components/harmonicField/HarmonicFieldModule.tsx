@@ -16,7 +16,7 @@ export default function HarmonicFieldModule() {
         {/* Mobile: title + compact legend on same line */}
         <div className="flex items-center justify-between mb-3 sm:hidden">
           <h2 className="font-heading text-lg font-bold text-text-primary">
-            Campo Harmonico
+            Campo Harmônico
           </h2>
           <FunctionLegend compact />
         </div>

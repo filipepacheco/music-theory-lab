@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useSongs } from '@/hooks/useSongs';
 import { NOTE_NAMES } from '@/constants/notes';
+import { getPreferredRootName } from '@/utils/noteHelpers';
 import {
   GpParseError,
   gpParseErrorMessage,
@@ -116,7 +117,7 @@ export default function GpImportPanel() {
       setError(
         e instanceof GpParseError
           ? gpParseErrorMessage(e)
-          : 'Nao foi possivel ler o arquivo.',
+          : 'Não foi possível ler o arquivo.',
       );
     }
   };
@@ -126,7 +127,7 @@ export default function GpImportPanel() {
     if (
       dirty &&
       !window.confirm(
-        'A transcricao aberta tem alteracoes nao salvas. Importar cria uma musica nova e substitui a que esta aberta. Continuar?',
+        'A transcrição aberta tem alterações não salvas. Importar cria uma música nova e substitui a que está aberta. Continuar?',
       )
     ) {
       return;
@@ -137,7 +138,7 @@ export default function GpImportPanel() {
     try {
       const data = {
         title:
-          gp.title || (fileName ?? '').replace(/\.gp$/i, '') || 'Sem titulo',
+          gp.title || (fileName ?? '').replace(/\.gp$/i, '') || 'Sem título',
         artist: gp.artist,
         key: keyRoot,
         mode: (isMinor ? 'minor' : 'major') as 'major' | 'minor',
@@ -152,7 +153,7 @@ export default function GpImportPanel() {
       setOpen(false);
       reset();
     } catch {
-      setError('Erro ao salvar a musica importada.');
+      setError('Erro ao salvar a música importada.');
     } finally {
       setImporting(false);
     }
@@ -235,7 +236,7 @@ export default function GpImportPanel() {
                           onClick={() => setKeyRoot(i)}
                           className="px-1 py-1.5 rounded text-[11px] font-mono"
                         >
-                          {n}
+                          {getPreferredRootName(i)}
                         </PillButton>
                       ))}
                     </div>
@@ -271,7 +272,7 @@ export default function GpImportPanel() {
                       </span>{' '}
                       no campo{' '}
                       <span className="text-sky-400">{summary.chromatic}</span>{' '}
-                      cromaticos{' '}
+                      cromáticos{' '}
                       <span className="text-amber-400">{summary.unclear}</span>{' '}
                       incertos{' '}
                       <span className="text-text-muted">{summary.noData}</span>{' '}
@@ -296,7 +297,7 @@ export default function GpImportPanel() {
                         : `Importar ${bars.length} compassos`}
                     </button>
                     <span className="text-[10px] text-text-muted">
-                      Cria uma musica nova em partes de 64 compassos.
+                      Cria uma música nova em partes de 64 compassos.
                     </span>
                   </div>
                 </div>

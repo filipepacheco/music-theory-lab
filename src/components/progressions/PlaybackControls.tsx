@@ -32,7 +32,7 @@ export default function PlaybackControls() {
         <span className="flex items-center gap-2">
           <span>{isPlaying ? '\u25A0' : '\u25B6'}</span>
           <span className="hidden sm:inline">
-            {isPlaying ? 'Parar' : 'Tocar Progressao'}
+            {isPlaying ? 'Parar' : 'Tocar Progressão'}
           </span>
           <span className="sm:hidden">{isPlaying ? 'Parar' : 'Tocar'}</span>
         </span>

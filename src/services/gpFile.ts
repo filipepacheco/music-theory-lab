@@ -50,18 +50,18 @@ export function gpParseErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) {
     switch (error.kind) {
       case 'legacy-binary':
-        return 'Formato antigo do Guitar Pro (.gp3/.gp4/.gp5). Apenas arquivos .gp do Guitar Pro 7 ou 8 sao suportados.';
+        return 'Formato antigo do Guitar Pro (.gp3/.gp4/.gp5). Apenas arquivos .gp do Guitar Pro 7 ou 8 são suportados.';
       case 'gpx-container':
-        return 'Arquivo .gpx do Guitar Pro 6. Apenas arquivos .gp do Guitar Pro 7 ou 8 sao suportados.';
+        return 'Arquivo .gpx do Guitar Pro 6. Apenas arquivos .gp do Guitar Pro 7 ou 8 são suportados.';
       case 'not-a-zip':
-        return 'Este arquivo nao parece ser um arquivo do Guitar Pro.';
+        return 'Este arquivo não parece ser um arquivo do Guitar Pro.';
       case 'not-a-gp-file':
-        return 'O arquivo esta compactado, mas nao contem uma partitura do Guitar Pro.';
+        return 'O arquivo está compactado, mas não contém uma partitura do Guitar Pro.';
       case 'corrupt':
-        return 'O arquivo parece estar corrompido e nao pode ser lido.';
+        return 'O arquivo parece estar corrompido e não pode ser lido.';
     }
   }
-  return 'Nao foi possivel importar este arquivo Guitar Pro.';
+  return 'Não foi possível importar este arquivo Guitar Pro.';
 }
 
 export interface BarPitches {

@@ -11,7 +11,7 @@ export default function SongList() {
   if (isLoading) {
     return (
       <div className="text-xs text-text-muted py-2">
-        Carregando musicas...
+        Carregando músicas...
       </div>
     );
   }
@@ -23,7 +23,7 @@ export default function SongList() {
   return (
     <div>
       <h4 className="font-heading text-sm text-text-secondary mb-2">
-        Musicas salvas
+        Músicas salvas
       </h4>
       <div className="flex gap-2 flex-wrap">
         {songs.map((song) => {

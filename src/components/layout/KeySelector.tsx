@@ -1,5 +1,6 @@
 import { useAppStore } from "@/store/useAppStore";
 import { NOTE_NAMES } from "@/constants/notes";
+import { getPreferredRootName } from "@/utils/noteHelpers";
 import PresetSelector from "./PresetSelector";
 import MetronomeControl from "@/components/shared/MetronomeControl";
 
@@ -23,7 +24,7 @@ export default function KeySelector() {
             value={rootNote}
             onChange={(e) => setRootNote(Number(e.target.value))}
             aria-label="Tonalidade"
-            className="bg-bg-tertiary text-text-primary border border-border-default rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+            className="bg-bg-tertiary text-text-primary border border-border-default rounded-control px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
           >
             {NOTE_NAMES.map((name, idx) => (
               <option key={name} value={idx}>
@@ -45,7 +46,7 @@ export default function KeySelector() {
             >
               {NOTE_NAMES.map((name, idx) => (
                 <option key={name} value={idx}>
-                  {name}
+                  {getPreferredRootName(idx)}
                 </option>
               ))}
             </select>

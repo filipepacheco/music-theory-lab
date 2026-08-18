@@ -69,7 +69,7 @@ function ScaleDetail({
         {showPlayButton && (
           <button
             onClick={handlePlay}
-            className="ml-auto px-3 py-2 text-xs font-medium bg-bg-tertiary border border-border-default rounded-md hover:bg-bg-hover transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
+            className="ml-auto px-3 py-2 text-xs font-medium bg-bg-tertiary border border-border-default rounded-control hover:bg-bg-hover transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
           >
             Ouvir escala
           </button>

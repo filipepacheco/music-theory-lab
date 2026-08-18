@@ -15,7 +15,7 @@ export default function ChordGrid() {
   };
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Acordes do campo harmonico">
+    <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Acordes do campo harmônico">
       {harmonicField.map((chord, index) => (
         <ChordCard
           key={`${chord.chordName}-${index}`}

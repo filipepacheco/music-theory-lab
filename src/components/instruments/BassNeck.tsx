@@ -79,7 +79,7 @@ export default function BassNeck() {
         </h3>
         <button
           onClick={() => setShowAllNotes(!showAllNotes)}
-          className={`text-xs font-medium px-2.5 py-1 rounded-md border transition-colors cursor-pointer ${
+          className={`text-xs font-medium px-2.5 py-1 rounded-control border transition-colors cursor-pointer ${
             showAllNotes
               ? "border-accent bg-accent/15 text-accent"
               : "border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary"

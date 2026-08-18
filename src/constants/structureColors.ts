@@ -22,8 +22,8 @@ export const STRUCTURE_PALETTE: string[] = [
 export const SECTION_SUGGESTIONS: { name: string; colorIndex: number }[] = [
   { name: 'Intro', colorIndex: 1 },
   { name: 'Verso', colorIndex: 0 },
-  { name: 'Pre-Refrao', colorIndex: 2 },
-  { name: 'Refrao', colorIndex: 3 },
+  { name: 'Pre-Refrão', colorIndex: 2 },
+  { name: 'Refrão', colorIndex: 3 },
   { name: 'Ponte', colorIndex: 4 },
   { name: 'Solo', colorIndex: 5 },
   { name: 'Outro', colorIndex: 6 },

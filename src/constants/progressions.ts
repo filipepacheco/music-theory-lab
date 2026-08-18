@@ -31,9 +31,9 @@ export const MAX_PROGRESSION_STEPS = 64;
 export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
   {
     id: "cadencia-basica",
-    name: "Cadencia Basica",
+    name: "Cadência Básica",
     description:
-      "I - IV - V - I: O fundamento de tudo. A dominante (V) cria tensao que resolve na tonica (I).",
+      "I - IV - V - I: O fundamento de tudo. A dominante (V) cria tensão que resolve na tônica (I).",
     steps: [
       { degree: 0, label: "I" },
       { degree: 3, label: "IV" },
@@ -48,7 +48,7 @@ export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
     id: "pop",
     name: "Pop Universal",
     description:
-      "I - V - vi - IV: A progressao mais famosa do pop. Let It Be, No Woman No Cry, Ai Se Eu Te Pego.",
+      "I - V - vi - IV: A progressão mais famosa do pop. Let It Be, No Woman No Cry, Ai Se Eu Te Pego.",
     steps: [
       { degree: 0, label: "I" },
       { degree: 4, label: "V" },
@@ -77,11 +77,11 @@ export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
     id: "garota-de-ipanema",
     name: "Garota de Ipanema",
     description:
-      "I - II7 - ii - V - iii: O II7 e dominante secundario (V7/V), fora do campo harmonico. Tom Jobim.",
+      "I - II7 - ii - V - iii: O II7 é dominante secundário (V7/V), fora do campo harmônico. Tom Jobim.",
     steps: [
       { degree: 0, label: "I"},
       { degree: 0, label: "I"},
-      // II7: dominante secundario (V7/V) - fora do campo harmonico
+      // II7: dominante secundário (V7/V) - fora do campo harmônico
       { degree: null, label: "II7", intervals: [2, 6, 9, 0], offsetEighths: -1},
       { degree: null, label: "II7", intervals: [2, 6, 9, 0]},
       { degree: 1, label: "ii", offsetEighths: -1 },
@@ -97,7 +97,7 @@ export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
     id: "triste",
     name: "Balada / Triste",
     description:
-      "vi - IV - I - V: Comeca na relativa menor, criando uma sonoridade melancolica antes de resolver.",
+      "vi - IV - I - V: Começa na relativa menor, criando uma sonoridade melancólica antes de resolver.",
     steps: [
       { degree: 5, label: "vi" },
       { degree: 3, label: "IV" },
@@ -110,9 +110,9 @@ export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
   },
   {
     id: "menor-basica",
-    name: "Cadencia Menor",
+    name: "Cadência Menor",
     description:
-      "i - iv - v - i: A mesma logica da cadencia basica, mas no modo menor. Sente a diferenca de clima.",
+      "i - iv - v - i: A mesma lógica da cadência básica, mas no modo menor. Sente a diferença de clima.",
     steps: [
       { degree: 0, label: "i" },
       { degree: 3, label: "iv" },
@@ -125,9 +125,9 @@ export const PROGRESSION_EXAMPLES: ProgressionExample[] = [
   },
   {
     id: "andaluza",
-    name: "Cadencia Andaluza",
+    name: "Cadência Andaluza",
     description:
-      "i - VII - VI - V: Descendente e dramatica. O V maior (da menor harmonica) cria a resolucao frigia caracteristica. Flamenco e rock.",
+      "i - VII - VI - V: Descendente e dramática. O V maior (da menor harmônica) cria a resolução frígia característica. Flamenco e rock.",
     steps: [
       { degree: 0, label: "i" },
       { degree: 6, label: "VII" },

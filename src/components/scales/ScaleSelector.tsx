@@ -46,7 +46,7 @@ export default function ScaleSelector() {
           id="scale-select"
           value={selectedScaleId ?? ""}
           onChange={(e) => selectScale(e.target.value || null)}
-          className="bg-bg-tertiary text-text-primary border border-border-default rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+          className="bg-bg-tertiary text-text-primary border border-border-default rounded-control px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
         >
           <option value="">Selecione...</option>
           {SCALE_GROUPS.map((group) => (
@@ -68,7 +68,7 @@ export default function ScaleSelector() {
           value={comparisonScaleId ?? ""}
           onChange={(e) => setComparisonScale(e.target.value || null)}
           disabled={!selectedScaleId}
-          className="bg-bg-tertiary text-text-primary border border-border-default rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-bg-tertiary text-text-primary border border-border-default rounded-control px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option value="">Nenhuma</option>
           {SCALE_GROUPS.map((group) => (

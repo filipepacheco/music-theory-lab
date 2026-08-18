@@ -13,10 +13,10 @@ export type ProgressionInput = {
 };
 
 const progressionLabels = {
-  load: 'Erro ao carregar progressoes',
-  save: 'Erro ao salvar progressao',
-  update: 'Erro ao atualizar progressao',
-  remove: 'Erro ao remover progressao',
+  load: 'Erro ao carregar progressões',
+  save: 'Erro ao salvar progressão',
+  update: 'Erro ao atualizar progressão',
+  remove: 'Erro ao remover progressão',
 };
 
 export function useSavedProgressions(mode?: 'major' | 'minor') {

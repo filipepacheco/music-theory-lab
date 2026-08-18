@@ -23,10 +23,10 @@ const songsCollection = {
 };
 
 const songsLabels = {
-  load: 'Erro ao carregar musicas',
-  save: 'Erro ao salvar musica',
-  update: 'Erro ao atualizar musica',
-  remove: 'Erro ao remover musica',
+  load: 'Erro ao carregar músicas',
+  save: 'Erro ao salvar música',
+  update: 'Erro ao atualizar música',
+  remove: 'Erro ao remover música',
 };
 
 export function useSongs() {

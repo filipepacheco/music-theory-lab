@@ -2,11 +2,11 @@ import { useAppStore } from "@/store/useAppStore";
 import type { ActiveModule } from "@/types";
 
 const MODULES: { id: ActiveModule; label: string }[] = [
-  { id: "harmonicField", label: "Campo Harmonico" },
-  { id: "progressions", label: "Progressoes" },
+  { id: "harmonicField", label: "Campo Harmônico" },
+  { id: "progressions", label: "Progressões" },
   { id: "scales", label: "Escalas" },
   { id: "quiz", label: "Quiz" },
-  { id: "transcription", label: "Transcricao" },
+  { id: "transcription", label: "Transcrição" },
   { id: "structure", label: "Estrutura" },
 ];
 

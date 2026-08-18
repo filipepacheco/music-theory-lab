@@ -81,7 +81,7 @@ export default function SongPlaybackControls({
           <span className="flex items-center gap-2">
             <span>{isPlaying ? '\u25A0' : '\u25B6'}</span>
             <span>
-              {isPlaying ? 'Parar' : loopSection ? 'Tocar Secao' : 'Tocar Tudo'}
+              {isPlaying ? 'Parar' : loopSection ? 'Tocar Seção' : 'Tocar Tudo'}
             </span>
           </span>
         </motion.button>
@@ -95,7 +95,7 @@ export default function SongPlaybackControls({
               : 'border-border-default text-text-secondary hover:border-accent/40'
           }`}
         >
-          {loopSection ? 'Repetir secao' : 'Tocar tudo'}
+          {loopSection ? 'Repetir seção' : 'Tocar tudo'}
         </button>
 
         {isPlaying && (

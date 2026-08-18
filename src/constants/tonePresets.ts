@@ -117,7 +117,7 @@ export const TONE_PRESETS: TonePreset[] = [
   {
     id: "piano",
     name: "Piano",
-    description: "Piano acustico real (Salamander Grand)",
+    description: "Piano acústico real (Salamander Grand)",
     type: "sampler",
     urls: SALAMANDER_URLS,
     baseUrl: "https://tonejs.github.io/audio/salamander/",
@@ -130,7 +130,7 @@ export const TONE_PRESETS: TonePreset[] = [
   {
     id: "rhodes",
     name: "Rhodes",
-    description: "Piano eletrico quente - Garota de Ipanema, bossa nova",
+    description: "Piano elétrico quente - Garota de Ipanema, bossa nova",
     type: "sampler",
     urls: rhodesSamples.urls,
     baseUrl: rhodesSamples.baseUrl,
@@ -142,7 +142,7 @@ export const TONE_PRESETS: TonePreset[] = [
   },
   {
     id: "nylon",
-    name: "Violao Nylon",
+    name: "Violão Nylon",
     description: "Ataque percussivo e corpo redondo - MPB, samba",
     type: "sampler",
     urls: nylonSamples.urls,
@@ -156,7 +156,7 @@ export const TONE_PRESETS: TonePreset[] = [
   {
     id: "pad",
     name: "Pad Suave",
-    description: "Som ambiente, etereo - baladas, progressoes lentas",
+    description: "Som ambiente, etéreo - baladas, progressões lentas",
     type: "sampler",
     urls: padSamples.urls,
     baseUrl: padSamples.baseUrl,
@@ -168,8 +168,8 @@ export const TONE_PRESETS: TonePreset[] = [
   },
   {
     id: "organ",
-    name: "Orgao",
-    description: "Sustain continuo - rock classico, gospel",
+    name: "Órgão",
+    description: "Sustain contínuo - rock clássico, gospel",
     type: "sampler",
     urls: organSamples.urls,
     baseUrl: organSamples.baseUrl,
@@ -182,7 +182,7 @@ export const TONE_PRESETS: TonePreset[] = [
   {
     id: "wurlitzer",
     name: "Wurlitzer",
-    description: "Piano eletrico com mais bite - soul, funk",
+    description: "Piano elétrico com mais bite - soul, funk",
     type: "sampler",
     urls: wurlitzerSamples.urls,
     baseUrl: wurlitzerSamples.baseUrl,

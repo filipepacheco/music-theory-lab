@@ -141,7 +141,7 @@ export default function StructureModule() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleAddSection();
                   }}
-                  placeholder="Nome da secao..."
+                  placeholder="Nome da seção..."
                   className="bg-bg-tertiary/50 border border-border-default rounded-button px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors w-40"
                 />
 
@@ -165,7 +165,7 @@ export default function StructureModule() {
                   disabled={!newSectionName.trim()}
                   className="px-5 py-2.5 rounded-button text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  + Secao
+                  + Seção
                 </motion.button>
               </div>
 
@@ -176,7 +176,7 @@ export default function StructureModule() {
                     key={s.name}
                     type="button"
                     onClick={() => handleSuggestionClick(s)}
-                    className="px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors cursor-pointer hover:brightness-110"
+                    className="px-2.5 py-1 rounded-control text-[11px] font-medium border transition-colors cursor-pointer hover:brightness-110"
                     style={{
                       backgroundColor: STRUCTURE_PALETTE[s.colorIndex] + '15',
                       borderColor: STRUCTURE_PALETTE[s.colorIndex] + '30',

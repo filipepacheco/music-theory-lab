@@ -15,7 +15,7 @@ export default function PresetSelector() {
         id="preset-select"
         value={activePresetId}
         onChange={(e) => setActivePresetId(e.target.value)}
-        className="hidden sm:block bg-bg-tertiary text-text-primary border border-border-default rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+        className="hidden sm:block bg-bg-tertiary text-text-primary border border-border-default rounded-control px-3 py-2 text-sm font-mono focus:outline-none focus:border-border-focus focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
       >
         {TONE_PRESETS.map((preset) => (
           <option key={preset.id} value={preset.id}>

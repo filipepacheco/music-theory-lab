@@ -24,7 +24,7 @@ export default function StructureRecorder() {
               <button
                 key={ts}
                 onClick={() => setActiveTimeSignature(ts)}
-                className={`px-2.5 sm:px-3 py-2 rounded-md text-sm font-mono transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-2 rounded-control text-sm font-mono transition-all cursor-pointer ${
                   activeTimeSignature === ts
                     ? 'bg-bg-card text-text-primary shadow-sm ring-1 ring-border-default'
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-card/50'
@@ -62,7 +62,7 @@ export default function StructureRecorder() {
           </span>
         ) : (
           <span className="text-[11px] text-text-muted/60">
-            Selecione uma secao
+            Selecione uma seção
           </span>
         )}
       </div>

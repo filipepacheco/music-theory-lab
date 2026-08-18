@@ -16,7 +16,7 @@ export default function QuizOptions({
   onSelect,
 }: QuizOptionsProps) {
   return (
-    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Opcoes de resposta">
+    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Opções de resposta">
       {options.map((option) => {
         let style = "border-border-default bg-bg-card hover:border-accent/50";
 

@@ -4,7 +4,7 @@ import { FUNCTION_COLORS } from "@/constants/functionColors";
 import type { HarmonicFunction } from "@/constants/harmonicFields";
 
 const FUNCTION_LABELS: Record<string, string> = {
-  T: "Tonica",
+  T: "Tônica",
   SD: "Subdominante",
   D: "Dominante",
 };
@@ -24,7 +24,7 @@ function analyzeProgression(
       functions[i + 2] === "T"
     ) {
       parts.push(
-        "Contem um movimento SD - D - T (preparacao - tensao - resolucao), o padrao mais forte da harmonia tonal.",
+        "Contém um movimento SD - D - T (preparação - tensão - resolução), o padrão mais forte da harmonia tonal.",
       );
       break;
     }
@@ -33,22 +33,22 @@ function analyzeProgression(
   // Check if starts and ends on tonic
   if (functions[0] === "T" && functions[functions.length - 1] === "T") {
     parts.push(
-      "Comeca e termina na tonica, criando uma sensacao circular e estavel.",
+      "Começa e termina na tônica, criando uma sensação circular e estável.",
     );
   } else if (functions[0] === "T" && functions[functions.length - 1] === "D") {
     parts.push(
-      "Comeca na tonica e termina na dominante, deixando uma sensacao de suspensao.",
+      "Começa na tônica e termina na dominante, deixando uma sensação de suspensão.",
     );
   } else if (functions[0] !== "T") {
     parts.push(
-      "Nao comeca na tonica, o que cria uma sensacao de movimento desde o inicio.",
+      "Não começa na tônica, o que cria uma sensação de movimento desde o início.",
     );
   }
 
   // Check for chromatic chords
   if (functions.includes(null)) {
     parts.push(
-      "Usa acordes fora do campo harmonico, adicionando cor e surpresa.",
+      "Usa acordes fora do campo harmônico, adicionando cor e surpresa.",
     );
   }
 
@@ -91,7 +91,7 @@ export default function ProgressionAnalysis() {
         className="bg-bg-card border border-border-default rounded-button p-3 sm:p-4 space-y-3"
       >
         <div className="flex items-center gap-2">
-          <h4 className="font-heading text-sm text-text-primary">Analise</h4>
+          <h4 className="font-heading text-sm text-text-primary">Análise</h4>
           <span className="font-mono text-xs text-text-secondary">{label}</span>
         </div>
 

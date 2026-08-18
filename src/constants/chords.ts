@@ -22,19 +22,19 @@ export const CHORD_TYPES: Record<string, ChordType> = {
   },
   maj7: {
     id: "maj7",
-    label: "Maior com 7a maior",
+    label: "Maior com 7ª maior",
     symbol: "maj7",
     intervals: [0, 4, 7, 11],
   },
   min7: {
     id: "min7",
-    label: "Menor com 7a menor",
+    label: "Menor com 7ª menor",
     symbol: "m7",
     intervals: [0, 3, 7, 10],
   },
   dom7: {
     id: "dom7",
-    label: "Dominante (7a menor)",
+    label: "Dominante (7ª menor)",
     symbol: "7",
     intervals: [0, 4, 7, 10],
   },
@@ -46,7 +46,7 @@ export const CHORD_TYPES: Record<string, ChordType> = {
   },
   dim7: {
     id: "dim7",
-    label: "Diminuto com 7a diminuta",
+    label: "Diminuto com 7ª diminuta",
     symbol: "dim7",
     intervals: [0, 3, 6, 9],
   },

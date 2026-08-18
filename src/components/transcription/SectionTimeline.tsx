@@ -20,7 +20,7 @@ export default function SectionTimeline() {
       <div className="border border-dashed border-border-default rounded-button p-8 text-center">
         <div className="text-2xl text-text-muted/40 mb-2">+</div>
         <p className="text-sm text-text-secondary">
-          Adicione acordes acima para esta secao
+          Adicione acordes acima para esta seção
         </p>
       </div>
     );
@@ -74,7 +74,7 @@ export default function SectionTimeline() {
                   }
                   className={`absolute top-1 left-1 w-5 h-5 rounded-full transition-all cursor-pointer flex items-center justify-center ${
                     isUnsure
-                      ? 'bg-yellow-400/80 shadow-[0_0_4px_rgba(250,204,21,0.4)]'
+                      ? 'bg-amber-400/80 shadow-[0_0_4px_rgba(251,191,36,0.4)]'
                       : 'bg-transparent border border-border-default opacity-40 hover:opacity-100'
                   }`}
                   title={isUnsure ? 'Marcar como certo' : 'Marcar como incerto'}

@@ -18,7 +18,7 @@ export default function ProgressionTimeline() {
       <div className="border border-dashed border-border-default rounded-button p-4 sm:p-8 text-center">
         <div className="text-2xl text-text-muted/40 mb-2">+</div>
         <p className="text-sm text-text-secondary">
-          Clique nos acordes acima para montar sua progressao
+          Clique nos acordes acima para montar sua progressão
         </p>
         <p className="text-xs text-text-muted mt-1">
           ou carregue um exemplo abaixo
@@ -36,12 +36,12 @@ export default function ProgressionTimeline() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="font-heading text-sm text-text-secondary">
-          Sua progressao ({customProgression.length} acordes, {totalBeats}{" "}
+          Sua progressão ({customProgression.length} acordes, {totalBeats}{" "}
           tempos)
         </h3>
         <button
           onClick={() => {
-            if (window.confirm("Limpar toda a progressao?")) clearProgression();
+            if (window.confirm("Limpar toda a progressão?")) clearProgression();
           }}
           className="text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
         >

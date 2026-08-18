@@ -38,7 +38,7 @@ function SectionComment({
           if (e.key === 'Escape') setEditing(false);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        placeholder="Notas sobre esta secao..."
+        placeholder="Notas sobre esta seção..."
         className="w-full h-full min-h-[4rem] px-2 py-1 rounded bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
       />
     );
@@ -253,14 +253,14 @@ function DroppableSection({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              aria-label={`Duplicar secao ${section.name}`}
+              aria-label={`Duplicar seção ${section.name}`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 duplicateSection(section.id);
               }}
               className="text-[10px] sm:text-xs text-text-muted hover:text-accent transition-colors cursor-pointer"
-              title="Duplicar secao"
+              title="Duplicar seção"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                 <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h5.5A1.5 1.5 0 0 1 14 3.5V9a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 9V3.5Z" />
@@ -315,7 +315,7 @@ function DroppableSection({
 
       <button
         type="button"
-        aria-label={`Remover secao ${section.name}`}
+        aria-label={`Remover seção ${section.name}`}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
@@ -345,7 +345,7 @@ export default function StructureSections() {
   if (sections.length === 0) {
     return (
       <div className="text-center py-8 text-text-muted text-sm">
-        Adicione uma secao para comecar
+        Adicione uma seção para começar
       </div>
     );
   }
@@ -353,7 +353,7 @@ export default function StructureSections() {
   return (
     <div>
       <h4 className="font-heading text-xs text-text-secondary mb-2">
-        Secoes
+        Seções
       </h4>
       <div className="flex flex-col gap-2">
         {sections.map((section) => (

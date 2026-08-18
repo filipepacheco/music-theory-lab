@@ -27,7 +27,7 @@ describe('migrateSection', () => {
       barIds: ['b1'],
     });
 
-    expect(migrated.name).toBe('Refrao');
+    expect(migrated.name).toBe('Refrão');
     expect(migrated.color).toBeDefined();
   });
 
@@ -44,13 +44,13 @@ describe('migrateSection', () => {
 });
 
 describe('migrateStructureData', () => {
-  it('collects unassigned bars under "Sem secao"', () => {
+  it('collects unassigned bars under "Sem seção"', () => {
     const result = migrateStructureData([bar('b1'), bar('b2')], [
       { id: 's1', name: 'A', color: '#000000', barIds: ['b1'] },
     ]);
 
     expect(result.sections).toHaveLength(2);
-    expect(result.sections[1].name).toBe('Sem secao');
+    expect(result.sections[1].name).toBe('Sem seção');
     expect(result.sections[1].barIds).toEqual(['b2']);
   });
 

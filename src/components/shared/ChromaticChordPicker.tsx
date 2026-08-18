@@ -98,7 +98,7 @@ export default function ChromaticChordPicker({
         >
           &#9654;
         </motion.span>
-        Acordes cromaticos
+        Acordes cromáticos
       </button>
 
       <AnimatePresence>

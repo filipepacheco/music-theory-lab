@@ -13,7 +13,7 @@ export default function TranscriptionChordPicker() {
   if (!section) {
     return (
       <p className="text-xs text-text-muted">
-        Adicione uma secao para comecar a transcrever.
+        Adicione uma seção para começar a transcrever.
       </p>
     );
   }
@@ -24,7 +24,7 @@ export default function TranscriptionChordPicker() {
   return (
     <div className="space-y-3">
       <DiatonicChordStrip
-        title="Acordes do campo harmonico"
+        title="Acordes do campo harmônico"
         stepCount={section.steps.length}
         onSelect={addToSection}
       />

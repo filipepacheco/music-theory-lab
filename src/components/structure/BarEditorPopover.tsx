@@ -69,7 +69,7 @@ export default function BarEditorPopover({
               key={ts}
               type="button"
               onClick={() => setBarTimeSignature(bar.id, ts)}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs rounded-control transition-colors cursor-pointer ${
                 bar.timeSignature === ts
                   ? 'bg-accent/20 text-accent font-bold border border-accent/40'
                   : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary/80 border border-transparent'

@@ -59,7 +59,7 @@ export default function SaveSongButton() {
             ? 'Atualizar'
             : 'Salvar'}
       </span>
-      {!saving && <span>Musica</span>}
+      {!saving && <span>Música</span>}
     </motion.button>
   );
 }

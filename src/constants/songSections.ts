@@ -3,8 +3,8 @@ import type { SectionType } from '@/types';
 export const SECTION_LABELS: Record<SectionType, string> = {
   intro: 'Intro',
   verso: 'Verso',
-  'pre-refrao': 'Pre-Refrao',
-  refrao: 'Refrao',
+  'pre-refrao': 'Pré-Refrão',
+  refrao: 'Refrão',
   ponte: 'Ponte',
   solo: 'Solo',
   outro: 'Outro',

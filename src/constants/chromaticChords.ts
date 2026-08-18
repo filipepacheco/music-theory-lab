@@ -15,8 +15,8 @@ export interface ChromaticChordCategory {
 export const CHROMATIC_CATEGORIES: ChromaticChordCategory[] = [
   {
     id: 'secondary-dominants',
-    label: 'Dominantes Secundarios',
-    description: 'Acordes dominantes que resolvem em graus do campo harmonico',
+    label: 'Dominantes Secundários',
+    description: 'Acordes dominantes que resolvem em graus do campo harmônico',
     chords: [
       {
         label: 'V7/ii',
@@ -52,7 +52,7 @@ export const CHROMATIC_CATEGORIES: ChromaticChordCategory[] = [
   },
   {
     id: 'modal-interchange',
-    label: 'Emprestimos Modais',
+    label: 'Empréstimos Modais',
     description: 'Acordes emprestados do modo menor paralelo',
     chords: [
       {

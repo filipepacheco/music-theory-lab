@@ -49,7 +49,7 @@ export default function ScaleComparison() {
         transition={{ duration: 0.2 }}
         className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
       >
-        <h4 className="font-heading text-sm text-text-primary">Comparacao</h4>
+        <h4 className="font-heading text-sm text-text-primary">Comparação</h4>
 
         {/* Chromatic strip comparison */}
         <div className="space-y-2">
