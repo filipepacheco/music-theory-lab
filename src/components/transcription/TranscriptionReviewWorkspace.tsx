@@ -61,7 +61,7 @@ function ReviewChordCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`min-w-0 rounded-xl border p-3 text-left transition-all ${
+      className={`min-w-0 rounded-card border p-3 text-left transition-all ${
         selected
           ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-primary'
           : ''
@@ -99,7 +99,7 @@ function ReviewChordCard({
 
 function EmptyReviewState() {
   return (
-    <div className="rounded-2xl border border-dashed border-border-default p-10 text-center">
+    <div className="rounded-section border border-dashed border-border-default p-10 text-center">
       <p className="font-heading text-lg text-text-primary">
         A transcrição aparecerá aqui
       </p>
@@ -125,7 +125,7 @@ function AddSectionControl({ className = '' }: { className?: string }) {
             addSection(event.target.value as (typeof SECTION_TYPES)[number]);
           }
         }}
-        className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
+        className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
         aria-label="Adicionar seção"
       >
         <option value="">Escolher</option>
@@ -242,7 +242,7 @@ export default function TranscriptionReviewWorkspace() {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-      <main className="min-w-0 rounded-2xl border border-border-default bg-bg-tertiary/20 p-4 sm:p-5">
+      <main className="min-w-0 rounded-section border border-border-default bg-bg-tertiary/20 p-4 sm:p-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.14em] text-accent">
@@ -263,7 +263,7 @@ export default function TranscriptionReviewWorkspace() {
           </div>
         </header>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/5 px-3 py-3">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-300/20 bg-amber-300/5 px-3 py-3">
           <div>
             <p className="text-xs font-medium text-amber-100">
               Selecione um acorde para conferir os detalhes
@@ -320,7 +320,7 @@ export default function TranscriptionReviewWorkspace() {
         </div>
       </main>
 
-      <aside className="flex h-fit flex-col rounded-2xl border border-border-default bg-bg-card p-5 xl:sticky xl:top-4">
+      <aside className="flex h-fit flex-col rounded-section border border-border-default bg-bg-card p-5 xl:sticky xl:top-4">
         {selectedItem && selectedDetails ? (
           <>
             <div className="flex items-start justify-between gap-3">
@@ -425,7 +425,7 @@ export default function TranscriptionReviewWorkspace() {
               <button
                 type="button"
                 onClick={toggleConfidence}
-                className="rounded-lg border border-border-default px-3 py-2.5 text-xs text-text-secondary"
+                className="rounded-button border border-border-default px-3 py-2.5 text-xs text-text-secondary"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Manter incerto'
@@ -434,7 +434,7 @@ export default function TranscriptionReviewWorkspace() {
               <button
                 type="button"
                 onClick={toggleConfidence}
-                className="rounded-lg bg-accent px-3 py-2.5 text-xs font-semibold text-white"
+                className="rounded-button bg-accent px-3 py-2.5 text-xs font-semibold text-white"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Confirmar'
@@ -458,7 +458,7 @@ export default function TranscriptionReviewWorkspace() {
                 type="button"
                 onClick={() => moveSelection(-1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) - 1]}
-                className="flex-1 rounded-lg border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
+                className="flex-1 rounded-button border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
               >
                 ← Anterior
               </button>
@@ -466,7 +466,7 @@ export default function TranscriptionReviewWorkspace() {
                 type="button"
                 onClick={() => moveSelection(1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) + 1]}
-                className="flex-1 rounded-lg border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
+                className="flex-1 rounded-button border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
               >
                 Próximo →
               </button>

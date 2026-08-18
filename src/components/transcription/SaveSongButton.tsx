@@ -50,7 +50,7 @@ export default function SaveSongButton() {
       whileTap={{ scale: 0.97 }}
       onClick={handleSave}
       disabled={!canSave}
-      className="flex items-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+      className="flex items-center gap-1.5 text-sm font-medium px-6 py-2.5 rounded-button border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
     >
       <span>
         {saving

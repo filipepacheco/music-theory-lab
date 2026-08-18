@@ -159,7 +159,7 @@ export default function GpImportPanel() {
   };
 
   return (
-    <div className="rounded-lg border border-border-default bg-bg-tertiary/40">
+    <div className="rounded-button border border-border-default bg-bg-tertiary/40">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer"
@@ -187,7 +187,7 @@ export default function GpImportPanel() {
             <div className="flex flex-col gap-4">
               <Field label="Arquivo">
                 <label className="block cursor-pointer">
-                  <span className="block px-3 py-2 rounded-lg bg-bg-card border border-border-default text-xs text-text-secondary truncate hover:text-text-primary transition-colors">
+                  <span className="block px-3 py-2 rounded-button bg-bg-card border border-border-default text-xs text-text-secondary truncate hover:text-text-primary transition-colors">
                     {fileName ?? 'Selecionar .gp'}
                   </span>
                   <input
@@ -256,7 +256,7 @@ export default function GpImportPanel() {
               )}
             </div>
 
-            <div className="rounded-lg bg-bg-card border border-border-default p-3 min-h-[240px]">
+            <div className="rounded-button bg-bg-card border border-border-default p-3 min-h-[240px]">
               {bars.length === 0 ? (
                 <p className="text-xs text-text-muted">
                   A previa aparece aqui assim que o arquivo e as duas faixas
@@ -289,7 +289,7 @@ export default function GpImportPanel() {
                     <button
                       onClick={handleImport}
                       disabled={importing}
-                      className="px-4 py-2 rounded-lg bg-accent text-white text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-4 py-2 rounded-button bg-accent text-white text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {importing
                         ? 'Importando...'
@@ -393,7 +393,7 @@ function TrackSelect({
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value)}
-      className="px-2 py-1.5 rounded-lg bg-bg-card border border-border-default text-xs text-text-primary"
+      className="px-2 py-1.5 rounded-button bg-bg-card border border-border-default text-xs text-text-primary"
     >
       <option value="">Selecione...</option>
       {tracks.map((t) => (

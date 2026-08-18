@@ -94,9 +94,9 @@ export default function TranscriptionModule() {
               value={songArtist}
               onChange={(event) => setSongArtist(event.target.value)}
               placeholder="Artista"
-              className="min-w-[180px] flex-1 rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              className="min-w-[180px] flex-1 rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
             />
-            <span className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-xs font-mono text-text-secondary">
+            <span className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs font-mono text-text-secondary">
               {keyDisplay}
             </span>
             <HearKeyButton />
@@ -107,7 +107,7 @@ export default function TranscriptionModule() {
           <TranscriptionReviewWorkspace />
 
           {songSections.length > 0 && (
-            <div className="rounded-2xl border border-border-default bg-bg-tertiary/20">
+            <div className="rounded-section border border-border-default bg-bg-tertiary/20">
               <button
                 type="button"
                 onClick={() => setShowChordPicker((current) => !current)}
@@ -136,7 +136,7 @@ export default function TranscriptionModule() {
           )}
 
           {hasSteps && (
-            <div className="rounded-2xl border border-border-default bg-bg-tertiary/20 p-4">
+            <div className="rounded-section border border-border-default bg-bg-tertiary/20 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-medium text-text-primary">

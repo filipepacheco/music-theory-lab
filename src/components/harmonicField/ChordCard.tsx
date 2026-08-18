@@ -48,7 +48,7 @@ const ChordCard = memo(function ChordCard({
       onClick={onClick}
       aria-label={`${romanNumeral} - ${chordName}`}
       aria-pressed={isSelected}
-      className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 px-2.5 sm:p-4 rounded-xl sm:rounded-lg bg-bg-card border transition-shadow cursor-pointer min-w-20 sm:min-w-[100px] shrink-0 sm:shrink sm:flex-1"
+      className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 px-2.5 sm:p-4 rounded-card sm:rounded-button bg-bg-card border transition-shadow cursor-pointer min-w-20 sm:min-w-[100px] shrink-0 sm:shrink sm:flex-1"
       style={{
         borderColor: isSelected ? borderColor : "var(--color-border-default)",
         borderWidth: isSelected ? 2 : 1,

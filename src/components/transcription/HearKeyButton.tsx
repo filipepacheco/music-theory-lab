@@ -16,7 +16,7 @@ export default function HearKeyButton() {
   return (
     <button
       onClick={handleClick}
-      className="px-2.5 py-2 rounded-lg text-xs text-text-secondary bg-bg-tertiary border border-border-default hover:border-accent/40 hover:text-accent transition-all cursor-pointer"
+      className="px-2.5 py-2 rounded-button text-xs text-text-secondary bg-bg-tertiary border border-border-default hover:border-accent/40 hover:text-accent transition-all cursor-pointer"
       title="Ouvir escala da tonalidade"
     >
       Ouvir tom
