@@ -15,18 +15,18 @@ interface BassFretProps {
 }
 
 const OCTAVE_COLORS: Record<number, string> = {
-  1: "rgba(251, 191, 36, 0.75)",  // amber
-  2: "rgba(94, 234, 212, 0.75)", // teal
-  3: "rgba(147, 197, 253, 0.75)", // blue
+  1: "var(--color-octave-1)", // amber
+  2: "var(--color-octave-2)", // teal
+  3: "var(--color-octave-3)", // blue
 };
 
 const DIMMED_OCTAVE_COLORS: Record<number, string> = {
-  1: "rgba(251, 191, 36, 0.25)",
-  2: "rgba(94, 234, 212, 0.25)",
-  3: "rgba(147, 197, 253, 0.25)",
+  1: "var(--color-octave-1-dim)",
+  2: "var(--color-octave-2-dim)",
+  3: "var(--color-octave-3-dim)",
 };
 
-const BASS_HIGHLIGHT_COLOR = "#34d399"; // bright emerald green
+const BASS_HIGHLIGHT_COLOR = "var(--color-bass-highlight)"; // bright emerald green
 
 const BassFret = memo(function BassFret({
   noteIndex,
@@ -72,7 +72,7 @@ const BassFret = memo(function BassFret({
                 backgroundColor:
                   (hasAnyHighlights ? DIMMED_OCTAVE_COLORS : OCTAVE_COLORS)[
                     octave
-                  ] ?? "rgba(255,255,255,0.3)",
+                  ] ?? "var(--color-octave-fallback)",
               }}
             >
               {noteName}

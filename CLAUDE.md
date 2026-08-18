@@ -139,7 +139,7 @@ Client-side sync lives in `src/services/sync.ts`. `syncAll()` is called on init 
 
 ### Design Tokens (Tailwind v4)
 
-All colors, shadows, radii, and fonts are defined as CSS variables inside `@theme {}` in `src/styles/globals.css`. Tailwind v4 auto-generates utility classes from `@theme` variables - e.g., `--color-bg-card` becomes `bg-bg-card`, `--color-text-primary` becomes `text-text-primary`. To add a new token, add it inside the `@theme {}` block (not in a tailwind.config file, which does not exist). Custom fonts: `font-heading` (JetBrains Mono) and `font-body` (JetBrains Sans).
+All colors, shadows, radii, and fonts are defined as CSS variables inside `@theme {}` in `src/styles/globals.css`. Tailwind v4 auto-generates utility classes from `@theme` variables - e.g., `--color-bg-card` becomes `bg-bg-card`, `--color-text-primary` becomes `text-text-primary`. To add a new token, add it inside the `@theme {}` block (not in a tailwind.config file, which does not exist). Custom fonts: `font-heading` (JetBrains Mono) and `font-body` (JetBrains Sans). Instrument tokens: `--color-octave-1/2/3` (+ `-dim` variants, `--color-octave-fallback`), `--color-bass-highlight`, `--color-key-black-border`, `--shadow-key`.
 
 ### Theme
 

@@ -59,6 +59,19 @@
   --color-fret-border: #3d3d55;
   --color-string: #8b8b9e;
 
+  /* Bass octave palette and highlight */
+  --color-octave-1: rgba(251, 191, 36, 0.75);
+  --color-octave-2: rgba(94, 234, 212, 0.75);
+  --color-octave-3: rgba(147, 197, 253, 0.75);
+  --color-octave-1-dim: rgba(251, 191, 36, 0.25);
+  --color-octave-2-dim: rgba(94, 234, 212, 0.25);
+  --color-octave-3-dim: rgba(147, 197, 253, 0.25);
+  --color-octave-fallback: rgba(255, 255, 255, 0.3);
+  --color-bass-highlight: #34d399;
+
+  /* Piano key chrome */
+  --color-key-black-border: #3a3a52;
+
   /* Section surface */
   --color-bg-section: #161b28;
 
@@ -66,6 +79,7 @@
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-card-hover:
     0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-key: 0 2px 4px rgba(0, 0, 0, 0.4);
 
   /* Harmonic function glows */
   --color-tonic-glow: rgba(59, 130, 246, 0.25);
