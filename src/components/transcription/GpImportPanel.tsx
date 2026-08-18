@@ -5,14 +5,18 @@
 //
 // Shape decided on https://github.com/filipepacheco/music-theory-lab/issues/14.
 
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useSongs } from '@/hooks/useSongs';
 import { NOTE_NAMES } from '@/constants/notes';
-import { GpParseError, parseGpFile, type GpFile } from '@/services/gpFile';
 import {
-  ERROR_MESSAGE,
+  GpParseError,
+  gpParseErrorMessage,
+  parseGpFile,
+  type GpFile,
+} from '@/services/gpFile';
+import {
   analyzeBars,
   assembleSections,
   summarise,
@@ -57,6 +61,8 @@ export default function GpImportPanel() {
 
   // Without a dirty flag in the store, compare against what was persisted.
   // Cheap, exact, and it avoids nagging when nothing has actually changed.
+  // Every field the editor can change counts, including key/mode/BPM/preset —
+  // the import replaces the whole open song.
   const dirty = useMemo(() => {
     if (!activeSongId) {
       return songSections.length > 0 || songTitle.trim() !== '';
@@ -66,9 +72,23 @@ export default function GpImportPanel() {
     return (
       saved.title !== songTitle ||
       saved.artist !== songArtist ||
+      saved.key !== rootNote ||
+      saved.mode !== (storeIsMinor ? 'minor' : 'major') ||
+      saved.originalBpm !== bpm ||
+      saved.presetId !== activePresetId ||
       JSON.stringify(saved.sections) !== JSON.stringify(songSections)
     );
-  }, [activeSongId, songs, songTitle, songArtist, songSections]);
+  }, [
+    activeSongId,
+    songs,
+    songTitle,
+    songArtist,
+    songSections,
+    rootNote,
+    storeIsMinor,
+    bpm,
+    activePresetId,
+  ]);
 
   const reset = () => {
     setFileName(null);
@@ -95,7 +115,7 @@ export default function GpImportPanel() {
     } catch (e) {
       setError(
         e instanceof GpParseError
-          ? ERROR_MESSAGE[e.kind]
+          ? gpParseErrorMessage(e)
           : 'Nao foi possivel ler o arquivo.',
       );
     }
@@ -126,6 +146,7 @@ export default function GpImportPanel() {
         sections: assembleSections(bars),
       };
       const id = await save(data);
+      if (!id) throw new Error('no id');
       const now = new Date().toISOString();
       loadSong({ id, ...data, createdAt: now, updatedAt: now });
       setOpen(false);
@@ -208,32 +229,26 @@ export default function GpImportPanel() {
                   <Field label="Tom">
                     <div className="grid grid-cols-4 gap-1">
                       {NOTE_NAMES.map((n, i) => (
-                        <button
+                        <PillButton
                           key={n}
+                          active={keyRoot === i}
                           onClick={() => setKeyRoot(i)}
-                          className={`px-1 py-1.5 rounded text-[11px] font-mono cursor-pointer transition-colors ${
-                            keyRoot === i
-                              ? 'bg-accent text-white'
-                              : 'bg-bg-card text-text-secondary hover:text-text-primary'
-                          }`}
+                          className="px-1 py-1.5 rounded text-[11px] font-mono"
                         >
                           {n}
-                        </button>
+                        </PillButton>
                       ))}
                     </div>
                     <div className="flex gap-1">
                       {[false, true].map((m) => (
-                        <button
+                        <PillButton
                           key={String(m)}
+                          active={isMinor === m}
                           onClick={() => setIsMinor(m)}
-                          className={`flex-1 px-2 py-1.5 rounded text-[11px] cursor-pointer transition-colors ${
-                            isMinor === m
-                              ? 'bg-accent text-white'
-                              : 'bg-bg-card text-text-secondary hover:text-text-primary'
-                          }`}
+                          className="flex-1 px-2 py-1.5 rounded text-[11px]"
                         >
                           {m ? 'menor' : 'maior'}
-                        </button>
+                        </PillButton>
                       ))}
                     </div>
                   </Field>
@@ -294,7 +309,7 @@ export default function GpImportPanel() {
   );
 }
 
-function BarCell({ bar }: { bar: ImportedBar }) {
+const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
   const tone =
     bar.result.kind === 'unclear'
       ? 'bg-amber-500/15'
@@ -320,6 +335,31 @@ function BarCell({ bar }: { bar: ImportedBar }) {
         {bar.step.label}
       </div>
     </div>
+  );
+});
+
+function PillButton({
+  active,
+  onClick,
+  children,
+  className = '',
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`cursor-pointer transition-colors ${
+        active
+          ? 'bg-accent text-white'
+          : 'bg-bg-card text-text-secondary hover:text-text-primary'
+      } ${className}`}
+    >
+      {children}
+    </button>
   );
 }
 

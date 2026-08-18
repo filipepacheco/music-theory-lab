@@ -6,8 +6,8 @@
 // https://github.com/filipepacheco/music-theory-lab/issues/9
 
 import { getHarmonicField } from '@/utils/musicTheory';
-import { getNoteName } from '@/utils/noteHelpers';
-import type { GpFile, GpParseErrorKind } from '@/services/gpFile';
+import { getNoteName, getPreferredRootName } from '@/utils/noteHelpers';
+import type { GpFile } from '@/services/gpFile';
 import { matchBar, chordLabel, type BarChordResult } from '@/services/gpChords';
 import type { ProgressionStep } from '@/constants/progressions';
 import type { SongSection } from '@/types';
@@ -95,7 +95,9 @@ export function analyzeBars(
   isMinor: boolean,
 ): ImportedBar[] {
   const field = getHarmonicField(keyRoot, isMinor);
-  const keyName = getNoteName(keyRoot);
+  // Preferred spelling, so flat keys (Bb, Eb, ...) spell flats — enharmonics
+  // follow the chosen key, per issue #13.
+  const keyName = getPreferredRootName(keyRoot);
 
   const degrees = field.map((c) => ({
     root: c.notes[0],
@@ -107,7 +109,7 @@ export function analyzeBars(
   let last: ProgressionStep | null = null;
 
   for (let i = 0; i < gp.masterBarCount; i++) {
-    const beats = clampBeats(gp.masterBars[i]?.quarterNoteBeats ?? 4);
+    const beats = clampBeats(gp.quarterNoteBeats(i));
     const result = matchBar(
       gp.pitchesFor(i, harmonyTrack),
       gp.pitchesFor(i, rootTrack),
@@ -166,7 +168,6 @@ export function analyzeBars(
 }
 
 export interface ImportSummary {
-  total: number;
   diatonic: number;
   chromatic: number;
   unclear: number;
@@ -175,7 +176,6 @@ export interface ImportSummary {
 
 export function summarise(bars: ImportedBar[]): ImportSummary {
   return {
-    total: bars.length,
     diatonic: bars.filter((b) => !b.carried && b.step.degree !== null).length,
     chromatic: bars.filter(
       (b) => !b.carried && b.result.kind === 'chord' && b.step.degree === null,
@@ -205,14 +205,3 @@ export function assembleSections(bars: ImportedBar[]): SongSection[] {
   return sections;
 }
 
-/** pt-BR message per rejection kind, so the user learns what their file is. */
-export const ERROR_MESSAGE: Record<GpParseErrorKind, string> = {
-  'legacy-binary':
-    'Formato antigo do Guitar Pro (.gp3/.gp4/.gp5). Apenas arquivos .gp do Guitar Pro 7 ou 8 sao suportados.',
-  'gpx-container':
-    'Arquivo .gpx do Guitar Pro 6. Apenas arquivos .gp do Guitar Pro 7 ou 8 sao suportados.',
-  'not-a-zip': 'Este arquivo nao parece ser um arquivo do Guitar Pro.',
-  'not-a-gp-file':
-    'O arquivo esta compactado, mas nao contem uma partitura do Guitar Pro.',
-  corrupt: 'O arquivo parece estar corrompido e nao pode ser lido.',
-};
