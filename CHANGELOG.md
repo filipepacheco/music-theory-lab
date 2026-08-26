@@ -2,11 +2,11 @@
 
 ## 2026-08-16 — Shared transcriptions
 
-- **Changed**: transcriptions (songs) are now shared across all devices with
-  no authentication. `GET /api/songs` returns every device's songs,
-  deletes propagate globally, and the client's songs pull is unscoped.
-  Progressions and structures remain device-scoped.
-- **Note**: the song library is publicly visible and editable to anyone who
+- **Changed**: transcriptions (songs) **and song structures** are now shared
+  across all devices with no authentication. Their `GET` endpoints return
+  every device's rows, deletes propagate globally, and the client pulls are
+  unscoped. Progressions remain device-scoped.
+- **Note**: both libraries are publicly visible and editable to anyone who
   reaches the API — deliberate for this app; revisit before adding
   sensitive content.
 

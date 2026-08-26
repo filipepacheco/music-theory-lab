@@ -133,9 +133,9 @@ Three serverless API routes in `api/` provide cloud sync via Turso (LibSQL):
 - `api/songs.ts` - GET/POST/DELETE for song transcriptions
 - `api/structures.ts` - GET/POST/DELETE for song structures
 
-All routes use the same pattern: inlined Turso client (no shared module), device_id-based ownership, batch upsert on POST. Requires `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables. Exception: **songs are shared globally** — `GET /api/songs` returns every device's transcriptions and `DELETE` removes by id only, so all devices see and manage the same song library without authentication. Progressions and structures remain device-scoped.
+All routes use the same pattern: inlined Turso client (no shared module), device_id-based ownership, batch upsert on POST. Requires `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables. Exception: **songs and structures are shared globally** — their `GET` endpoints return every device's rows and `DELETE` removes by id only, so all devices see and manage the same transcription and arrangement libraries without authentication. Progressions remain device-scoped.
 
-Client-side sync lives in `src/services/sync.ts`. `syncAll()` is called on init and performs bidirectional merge: progressions use a simple union (each side pushes its local-only records); songs and structures use last-write-wins by `updated_at`. The songs pull is unscoped (`pullSongs` sends no device_id) so every device merges the full shared transcription library. Push helpers (`pushProgression`, `pushSong`, `pushStructure`, `pushDelete*`) are fire-and-forget - errors are silently swallowed so sync failures never block the UI.
+Client-side sync lives in `src/services/sync.ts`. `syncAll()` is called on init and performs bidirectional merge: progressions use a simple union (each side pushes its local-only records); songs and structures use last-write-wins by `updated_at`. The songs and structures pulls are unscoped (`pullSongs`/`pullStructures` send no device_id) so every device merges the full shared transcription and arrangement libraries. Push helpers (`pushProgression`, `pushSong`, `pushStructure`, `pushDelete*`) are fire-and-forget - errors are silently swallowed so sync failures never block the UI.
 
 ### Design Tokens (Tailwind v4)
 

@@ -122,7 +122,8 @@ export function pullSongs(): Promise<CloudSong[]> {
 }
 
 export function pullStructures(): Promise<CloudStructure[]> {
-  return pullRows<CloudStructure>('structures');
+  // Structures are shared globally across devices — no device filter.
+  return pullRows<CloudStructure>('structures', false);
 }
 
 // ---------------------------------------------------------------------------
