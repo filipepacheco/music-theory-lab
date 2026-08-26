@@ -12,6 +12,21 @@ async function db() {
   return _turso;
 }
 
+/**
+ * Read the JSON body without depending on the runtime's body parsing.
+ * `req.body` may be undefined on some deployments; fall back to reading
+ * the raw stream.
+ */
+async function readJsonBody(req: VercelRequest): Promise<Record<string, unknown>> {
+  if (req.body && typeof req.body === 'object') {
+    return req.body as Record<string, unknown>;
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  const raw = Buffer.concat(chunks).toString('utf8');
+  return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const turso = await db();
@@ -25,8 +40,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'POST') {
-      const { device_id, records } = req.body;
+      const body = await readJsonBody(req);
+      const { device_id, records } = body;
       if (!device_id || !records) return res.status(400).json({ error: 'device_id and records required' });
+
+      // The Turso schema predates the client's `bpm` column. Keep it in sync
+      // (idempotent; the client db.ts does the same for its local copy).
+      try {
+        await turso.execute(
+          'ALTER TABLE structures ADD COLUMN bpm INTEGER NOT NULL DEFAULT 120',
+        );
+      } catch {
+        // Column already exists
+      }
 
       for (const r of records) {
         await turso.execute({
