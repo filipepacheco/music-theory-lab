@@ -35,7 +35,10 @@ export type { SavedProgression } from '@/services/db';
  * one-shot background cloud sync.
  */
 async function withDb<T>(operation: () => T): Promise<T> {
-  await initDB();
+  // initialize() both opens the database and kicks the one-shot background
+  // cloud sync, so the very first operation triggers the sync — callers
+  // must never need to remember either protocol.
+  await initialize();
   return operation();
 }
 
