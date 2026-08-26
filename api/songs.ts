@@ -17,13 +17,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const turso = await db();
 
     if (req.method === 'GET') {
-      const deviceId = req.query.device_id as string;
-      if (!deviceId) return res.status(400).json({ error: 'device_id required' });
-
-      const result = await turso.execute({
-        sql: 'SELECT * FROM songs WHERE device_id = ?',
-        args: [deviceId],
-      });
+      // Transcriptions are shared globally: every device sees every song,
+      // no authentication required. Progressions and structures remain
+      // device-scoped.
+      const result = await turso.execute('SELECT * FROM songs');
 
       return res.status(200).json(result.rows);
     }
@@ -58,12 +55,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'DELETE') {
       const id = req.query.id as string;
-      const deviceId = req.query.device_id as string;
-      if (!id || !deviceId) return res.status(400).json({ error: 'id and device_id required' });
+      if (!id) return res.status(400).json({ error: 'id required' });
 
+      // Deletes propagate globally, matching the global visibility above.
       await turso.execute({
-        sql: 'DELETE FROM songs WHERE id = ? AND device_id = ?',
-        args: [id, deviceId],
+        sql: 'DELETE FROM songs WHERE id = ?',
+        args: [id],
       });
 
       return res.status(200).json({ ok: true });

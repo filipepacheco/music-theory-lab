@@ -37,8 +37,9 @@ async function deleteRecord(path: string, id: string): Promise<void> {
   );
 }
 
-async function pullRows<T>(path: string): Promise<T[]> {
-  const res = await fetch(`${API_BASE}/${path}?${deviceQuery()}`);
+async function pullRows<T>(path: string, withDevice = true): Promise<T[]> {
+  const query = withDevice ? `?${deviceQuery()}` : '';
+  const res = await fetch(`${API_BASE}/${path}${query}`);
   if (!res.ok) return [];
   return res.json();
 }
@@ -116,7 +117,8 @@ export function pullProgressions(): Promise<CloudProgression[]> {
 }
 
 export function pullSongs(): Promise<CloudSong[]> {
-  return pullRows<CloudSong>('songs');
+  // Transcriptions are shared globally across devices — no device filter.
+  return pullRows<CloudSong>('songs', false);
 }
 
 export function pullStructures(): Promise<CloudStructure[]> {
