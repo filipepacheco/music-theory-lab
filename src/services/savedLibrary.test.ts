@@ -33,7 +33,7 @@ import { savedLibrary } from '@/services/savedLibrary';
 import { syncAll } from '@/services/sync';
 
 describe('savedLibrary sync trigger', () => {
-  it('kicks the one-shot background sync on first use and never again', async () => {
+  it('kicks the background sync on first use and not again within the cooldown', async () => {
     await savedLibrary.songs.list();
     await savedLibrary.structures.list();
     await savedLibrary.progressions.list();

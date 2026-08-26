@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-18 — Sync hardening
+
+- **Fixed**: failed sync pushes are now retried — sync re-runs whenever the
+  tab regains focus (30s cooldown, idempotent upserts). Stale tabs pick up
+  data from other devices without a manual reload.
+- **Fixed**: API routes parse JSON bodies explicitly (deployed runtimes did
+  not provide `req.body`) and the structures route self-migrates the missing
+  Turso `bpm` column.
+
 ## 2026-08-16 — Shared transcriptions
 
 - **Changed**: transcriptions (songs) **and song structures** are now shared
