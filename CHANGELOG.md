@@ -3,8 +3,9 @@
 ## 2026-08-18 — Sync hardening
 
 - **Fixed**: failed sync pushes are now retried — sync re-runs whenever the
-  tab regains focus (30s cooldown, idempotent upserts). Stale tabs pick up
-  data from other devices without a manual reload.
+  tab regains focus (30s cooldown, idempotent upserts), and the collection
+  hooks re-read their lists on the same focus event, so mounted lists update
+  without a reload. Stale tabs pick up data from other devices automatically.
 - **Fixed**: API routes parse JSON bodies explicitly (deployed runtimes did
   not provide `req.body`) and the structures route self-migrates the missing
   Turso `bpm` column.

@@ -58,6 +58,17 @@ export function useCollection<T, SaveInput, UpdateInput = never>(
     };
   }, [refresh, labels.load]);
 
+  // The library re-syncs when the tab regains focus (savedLibrary); keep the
+  // visible list in step. refresh() itself re-reads after the sync settles,
+  // so the final state always lands.
+  useEffect(() => {
+    const onFocus = () => {
+      refresh().catch(() => {});
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refresh]);
+
   const save = useCallback(
     async (input: SaveInput) => {
       if (!collection.save) return;
