@@ -5,7 +5,7 @@ export const GROOVE_STEPS = 16;
 
 /** The drum pieces, in display order, with compact pt-BR labels. */
 export const DRUM_PIECES: { id: DrumPiece; label: string }[] = [
-  { id: 'bumbo', label: 'B' },
+  { id: 'chimbal', label: 'HH' },
   { id: 'caixa', label: 'C' },
-  { id: 'chimbal', label: 'CH' },
+  { id: 'bumbo', label: 'B' },
 ];
