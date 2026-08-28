@@ -4,6 +4,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useAppStore } from '@/store/useAppStore';
 import { DraggableBar } from './DraggableBar';
 import ColorPicker from './ColorPicker';
+import { GrooveEditor, GroovePreview } from './GrooveEditor';
 import { getSectionBars } from '@/utils/structureLayout';
 import type { StructureBar, StructureSection } from '@/types';
 
@@ -182,6 +183,8 @@ function DroppableSection({
     [setDropRef, setDragRef],
   );
 
+  const [grooveOpen, setGrooveOpen] = useState(false);
+
   const color = section.color;
 
   const sectionBars = getSectionBars(section, bars);
@@ -205,6 +208,21 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
+      {/* Groove preview: the at-a-glance pattern, always visible when set */}
+      {!grooveOpen && section.groove && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setGrooveOpen(true);
+          }}
+          className="self-start cursor-pointer"
+          title="Editar groove"
+        >
+          <GroovePreview groove={section.groove} color={color} />
+        </button>
+      )}
+
       {/* Horizontal layout: actions | bars grid | comment */}
       <div className="flex gap-3 sm:gap-4">
         {/* Left column: action buttons stacked vertically */}
@@ -251,6 +269,23 @@ function DroppableSection({
           </select>
 
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setGrooveOpen((open) => !open);
+              }}
+              className={`text-[10px] sm:text-xs transition-colors cursor-pointer ${
+                grooveOpen || section.groove
+                  ? 'text-accent'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+              title="Editar groove"
+            >
+              Groove
+            </button>
+
             <button
               type="button"
               aria-label={`Duplicar seção ${section.name}`}
@@ -312,6 +347,16 @@ function DroppableSection({
           />
         </div>
       </div>
+
+      {/* Groove editor: expands under the bars row */}
+      {grooveOpen && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GrooveEditor section={section} color={color} />
+        </div>
+      )}
 
       <button
         type="button"

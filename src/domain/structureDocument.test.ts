@@ -68,4 +68,75 @@ describe('structure document', () => {
     expect(result?.sections[1].barIds).toEqual(['b3']);
     expect(result?.bars.map((bar) => bar.id)).toEqual(['b1', 'b3', 'b2']);
   });
+
+  describe('groove', () => {
+    const module = createStructureDocumentModule();
+
+    it('creates a 16-step pattern with one hit on first toggle', () => {
+      const result = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        0,
+      );
+
+      const groove = result.sections[0].groove;
+      expect(groove?.bumbo).toHaveLength(16);
+      expect(groove?.bumbo.filter(Boolean)).toEqual([true]);
+      expect(groove?.caixa.filter(Boolean)).toEqual([]);
+      expect(groove?.chimbal.filter(Boolean)).toEqual([]);
+      expect(result.sections[1].groove).toBeUndefined();
+    });
+
+    it('toggles a hit off again without removing the pattern', () => {
+      const withHit = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'caixa',
+        4,
+      );
+      const result = module.toggleGrooveHit(withHit, 'intro', 'caixa', 4);
+
+      expect(result.sections[0].groove?.caixa[4]).toBe(false);
+      expect(result.sections[0].groove).toBeDefined();
+    });
+
+    it('ignores out-of-range steps', () => {
+      const result = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        16,
+      );
+
+      expect(result.sections[0].groove).toBeUndefined();
+    });
+
+    it('clears the whole pattern', () => {
+      const withHit = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'chimbal',
+        8,
+      );
+      const result = module.clearGroove(withHit, 'intro');
+
+      expect(result.sections[0].groove).toBeUndefined();
+    });
+
+    it('copies the groove when duplicating a section', () => {
+      const withHit = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        0,
+      );
+      const result = module.duplicateSection(withHit, 'intro', '4/4');
+
+      expect(result?.sections[1].groove?.bumbo[0]).toBe(true);
+      expect(result?.sections[1].groove).not.toBe(
+        result?.sections[0].groove,
+      );
+    });
+  });
 });

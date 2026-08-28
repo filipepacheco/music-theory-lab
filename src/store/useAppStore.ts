@@ -496,6 +496,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ structureSections: next.sections });
   },
 
+  toggleGrooveHit: (sectionId, piece, step) => {
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.toggleGrooveHit(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      piece,
+      step,
+    );
+    set({ structureSections: next.sections });
+  },
+
+  clearGroove: (sectionId) => {
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.clearGroove(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+    );
+    set({ structureSections: next.sections });
+  },
+
   setFocusedSection: (id) => set({ focusedSectionId: id }),
 
   reorderStructureSection: (activeId, overId) => {

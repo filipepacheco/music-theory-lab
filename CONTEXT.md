@@ -44,6 +44,19 @@ the `transcriptionDocument` module. Step lists also share the cap-and-clamp
 rules of the progression builder.
 _Avoid_: song state, transcription screen
 
+**Groove**:
+The main drum pattern of a structure section: a 16-step grid over three drum
+pieces, drawn on the section as a memory aid for what the section's rhythm is.
+One groove per section; toggling steps goes through the `structureDocument`
+commands and persists in the section's JSON.
+_Avoid_: beat, rhythm
+
+**Drum piece**:
+One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`
+(hi-hat). The piece list is a constant, so new pieces are an addition rather
+than a redesign.
+_Avoid_: drum, instrument, track
+
 **Quiz session**:
 One active run of music-theory questions, including its current question, answer result, score, streak, and replay state.
 _Avoid_: quiz state, quiz screen

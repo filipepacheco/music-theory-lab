@@ -46,6 +46,16 @@ export interface Song {
 
 export type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
 
+/** One row of a groove grid: the drum pieces a groove can mark. */
+export type DrumPiece = 'bumbo' | 'caixa' | 'chimbal';
+
+/** The main drum pattern of a section: a 16-step, three-piece grid. */
+export interface GroovePattern {
+  bumbo: boolean[];
+  caixa: boolean[];
+  chimbal: boolean[];
+}
+
 export interface StructureBar {
   id: string;
   index: number;
@@ -62,6 +72,8 @@ export interface StructureSection {
   repeatOf?: string;
   comment?: string;
   barsPerRow?: number;
+  /** Main drum pattern of the section (drawn in the section editor). */
+  groove?: GroovePattern;
 }
 
 export interface SongStructure {
@@ -216,6 +228,12 @@ export interface AppState {
     sectionId: string,
     barsPerRow: number | undefined,
   ) => void;
+  toggleGrooveHit: (
+    sectionId: string,
+    piece: DrumPiece,
+    step: number,
+  ) => void;
+  clearGroove: (sectionId: string) => void;
   setFocusedSection: (id: string | null) => void;
   reorderStructureSection: (activeId: string, overId: string) => void;
   moveBarToSection: (barId: string, sectionId: string) => void;

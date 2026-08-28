@@ -1,5 +1,12 @@
 import { dotsForTimeSignature } from '@/utils/structureLayout';
-import type { StructureBar, StructureSection, TimeSignature } from '@/types';
+import { DRUM_PIECES, GROOVE_STEPS } from '@/constants/groove';
+import type {
+  DrumPiece,
+  GroovePattern,
+  StructureBar,
+  StructureSection,
+  TimeSignature,
+} from '@/types';
 
 export interface StructureDocument {
   bars: StructureBar[];
@@ -68,6 +75,13 @@ export interface StructureDocumentModule {
     sectionId: string,
     barsPerRow: number | undefined,
   ): StructureDocument;
+  toggleGrooveHit(
+    document: StructureDocument,
+    sectionId: string,
+    piece: DrumPiece,
+    step: number,
+  ): StructureDocument;
+  clearGroove(document: StructureDocument, sectionId: string): StructureDocument;
   reorderSections(
     document: StructureDocument,
     activeId: string,
@@ -102,6 +116,29 @@ function withReindexedBars(
   sections: StructureSection[],
 ): StructureDocument {
   return { bars: reindexBars(bars, sections), sections };
+}
+
+/** A groove with every step off — the starting shape for a new pattern. */
+function emptyGroove(): GroovePattern {
+  return {
+    bumbo: Array(GROOVE_STEPS).fill(false),
+    caixa: Array(GROOVE_STEPS).fill(false),
+    chimbal: Array(GROOVE_STEPS).fill(false),
+  };
+}
+
+/** Defensively normalize a persisted groove to GROOVE_STEPS boolean rows. */
+function normalizedGroove(groove: GroovePattern): GroovePattern {
+  const normalized = emptyGroove();
+  for (const piece of DRUM_PIECES) {
+    const row = groove[piece.id];
+    if (Array.isArray(row)) {
+      for (let step = 0; step < GROOVE_STEPS; step++) {
+        normalized[piece.id][step] = row[step] === true;
+      }
+    }
+  }
+  return normalized;
 }
 
 export function createStructureDocumentModule(
@@ -201,6 +238,13 @@ export function createStructureDocumentModule(
         barIds: newBars.map((bar) => bar.id),
         comment: source.comment,
         barsPerRow: source.barsPerRow,
+        groove: source.groove
+          ? {
+              bumbo: [...normalizedGroove(source.groove).bumbo],
+              caixa: [...normalizedGroove(source.groove).caixa],
+              chimbal: [...normalizedGroove(source.groove).chimbal],
+            }
+          : undefined,
       };
       const insertIndex = document.sections.indexOf(source) + 1;
       const sections = [...document.sections];
@@ -254,6 +298,27 @@ export function createStructureDocumentModule(
       bars: document.bars,
       sections: document.sections.map((section) =>
         section.id === sectionId ? { ...section, barsPerRow } : section,
+      ),
+    }),
+
+    toggleGrooveHit: (document, sectionId, piece, step) => {
+      if (step < 0 || step >= GROOVE_STEPS) return document;
+      const section = document.sections.find((item) => item.id === sectionId);
+      if (!section) return document;
+      const groove = normalizedGroove(section.groove ?? emptyGroove());
+      groove[piece][step] = !groove[piece][step];
+      return {
+        bars: document.bars,
+        sections: document.sections.map((item) =>
+          item.id === sectionId ? { ...item, groove } : item,
+        ),
+      };
+    },
+
+    clearGroove: (document, sectionId) => ({
+      bars: document.bars,
+      sections: document.sections.map((section) =>
+        section.id === sectionId ? { ...section, groove: undefined } : section,
       ),
     }),
 
