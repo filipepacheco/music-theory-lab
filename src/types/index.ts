@@ -49,8 +49,12 @@ export type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
 /** One row of a groove grid: the drum pieces a groove can mark. */
 export type DrumPiece = 'bumbo' | 'caixa' | 'chimbal';
 
-/** The main drum pattern of a section: a 16-step, three-piece grid. */
+/** The note subdivision used by a groove across one 4/4 measure. */
+export type GrooveSubdivision = '4n' | '8n' | '16n' | '32n';
+
+/** The main drum pattern of a section: a three-piece, variable-step grid. */
 export interface GroovePattern {
+  subdivision: GrooveSubdivision;
   bumbo: boolean[];
   caixa: boolean[];
   chimbal: boolean[];
@@ -228,10 +232,10 @@ export interface AppState {
     sectionId: string,
     barsPerRow: number | undefined,
   ) => void;
-  toggleGrooveHit: (
+  toggleGrooveHit: (sectionId: string, piece: DrumPiece, step: number) => void;
+  setGrooveSubdivision: (
     sectionId: string,
-    piece: DrumPiece,
-    step: number,
+    subdivision: GrooveSubdivision,
   ) => void;
   clearGroove: (sectionId: string) => void;
   setFocusedSection: (id: string | null) => void;

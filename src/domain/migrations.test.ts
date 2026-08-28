@@ -41,13 +41,32 @@ describe('migrateSection', () => {
 
     expect(migrated.name).toBe('Final');
   });
+
+  it('preserves a groove when migrating a legacy section', () => {
+    const groove = {
+      subdivision: '8n' as const,
+      bumbo: Array(8).fill(false),
+      caixa: Array(8).fill(false),
+      chimbal: Array(8).fill(false),
+    };
+
+    const migrated = migrateSection({
+      id: 's1',
+      type: 'refrao',
+      barIds: ['b1'],
+      groove,
+    });
+
+    expect(migrated.groove).toEqual(groove);
+  });
 });
 
 describe('migrateStructureData', () => {
   it('collects unassigned bars under "Sem seção"', () => {
-    const result = migrateStructureData([bar('b1'), bar('b2')], [
-      { id: 's1', name: 'A', color: '#000000', barIds: ['b1'] },
-    ]);
+    const result = migrateStructureData(
+      [bar('b1'), bar('b2')],
+      [{ id: 's1', name: 'A', color: '#000000', barIds: ['b1'] }],
+    );
 
     expect(result.sections).toHaveLength(2);
     expect(result.sections[1].name).toBe('Sem seção');
@@ -55,9 +74,10 @@ describe('migrateStructureData', () => {
   });
 
   it('adds no section when every bar is assigned', () => {
-    const result = migrateStructureData([bar('b1')], [
-      { id: 's1', name: 'A', color: '#000000', barIds: ['b1'] },
-    ]);
+    const result = migrateStructureData(
+      [bar('b1')],
+      [{ id: 's1', name: 'A', color: '#000000', barIds: ['b1'] }],
+    );
 
     expect(result.sections).toHaveLength(1);
   });

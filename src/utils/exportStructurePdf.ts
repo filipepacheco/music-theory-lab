@@ -1,12 +1,24 @@
 import jsPDF from 'jspdf';
 import {
+  DEFAULT_GROOVE_SUBDIVISION,
+  DRUM_PIECES,
+  GROOVE_SUBDIVISIONS,
+  grooveStepCount,
+  grooveStepsPerBeat,
+} from '@/constants/groove';
+import {
   dotsForTimeSignature,
   effectiveBarColor,
   hexToRgb,
   lightenRgb,
   getSectionBars,
 } from './structureLayout';
-import type { StructureBar, StructureSection } from '@/types';
+import type {
+  DrumPiece,
+  GroovePattern,
+  StructureBar,
+  StructureSection,
+} from '@/types';
 
 export type PdfFormat = 'a4' | 'ipad-air';
 
@@ -42,6 +54,15 @@ export interface FormatConfig {
   barsTopOffset: number;
   commentLineHeight: number;
   commentBesideMinW: number;
+  grooveGapY: number;
+  grooveHeight: number;
+  grooveFontSize: number;
+  grooveLabelW: number;
+  grooveCellW: number;
+  grooveCellH: number;
+  grooveCellGap: number;
+  grooveBeatGap: number;
+  grooveRowGap: number;
 }
 
 export const FORMATS: Record<PdfFormat, FormatConfig> = {
@@ -68,6 +89,15 @@ export const FORMATS: Record<PdfFormat, FormatConfig> = {
     barsTopOffset: 5,
     commentLineHeight: 3,
     commentBesideMinW: 20,
+    grooveGapY: 3,
+    grooveHeight: 13,
+    grooveFontSize: 5.5,
+    grooveLabelW: 6,
+    grooveCellW: 1.45,
+    grooveCellH: 1.8,
+    grooveCellGap: 0.45,
+    grooveBeatGap: 0.7,
+    grooveRowGap: 0.65,
   },
   'ipad-air': {
     pageW: 160,
@@ -92,6 +122,15 @@ export const FORMATS: Record<PdfFormat, FormatConfig> = {
     barsTopOffset: 5.5,
     commentLineHeight: 3.2,
     commentBesideMinW: 20,
+    grooveGapY: 3,
+    grooveHeight: 13,
+    grooveFontSize: 5.5,
+    grooveLabelW: 6,
+    grooveCellW: 1.45,
+    grooveCellH: 1.8,
+    grooveCellGap: 0.45,
+    grooveBeatGap: 0.7,
+    grooveRowGap: 0.65,
   },
 };
 
@@ -103,7 +142,41 @@ export interface SectionLayout {
   barsH: number;
   commentLines: string[];
   commentBeside: boolean;
+  contentH: number;
+  grooveH: number;
   totalH: number;
+}
+
+export interface GroovePdfRow {
+  piece: DrumPiece;
+  label: string;
+  hits: boolean[];
+}
+
+/** Normalize groove rows for the PDF renderer, including legacy patterns. */
+export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
+  if (!groove) return [];
+
+  const stepCount = grooveStepCount(
+    groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
+  );
+  const rows = DRUM_PIECES.map((piece) => ({
+    piece: piece.id,
+    label: piece.label,
+    hits: Array.from({ length: stepCount }, (_, step) =>
+      Boolean(groove[piece.id][step]),
+    ),
+  }));
+
+  return rows.some((row) => row.hits.some(Boolean)) ? rows : [];
+}
+
+function grooveResolutionLabel(groove: GroovePattern): string {
+  const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
+  return (
+    GROOVE_SUBDIVISIONS.find((option) => option.id === subdivision)
+      ?.shortLabel ?? '1/16'
+  );
 }
 
 type WrapText = (text: string, maxWidth: number) => string[];
@@ -123,11 +196,15 @@ export function calcSectionLayout(
     (cfg.pageW - cfg.margin * 2 - cfg.colGap * (cfg.numCols - 1)) / cfg.numCols;
 
   const barsPerRow =
-    section.barsPerRow ?? Math.floor((colW * 0.45) / (cfg.barW + cfg.barGap));
-  const rowCount = Math.ceil(sectionBars.length / barsPerRow);
+    section.barsPerRow ??
+    Math.max(1, Math.floor((colW * 0.45) / (cfg.barW + cfg.barGap)));
+  const rowCount =
+    sectionBars.length > 0 ? Math.ceil(sectionBars.length / barsPerRow) : 0;
   const colCount = Math.min(sectionBars.length, barsPerRow);
-  const gridW = colCount * (cfg.barW + cfg.barGap) - cfg.barGap;
-  const barsH = rowCount * (cfg.barH + cfg.barGap) - cfg.barGap;
+  const gridW =
+    colCount > 0 ? colCount * (cfg.barW + cfg.barGap) - cfg.barGap : 0;
+  const barsH =
+    rowCount > 0 ? rowCount * (cfg.barH + cfg.barGap) - cfg.barGap : 0;
 
   const availableBesideW = colW - gridW - cfg.commentGap;
   const commentBeside = availableBesideW >= cfg.commentBesideMinW;
@@ -138,13 +215,14 @@ export function calcSectionLayout(
     : [];
   const commentH = commentLines.length * cfg.commentLineHeight;
 
-  let totalH: number;
+  let contentH: number;
   if (commentBeside) {
-    totalH = cfg.barsTopOffset + Math.max(barsH, commentH);
+    contentH = cfg.barsTopOffset + Math.max(barsH, commentH);
   } else {
-    totalH =
+    contentH =
       cfg.barsTopOffset + barsH + (commentLines.length > 0 ? 2 + commentH : 0);
   }
+  const grooveH = groovePdfRows(section.groove).length ? cfg.grooveHeight : 0;
 
   return {
     section,
@@ -154,7 +232,9 @@ export function calcSectionLayout(
     barsH,
     commentLines,
     commentBeside,
-    totalH,
+    contentH,
+    grooveH,
+    totalH: contentH + grooveH,
   };
 }
 
@@ -169,10 +249,71 @@ export function layoutSections(
   const layouts: SectionLayout[] = [];
   for (const section of sections) {
     const sectionBars = getSectionBars(section, barMap);
-    if (sectionBars.length === 0) continue;
+    if (
+      sectionBars.length === 0 &&
+      groovePdfRows(section.groove).length === 0
+    ) {
+      continue;
+    }
     layouts.push(calcSectionLayout(section, sectionBars, cfg, wrapText));
   }
   return layouts;
+}
+
+function renderGroove(
+  doc: jsPDF,
+  groove: GroovePattern,
+  rows: GroovePdfRow[],
+  color: string,
+  x: number,
+  y: number,
+  cfg: FormatConfig,
+) {
+  const stepCount = rows[0]?.hits.length ?? 0;
+  if (stepCount === 0) return;
+
+  const [r, g, b] = hexToRgb(color);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(cfg.grooveFontSize);
+  doc.setTextColor(90, 90, 90);
+  doc.text(`Groove ${grooveResolutionLabel(groove)}`, x, y + 2);
+
+  const stepsPerBeat = grooveStepsPerBeat(
+    groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
+  );
+  const gridX = x + cfg.grooveLabelW;
+  const gridY = y + cfg.grooveGapY;
+
+  for (const [rowIndex, row] of rows.entries()) {
+    const rowY = gridY + rowIndex * (cfg.grooveCellH + cfg.grooveRowGap);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(cfg.grooveFontSize);
+    doc.setTextColor(100, 100, 100);
+    doc.text(row.label, x, rowY + cfg.grooveCellH * 0.8);
+
+    for (let step = 0; step < stepCount; step++) {
+      const beatOffset = Math.floor(step / stepsPerBeat) * cfg.grooveBeatGap;
+      const cellX =
+        gridX + step * (cfg.grooveCellW + cfg.grooveCellGap) + beatOffset;
+      const active = row.hits[step] ?? false;
+      doc.setFillColor(active ? r : 225, active ? g : 225, active ? b : 225);
+      doc.setDrawColor(
+        step % stepsPerBeat === 0 ? 165 : 210,
+        step % stepsPerBeat === 0 ? 165 : 210,
+        step % stepsPerBeat === 0 ? 165 : 210,
+      );
+      doc.setLineWidth(0.12);
+      doc.roundedRect(
+        cellX,
+        rowY,
+        cfg.grooveCellW,
+        cfg.grooveCellH,
+        0.25,
+        0.25,
+        'FD',
+      );
+    }
+  }
 }
 
 function renderSection(
@@ -190,6 +331,8 @@ function renderSection(
     commentLines,
     commentBeside,
     barsH,
+    contentH,
+    grooveH,
   } = layout;
   const [r, g, b] = hexToRgb(section.color);
   const [lr, lg, lb] = lightenRgb(section.color, 0.85);
@@ -302,6 +445,18 @@ function renderSection(
       const commentY = barsTopY + barsH + 2;
       doc.text(commentLines, x, commentY + cfg.commentLineHeight);
     }
+  }
+
+  if (grooveH > 0 && section.groove) {
+    renderGroove(
+      doc,
+      section.groove,
+      groovePdfRows(section.groove),
+      section.color,
+      x,
+      y + contentH,
+      cfg,
+    );
   }
 }
 

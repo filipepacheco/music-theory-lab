@@ -1,6 +1,6 @@
 import { SECTION_COLORS, SECTION_LABELS } from '@/constants/songSections';
 import { STRUCTURE_PALETTE } from '@/constants/structureColors';
-import type { StructureBar, StructureSection } from '@/types';
+import type { GroovePattern, StructureBar, StructureSection } from '@/types';
 
 /** Legacy section format (type+customLabel) as persisted before name+color. */
 export interface LegacySection {
@@ -12,6 +12,7 @@ export interface LegacySection {
   barIds: string[];
   repeatOf?: string;
   comment?: string;
+  groove?: GroovePattern;
 }
 
 /** Migrate one legacy section to the current name+color shape. */
@@ -33,6 +34,7 @@ export function migrateSection(raw: LegacySection): StructureSection {
     barIds: raw.barIds,
     repeatOf: raw.repeatOf,
     comment: raw.comment,
+    groove: raw.groove,
   };
 }
 

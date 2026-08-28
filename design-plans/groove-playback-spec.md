@@ -6,16 +6,19 @@ playback of a structure section's groove. Grooves are currently visual-only.
 ## Goal
 
 In the Structure module, a focused section with a groove can be **played**:
-a button starts a loop that sounds the 16-step pattern at the current BPM,
-bumbo/caixa/chimbal each with a distinct timbre, and stops cleanly on
-unmount/toggle. No new dependencies — Tone.js is already a dependency.
+a button starts a loop that sounds the selected grid resolution at the
+structure BPM, bumbo/caixa/chimbal each with a recorded acoustic kit timbre,
+and stops cleanly on unmount/toggle. No new dependencies — Tone.js is already
+a dependency.
 
 ## Ground truth (single source of truth — read these, do not copy values)
 
-- `src/constants/groove.ts` — `GROOVE_STEPS = 16` and `DRUM_PIECES` (ids +
-  display labels, current order: `chimbal/HH`, `caixa/C`, `bumbo/B`).
+- `src/constants/groove.ts` — the default `GROOVE_STEPS = 16`, supported
+  `GROOVE_SUBDIVISIONS`, and `DRUM_PIECES` (ids + display labels, current
+  order: `chimbal/HH`, `caixa/C`, `bumbo/B`).
 - `src/types/index.ts` — `DrumPiece`, `GroovePattern` (`{ bumbo, caixa,
-  chimbal }` each `boolean[16]`), `StructureSection.groove?`.
+chimbal }` each matching the selected subdivision's step count),
+  `GrooveSubdivision`, and `StructureSection.groove?`.
 - `src/domain/structureDocument.ts` — `toggleGrooveHit`/`clearGroove`
   commands; the section's groove is the playback source.
 - `src/components/structure/GrooveEditor.tsx` — where the play button goes
@@ -32,37 +35,39 @@ unmount/toggle. No new dependencies — Tone.js is already a dependency.
 New `src/domain/grooveSchedule.ts` (colocated `grooveSchedule.test.ts`),
 pure, no Tone:
 
-- `grooveHits(groove: GroovePattern): DrumPiece[][]` — index-aligned by
-  step 0..15; each entry lists which pieces fire at that step.
-- `grooveStepDuration(bpm: number): number` — one 16th at 4/4 = `60 / bpm /
-  4` seconds.
+- `grooveHits(groove: GroovePattern): DrumPiece[][]` — index-aligned by the
+  selected grid step; each entry lists which pieces fire at that step.
+- `grooveStepDuration(bpm: number, subdivision?: GrooveSubdivision): number` —
+  one selected grid step at 4/4.
 
 Completion: both pure functions covered by tests; no audio types leak in.
 
-### Drum synthesis
+### Drum voices
 
 Add to `src/services/playbackEngine.ts` a `playGrooveHit(piece: DrumPiece,
 time: number)` that plays through the existing effects chain (do not create
 an independent `.toDestination()`; the metronome's bypass is the exception,
-not the pattern). Suggested synth recipes, tune by ear:
+not the pattern). Use the cached acoustic-kit one-shot recordings from the
+Tone.js audio collection:
 
-- `bumbo` (kick): `Tone.MembraneSynth`, pitch ~80, short decay (~0.25s).
-- `caixa` (snare): `Tone.NoiseSynth` (white), fast decay (~0.15s), plus a
-  low membrane tone for body.
-- `chimbal` (hi-hat): `Tone.NoiseSynth` (white) through a high-pass (~7kHz),
-  very short decay (~0.03s).
+- `bumbo`: `kick.mp3`
+- `caixa`: `snare.mp3`
+- `chimbal`: `hihat.mp3`
 
-Cache the three synths once (module scope, like the metronome's clicks);
-never dispose cached synths.
+Cache the three `Tone.Player` voices once (module scope, like the metronome's
+clicks); never dispose cached players. They must connect to the existing
+effects chain, not directly to `.toDestination()`. Keep the acoustic-leaning
+synth voices as a fallback when a sample cannot load.
 
 ### Playback loop + hook
 
 New `src/hooks/useGroovePlayer.ts`, modeled on `useStepPlayer`:
 
-- `play(groove: GroovePattern, bpm: number)` — uses `Tone.Transport` (or a
-  `Tone.Loop` at 16th resolution) to schedule `playGrooveHit(piece,
-  time + step * grooveStepDuration(bpm))` for each piece at each step, and
-  **loops the 16 steps**. Respect `Tone.start()` on user gesture.
+- `play(groove: GroovePattern, bpm: number)` — uses `Tone.Transport` and a
+  fixed 32nd-note scheduler so the current pattern and selected resolution can
+  be read before every tick. Edits to hits or resolution take effect on the
+  next representable tick without restarting the loop. It loops the complete
+  measure and respects `Tone.start()` on user gesture.
 - `stop()` — cancels the scheduled loop, resets state.
 - Returns `{ play, stop, isPlaying }`. `isPlaying` drives the button label
   (pt-BR: "Ouvir groove" / "Parar").
@@ -74,23 +79,30 @@ New `src/hooks/useGroovePlayer.ts`, modeled on `useStepPlayer`:
 
 In `src/components/structure/GrooveEditor.tsx`, add a play/stop button in
 the editor header (next to "Limpar"). It reads the section's groove and the
-store `bpm`. Hook into the focused section: the groove to play is the
-section currently being edited.
+store `structureBpm`. Hook into the focused section: the groove to play is
+the section currently being edited.
+
+The Structure PDF export includes a compact visual copy of every section's
+groove, including a section that has a groove but no bars.
 
 ## Completion criteria
 
 - `npm test` passes, including the new `grooveSchedule` tests.
 - `npm run build` passes (strict TS).
-- Manual: Estrutura → open a section's Groove → draw a pattern → "Ouvir
-  groove" loops it at the app BPM with three audibly distinct pieces;
+- Structure PDF export includes groove rows and active cells at the selected
+  resolution.
+- Manual: Estrutura → open a section's Groove → choose a resolution → draw a
+  pattern → "Ouvir groove" loops it at the structure BPM with three audibly
+  distinct acoustic pieces; edits to the pattern while playing are audible on
+  subsequent ticks;
   "Parar" stops; switching sections or leaving the module stops playback.
-- No `.toDestination()` bypass in the groove path; no new dependencies;
-  no dead/duplicate synth code (cache once).
+- No `.toDestination()` bypass in the groove path; no new dependencies; all
+  acoustic kit voices are cached once.
 
 ## Deferrals (not in scope)
 
 - Time-signature-aware grids; extra drum pieces; drag-to-paint; MIDI/export;
-  syncing playback to the section's bars rather than the fixed 16-step grid.
+  syncing playback to the section's bars rather than the one-measure grid.
 
 ## Notes for the implementer
 

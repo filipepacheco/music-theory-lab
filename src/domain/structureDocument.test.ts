@@ -73,14 +73,10 @@ describe('structure document', () => {
     const module = createStructureDocumentModule();
 
     it('creates a 16-step pattern with one hit on first toggle', () => {
-      const result = module.toggleGrooveHit(
-        baseDocument,
-        'intro',
-        'bumbo',
-        0,
-      );
+      const result = module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0);
 
       const groove = result.sections[0].groove;
+      expect(groove?.subdivision).toBe('16n');
       expect(groove?.bumbo).toHaveLength(16);
       expect(groove?.bumbo.filter(Boolean)).toEqual([true]);
       expect(groove?.caixa.filter(Boolean)).toEqual([]);
@@ -89,12 +85,7 @@ describe('structure document', () => {
     });
 
     it('toggles a hit off again without removing the pattern', () => {
-      const withHit = module.toggleGrooveHit(
-        baseDocument,
-        'intro',
-        'caixa',
-        4,
-      );
+      const withHit = module.toggleGrooveHit(baseDocument, 'intro', 'caixa', 4);
       const result = module.toggleGrooveHit(withHit, 'intro', 'caixa', 4);
 
       expect(result.sections[0].groove?.caixa[4]).toBe(false);
@@ -102,14 +93,42 @@ describe('structure document', () => {
     });
 
     it('ignores out-of-range steps', () => {
-      const result = module.toggleGrooveHit(
-        baseDocument,
-        'intro',
-        'bumbo',
-        16,
-      );
+      const result = module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 16);
 
       expect(result.sections[0].groove).toBeUndefined();
+    });
+
+    it('changes resolution while preserving aligned hits', () => {
+      const withHits = module.toggleGrooveHit(
+        module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0),
+        'intro',
+        'bumbo',
+        1,
+      );
+      const withDownbeat = module.toggleGrooveHit(
+        withHits,
+        'intro',
+        'bumbo',
+        4,
+      );
+      const result = module.setGrooveSubdivision(withDownbeat, 'intro', '8n');
+
+      const groove = result.sections[0].groove;
+      expect(groove?.subdivision).toBe('8n');
+      expect(groove?.bumbo).toHaveLength(8);
+      expect(groove?.bumbo[0]).toBe(true);
+      expect(groove?.bumbo[2]).toBe(true);
+      expect(
+        groove?.bumbo.some((hit, step) => hit && step !== 0 && step !== 2),
+      ).toBe(false);
+    });
+
+    it('creates a groove at the selected resolution before the first hit', () => {
+      const result = module.setGrooveSubdivision(baseDocument, 'intro', '32n');
+
+      expect(result.sections[0].groove?.subdivision).toBe('32n');
+      expect(result.sections[0].groove?.bumbo).toHaveLength(32);
+      expect(result.sections[0].groove?.bumbo.every((hit) => !hit)).toBe(true);
     });
 
     it('clears the whole pattern', () => {
@@ -125,18 +144,11 @@ describe('structure document', () => {
     });
 
     it('copies the groove when duplicating a section', () => {
-      const withHit = module.toggleGrooveHit(
-        baseDocument,
-        'intro',
-        'bumbo',
-        0,
-      );
+      const withHit = module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0);
       const result = module.duplicateSection(withHit, 'intro', '4/4');
 
       expect(result?.sections[1].groove?.bumbo[0]).toBe(true);
-      expect(result?.sections[1].groove).not.toBe(
-        result?.sections[0].groove,
-      );
+      expect(result?.sections[1].groove).not.toBe(result?.sections[0].groove);
     });
   });
 });

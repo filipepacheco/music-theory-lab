@@ -507,6 +507,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ structureSections: next.sections });
   },
 
+  setGrooveSubdivision: (sectionId, subdivision) => {
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setGrooveSubdivision(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      subdivision,
+    );
+    set({ structureSections: next.sections });
+  },
+
   clearGroove: (sectionId) => {
     const { structureBars, structureSections } = get();
     const next = structureDocument.clearGroove(

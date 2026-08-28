@@ -1,8 +1,13 @@
 import { dotsForTimeSignature } from '@/utils/structureLayout';
-import { DRUM_PIECES, GROOVE_STEPS } from '@/constants/groove';
+import {
+  DEFAULT_GROOVE_SUBDIVISION,
+  DRUM_PIECES,
+  grooveStepCount,
+} from '@/constants/groove';
 import type {
   DrumPiece,
   GroovePattern,
+  GrooveSubdivision,
   StructureBar,
   StructureSection,
   TimeSignature,
@@ -81,7 +86,15 @@ export interface StructureDocumentModule {
     piece: DrumPiece,
     step: number,
   ): StructureDocument;
-  clearGroove(document: StructureDocument, sectionId: string): StructureDocument;
+  setGrooveSubdivision(
+    document: StructureDocument,
+    sectionId: string,
+    subdivision: GrooveSubdivision,
+  ): StructureDocument;
+  clearGroove(
+    document: StructureDocument,
+    sectionId: string,
+  ): StructureDocument;
   reorderSections(
     document: StructureDocument,
     activeId: string,
@@ -119,26 +132,56 @@ function withReindexedBars(
 }
 
 /** A groove with every step off — the starting shape for a new pattern. */
-function emptyGroove(): GroovePattern {
+function emptyGroove(
+  subdivision: GrooveSubdivision = DEFAULT_GROOVE_SUBDIVISION,
+): GroovePattern {
+  const stepCount = grooveStepCount(subdivision);
   return {
-    bumbo: Array(GROOVE_STEPS).fill(false),
-    caixa: Array(GROOVE_STEPS).fill(false),
-    chimbal: Array(GROOVE_STEPS).fill(false),
+    subdivision,
+    bumbo: Array(stepCount).fill(false),
+    caixa: Array(stepCount).fill(false),
+    chimbal: Array(stepCount).fill(false),
   };
 }
 
-/** Defensively normalize a persisted groove to GROOVE_STEPS boolean rows. */
+/** Defensively normalize a persisted groove to its subdivision's row length. */
 function normalizedGroove(groove: GroovePattern): GroovePattern {
-  const normalized = emptyGroove();
+  const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
+  const normalized = emptyGroove(subdivision);
+  const stepCount = grooveStepCount(subdivision);
   for (const piece of DRUM_PIECES) {
     const row = groove[piece.id];
     if (Array.isArray(row)) {
-      for (let step = 0; step < GROOVE_STEPS; step++) {
+      for (let step = 0; step < stepCount; step++) {
         normalized[piece.id][step] = row[step] === true;
       }
     }
   }
   return normalized;
+}
+
+/** Preserve hits that land exactly on the new grid when changing resolution. */
+function resampleGroove(
+  groove: GroovePattern,
+  subdivision: GrooveSubdivision,
+): GroovePattern {
+  const source = normalizedGroove(groove);
+  const target = emptyGroove(subdivision);
+  const sourceStepCount = source.bumbo.length;
+  const targetStepCount = target.bumbo.length;
+
+  for (const piece of DRUM_PIECES) {
+    for (let sourceStep = 0; sourceStep < sourceStepCount; sourceStep++) {
+      if (!source[piece.id][sourceStep]) continue;
+
+      const scaledStep = sourceStep * targetStepCount;
+      if (scaledStep % sourceStepCount === 0) {
+        target[piece.id][scaledStep / sourceStepCount] = true;
+      }
+    }
+  }
+
+  return target;
 }
 
 export function createStructureDocumentModule(
@@ -231,6 +274,9 @@ export function createStructureDocumentModule(
         };
       });
       const newSectionId = createId();
+      const sourceGroove = source.groove
+        ? normalizedGroove(source.groove)
+        : undefined;
       const newSection: StructureSection = {
         id: newSectionId,
         name: source.name,
@@ -238,11 +284,12 @@ export function createStructureDocumentModule(
         barIds: newBars.map((bar) => bar.id),
         comment: source.comment,
         barsPerRow: source.barsPerRow,
-        groove: source.groove
+        groove: sourceGroove
           ? {
-              bumbo: [...normalizedGroove(source.groove).bumbo],
-              caixa: [...normalizedGroove(source.groove).caixa],
-              chimbal: [...normalizedGroove(source.groove).chimbal],
+              subdivision: sourceGroove.subdivision,
+              bumbo: [...sourceGroove.bumbo],
+              caixa: [...sourceGroove.caixa],
+              chimbal: [...sourceGroove.chimbal],
             }
           : undefined,
       };
@@ -302,11 +349,28 @@ export function createStructureDocumentModule(
     }),
 
     toggleGrooveHit: (document, sectionId, piece, step) => {
-      if (step < 0 || step >= GROOVE_STEPS) return document;
       const section = document.sections.find((item) => item.id === sectionId);
       if (!section) return document;
       const groove = normalizedGroove(section.groove ?? emptyGroove());
+      if (step < 0 || step >= grooveStepCount(groove.subdivision)) {
+        return document;
+      }
       groove[piece][step] = !groove[piece][step];
+      return {
+        bars: document.bars,
+        sections: document.sections.map((item) =>
+          item.id === sectionId ? { ...item, groove } : item,
+        ),
+      };
+    },
+
+    setGrooveSubdivision: (document, sectionId, subdivision) => {
+      const section = document.sections.find((item) => item.id === sectionId);
+      if (!section) return document;
+
+      const groove = section.groove
+        ? resampleGroove(section.groove, subdivision)
+        : emptyGroove(subdivision);
       return {
         bars: document.bars,
         sections: document.sections.map((item) =>

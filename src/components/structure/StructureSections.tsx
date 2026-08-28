@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useAppStore } from '@/store/useAppStore';
+import { useGroovePlayer, type GroovePlayer } from '@/hooks/useGroovePlayer';
 import { DraggableBar } from './DraggableBar';
 import ColorPicker from './ColorPicker';
 import { GrooveEditor, GroovePreview } from './GrooveEditor';
@@ -53,7 +54,9 @@ function SectionComment({
       className="text-left text-xs px-2 py-1 rounded hover:bg-bg-tertiary/50 transition-colors cursor-pointer flex-1"
     >
       {comment ? (
-        <span className="text-text-secondary italic whitespace-pre-line">{comment}</span>
+        <span className="text-text-secondary italic whitespace-pre-line">
+          {comment}
+        </span>
       ) : (
         <span className="text-text-muted/50 italic">+ anotacao</span>
       )}
@@ -121,9 +124,7 @@ function InlineSectionName({
 /** Lightweight overlay shown while dragging a section */
 export function SectionOverlay({ section }: { section: StructureSection }) {
   return (
-    <div
-      className="flex items-center gap-2 px-3 py-2 rounded-button border-2 border-accent bg-bg-card shadow-lg opacity-90"
-    >
+    <div className="flex items-center gap-2 px-3 py-2 rounded-button border-2 border-accent bg-bg-card shadow-lg opacity-90">
       <span className="text-text-muted text-xs cursor-grabbing">&#9776;</span>
       <span
         className="text-xs font-medium px-2 py-0.5 rounded"
@@ -145,6 +146,7 @@ function DroppableSection({
   onRemove,
   onSetComment,
   onFocus,
+  groovePlayer,
 }: {
   section: StructureSection;
   bars: Map<string, StructureBar>;
@@ -152,6 +154,7 @@ function DroppableSection({
   onRemove: (id: string) => void;
   onSetComment: (id: string, comment: string) => void;
   onFocus: (id: string) => void;
+  groovePlayer: GroovePlayer;
 }) {
   const addBarToSection = useAppStore((s) => s.addBarToSection);
   const removeBar = useAppStore((s) => s.removeBar);
@@ -214,6 +217,7 @@ function DroppableSection({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            onFocus(section.id);
             setGrooveOpen(true);
           }}
           className="self-start cursor-pointer"
@@ -297,9 +301,17 @@ function DroppableSection({
               className="text-[10px] sm:text-xs text-text-muted hover:text-accent transition-colors cursor-pointer"
               title="Duplicar seção"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                className="w-3.5 h-3.5"
+              >
                 <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h5.5A1.5 1.5 0 0 1 14 3.5V9a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 9V3.5Z" />
-                <path d="M3.5 5.5A1.5 1.5 0 0 0 2 7v5.5A1.5 1.5 0 0 0 3.5 14H9a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 9 5.5H3.5Z" opacity=".5" />
+                <path
+                  d="M3.5 5.5A1.5 1.5 0 0 0 2 7v5.5A1.5 1.5 0 0 0 3.5 14H9a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 9 5.5H3.5Z"
+                  opacity=".5"
+                />
               </svg>
             </button>
 
@@ -324,9 +336,13 @@ function DroppableSection({
         {/* Middle column: bars grid */}
         <div
           className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
-          style={section.barsPerRow ? {
-            maxWidth: `calc(${section.barsPerRow} * (3.5rem + 0.375rem))`,
-          } : undefined}
+          style={
+            section.barsPerRow
+              ? {
+                  maxWidth: `calc(${section.barsPerRow} * (3.5rem + 0.375rem))`,
+                }
+              : undefined
+          }
         >
           {sectionBars.map((bar, i) => (
             <DraggableBar
@@ -354,7 +370,11 @@ function DroppableSection({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <GrooveEditor section={section} color={color} />
+          <GrooveEditor
+            section={section}
+            color={color}
+            groovePlayer={groovePlayer}
+          />
         </div>
       )}
 
@@ -375,6 +395,7 @@ function DroppableSection({
 }
 
 export default function StructureSections() {
+  const groovePlayer = useGroovePlayer();
   const sections = useAppStore((s) => s.structureSections);
   const structureBars = useAppStore((s) => s.structureBars);
   const focusedSectionId = useAppStore((s) => s.focusedSectionId);
@@ -397,9 +418,7 @@ export default function StructureSections() {
 
   return (
     <div>
-      <h4 className="font-heading text-xs text-text-secondary mb-2">
-        Seções
-      </h4>
+      <h4 className="font-heading text-xs text-text-secondary mb-2">Seções</h4>
       <div className="flex flex-col gap-2">
         {sections.map((section) => (
           <DroppableSection
@@ -410,6 +429,7 @@ export default function StructureSections() {
             onRemove={removeStructureSection}
             onSetComment={setSectionComment}
             onFocus={setFocusedSection}
+            groovePlayer={groovePlayer}
           />
         ))}
       </div>

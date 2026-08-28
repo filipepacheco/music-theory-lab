@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from "react";
-import * as Tone from "tone";
-import { useAppStore } from "@/store/useAppStore";
+import { useEffect, useRef, useCallback } from 'react';
+import * as Tone from 'tone';
+import { useAppStore } from '@/store/useAppStore';
 
 // High click (beat 1) and low click (beats 2-4)
 const clickHigh = new Tone.MembraneSynth({
@@ -16,6 +16,16 @@ const clickLow = new Tone.MembraneSynth({
   envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.04 },
   volume: -14,
 }).toDestination();
+
+const scheduledMetronomes = new Set<Tone.Loop>();
+
+/** Stop every metronome loop before another player takes over the Transport. */
+export function stopScheduledMetronomes() {
+  for (const loop of scheduledMetronomes) {
+    loop.dispose();
+  }
+  scheduledMetronomes.clear();
+}
 
 type BeatCallback = (beat: number, time: number) => void;
 
@@ -57,9 +67,9 @@ export function useMetronome() {
 
       // Play click at precise audio time
       if (beat === 0) {
-        clickHigh.triggerAttackRelease("C5", "32n", time);
+        clickHigh.triggerAttackRelease('C5', '32n', time);
       } else {
-        clickLow.triggerAttackRelease("C4", "32n", time);
+        clickLow.triggerAttackRelease('C4', '32n', time);
       }
 
       // Fire audio callbacks directly in the loop for precise timing
@@ -71,8 +81,9 @@ export function useMetronome() {
       }, time);
 
       beatRef.current++;
-    }, "4n");
+    }, '4n');
 
+    scheduledMetronomes.add(loopRef.current);
     loopRef.current.start(0);
     transport.start();
     setIsMetronomeOn(true);
@@ -84,6 +95,7 @@ export function useMetronome() {
     transport.position = 0;
 
     if (loopRef.current) {
+      scheduledMetronomes.delete(loopRef.current);
       loopRef.current.dispose();
       loopRef.current = null;
     }
@@ -114,6 +126,7 @@ export function useMetronome() {
   useEffect(() => {
     return () => {
       if (loopRef.current) {
+        scheduledMetronomes.delete(loopRef.current);
         loopRef.current.dispose();
       }
     };

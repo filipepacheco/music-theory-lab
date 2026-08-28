@@ -45,10 +45,12 @@ rules of the progression builder.
 _Avoid_: song state, transcription screen
 
 **Groove**:
-The main drum pattern of a structure section: a 16-step grid over three drum
-pieces, drawn on the section as a memory aid for what the section's rhythm is.
-One groove per section; toggling steps goes through the `structureDocument`
-commands and persists in the section's JSON.
+The main drum pattern of a structure section: a configurable subdivision grid
+over three drum pieces, drawn on the section as a memory aid for what the
+section's rhythm is. The supported grid resolutions cover quarter, eighth,
+sixteenth, and thirty-second notes across one 4/4 measure. One groove per
+section; toggling steps and changing resolution go through the
+`structureDocument` commands and persist in the section's JSON.
 _Avoid_: beat, rhythm
 
 **Drum piece**:

@@ -10,6 +10,7 @@ import type {
   SynthPreset,
   SamplerPreset,
 } from '@/constants/tonePresets';
+import type { DrumPiece } from '@/types';
 
 export interface PlaybackEngine {
   playNote(
@@ -26,6 +27,8 @@ export interface PlaybackEngine {
     time?: number,
   ): void;
   playScale(noteIndices: number[], octave: number, presetId?: string): void;
+  playGrooveHit(piece: DrumPiece, time: number): void;
+  stopGroove(): void;
   stopAll(presetId?: string): void;
 }
 
@@ -33,16 +36,26 @@ const limiter = new Tone.Limiter(-6).toDestination();
 const reverb = new Tone.Reverb({ decay: 1.8, wet: 0.2 }).connect(limiter);
 
 let audioStarted = false;
+let audioStartPromise: Promise<boolean> | null = null;
 
-async function ensureAudio() {
-  if (audioStarted) return;
-  audioStarted = true;
-  try {
-    await Tone.start();
-    Tone.getContext().lookAhead = 0.01;
-  } catch {
-    audioStarted = false;
-  }
+export function ensureAudio(): Promise<boolean> {
+  if (audioStarted) return Promise.resolve(true);
+  if (audioStartPromise) return audioStartPromise;
+
+  audioStartPromise = (async () => {
+    try {
+      await Tone.start();
+      Tone.getContext().lookAhead = 0.01;
+      audioStarted = true;
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    audioStartPromise = null;
+  });
+
+  return audioStartPromise;
 }
 
 interface SamplerEntry {
@@ -109,6 +122,104 @@ function getReadySampler(preset: TonePreset): Tone.Sampler | null {
   if (!entry.loaded) return null;
   reverb.wet.value = preset.reverbWet;
   return entry.sampler;
+}
+
+// Acoustic-leaning groove voices are shared for the lifetime of the module,
+// just like the metronome clicks. They all pass through the existing effects
+// chain, with filtered noise providing the skin and cymbal textures.
+const grooveKick = new Tone.MembraneSynth({
+  pitchDecay: 0.045,
+  octaves: 4,
+  envelope: { attack: 0.001, decay: 0.36, sustain: 0, release: 0.08 },
+  volume: -4,
+}).connect(reverb);
+
+const grooveSnareBody = new Tone.MembraneSynth({
+  pitchDecay: 0.012,
+  octaves: 2,
+  envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.06 },
+  volume: -16,
+}).connect(reverb);
+
+const grooveSnareFilter = new Tone.Filter({
+  type: 'highpass',
+  frequency: 900,
+  rolloff: -12,
+}).connect(reverb);
+
+const grooveSnare = new Tone.NoiseSynth({
+  noise: { type: 'pink' },
+  envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.08 },
+  volume: -12,
+}).connect(grooveSnareFilter);
+
+const grooveHiHatFilter = new Tone.Filter({
+  type: 'highpass',
+  frequency: 5500,
+  rolloff: -12,
+}).connect(reverb);
+
+const grooveHiHat = new Tone.NoiseSynth({
+  noise: { type: 'white' },
+  envelope: { attack: 0.001, decay: 0.065, sustain: 0, release: 0.04 },
+  volume: -16,
+}).connect(grooveHiHatFilter);
+
+interface GrooveSample {
+  player: Tone.Player;
+  ready: Promise<boolean>;
+}
+
+// These are the acoustic-kit one-shot recordings used by the Tone.js audio
+// examples. They are cached once and still pass through the app's reverb and
+// limiter rather than creating a separate destination path.
+const GROOVE_SAMPLE_BASE_URL =
+  'https://tonejs.github.io/audio/drum-samples/acoustic-kit/';
+
+function createGrooveSample(filename: string, volume: number): GrooveSample {
+  let resolveReady: (loaded: boolean) => void = () => {};
+  const ready = new Promise<boolean>((resolve) => {
+    resolveReady = resolve;
+  });
+  const player = new Tone.Player({
+    url: `${GROOVE_SAMPLE_BASE_URL}${filename}`,
+    volume,
+    fadeOut: 0.015,
+    onload: () => resolveReady(true),
+    onerror: () => resolveReady(false),
+  }).connect(reverb);
+  return { player, ready };
+}
+
+const grooveSamples: Record<DrumPiece, GrooveSample> = {
+  bumbo: createGrooveSample('kick.mp3', -3),
+  caixa: createGrooveSample('snare.mp3', -6),
+  chimbal: createGrooveSample('hihat.mp3', -12),
+};
+
+const grooveSamplesReady = Promise.all(
+  Object.values(grooveSamples).map((sample) => sample.ready),
+).then((results) => results.every(Boolean));
+
+export function ensureGrooveSamples(): Promise<boolean> {
+  return grooveSamplesReady;
+}
+
+function playGrooveSample(piece: DrumPiece, time: number): boolean {
+  const sample = grooveSamples[piece];
+  if (!sample.player.loaded) return false;
+  sample.player.start(time);
+  return true;
+}
+
+function stopGrooveSources() {
+  for (const sample of Object.values(grooveSamples)) {
+    sample.player.stop();
+  }
+  grooveKick.triggerRelease();
+  grooveSnareBody.triggerRelease();
+  grooveSnare.triggerRelease();
+  grooveHiHat.triggerRelease();
 }
 
 export function createPlaybackEngine(): PlaybackEngine {
@@ -196,11 +307,35 @@ export function createPlaybackEngine(): PlaybackEngine {
       });
     },
 
+    playGrooveHit: (piece, time) => {
+      void ensureAudio();
+
+      if (playGrooveSample(piece, time)) return;
+
+      switch (piece) {
+        case 'bumbo':
+          grooveKick.triggerAttackRelease('D2', 0.36, time);
+          break;
+        case 'caixa':
+          grooveSnareBody.triggerAttackRelease('A2', 0.18, time);
+          grooveSnare.triggerAttackRelease(0.2, time);
+          break;
+        case 'chimbal':
+          grooveHiHat.triggerAttackRelease(0.03, time);
+          break;
+      }
+    },
+
+    stopGroove: () => {
+      stopGrooveSources();
+    },
+
     stopAll: (presetId) => {
       const preset = resolvePreset(presetId);
       getReadySampler(preset)?.releaseAll();
       noteSynth?.releaseAll();
       for (const synth of chordSynths) synth.releaseAll();
+      stopGrooveSources();
     },
   };
 }
