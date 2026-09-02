@@ -1,0 +1,71 @@
+schema_version: "1.0.0"
+corpus_id: example-self-recorded-corpus
+tracks:
+  - track_id: self-recorded-interval-study
+    source_path: workspace/originals/self-recorded-interval-study.wav
+    expected_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    annotation:
+      title: Self-recorded interval study
+      artist: Example performer
+      trusted_key:
+        tonic_pc: 0
+        mode: major
+        provenance:
+          source: user-created-example
+          notes: Replace with a trusted annotation for the local POC corpus.
+      excerpts:
+        - excerpt_id: sparse-opening
+          start_seconds: 0.0
+          end_seconds: 8.0
+          role: sparse
+          trusted_key:
+            tonic_pc: 0
+            mode: major
+            provenance:
+              source: user-created-example
+          chords:
+            - start_seconds: 0.0
+              end_seconds: 4.0
+              label: major
+              root_pc: 0
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+            - start_seconds: 4.0
+              end_seconds: 8.0
+              label: minor
+              root_pc: 9
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+          beats:
+            - time_seconds: 0.0
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+            - time_seconds: 1.0
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+            - time_seconds: 2.0
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+            - time_seconds: 3.0
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+          melodies:
+            - source: guitar
+              time_seconds: 0.0
+              midi_pitch: 60
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+            - source: guitar
+              time_seconds: 1.0
+              midi_pitch: 64
+              confidence: 1.0
+              provenance:
+                source: user-created-example
+          notes: Synthetic metadata only; no audio is included in the repository.

@@ -1,0 +1,414 @@
+{
+  "$defs": {
+    "AnnotationProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "AnnotationProvenance",
+      "type": "object"
+    },
+    "BeatAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "provenance": {
+          "$ref": "#/$defs/AnnotationProvenance"
+        },
+        "time_seconds": {
+          "minimum": 0,
+          "title": "Time Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "time_seconds",
+        "provenance"
+      ],
+      "title": "BeatAnnotation",
+      "type": "object"
+    },
+    "ChordAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "label": {
+          "$ref": "#/$defs/ChordLabel"
+        },
+        "provenance": {
+          "$ref": "#/$defs/AnnotationProvenance"
+        },
+        "root_pc": {
+          "anyOf": [
+            {
+              "maximum": 11,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Root Pc"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_seconds",
+        "end_seconds",
+        "label",
+        "provenance"
+      ],
+      "title": "ChordAnnotation",
+      "type": "object"
+    },
+    "ChordLabel": {
+      "enum": [
+        "major",
+        "minor",
+        "unknown",
+        "no_chord"
+      ],
+      "title": "ChordLabel",
+      "type": "string"
+    },
+    "CorpusTrack": {
+      "additionalProperties": false,
+      "properties": {
+        "annotation": {
+          "$ref": "#/$defs/TrackAnnotation"
+        },
+        "expected_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Expected Sha256",
+          "type": "string"
+        },
+        "source_path": {
+          "minLength": 1,
+          "title": "Source Path",
+          "type": "string"
+        },
+        "track_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Track Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "track_id",
+        "source_path",
+        "expected_sha256"
+      ],
+      "title": "CorpusTrack",
+      "type": "object"
+    },
+    "ExcerptAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "beats": {
+          "items": {
+            "$ref": "#/$defs/BeatAnnotation"
+          },
+          "title": "Beats",
+          "type": "array"
+        },
+        "chords": {
+          "items": {
+            "$ref": "#/$defs/ChordAnnotation"
+          },
+          "title": "Chords",
+          "type": "array"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "excerpt_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Excerpt Id",
+          "type": "string"
+        },
+        "melodies": {
+          "items": {
+            "$ref": "#/$defs/MelodyAnnotation"
+          },
+          "title": "Melodies",
+          "type": "array"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "role": {
+          "$ref": "#/$defs/ExcerptRole"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "trusted_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KeyAnnotation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "excerpt_id",
+        "start_seconds",
+        "end_seconds",
+        "role"
+      ],
+      "title": "ExcerptAnnotation",
+      "type": "object"
+    },
+    "ExcerptRole": {
+      "enum": [
+        "sparse",
+        "dense",
+        "instrumental_solo",
+        "transition"
+      ],
+      "title": "ExcerptRole",
+      "type": "string"
+    },
+    "KeyAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/TonalMode"
+        },
+        "provenance": {
+          "$ref": "#/$defs/AnnotationProvenance"
+        },
+        "tonic_pc": {
+          "maximum": 11,
+          "minimum": 0,
+          "title": "Tonic Pc",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tonic_pc",
+        "mode",
+        "provenance"
+      ],
+      "title": "KeyAnnotation",
+      "type": "object"
+    },
+    "MelodyAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "midi_pitch": {
+          "maximum": 127,
+          "minimum": 0,
+          "title": "Midi Pitch",
+          "type": "integer"
+        },
+        "provenance": {
+          "$ref": "#/$defs/AnnotationProvenance"
+        },
+        "source": {
+          "$ref": "#/$defs/MelodySource"
+        },
+        "time_seconds": {
+          "minimum": 0,
+          "title": "Time Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "source",
+        "time_seconds",
+        "midi_pitch",
+        "provenance"
+      ],
+      "title": "MelodyAnnotation",
+      "type": "object"
+    },
+    "MelodySource": {
+      "enum": [
+        "vocals",
+        "bass",
+        "guitar"
+      ],
+      "title": "MelodySource",
+      "type": "string"
+    },
+    "TonalMode": {
+      "enum": [
+        "major",
+        "minor"
+      ],
+      "title": "TonalMode",
+      "type": "string"
+    },
+    "TrackAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "artist": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artist"
+        },
+        "excerpts": {
+          "items": {
+            "$ref": "#/$defs/ExcerptAnnotation"
+          },
+          "title": "Excerpts",
+          "type": "array"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "trusted_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KeyAnnotation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "TrackAnnotation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "corpus_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "title": "Corpus Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tracks": {
+      "items": {
+        "$ref": "#/$defs/CorpusTrack"
+      },
+      "minItems": 1,
+      "title": "Tracks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "corpus_id",
+    "tracks"
+  ],
+  "title": "CorpusManifest",
+  "type": "object"
+}

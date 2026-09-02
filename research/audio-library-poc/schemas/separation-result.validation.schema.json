@@ -1,0 +1,390 @@
+{
+  "$defs": {
+    "AppStemArtifact": {
+      "additionalProperties": false,
+      "description": "One canonical app stem and the candidate-native sources mapped into it.",
+      "properties": {
+        "artifact_filename": {
+          "minLength": 1,
+          "title": "Artifact Filename",
+          "type": "string"
+        },
+        "candidate_native_sources": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Candidate Native Sources",
+          "type": "array"
+        },
+        "stem_kind": {
+          "$ref": "#/$defs/AppStemKind"
+        }
+      },
+      "required": [
+        "stem_kind",
+        "artifact_filename",
+        "candidate_native_sources"
+      ],
+      "title": "AppStemArtifact",
+      "type": "object"
+    },
+    "AppStemKind": {
+      "description": "The application-level stem vocabulary, independent of any candidate.",
+      "enum": [
+        "vocals",
+        "drums",
+        "bass",
+        "guitar",
+        "other"
+      ],
+      "title": "AppStemKind",
+      "type": "string"
+    },
+    "AppStemSignalFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "signal": {
+          "$ref": "#/$defs/AudioSignalFacts"
+        },
+        "stem_kind": {
+          "$ref": "#/$defs/AppStemKind"
+        }
+      },
+      "required": [
+        "stem_kind",
+        "signal"
+      ],
+      "title": "AppStemSignalFacts",
+      "type": "object"
+    },
+    "AudioSignalFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "channels": {
+          "exclusiveMinimum": 0,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "minimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "peak_absolute_sample": {
+          "minimum": 0,
+          "title": "Peak Absolute Sample",
+          "type": "number"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "channels",
+        "frame_count",
+        "duration_seconds",
+        "peak_absolute_sample"
+      ],
+      "title": "AudioSignalFacts",
+      "type": "object"
+    },
+    "AudioValidationTolerances": {
+      "additionalProperties": false,
+      "description": "All numeric acceptance thresholds used by streaming validation.",
+      "properties": {
+        "duration_seconds": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "reconstruction_relative_rms": {
+          "default": 1e-06,
+          "minimum": 0,
+          "title": "Reconstruction Relative Rms",
+          "type": "number"
+        },
+        "relative_rms_floor": {
+          "default": 1e-12,
+          "exclusiveMinimum": 0,
+          "title": "Relative Rms Floor",
+          "type": "number"
+        }
+      },
+      "title": "AudioValidationTolerances",
+      "type": "object"
+    },
+    "EffectiveSeparatorSettings": {
+      "additionalProperties": false,
+      "description": "Resolved settings, including values selected by candidate defaults.",
+      "properties": {
+        "device": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Device",
+          "type": "string"
+        },
+        "overlap": {
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Overlap",
+          "type": "number"
+        },
+        "precision": {
+          "$ref": "#/$defs/SeparatorPrecision"
+        },
+        "retain_native": {
+          "title": "Retain Native",
+          "type": "boolean"
+        },
+        "segment": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Segment"
+        },
+        "shifts": {
+          "minimum": 1,
+          "title": "Shifts",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "segment",
+        "overlap",
+        "shifts",
+        "device",
+        "precision",
+        "retain_native"
+      ],
+      "title": "EffectiveSeparatorSettings",
+      "type": "object"
+    },
+    "ReconstructionMetric": {
+      "additionalProperties": false,
+      "properties": {
+        "compared_frame_count": {
+          "minimum": 0,
+          "title": "Compared Frame Count",
+          "type": "integer"
+        },
+        "compared_sample_count": {
+          "minimum": 0,
+          "title": "Compared Sample Count",
+          "type": "integer"
+        },
+        "error_rms": {
+          "minimum": 0,
+          "title": "Error Rms",
+          "type": "number"
+        },
+        "method": {
+          "const": "relative_rms",
+          "default": "relative_rms",
+          "title": "Method",
+          "type": "string"
+        },
+        "relative_rms": {
+          "minimum": 0,
+          "title": "Relative Rms",
+          "type": "number"
+        },
+        "source_rms": {
+          "minimum": 0,
+          "title": "Source Rms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "source_rms",
+        "error_rms",
+        "relative_rms",
+        "compared_frame_count",
+        "compared_sample_count"
+      ],
+      "title": "ReconstructionMetric",
+      "type": "object"
+    },
+    "SeparationValidationReport": {
+      "additionalProperties": false,
+      "description": "Strict successful report nested into the committed separation result.",
+      "properties": {
+        "chunk_frames": {
+          "exclusiveMinimum": 0,
+          "title": "Chunk Frames",
+          "type": "integer"
+        },
+        "passed": {
+          "const": true,
+          "default": true,
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "reconstruction": {
+          "$ref": "#/$defs/ReconstructionMetric"
+        },
+        "schema_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/AudioSignalFacts"
+        },
+        "stems": {
+          "items": {
+            "$ref": "#/$defs/AppStemSignalFacts"
+          },
+          "title": "Stems",
+          "type": "array"
+        },
+        "tolerances": {
+          "$ref": "#/$defs/AudioValidationTolerances"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "chunk_frames",
+        "tolerances",
+        "source",
+        "stems",
+        "reconstruction"
+      ],
+      "title": "SeparationValidationReport",
+      "type": "object"
+    },
+    "SeparatorPrecision": {
+      "enum": [
+        "float32",
+        "float16",
+        "bfloat16"
+      ],
+      "title": "SeparatorPrecision",
+      "type": "string"
+    },
+    "SeparatorProvenance": {
+      "additionalProperties": false,
+      "description": "Candidate adapter and immutable model identity used for one result.",
+      "properties": {
+        "candidate": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Implementation Version",
+          "type": "string"
+        },
+        "model_identifier": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Identifier",
+          "type": "string"
+        },
+        "model_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Model Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate",
+        "implementation_version",
+        "model_identifier",
+        "model_sha256",
+        "code_revision"
+      ],
+      "title": "SeparatorProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portable, versioned description of one accepted separator output.",
+  "properties": {
+    "provenance": {
+      "$ref": "#/$defs/SeparatorProvenance"
+    },
+    "retained_native_artifact_filenames": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Retained Native Artifact Filenames",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "settings": {
+      "$ref": "#/$defs/EffectiveSeparatorSettings"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "stems": {
+      "items": {
+        "$ref": "#/$defs/AppStemArtifact"
+      },
+      "title": "Stems",
+      "type": "array"
+    },
+    "validation": {
+      "$ref": "#/$defs/SeparationValidationReport"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "provenance",
+    "settings",
+    "stems",
+    "validation"
+  ],
+  "title": "SeparationResult",
+  "type": "object"
+}
