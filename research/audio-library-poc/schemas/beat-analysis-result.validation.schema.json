@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "BeatAnalyzerProvenance": {
+      "additionalProperties": false,
+      "description": "Adapter and pinned-model identity used for one beat analysis.",
+      "properties": {
+        "candidate": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Implementation Version",
+          "type": "string"
+        },
+        "model_identifier": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Identifier",
+          "type": "string"
+        },
+        "model_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Model Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate",
+        "implementation_version",
+        "model_identifier",
+        "model_sha256",
+        "code_revision"
+      ],
+      "title": "BeatAnalyzerProvenance",
+      "type": "object"
+    },
+    "BeatEstimate": {
+      "additionalProperties": false,
+      "description": "One beat position and whether it is a downbeat.\n\nDownbeats are a subset of beats; the analyzer emits one ``BeatEstimate``\nper detected beat with ``is_downbeat=true`` for the ones marked as bar\nstarts. Positions are in seconds from the source origin.",
+      "properties": {
+        "is_downbeat": {
+          "title": "Is Downbeat",
+          "type": "boolean"
+        },
+        "time_seconds": {
+          "minimum": 0,
+          "title": "Time Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "time_seconds",
+        "is_downbeat"
+      ],
+      "title": "BeatEstimate",
+      "type": "object"
+    },
+    "BeatSourceFacts": {
+      "additionalProperties": false,
+      "description": "Facts about the source audio the analyzer read.",
+      "properties": {
+        "channels": {
+          "exclusiveMinimum": 0,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "minimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "peak_absolute_sample": {
+          "minimum": 0,
+          "title": "Peak Absolute Sample",
+          "type": "number"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "channels",
+        "frame_count",
+        "duration_seconds",
+        "peak_absolute_sample"
+      ],
+      "title": "BeatSourceFacts",
+      "type": "object"
+    },
+    "EffectiveBeatAnalyzerSettings": {
+      "additionalProperties": false,
+      "description": "Resolved runtime settings that a real analyzer used.",
+      "properties": {
+        "device": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Device",
+          "type": "string"
+        },
+        "precision": {
+          "$ref": "#/$defs/SeparatorPrecision"
+        },
+        "use_dbn": {
+          "title": "Use Dbn",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "device",
+        "precision",
+        "use_dbn"
+      ],
+      "title": "EffectiveBeatAnalyzerSettings",
+      "type": "object"
+    },
+    "SeparatorPrecision": {
+      "enum": [
+        "float32",
+        "float16",
+        "bfloat16"
+      ],
+      "title": "SeparatorPrecision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portable, versioned description of one accepted beat analysis.\n\n``beats`` must be non-empty and sorted strictly increasing by\n``time_seconds``. ``downbeat_count`` is a redundant convenience derived\nfrom the flag on each beat; the model validator enforces the invariant.\n``tempo_median_bpm`` is the median of 60/interbeat_seconds across all\nadjacent beat pairs; 0.0 when fewer than two beats are present.",
+  "properties": {
+    "beats": {
+      "items": {
+        "$ref": "#/$defs/BeatEstimate"
+      },
+      "minItems": 1,
+      "title": "Beats",
+      "type": "array"
+    },
+    "downbeat_count": {
+      "minimum": 0,
+      "title": "Downbeat Count",
+      "type": "integer"
+    },
+    "provenance": {
+      "$ref": "#/$defs/BeatAnalyzerProvenance"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "settings": {
+      "$ref": "#/$defs/EffectiveBeatAnalyzerSettings"
+    },
+    "source": {
+      "$ref": "#/$defs/BeatSourceFacts"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "tempo_median_bpm": {
+      "minimum": 0,
+      "title": "Tempo Median Bpm",
+      "type": "number"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "provenance",
+    "settings",
+    "source",
+    "beats",
+    "downbeat_count",
+    "tempo_median_bpm"
+  ],
+  "title": "BeatAnalysisResult",
+  "type": "object"
+}

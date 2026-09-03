@@ -7,6 +7,10 @@ from pathlib import Path
 
 import pytest
 
+from audio_library_poc.beat_this_stage import (
+    BEAT_THIS_STAGE_KIND,
+    BeatThisStageExecutor,
+)
 from audio_library_poc.execution import ExpectedStageFailure
 from audio_library_poc.fake_stage import FakeStage
 from audio_library_poc.models import (
@@ -32,10 +36,22 @@ CODE_REVISION = "test-revision"
 
 def test_known_stage_kinds_are_stable_and_sorted() -> None:
     assert known_stage_kinds() == (
+        BEAT_THIS_STAGE_KIND,
         FAKE_STAGE_KIND,
         BS_ROFORMER_STAGE_KIND,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     )
+
+
+def test_dispatcher_returns_beat_this_stage_for_beat_kind(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=BEAT_THIS_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, BeatThisStageExecutor)
 
 
 def test_dispatcher_returns_fake_stage_for_fake_kind(tmp_path: Path) -> None:

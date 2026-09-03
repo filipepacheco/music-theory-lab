@@ -26,6 +26,7 @@ inference = [
   "torchaudio>=2.5,<3",
   "bs-roformer-infer==0.1.5",
   "demucs==4.1.0",
+  "beat-this==1.1.0",
 ]
 
 [project.scripts]

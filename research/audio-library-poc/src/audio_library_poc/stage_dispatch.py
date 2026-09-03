@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from audio_library_poc.beat_this_stage import (
+    BEAT_THIS_STAGE_KIND,
+    BeatThisStageExecutor,
+)
 from audio_library_poc.execution import ExpectedStageFailure, StageExecutor
 from audio_library_poc.fake_stage import FakeStage
 from audio_library_poc.models import StageSpecification, TypedError
@@ -32,6 +36,7 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
         DemucsSeparator(),
         workspace,
     ),
+    BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
 }
 
 

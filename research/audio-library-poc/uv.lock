@@ -54,6 +54,7 @@ dev = [
     { name = "ruff", marker = "sys_platform == 'win32'" },
 ]
 inference = [
+    { name = "beat-this", marker = "sys_platform == 'win32'" },
     { name = "bs-roformer-infer", marker = "sys_platform == 'win32'" },
     { name = "demucs", marker = "sys_platform == 'win32'" },
     { name = "torch", marker = "sys_platform == 'win32'" },
@@ -62,6 +63,7 @@ inference = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beat-this", marker = "extra == 'inference'", specifier = "==1.1.0" },
     { name = "bs-roformer-infer", marker = "extra == 'inference'", specifier = "==0.1.5" },
     { name = "demucs", marker = "extra == 'inference'", specifier = "==4.1.0" },
     { name = "pydantic", specifier = ">=2.10,<3" },
@@ -80,6 +82,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c7/94/1009e248bbfbab11397abca7193bea6626806be9a327d399810d523a07cb/beartype-0.22.9.tar.gz", hash = "sha256:8f82b54aa723a2848a56008d18875f91c1db02c32ef6a62319a002e3e25a975f", size = 1608866, upload-time = "2025-12-13T06:50:30.72Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/71/cc/18245721fa7747065ab478316c7fea7c74777d07f37ae60db2e84f8172e8/beartype-0.22.9-py3-none-any.whl", hash = "sha256:d16c9bbc61ea14637596c5f6fbff2ee99cbe3573e46a716401734ef50c3060c2", size = 1333658, upload-time = "2025-12-13T06:50:28.266Z" },
+]
+
+[[package]]
+name = "beat-this"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "einops", marker = "sys_platform == 'win32'" },
+    { name = "numpy", marker = "sys_platform == 'win32'" },
+    { name = "rotary-embedding-torch", marker = "sys_platform == 'win32'" },
+    { name = "soxr", marker = "sys_platform == 'win32'" },
+    { name = "torch", marker = "sys_platform == 'win32'" },
+    { name = "torchaudio", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/c4/7ce01e047c1e8d99490e95172d710e08901c24fb24e19a5dd4f885177c99/beat_this-1.1.0.tar.gz", hash = "sha256:3017c741f972972a650edcaccfe5760687fe4f5587feaa98896d90f866c2435c", size = 40635, upload-time = "2026-04-14T10:16:39.5Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/0e/e23cbbe6e3efcd54e84dec22b6d88954655036a993cc3843ab741bc24de4/beat_this-1.1.0-py3-none-any.whl", hash = "sha256:3f2b2d1e027c6dac380bf80c71555e3c28a4036a7f1af20129a945915a72a645", size = 40060, upload-time = "2026-04-14T10:16:37.955Z" },
 ]
 
 [[package]]
@@ -545,6 +564,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/34/c9e80783d83eab739a9531fdee03675d53e0bf1b2ccb4bb3af5844675046/soundfile-0.14.0-py2.py3-none-win32.whl", hash = "sha256:0a6ae43c50c71b4e020cc55382925cb89451c1ed1a0c3d0f5d802da269226849", size = 902199, upload-time = "2026-06-06T08:58:43.289Z" },
     { url = "https://files.pythonhosted.org/packages/ed/97/b39c18ac1df45e755ca22b8b00e872929da5d107998a207a5e4ac831bfda/soundfile-0.14.0-py2.py3-none-win_amd64.whl", hash = "sha256:299491d3499460fb1b74bb4bd78b57ffc2d243a5fafa7b6ec1b264875c78453e", size = 1021480, upload-time = "2026-06-06T08:58:45.016Z" },
     { url = "https://files.pythonhosted.org/packages/f4/83/55c65e61cf457805ce2ec157c1c6ae17715d0851aa2374422de0538838ca/soundfile-0.14.0-py2.py3-none-win_arm64.whl", hash = "sha256:e090704718e124e7c844695236f1fce8d18a5e761eaf7c82dfcd124620805f98", size = 888858, upload-time = "2026-06-06T08:58:46.593Z" },
+]
+
+[[package]]
+name = "soxr"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/11/27cebce4a108f77afea7c80545115536b45e3f11ebfb914f638fdd9ba847/soxr-1.1.0.tar.gz", hash = "sha256:9f228ae21c78fa9359ca98d8a5e8e91f30639e438e574133dace62c5b5309e44", size = 173067, upload-time = "2026-05-03T00:15:18.214Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/4d/621e4150e4815246ad552d215a8a294a90143fedd19ee442cf82d3b3abc8/soxr-1.1.0-cp312-abi3-win_amd64.whl", hash = "sha256:6ae2a174bffea94e8ead857dad85999d3f49f091774dbad5b046c0417d7092f4", size = 174357, upload-time = "2026-05-03T00:15:00.724Z" },
 ]
 
 [[package]]
