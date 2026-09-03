@@ -27,6 +27,7 @@ inference = [
   "bs-roformer-infer==0.1.5",
   "demucs==4.1.0",
   "beat-this==1.1.0",
+  "librosa>=0.10.1,<0.11",
 ]
 
 [project.scripts]
@@ -58,6 +59,11 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+extend-exclude = [
+  # Vendored third-party code kept verbatim from upstream. See each vendor
+  # directory's README for provenance and refresh instructions.
+  "src/audio_library_poc/vendor",
+]
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "UP"]

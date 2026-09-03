@@ -1,0 +1,301 @@
+{
+  "$defs": {
+    "ChordAnalyzerProvenance": {
+      "additionalProperties": false,
+      "description": "Adapter and pinned-model identity used for one chord analysis.",
+      "properties": {
+        "candidate": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Implementation Version",
+          "type": "string"
+        },
+        "model_identifier": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Identifier",
+          "type": "string"
+        },
+        "model_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Model Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate",
+        "implementation_version",
+        "model_identifier",
+        "model_sha256",
+        "code_revision"
+      ],
+      "title": "ChordAnalyzerProvenance",
+      "type": "object"
+    },
+    "ChordCoverage": {
+      "additionalProperties": false,
+      "description": "Fraction-of-duration counters per normalized label.",
+      "properties": {
+        "major_seconds": {
+          "minimum": 0,
+          "title": "Major Seconds",
+          "type": "number"
+        },
+        "minor_seconds": {
+          "minimum": 0,
+          "title": "Minor Seconds",
+          "type": "number"
+        },
+        "no_chord_seconds": {
+          "minimum": 0,
+          "title": "No Chord Seconds",
+          "type": "number"
+        },
+        "unknown_seconds": {
+          "minimum": 0,
+          "title": "Unknown Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "major_seconds",
+        "minor_seconds",
+        "unknown_seconds",
+        "no_chord_seconds"
+      ],
+      "title": "ChordCoverage",
+      "type": "object"
+    },
+    "ChordLabel": {
+      "description": "Normalized chord vocabulary.",
+      "enum": [
+        "major",
+        "minor",
+        "unknown",
+        "no_chord"
+      ],
+      "title": "ChordLabel",
+      "type": "string"
+    },
+    "ChordSegment": {
+      "additionalProperties": false,
+      "description": "One contiguous stretch of the source labelled with one chord.\n\n``start_seconds`` and ``end_seconds`` are inclusive-of-start,\nexclusive-of-end. ``root_pc`` is 0-11 (C=0) when ``label`` is major or\nminor; it must be absent for ``unknown`` and ``no_chord`` per the\narchitecture doc's \"do not hide uncertainty\" guard. ``candidate_label``\nis the raw label the model emitted before normalization — useful for\ndebugging quality-normalization rules.",
+      "properties": {
+        "candidate_label": {
+          "minLength": 1,
+          "title": "Candidate Label",
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "label": {
+          "$ref": "#/$defs/ChordLabel"
+        },
+        "root_pc": {
+          "anyOf": [
+            {
+              "maximum": 11,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Root Pc"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_seconds",
+        "end_seconds",
+        "label",
+        "candidate_label"
+      ],
+      "title": "ChordSegment",
+      "type": "object"
+    },
+    "ChordSourceFacts": {
+      "additionalProperties": false,
+      "description": "Facts about the source audio the analyzer read.",
+      "properties": {
+        "channels": {
+          "exclusiveMinimum": 0,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "minimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "peak_absolute_sample": {
+          "minimum": 0,
+          "title": "Peak Absolute Sample",
+          "type": "number"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "channels",
+        "frame_count",
+        "duration_seconds",
+        "peak_absolute_sample"
+      ],
+      "title": "ChordSourceFacts",
+      "type": "object"
+    },
+    "EffectiveChordAnalyzerSettings": {
+      "additionalProperties": false,
+      "description": "Resolved runtime settings a real analyzer used.",
+      "properties": {
+        "device": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Device",
+          "type": "string"
+        },
+        "frame_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Frame Duration Seconds",
+          "type": "number"
+        },
+        "hop_length": {
+          "exclusiveMinimum": 0,
+          "title": "Hop Length",
+          "type": "integer"
+        },
+        "precision": {
+          "$ref": "#/$defs/SeparatorPrecision"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "seq_len": {
+          "exclusiveMinimum": 0,
+          "title": "Seq Len",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "device",
+        "precision",
+        "frame_duration_seconds",
+        "sample_rate",
+        "hop_length",
+        "seq_len"
+      ],
+      "title": "EffectiveChordAnalyzerSettings",
+      "type": "object"
+    },
+    "SeparatorPrecision": {
+      "enum": [
+        "float32",
+        "float16",
+        "bfloat16"
+      ],
+      "title": "SeparatorPrecision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portable, versioned description of one accepted chord analysis.\n\n``segments`` must be non-empty and strictly ordered by ``start_seconds``\nwith no gaps or overlaps: consecutive segments must satisfy\n``prev.end_seconds == curr.start_seconds`` (within 1 ms). The full\n``[0, source.duration_seconds]`` span is covered; when the analyzer\ndetected nothing it emits a single ``unknown`` or ``no_chord`` segment\nspanning the whole track.",
+  "properties": {
+    "coverage": {
+      "$ref": "#/$defs/ChordCoverage"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ChordAnalyzerProvenance"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/ChordSegment"
+      },
+      "minItems": 1,
+      "title": "Segments",
+      "type": "array"
+    },
+    "settings": {
+      "$ref": "#/$defs/EffectiveChordAnalyzerSettings"
+    },
+    "source": {
+      "$ref": "#/$defs/ChordSourceFacts"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "provenance",
+    "settings",
+    "source",
+    "segments",
+    "coverage"
+  ],
+  "title": "ChordAnalysisResult",
+  "type": "object"
+}

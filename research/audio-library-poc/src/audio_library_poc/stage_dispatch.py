@@ -9,6 +9,10 @@ from audio_library_poc.beat_this_stage import (
     BEAT_THIS_STAGE_KIND,
     BeatThisStageExecutor,
 )
+from audio_library_poc.chordmini_btc_stage import (
+    CHORDMINI_BTC_STAGE_KIND,
+    ChordMiniBtcStageExecutor,
+)
 from audio_library_poc.execution import ExpectedStageFailure, StageExecutor
 from audio_library_poc.fake_stage import FakeStage
 from audio_library_poc.models import StageSpecification, TypedError
@@ -37,6 +41,7 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
         workspace,
     ),
     BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
+    CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
 }
 
 

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from audio_library_poc.beat_analysis import BeatAnalysisResult
 from audio_library_poc.checkpoints import CheckpointManifest
+from audio_library_poc.chord_analysis import ChordAnalysisResult
 from audio_library_poc.io import atomic_write_json
 from audio_library_poc.models import (
     CorpusManifest,
@@ -28,6 +29,7 @@ SCHEMA_MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("separation-result", SeparationResult),
     ("checkpoint-manifest", CheckpointManifest),
     ("beat-analysis-result", BeatAnalysisResult),
+    ("chord-analysis-result", ChordAnalysisResult),
 )
 SCHEMA_MODES: tuple[SchemaMode, ...] = ("validation", "serialization")
 
