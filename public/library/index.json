@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-09-03T21:45:34+00:00",
+  "schema_version": "1.0.0",
+  "track_count": 4,
+  "tracks": [
+    {
+      "artist": "The Beatles",
+      "beat_count": 354,
+      "chord_segment_count": 88,
+      "detail_directory": "tracks/99a86f276eff",
+      "detected_key": {
+        "confidence_score": 0.6978666681650671,
+        "mode": "minor",
+        "tonic_name": "D",
+        "tonic_pc": 2
+      },
+      "detected_tempo_bpm": 83.33333333333347,
+      "downbeat_count": 89,
+      "duration_seconds": 259.9575510204082,
+      "sha256_prefix": "99a86f276eff",
+      "source_sha256": "99a86f276eff950d7e5c35ed8f0463764b6f73228ee8e59e27367f41af7e2619",
+      "title": "Come Together - Remastered 2009"
+    },
+    {
+      "artist": "The Beatles",
+      "beat_count": 452,
+      "chord_segment_count": 84,
+      "detail_directory": "tracks/b1a8dc308adc",
+      "detected_key": {
+        "confidence_score": 0.7389605246603586,
+        "mode": "major",
+        "tonic_name": "A",
+        "tonic_pc": 9
+      },
+      "detected_tempo_bpm": 130.43478260869566,
+      "downbeat_count": 124,
+      "duration_seconds": 185.7465759637188,
+      "sha256_prefix": "b1a8dc308adc",
+      "source_sha256": "b1a8dc308adcb9da6d40657bb022819d3c06e66c547d30823cff4f9aec8e52a5",
+      "title": "Here Comes The Sun"
+    },
+    {
+      "artist": "Radiohead",
+      "beat_count": 324,
+      "chord_segment_count": 188,
+      "detail_directory": "tracks/d693cd68a24a",
+      "detected_key": {
+        "confidence_score": 0.8081345499222516,
+        "mode": "major",
+        "tonic_name": "D",
+        "tonic_pc": 2
+      },
+      "detected_tempo_bpm": 75.00000000000027,
+      "downbeat_count": 90,
+      "duration_seconds": 264.0674829931973,
+      "sha256_prefix": "d693cd68a24a",
+      "source_sha256": "d693cd68a24aa0df1c2475266c81c6facba8916b26ee2440e95ca42e1448d186",
+      "title": "Karma Police"
+    },
+    {
+      "artist": "Pink Floyd",
+      "beat_count": 344,
+      "chord_segment_count": 51,
+      "detail_directory": "tracks/e1e8824a8045",
+      "detected_key": {
+        "confidence_score": 0.8568505704273058,
+        "mode": "major",
+        "tonic_name": "G",
+        "tonic_pc": 7
+      },
+      "detected_tempo_bpm": 61.224489795919006,
+      "downbeat_count": 111,
+      "duration_seconds": 334.74902494331064,
+      "sha256_prefix": "e1e8824a8045",
+      "source_sha256": "e1e8824a80458c3047bc1bd7796ba50f62b902f531b6468644e627e2a09d8f89",
+      "title": "Wish You Were Here"
+    }
+  ]
+}

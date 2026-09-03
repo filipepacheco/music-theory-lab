@@ -8,6 +8,7 @@ const MODULES: { id: ActiveModule; label: string }[] = [
   { id: "quiz", label: "Quiz" },
   { id: "transcription", label: "Transcrição" },
   { id: "structure", label: "Estrutura" },
+  { id: "library", label: "Biblioteca" },
 ];
 
 export default function ModuleNav() {

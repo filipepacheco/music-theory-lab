@@ -1,0 +1,150 @@
+{
+  "estimates": [
+    {
+      "mode": "minor",
+      "score": 0.6978666681650671,
+      "tonic_pc": 2
+    },
+    {
+      "mode": "major",
+      "score": 0.6127128156449136,
+      "tonic_pc": 2
+    },
+    {
+      "mode": "major",
+      "score": 0.3337024492405824,
+      "tonic_pc": 9
+    },
+    {
+      "mode": "major",
+      "score": 0.29863303120210793,
+      "tonic_pc": 7
+    },
+    {
+      "mode": "minor",
+      "score": 0.2680640947646621,
+      "tonic_pc": 11
+    },
+    {
+      "mode": "minor",
+      "score": 0.2194860845746582,
+      "tonic_pc": 6
+    },
+    {
+      "mode": "minor",
+      "score": 0.10819673375387781,
+      "tonic_pc": 7
+    },
+    {
+      "mode": "major",
+      "score": 0.09766615452175736,
+      "tonic_pc": 5
+    },
+    {
+      "mode": "major",
+      "score": 0.057655871891993046,
+      "tonic_pc": 10
+    },
+    {
+      "mode": "minor",
+      "score": 0.051442406969894806,
+      "tonic_pc": 1
+    },
+    {
+      "mode": "minor",
+      "score": 0.03734744488555744,
+      "tonic_pc": 9
+    },
+    {
+      "mode": "major",
+      "score": 0.017532146987943198,
+      "tonic_pc": 1
+    },
+    {
+      "mode": "major",
+      "score": -0.024291356076400764,
+      "tonic_pc": 0
+    },
+    {
+      "mode": "minor",
+      "score": -0.1085275618212844,
+      "tonic_pc": 5
+    },
+    {
+      "mode": "minor",
+      "score": -0.1255068391082684,
+      "tonic_pc": 10
+    },
+    {
+      "mode": "major",
+      "score": -0.14817405101571457,
+      "tonic_pc": 8
+    },
+    {
+      "mode": "minor",
+      "score": -0.16169681810811642,
+      "tonic_pc": 0
+    },
+    {
+      "mode": "minor",
+      "score": -0.23590182070716206,
+      "tonic_pc": 4
+    },
+    {
+      "mode": "major",
+      "score": -0.23600265318159733,
+      "tonic_pc": 6
+    },
+    {
+      "mode": "major",
+      "score": -0.27705607029664064,
+      "tonic_pc": 4
+    },
+    {
+      "mode": "major",
+      "score": -0.303264796710705,
+      "tonic_pc": 3
+    },
+    {
+      "mode": "minor",
+      "score": -0.3547529710364016,
+      "tonic_pc": 3
+    },
+    {
+      "mode": "minor",
+      "score": -0.39601742233248466,
+      "tonic_pc": 8
+    },
+    {
+      "mode": "major",
+      "score": -0.42911354220823933,
+      "tonic_pc": 11
+    }
+  ],
+  "provenance": {
+    "candidate": "hpcp",
+    "code_revision": "workspace-local",
+    "implementation_version": "1.0.0"
+  },
+  "schema_version": "1.0.0",
+  "settings": {
+    "hop_length": 2048,
+    "n_chroma": 12,
+    "profile": "krumhansl_kessler",
+    "sample_rate": 22050
+  },
+  "source": {
+    "channels": 2,
+    "duration_seconds": 259.9575510204082,
+    "frame_count": 11464128,
+    "peak_absolute_sample": 1.0571058988571167,
+    "sample_rate": 44100
+  },
+  "source_sha256": "99a86f276eff950d7e5c35ed8f0463764b6f73228ee8e59e27367f41af7e2619",
+  "top_estimate": {
+    "mode": "minor",
+    "score": 0.6978666681650671,
+    "tonic_pc": 2
+  },
+  "warnings": []
+}
