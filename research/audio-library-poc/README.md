@@ -66,9 +66,12 @@ After the install, verify PyTorch sees the RTX 2060:
 ```
 
 The line must print a `+cu124` torch version, `True`, and a device name that
-starts with `NVIDIA GeForce RTX 2060`. Turing supports `float32` and
-`float16`; do not set `precision: bfloat16` in a pipeline manifest that
-targets this GPU (Turing lacks bf16 tensor cores).
+starts with `NVIDIA GeForce RTX 2060`. Turing has tensor cores for `float16`
+and `float32` (via TF32-style acceleration) but not for `bfloat16`; bf16
+still runs on this GPU — `torch.cuda.is_bf16_supported()` returns `True` —
+just on the general-purpose CUDA cores rather than the tensor cores, which
+is markedly slower. Prefer `precision: float16` for real inference on this
+box; use `float32` when you need matching CPU/GPU numerics.
 
 ## CLI
 

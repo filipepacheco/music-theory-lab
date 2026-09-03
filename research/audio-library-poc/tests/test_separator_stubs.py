@@ -55,11 +55,13 @@ def _request(config, staging: Path, stage_kind: str) -> SeparatorRequest:
 def _valid_bs_roformer_config() -> BsRoformerStageConfig:
     return BsRoformerStageConfig(
         source_relative_path="originals/track.wav",
+        checkpoint_relative_path="models/bs-rofo-sw-fixed.ckpt",
+        config_relative_path="models/bs-rofo-sw-fixed.yaml",
         segment=8.0,
         overlap=0.25,
         shifts=1,
         device="cuda",
-        precision=SeparatorPrecision.FLOAT32,
+        precision=SeparatorPrecision.FLOAT16,
         retain_native=False,
         batch_size=1,
         use_test_time_augmentation=False,
@@ -111,17 +113,26 @@ def test_demucs_config_rejects_extra_keys() -> None:
         )
 
 
-def test_bs_roformer_separate_raises_not_implemented(tmp_path: Path) -> None:
+def test_bs_roformer_reports_missing_checkpoint_before_touching_torch(
+    tmp_path: Path,
+) -> None:
+    # The real runtime resolves the checkpoint path before importing the
+    # heavy torch/bs_roformer packages, so this test proves the wiring
+    # without needing any model weights on disk.
+    from audio_library_poc.execution import ExpectedStageFailure
+
     request = _request(
         _valid_bs_roformer_config(),
         tmp_path,
         BS_ROFORMER_STAGE_KIND,
     )
-    with pytest.raises(SeparatorNotImplementedError) as captured:
+    with pytest.raises(ExpectedStageFailure) as captured:
         BsRoformerSeparator().separate(request)
-    assert captured.value.error.code == "separator.not_implemented"
+    assert captured.value.error.code == "separator.checkpoint_missing"
     assert captured.value.error.retryable is False
-    assert captured.value.error.details["candidate_id"] == "bs_roformer"
+    assert captured.value.error.details["relative_path"] == (
+        "models/bs-rofo-sw-fixed.ckpt"
+    )
 
 
 def test_demucs_separate_raises_not_implemented(tmp_path: Path) -> None:

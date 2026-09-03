@@ -44,11 +44,13 @@ def _specification(
 ) -> StageSpecification:
     config: dict[str, object] = {
         "source_relative_path": source_relative_path,
+        "checkpoint_relative_path": "models/bs-rofo-sw-fixed.ckpt",
+        "config_relative_path": "models/bs-rofo-sw-fixed.yaml",
         "segment": 8.0,
         "overlap": 0.25,
         "shifts": 1,
         "device": "cuda",
-        "precision": "float32",
+        "precision": "float16",
         "retain_native": False,
         "batch_size": 1,
         "use_test_time_augmentation": False,
@@ -57,7 +59,7 @@ def _specification(
         config.update(extra_config)
     return StageSpecification(
         stage_kind=stage_kind,
-        implementation_version="0.0.0",
+        implementation_version="1.0.0",
         config=config,
         model_identifier=model_identifier,
         model_sha256=model_sha256,
@@ -181,14 +183,14 @@ def test_source_hash_mismatch_yields_typed_failure(tmp_path: Path) -> None:
     }
 
 
-def test_stub_not_implemented_propagates_through_bridge(tmp_path: Path) -> None:
+def test_runtime_checkpoint_error_propagates_through_bridge(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     source_relative, source_sha256 = _build_source(workspace)
     executor = SeparatorStageExecutor(BsRoformerSeparator(), workspace)
     specification = _specification(source_relative_path=source_relative)
 
-    with pytest.raises(SeparatorNotImplementedError) as captured:
+    with pytest.raises(ExpectedStageFailure) as captured:
         _execute(
             executor,
             specification=specification,
@@ -196,7 +198,13 @@ def test_stub_not_implemented_propagates_through_bridge(tmp_path: Path) -> None:
             tmp_path=tmp_path,
         )
 
-    assert captured.value.error.code == "separator.not_implemented"
+    # With no checkpoint file at the configured workspace path, the runtime
+    # rejects before importing torch — proving the bridge / runtime seam is
+    # wired without needing model weights.
+    assert captured.value.error.code == "separator.checkpoint_missing"
+    assert captured.value.error.details["relative_path"] == (
+        "models/bs-rofo-sw-fixed.ckpt"
+    )
 
 
 def test_bridge_hashes_the_source_file_exactly_once(
@@ -221,7 +229,7 @@ def test_bridge_hashes_the_source_file_exactly_once(
         counting_hash_file,
     )
 
-    with pytest.raises(SeparatorNotImplementedError):
+    with pytest.raises(ExpectedStageFailure):
         _execute(
             executor,
             specification=specification,

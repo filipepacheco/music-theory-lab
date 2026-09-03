@@ -626,12 +626,13 @@ separator package might install by default.
   <https://pytorch.org/get-started/locally/> (choose Stable, Windows,
   Pip, Python, CUDA 12.4). CUDA 11.8 wheels are also fine on Turing;
   do not use CPU-only wheels for Phase 2.
-- Precision on Turing: `float16` and `float32` are supported;
-  `bfloat16` is **not** — Turing lacks bf16 tensor cores. The
-  `precision` field in the shared config model accepts `bfloat16`
-  because Phase 2 may target other GPUs later, but every stage
-  specification that targets this machine must set `float16` or
-  `float32`.
+- Precision on Turing: `float16` and `float32` are the fast choices
+  — both hit the tensor cores. `bfloat16` runs on this GPU too
+  (`torch.cuda.is_bf16_supported()` returns `True`) but only through
+  the general-purpose CUDA cores, so it gives up the tensor-core
+  acceleration Ampere+ GPUs get. Prefer `precision: float16` on this
+  machine; the shared config model still accepts `bfloat16` for later
+  Phase 2 targets that have bf16 tensor cores.
 - VRAM budget: 6 GB is tight for a six-stem separator on a full
   track. Both stubs expect a `segment` in seconds (BS-RoFormer's
   chunking) and `overlap` in (0, 1); start with `segment: 8.0` and

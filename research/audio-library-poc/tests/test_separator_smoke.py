@@ -68,17 +68,19 @@ def _pipeline_yaml(*, stage_kind: str, source_relative_path: str) -> str:
         code_revision: separator-smoke-code-rev
         stages:
           - stage_kind: {stage_kind}
-            implementation_version: "0.0.0"
+            implementation_version: "1.0.0"
             model_identifier: pinned/example:v1
             model_sha256: "{"b" * 64}"
             max_attempts: 1
             config:
               source_relative_path: {source_relative_path}
+              checkpoint_relative_path: models/bs-rofo-sw-fixed.ckpt
+              config_relative_path: models/bs-rofo-sw-fixed.yaml
               segment: 8.0
               overlap: 0.25
               shifts: 1
               device: cuda
-              precision: float32
+              precision: float16
               retain_native: false
               batch_size: 1
               use_test_time_augmentation: false
@@ -154,7 +156,7 @@ def _expected_cache_key(
     return stage_cache_key(identity)
 
 
-def test_bs_roformer_run_publishes_clean_not_implemented(tmp_path: Path) -> None:
+def test_bs_roformer_run_publishes_clean_checkpoint_missing(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     source = workspace / "originals" / "synthetic.wav"
     source_sha256 = _write_synthetic_wav(source)
@@ -191,31 +193,14 @@ def test_bs_roformer_run_publishes_clean_not_implemented(tmp_path: Path) -> None
     assert stage["stage_kind"] == "separator.bs_roformer"
     assert stage["status"] == "failed_terminal"
     assert stage["attempts"] == 1
-    assert stage["error"]["code"] == "separator.not_implemented"
+    # With the real runtime wired, missing model assets surface as a typed
+    # failure before any torch import.
+    assert stage["error"]["code"] == "separator.checkpoint_missing"
     assert stage["error"]["retryable"] is False
-    assert stage["error"]["details"]["candidate_id"] == "bs_roformer"
-    assert stage["artifacts"] == []
-
-    expected_cache_key = _expected_cache_key(
-        stage_kind="separator.bs_roformer",
-        input_sha256=source_sha256,
-        config={
-            "source_relative_path": "originals/synthetic.wav",
-            "segment": 8.0,
-            "overlap": 0.25,
-            "shifts": 1,
-            "device": "cuda",
-            "precision": "float32",
-            "retain_native": False,
-            "batch_size": 1,
-            "use_test_time_augmentation": False,
-        },
-        implementation_version="0.0.0",
-        model_identifier="pinned/example:v1",
-        model_sha256="b" * 64,
-        code_revision="separator-smoke-code-rev",
+    assert stage["error"]["details"]["relative_path"] == (
+        "models/bs-rofo-sw-fixed.ckpt"
     )
-    assert stage["cache_key"] == expected_cache_key
+    assert stage["artifacts"] == []
 
     result_path = (
         workspace
@@ -224,7 +209,7 @@ def test_bs_roformer_run_publishes_clean_not_implemented(tmp_path: Path) -> None
         / "stages"
         / "separator.bs_roformer"
         / "results"
-        / f"{expected_cache_key}.json"
+        / f"{stage['cache_key']}.json"
     )
     assert result_path.is_file()
     result_json = json.loads(result_path.read_text(encoding="utf-8"))
@@ -242,7 +227,7 @@ def test_bs_roformer_run_publishes_clean_not_implemented(tmp_path: Path) -> None
         / "stages"
         / "separator.bs_roformer"
         / "staging"
-        / expected_cache_key
+        / stage["cache_key"]
     )
     assert not staging_path.exists()
     artifacts_path = (
@@ -252,7 +237,7 @@ def test_bs_roformer_run_publishes_clean_not_implemented(tmp_path: Path) -> None
         / "stages"
         / "separator.bs_roformer"
         / "artifacts"
-        / expected_cache_key
+        / stage["cache_key"]
     )
     assert not artifacts_path.exists()
 
