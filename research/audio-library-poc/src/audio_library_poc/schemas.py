@@ -9,6 +9,7 @@ from audio_library_poc.beat_analysis import BeatAnalysisResult
 from audio_library_poc.checkpoints import CheckpointManifest
 from audio_library_poc.chord_analysis import ChordAnalysisResult
 from audio_library_poc.io import atomic_write_json
+from audio_library_poc.key_analysis import KeyAnalysisResult
 from audio_library_poc.models import (
     CorpusManifest,
     MetadataResult,
@@ -30,6 +31,7 @@ SCHEMA_MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("checkpoint-manifest", CheckpointManifest),
     ("beat-analysis-result", BeatAnalysisResult),
     ("chord-analysis-result", ChordAnalysisResult),
+    ("key-analysis-result", KeyAnalysisResult),
 )
 SCHEMA_MODES: tuple[SchemaMode, ...] = ("validation", "serialization")
 

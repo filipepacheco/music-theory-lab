@@ -187,7 +187,7 @@ def test_export_schemas_writes_all_contracts(tmp_path, capsys) -> None:
     summary = read_stdout(capsys)
 
     assert status == 0
-    assert summary["schema_count"] == 18
+    assert summary["schema_count"] == 20
     assert summary["files"] == [
         "corpus-manifest.validation.schema.json",
         "corpus-manifest.serialization.schema.json",
@@ -207,8 +207,10 @@ def test_export_schemas_writes_all_contracts(tmp_path, capsys) -> None:
         "beat-analysis-result.serialization.schema.json",
         "chord-analysis-result.validation.schema.json",
         "chord-analysis-result.serialization.schema.json",
+        "key-analysis-result.validation.schema.json",
+        "key-analysis-result.serialization.schema.json",
     ]
-    assert len(list(output.glob("*.json"))) == 18
+    assert len(list(output.glob("*.json"))) == 20
 
 
 def test_inspect_hashes_probes_and_reports_duplicates_atomically(

@@ -17,6 +17,10 @@ from audio_library_poc.chordmini_btc_stage import (
 )
 from audio_library_poc.execution import ExpectedStageFailure
 from audio_library_poc.fake_stage import FakeStage
+from audio_library_poc.hpcp_key_stage import (
+    HPCP_KEY_STAGE_KIND,
+    HpcpKeyStageExecutor,
+)
 from audio_library_poc.models import (
     StageResultEnvelope,
     StageSpecification,
@@ -43,9 +47,21 @@ def test_known_stage_kinds_are_stable_and_sorted() -> None:
         BEAT_THIS_STAGE_KIND,
         CHORDMINI_BTC_STAGE_KIND,
         FAKE_STAGE_KIND,
+        HPCP_KEY_STAGE_KIND,
         BS_ROFORMER_STAGE_KIND,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     )
+
+
+def test_dispatcher_returns_hpcp_key_stage_for_key_kind(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=HPCP_KEY_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, HpcpKeyStageExecutor)
 
 
 def test_dispatcher_returns_beat_this_stage_for_beat_kind(tmp_path: Path) -> None:

@@ -15,6 +15,10 @@ from audio_library_poc.chordmini_btc_stage import (
 )
 from audio_library_poc.execution import ExpectedStageFailure, StageExecutor
 from audio_library_poc.fake_stage import FakeStage
+from audio_library_poc.hpcp_key_stage import (
+    HPCP_KEY_STAGE_KIND,
+    HpcpKeyStageExecutor,
+)
 from audio_library_poc.models import StageSpecification, TypedError
 from audio_library_poc.separator_stage import SeparatorStageExecutor
 from audio_library_poc.separators.bs_roformer import (
@@ -42,6 +46,7 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
     ),
     BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
     CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
+    HPCP_KEY_STAGE_KIND: lambda workspace: HpcpKeyStageExecutor(workspace),
 }
 
 

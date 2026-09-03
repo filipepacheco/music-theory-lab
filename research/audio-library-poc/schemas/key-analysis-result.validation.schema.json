@@ -1,0 +1,200 @@
+{
+  "$defs": {
+    "EffectiveKeyAnalyzerSettings": {
+      "additionalProperties": false,
+      "description": "Resolved runtime settings the analyzer used.",
+      "properties": {
+        "hop_length": {
+          "exclusiveMinimum": 0,
+          "title": "Hop Length",
+          "type": "integer"
+        },
+        "n_chroma": {
+          "exclusiveMinimum": 0,
+          "title": "N Chroma",
+          "type": "integer"
+        },
+        "profile": {
+          "const": "krumhansl_kessler",
+          "title": "Profile",
+          "type": "string"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "hop_length",
+        "n_chroma",
+        "profile"
+      ],
+      "title": "EffectiveKeyAnalyzerSettings",
+      "type": "object"
+    },
+    "KeyAnalyzerProvenance": {
+      "additionalProperties": false,
+      "description": "Adapter identity used for one key analysis. No pinned checkpoint —\nthe HPCP baseline is a pure algorithm, so ``model_identifier`` and\n``model_sha256`` are absent by design.",
+      "properties": {
+        "candidate": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Implementation Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate",
+        "implementation_version",
+        "code_revision"
+      ],
+      "title": "KeyAnalyzerProvenance",
+      "type": "object"
+    },
+    "KeyEstimate": {
+      "additionalProperties": false,
+      "description": "One (tonic_pc, mode, score) candidate.\n\n``score`` is the raw correlation score against the tonal profile — not\na probability. Callers should treat top-k ordering as authoritative and\nonly use score differences for a confidence heuristic (e.g., top-1\nminus top-2 as a \"peak margin\").",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/TonalMode"
+        },
+        "score": {
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Score",
+          "type": "number"
+        },
+        "tonic_pc": {
+          "maximum": 11,
+          "minimum": 0,
+          "title": "Tonic Pc",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tonic_pc",
+        "mode",
+        "score"
+      ],
+      "title": "KeyEstimate",
+      "type": "object"
+    },
+    "KeySourceFacts": {
+      "additionalProperties": false,
+      "description": "Facts about the source audio the analyzer read.",
+      "properties": {
+        "channels": {
+          "exclusiveMinimum": 0,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "minimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "peak_absolute_sample": {
+          "minimum": 0,
+          "title": "Peak Absolute Sample",
+          "type": "number"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "channels",
+        "frame_count",
+        "duration_seconds",
+        "peak_absolute_sample"
+      ],
+      "title": "KeySourceFacts",
+      "type": "object"
+    },
+    "TonalMode": {
+      "enum": [
+        "major",
+        "minor"
+      ],
+      "title": "TonalMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portable, versioned description of one accepted key analysis.\n\n``estimates`` carries all 24 candidates ordered best-first by ``score``.\n``top_estimate`` is a convenience redundant with ``estimates[0]``;\nthe validator enforces this equality so a corrupted result surfaces\nimmediately.",
+  "properties": {
+    "estimates": {
+      "items": {
+        "$ref": "#/$defs/KeyEstimate"
+      },
+      "maxItems": 24,
+      "minItems": 24,
+      "title": "Estimates",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/KeyAnalyzerProvenance"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "settings": {
+      "$ref": "#/$defs/EffectiveKeyAnalyzerSettings"
+    },
+    "source": {
+      "$ref": "#/$defs/KeySourceFacts"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "top_estimate": {
+      "$ref": "#/$defs/KeyEstimate"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "provenance",
+    "settings",
+    "source",
+    "estimates",
+    "top_estimate"
+  ],
+  "title": "KeyAnalysisResult",
+  "type": "object"
+}

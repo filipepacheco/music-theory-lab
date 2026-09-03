@@ -115,9 +115,9 @@ raw FFprobe tags and source paths, so treat it as private data.
 
 The command exports validation and serialization schemas for each committed
 contract. Repeating it must reproduce the files under `schemas` byte for byte.
-There are currently 18 committed files: two schema modes for nine top-level
+There are currently 20 committed files: two schema modes for ten top-level
 contracts, including `SeparationResult`, `CheckpointManifest`,
-`BeatAnalysisResult`, and `ChordAnalysisResult`.
+`BeatAnalysisResult`, `ChordAnalysisResult`, and `KeyAnalysisResult`.
 
 ## Synthetic Phase 2 separation validation
 
