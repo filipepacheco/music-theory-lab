@@ -9,6 +9,10 @@ from audio_library_poc.beat_this_stage import (
     BEAT_THIS_STAGE_KIND,
     BeatThisStageExecutor,
 )
+from audio_library_poc.chord_root_key_stage import (
+    CHORD_ROOT_KEY_STAGE_KIND,
+    ChordRootKeyStageExecutor,
+)
 from audio_library_poc.chordmini_btc_stage import (
     CHORDMINI_BTC_STAGE_KIND,
     ChordMiniBtcStageExecutor,
@@ -47,6 +51,7 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
     BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
     CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
     HPCP_KEY_STAGE_KIND: lambda workspace: HpcpKeyStageExecutor(workspace),
+    CHORD_ROOT_KEY_STAGE_KIND: lambda workspace: ChordRootKeyStageExecutor(workspace),
 }
 
 

@@ -11,6 +11,10 @@ from audio_library_poc.beat_this_stage import (
     BEAT_THIS_STAGE_KIND,
     BeatThisStageExecutor,
 )
+from audio_library_poc.chord_root_key_stage import (
+    CHORD_ROOT_KEY_STAGE_KIND,
+    ChordRootKeyStageExecutor,
+)
 from audio_library_poc.chordmini_btc_stage import (
     CHORDMINI_BTC_STAGE_KIND,
     ChordMiniBtcStageExecutor,
@@ -47,6 +51,7 @@ def test_known_stage_kinds_are_stable_and_sorted() -> None:
         BEAT_THIS_STAGE_KIND,
         CHORDMINI_BTC_STAGE_KIND,
         FAKE_STAGE_KIND,
+        CHORD_ROOT_KEY_STAGE_KIND,
         HPCP_KEY_STAGE_KIND,
         BS_ROFORMER_STAGE_KIND,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
@@ -62,6 +67,17 @@ def test_dispatcher_returns_hpcp_key_stage_for_key_kind(tmp_path: Path) -> None:
         )
     )
     assert isinstance(executor, HpcpKeyStageExecutor)
+
+
+def test_dispatcher_returns_chord_root_key_stage(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=CHORD_ROOT_KEY_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, ChordRootKeyStageExecutor)
 
 
 def test_dispatcher_returns_beat_this_stage_for_beat_kind(tmp_path: Path) -> None:
