@@ -96,12 +96,13 @@ def _demucs_pipeline_yaml(source_relative_path: str) -> str:
         code_revision: separator-smoke-code-rev
         stages:
           - stage_kind: separator.demucs_htdemucs_6s
-            implementation_version: "0.0.0"
+            implementation_version: "1.0.0"
             model_identifier: pinned/htdemucs_6s:v1
             model_sha256: "{"c" * 64}"
             max_attempts: 1
             config:
               source_relative_path: {source_relative_path}
+              checkpoint_relative_path: models/htdemucs_6s.th
               segment: null
               overlap: 0.25
               shifts: 1
@@ -242,7 +243,7 @@ def test_bs_roformer_run_publishes_clean_checkpoint_missing(tmp_path: Path) -> N
     assert not artifacts_path.exists()
 
 
-def test_demucs_run_publishes_clean_not_implemented(tmp_path: Path) -> None:
+def test_demucs_run_publishes_clean_checkpoint_missing(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     source = workspace / "originals" / "synthetic.wav"
     source_sha256 = _write_synthetic_wav(source)
@@ -268,8 +269,8 @@ def test_demucs_run_publishes_clean_not_implemented(tmp_path: Path) -> None:
     summary = json.loads(completed.stdout)
     stage = summary["stages"][0]
     assert stage["stage_kind"] == "separator.demucs_htdemucs_6s"
-    assert stage["error"]["code"] == "separator.not_implemented"
-    assert stage["error"]["details"]["candidate_id"] == "demucs_htdemucs_6s"
+    assert stage["error"]["code"] == "separator.checkpoint_missing"
+    assert stage["error"]["details"]["relative_path"] == "models/htdemucs_6s.th"
 
 
 def test_run_reports_source_hash_mismatch_when_input_hash_wrong(

@@ -20,7 +20,6 @@ from audio_library_poc.separators import (
     DemucsSeparator,
     DemucsStageConfig,
     Separator,
-    SeparatorNotImplementedError,
     SeparatorRequest,
     SeparatorResponse,
 )
@@ -71,6 +70,7 @@ def _valid_bs_roformer_config() -> BsRoformerStageConfig:
 def _valid_demucs_config() -> DemucsStageConfig:
     return DemucsStageConfig(
         source_relative_path="originals/track.wav",
+        checkpoint_relative_path="models/htdemucs_6s.th",
         segment=None,
         overlap=0.25,
         shifts=1,
@@ -135,17 +135,24 @@ def test_bs_roformer_reports_missing_checkpoint_before_touching_torch(
     )
 
 
-def test_demucs_separate_raises_not_implemented(tmp_path: Path) -> None:
+def test_demucs_reports_missing_checkpoint_before_touching_torch(
+    tmp_path: Path,
+) -> None:
+    # The real runtime resolves the checkpoint path before importing the
+    # heavy torch/demucs packages, so this test proves the wiring without
+    # needing any model weights on disk.
+    from audio_library_poc.execution import ExpectedStageFailure
+
     request = _request(
         _valid_demucs_config(),
         tmp_path,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     )
-    with pytest.raises(SeparatorNotImplementedError) as captured:
+    with pytest.raises(ExpectedStageFailure) as captured:
         DemucsSeparator().separate(request)
-    assert captured.value.error.code == "separator.not_implemented"
+    assert captured.value.error.code == "separator.checkpoint_missing"
     assert captured.value.error.retryable is False
-    assert captured.value.error.details["candidate_id"] == "demucs_htdemucs_6s"
+    assert captured.value.error.details["relative_path"] == ("models/htdemucs_6s.th")
 
 
 def test_bs_roformer_rejects_wrong_config_type(tmp_path: Path) -> None:
