@@ -17,9 +17,35 @@ dev = [
   "pytest>=8.3,<9",
   "ruff>=0.9,<1",
 ]
+# Phase 2 real inference. Install with:
+#   uv sync --extra dev --extra inference --python $installedPython
+# The [tool.uv] blocks below pin torch and torchaudio to the CUDA 12.4
+# wheel index; adjust or remove them for a CPU-only or CUDA 11.8 install.
+inference = [
+  "torch>=2.5,<3",
+  "torchaudio>=2.5,<3",
+  "bs-roformer-infer==0.1.5",
+  "demucs==4.1.0",
+]
 
 [project.scripts]
 audio-library-poc = "audio_library_poc.cli:main"
+
+[tool.uv]
+# The POC targets one Windows machine (RTX 2060). Resolving for macOS and
+# Linux drags in Demucs's macOS-x86_64 torch<2.3 constraint, which conflicts
+# with the CUDA 12.4 wheels this project uses on Windows. Widen this list
+# only when the POC has to build on another platform.
+environments = ["sys_platform == 'win32'"]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+torchaudio = { index = "pytorch-cu124" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

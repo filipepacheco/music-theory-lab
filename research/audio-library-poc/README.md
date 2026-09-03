@@ -43,6 +43,33 @@ ffprobe -version
 FFprobe is invoked as an argument list without a shell. Its executable can be
 overridden per inspection with `--ffprobe`.
 
+### Optional inference dependencies
+
+The `dev` extra above covers everything the offline harness needs. To run real
+Phase 2 stem separation, add the `inference` extra:
+
+```powershell
+uv sync --extra dev --extra inference --python $installedPython
+```
+
+That installs `torch` and `torchaudio` from PyTorch's CUDA 12.4 wheel index
+(pinned via `[tool.uv.sources]` in `pyproject.toml`), plus
+`bs-roformer-infer==0.1.5` and `demucs==4.1.0`. Only Windows is resolved
+(`[tool.uv].environments = ["sys_platform == 'win32'"]`) because Demucs'
+macOS-x86_64 leg constrains torch to `<2.3`; widen that list if you ever
+need to build on another platform.
+
+After the install, verify PyTorch sees the RTX 2060:
+
+```powershell
+.venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+The line must print a `+cu124` torch version, `True`, and a device name that
+starts with `NVIDIA GeForce RTX 2060`. Turing supports `float32` and
+`float16`; do not set `precision: bfloat16` in a pipeline manifest that
+targets this GPU (Turing lacks bf16 tensor cores).
+
 ## CLI
 
 The installed entrypoint is `.venv\Scripts\audio-library-poc.exe`. The
