@@ -16,6 +16,8 @@ EXPECTED_SCHEMA_NAMES = (
     "source-inspection-report.serialization.schema.json",
     "separation-result.validation.schema.json",
     "separation-result.serialization.schema.json",
+    "checkpoint-manifest.validation.schema.json",
+    "checkpoint-manifest.serialization.schema.json",
 )
 PACKAGE_ROOT = Path(__file__).parents[1]
 COMMITTED_SCHEMA_DIRECTORY = PACKAGE_ROOT / "schemas"
@@ -36,6 +38,7 @@ def test_export_json_schemas_writes_both_modes_for_each_contract(
             "MetadataResult",
             "SourceInspectionReport",
             "SeparationResult",
+            "CheckpointManifest",
         }
         assert schema["type"] == "object"
 
@@ -55,5 +58,5 @@ def test_committed_schemas_are_byte_reproducible_on_rerun(
 
     assert second_bytes == first_bytes
     assert committed_bytes == first_bytes
-    assert len(committed_bytes) == 12
+    assert len(committed_bytes) == 14
     assert list(tmp_path.glob(".*.tmp")) == []

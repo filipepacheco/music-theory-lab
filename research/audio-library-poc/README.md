@@ -85,8 +85,8 @@ raw FFprobe tags and source paths, so treat it as private data.
 
 The command exports validation and serialization schemas for each committed
 contract. Repeating it must reproduce the files under `schemas` byte for byte.
-There are currently 12 committed files: two schema modes for six top-level
-contracts, including `SeparationResult`.
+There are currently 14 committed files: two schema modes for seven top-level
+contracts, including `SeparationResult` and `CheckpointManifest`.
 
 ## Synthetic Phase 2 separation validation
 
@@ -140,6 +140,67 @@ not delete already-published artifacts.
 Expected command and validation failures are emitted as typed JSON on standard
 error with a nonzero exit status and no traceback. A stage-level terminal or
 retry-exhausted result exits with status 4 after writing its JSON summary.
+
+### Run any registered pipeline
+
+`run-fake` above always uses the built-in `FakeStage` executor, regardless of
+the `stage_kind` a stage specifies. `run` dispatches each stage to the
+executor registered for its `stage_kind`:
+
+```powershell
+.venv\Scripts\audio-library-poc.exe run --pipeline workspace\pipeline.local.yaml --workspace workspace --run-id phase-2-smoke --input-sha256 <source-audio-sha256>
+```
+
+The registered kinds are:
+
+- `fake.deterministic` — the same `FakeStage` `run-fake` uses.
+- `separator.bs_roformer` — BS-RoFormer six-stem stub.
+- `separator.demucs_htdemucs_6s` — Demucs `htdemucs_6s` stub.
+
+Both separator kinds currently validate the stage's configuration, verify the
+source audio is inside the workspace and hashes to the declared `input_sha256`,
+and then raise a typed `separator.not_implemented` `FAILED_TERMINAL` result.
+Real inference lands in a later slice.
+
+Unknown stage kinds fail as `stage.unknown_kind` `FAILED_TERMINAL` — the
+pipeline manifest is validated statically, but a missing executor is treated
+like any other stage failure.
+
+## Model checkpoints
+
+Phase 2 real inference needs pinned model checkpoints on disk. Both bytes and
+manifests stay local to the workspace.
+
+- `checkpoints.example.yaml` (committed) documents the manifest schema with
+  placeholder URLs. Copy it to a private working file:
+
+  ```powershell
+  Copy-Item checkpoints.example.yaml workspace\checkpoints.local.yaml
+  ```
+
+  Replace the vendor URLs with the ones you actually intend to pin. Leave
+  `expected_sha256` set to `null` on the very first fetch — the script prints
+  the observed digest so you can paste it back and enforce it afterwards.
+- `scripts/fetch_checkpoints.py` downloads pinned checkpoints into
+  `workspace/models/` (ignored by Git). Downloads stream through a `.part`
+  staging file and are only renamed into place after the digest matches:
+
+  ```powershell
+  .venv\Scripts\python.exe scripts\fetch_checkpoints.py --manifest workspace\checkpoints.local.yaml --target workspace\models
+  ```
+
+  The script skips checkpoints that are already present with the expected
+  hash, refuses to overwrite an existing file with a mismatching hash, and
+  emits typed JSON errors on standard error with exit status 1.
+- Pipeline manifests reference the pinned checkpoint through
+  `model_identifier` and `model_sha256` on the stage specification so the
+  cache invalidates the moment either changes. The bridge rejects any
+  `SeparationResult` whose recorded provenance does not match the committed
+  `StageIdentity`.
+
+The `audio-library-poc` CLI is intentionally offline. `fetch_checkpoints.py`
+is the only entry point that reaches the network, and only when invoked
+explicitly.
 
 ## Workspace layout
 
@@ -258,10 +319,17 @@ byte-level requirement automatically.
 
 ## Remaining Phase 2 work
 
-Real stem separation is intentionally absent. BS-RoFormer/Demucs adapters,
-model checkpoints, GPU/VRAM measurements, general-file validation, listening
-reports, and separator selection still require later Phase 2 slices. Phase 1
-proved reproducibility, metadata boundaries, cache identity, resume behavior,
-and safe local orchestration. The generic multi-file staged-artifact seam and
-synthetic five-stem validation contract are now prepared without claiming that
-either real separator runs.
+Real stem separation is still absent. The scaffolding needed to plug it in
+has landed: a `Separator` protocol, BS-RoFormer and Demucs adapter stubs, a
+`SeparatorStageExecutor` bridge that verifies source-audio identity, a
+stage-kind dispatcher, the new `run` CLI subcommand, and a hash-verified
+checkpoint fetcher. Every stub still declines to run inference with a typed
+`separator.not_implemented` `FAILED_TERMINAL` result.
+
+Still open: pin the exact vendor URLs and hashes for both checkpoints in a
+private manifest, replace each stub's `separate()` body with the real
+inference call, run the GPU/VRAM measurements, and produce the listening
+report that decides between candidates. Phase 1 proved reproducibility,
+metadata boundaries, cache identity, resume behavior, and safe local
+orchestration; the seam described above extends those guarantees across the
+Phase 2 boundary without claiming that either real separator runs yet.

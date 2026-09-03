@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from audio_library_poc.checkpoints import CheckpointManifest
 from audio_library_poc.io import atomic_write_json
 from audio_library_poc.models import (
     CorpusManifest,
@@ -24,6 +25,7 @@ SCHEMA_MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("metadata-result", MetadataResult),
     ("source-inspection-report", SourceInspectionReport),
     ("separation-result", SeparationResult),
+    ("checkpoint-manifest", CheckpointManifest),
 )
 SCHEMA_MODES: tuple[SchemaMode, ...] = ("validation", "serialization")
 

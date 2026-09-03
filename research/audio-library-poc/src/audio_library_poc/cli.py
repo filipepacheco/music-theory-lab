@@ -30,6 +30,7 @@ from audio_library_poc.models import (
 )
 from audio_library_poc.orchestrator import StageOrchestrator
 from audio_library_poc.schemas import export_json_schemas
+from audio_library_poc.stage_dispatch import build_stage_dispatcher
 
 EXIT_SUCCESS = 0
 EXIT_USAGE = 2
@@ -123,7 +124,27 @@ def build_parser() -> argparse.ArgumentParser:
     run_fake.add_argument("--workspace", required=True, type=Path)
     run_fake.add_argument("--run-id", required=True)
     run_fake.add_argument("--input-sha256", required=True)
-    control = run_fake.add_mutually_exclusive_group()
+    _add_run_control_flags(run_fake)
+    run_fake.set_defaults(handler=_run_fake)
+
+    run = commands.add_parser(
+        "run",
+        help=(
+            "Run all pipeline stages sequentially, dispatching each to its "
+            "registered executor."
+        ),
+    )
+    run.add_argument("--pipeline", required=True, type=Path)
+    run.add_argument("--workspace", required=True, type=Path)
+    run.add_argument("--run-id", required=True)
+    run.add_argument("--input-sha256", required=True)
+    _add_run_control_flags(run)
+    run.set_defaults(handler=_run)
+    return parser
+
+
+def _add_run_control_flags(subparser: argparse.ArgumentParser) -> None:
+    control = subparser.add_mutually_exclusive_group()
     control.add_argument(
         "--pause",
         action="store_true",
@@ -139,8 +160,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Clear a persisted pause or cancellation request before running.",
     )
-    run_fake.set_defaults(handler=_run_fake)
-    return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -273,6 +292,19 @@ def _export_schemas(arguments: argparse.Namespace) -> int:
 
 
 def _run_fake(arguments: argparse.Namespace) -> int:
+    return _execute_pipeline(arguments, command="run-fake", use_dispatcher=False)
+
+
+def _run(arguments: argparse.Namespace) -> int:
+    return _execute_pipeline(arguments, command="run", use_dispatcher=True)
+
+
+def _execute_pipeline(
+    arguments: argparse.Namespace,
+    *,
+    command: str,
+    use_dispatcher: bool,
+) -> int:
     pipeline = _load_pipeline_input(arguments.pipeline)
     run_id = _validate_cli_value(
         RUN_ID_ADAPTER,
@@ -284,7 +316,13 @@ def _run_fake(arguments: argparse.Namespace) -> int:
         arguments.input_sha256,
         location="input_sha256",
     )
-    orchestrator = StageOrchestrator(arguments.workspace)
+    if use_dispatcher:
+        orchestrator = StageOrchestrator(
+            arguments.workspace,
+            dispatcher=build_stage_dispatcher(arguments.workspace),
+        )
+    else:
+        orchestrator = StageOrchestrator(arguments.workspace)
     if arguments.pause:
         orchestrator.request_pause(run_id)
     elif arguments.cancel:
@@ -318,7 +356,7 @@ def _run_fake(arguments: argparse.Namespace) -> int:
     final_status = results[-1].status
     _emit_json(
         {
-            "command": "run-fake",
+            "command": command,
             "completed": len(results) == len(pipeline.stages)
             and final_status is StageStatus.SUCCEEDED,
             "ok": final_status

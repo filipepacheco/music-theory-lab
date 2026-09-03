@@ -98,11 +98,25 @@ class StageOrchestrator:
         workspace: Path,
         *,
         executor: StageExecutor | None = None,
+        dispatcher: Callable[[StageSpecification], StageExecutor] | None = None,
         path_entry_inspector: Callable[[Path], PathEntryKind] | None = None,
     ) -> None:
+        if executor is not None and dispatcher is not None:
+            raise ValueError("provide either executor or dispatcher, not both")
         self.workspace = Path(workspace).resolve()
-        self.executor = executor or FakeStage()
+        self._dispatcher = dispatcher
+        self.executor = (
+            executor
+            if executor is not None
+            else (None if dispatcher is not None else FakeStage())
+        )
         self.path_entry_inspector = path_entry_inspector or inspect_path_entry
+
+    def _executor_for(self, specification: StageSpecification) -> StageExecutor:
+        if self._dispatcher is not None:
+            return self._dispatcher(specification)
+        assert self.executor is not None
+        return self.executor
 
     def request_pause(self, run_id: str) -> None:
         self._write_control(run_id, ControlRequest.PAUSE)
@@ -221,6 +235,40 @@ class StageOrchestrator:
             state.attempts if state is not None else 0,
             published_attempts,
         )
+
+        try:
+            executor = self._executor_for(specification)
+        except ExpectedStageFailure as exc:
+            dispatch_attempt = attempts + 1
+            result = self._result(
+                identity,
+                cache_key,
+                StageStatus.FAILED_TERMINAL,
+                dispatch_attempt,
+                error=exc.error,
+            )
+            dispatch_state = self._state(
+                validated_run_id,
+                identity,
+                cache_key,
+                specification.max_attempts,
+                dispatch_attempt,
+                StageStatus.FAILED_TERMINAL,
+                paths["result"],
+            )
+            self._clear_staging(paths["staging"])
+            self._publish_result(paths, result, dispatch_state)
+            event_log.emit(
+                event_name="stage.failed_terminal",
+                stage_kind=identity.stage_kind,
+                attempt=dispatch_attempt,
+                status=StageStatus.FAILED_TERMINAL,
+                cache_key=cache_key,
+                fields={"error_code": exc.error.code},
+                error=exc.error,
+            )
+            return result
+
         while attempts < specification.max_attempts:
             control = self._read_control(paths["control"])
             if control.requested is not ControlRequest.NONE:
@@ -276,7 +324,7 @@ class StageOrchestrator:
             )
 
             try:
-                raw_output = self.executor.execute(
+                raw_output = executor.execute(
                     specification=specification,
                     identity=identity,
                     cache_key=cache_key,

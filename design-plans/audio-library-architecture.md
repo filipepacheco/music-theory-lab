@@ -529,6 +529,124 @@ Anti-pattern guards:
 - Do not assume a six-stem output maps piano into guitar; map piano to `other`.
 - Do not download an unpinned checkpoint at every run.
 
+#### Pipeline seam (shipped)
+
+The scaffolding needed to plug real inference into the deterministic
+orchestrator has landed. Nothing runs a model yet; the seam is:
+
+- `Separator` protocol in
+  `research/audio-library-poc/src/audio_library_poc/separators/protocol.py`
+  with a per-candidate `ConfigModel` class attribute, a strict
+  `SeparatorRequest` (resolved source path, verified `source_sha256`,
+  staging directory, validated config, committed `StageIdentity`), and a
+  strict `SeparatorResponse` (validated `SeparationResult`, exact stem
+  filenames the separator wrote, retained-native filenames, result-JSON
+  filename, metrics).
+- Two adapter stubs, `BsRoformerSeparator` and `DemucsSeparator`, that
+  validate their configs and raise a typed
+  `SeparatorNotImplementedError` (a `separator.not_implemented`
+  `TypedError`, non-retryable) so the orchestrator publishes a clean
+  `FAILED_TERMINAL` result rather than a Python traceback.
+- `SeparatorStageExecutor` (the bridge) validates
+  `StageSpecification.config` against the candidate's `ConfigModel`,
+  requires `model_identifier` and `model_sha256` on the specification so
+  cache identity captures the pinned checkpoint, resolves the source
+  audio inside the workspace, streams a SHA-256 to verify it matches
+  `input_sha256`, and only then invokes the separator.
+- `stage_dispatch.build_stage_dispatcher(workspace)` maps
+  `stage_kind` → executor factory. Registered kinds today are
+  `fake.deterministic`, `separator.bs_roformer`, and
+  `separator.demucs_htdemucs_6s`.
+- `StageOrchestrator` accepts an optional `dispatcher=` argument
+  (mutually exclusive with the legacy `executor=`); the dispatcher is
+  resolved per stage and a dispatch failure emits a
+  `stage.unknown_kind` `FAILED_TERMINAL` result. A new `run` CLI
+  subcommand drives the dispatcher; the legacy `run-fake` still uses
+  the default `FakeStage` for backwards compatibility.
+
+Phase 2 real-inference work replaces each stub's `separate()` body
+and adds the model-loading and inference imports. Everything above is
+frozen contract surface: the stage-kind constants, `ConfigModel`
+fields, and per-candidate `candidate_id`/`implementation_version` are
+part of pipeline manifests and cache identity, and must change through
+an explicit version bump.
+
+#### Checkpoint pinning workflow
+
+- Committed manifest: `research/audio-library-poc/checkpoints.example.yaml`
+  is a validation-only example with placeholder URLs and null hashes.
+- Working copy: copy the example to
+  `workspace/checkpoints.local.yaml` (gitignored) and fill in the real
+  vendor URLs. Leave `expected_sha256` as `null` on the first fetch;
+  the script downloads, verifies HTTPS by default, and reports the
+  observed digest. Paste the reported digest back into the manifest so
+  every subsequent fetch is idempotent and enforced.
+- Fetcher: `.venv\Scripts\python.exe scripts/fetch_checkpoints.py
+  --manifest workspace/checkpoints.local.yaml --target workspace/models`.
+  The script skips checkpoints that already exist and match, refuses to
+  overwrite an existing file with a mismatching hash, and streams
+  downloads into a `.part` staging file that is renamed into place only
+  after the digest matches.
+- Pipeline manifest usage: pin the checkpoint identity on the stage
+  specification so the orchestrator's cache invalidates on change.
+  Example (fragment):
+
+  ```yaml
+  - stage_kind: separator.bs_roformer
+    implementation_version: "0.0.0"
+    model_identifier: bs-rofo-sw-fixed.ckpt
+    model_sha256: "<sha256 from checkpoints.local.yaml>"
+    config:
+      source_relative_path: originals/beatles-come-together.mp3
+      segment: 8.0
+      overlap: 0.25
+      shifts: 1
+      device: cuda
+      precision: float16
+      retain_native: false
+      batch_size: 1
+      use_test_time_augmentation: false
+  ```
+
+- Provenance: the recorded `SeparationResult.provenance` must match
+  the committed `StageIdentity` (`model_identifier`, `model_sha256`,
+  `implementation_version`, `code_revision`). The bridge rejects
+  mismatches with a typed `separator.provenance_mismatch` error.
+
+#### PyTorch + CUDA install for the RTX 2060
+
+The target machine is a single-user Windows box with an RTX 2060
+(Turing, compute capability 7.5, 6 GB VRAM). Install PyTorch from the
+official channel; do not rely on the transitively pulled wheels a
+separator package might install by default.
+
+- Recommended wheel: PyTorch's CUDA 12.4 wheel. From this directory,
+  after `uv sync` has created `.venv`, install torch into that
+  environment with the pinned index URL from
+  <https://pytorch.org/get-started/locally/> (choose Stable, Windows,
+  Pip, Python, CUDA 12.4). CUDA 11.8 wheels are also fine on Turing;
+  do not use CPU-only wheels for Phase 2.
+- Precision on Turing: `float16` and `float32` are supported;
+  `bfloat16` is **not** — Turing lacks bf16 tensor cores. The
+  `precision` field in the shared config model accepts `bfloat16`
+  because Phase 2 may target other GPUs later, but every stage
+  specification that targets this machine must set `float16` or
+  `float32`.
+- VRAM budget: 6 GB is tight for a six-stem separator on a full
+  track. Both stubs expect a `segment` in seconds (BS-RoFormer's
+  chunking) and `overlap` in (0, 1); start with `segment: 8.0` and
+  `overlap: 0.25` and shrink `segment` if the model OOMs during
+  inference. Demucs' `segment: null` (config default) means "use the
+  model's built-in chunking"; leave it null unless overriding.
+- Verification: after installing torch, confirm from the same venv:
+
+  ```powershell
+  .venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+  ```
+
+  Both lines must print `True` and the correct device name before Phase
+  2 real inference starts.
+
 ### Phase 3 — Beat, key, and chord analysis
 
 What to implement:
