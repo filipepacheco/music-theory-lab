@@ -20,6 +20,7 @@ export interface GroovePlayer {
   stop: () => void;
   isPlaying: boolean;
   playingSectionId: string | null;
+  currentTick: number;
 }
 
 interface ScheduledGroove {
@@ -40,6 +41,7 @@ export function useGroovePlayer(): GroovePlayer {
   const focusedSectionId = useAppStore((state) => state.focusedSectionId);
   const structureSections = useAppStore((state) => state.structureSections);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTick, setCurrentTick] = useState(-1);
 
   const loopRef = useRef<Tone.Loop | null>(null);
   const tickRef = useRef(0);
@@ -72,6 +74,7 @@ export function useGroovePlayer(): GroovePlayer {
 
     transportOwnedRef.current = false;
     previousTransportBpmRef.current = null;
+    setCurrentTick(-1);
     setIsPlaying(false);
   }, []);
 
@@ -133,6 +136,12 @@ export function useGroovePlayer(): GroovePlayer {
             playbackEngine.playGrooveHit(piece, time);
           }
 
+          Tone.getDraw().schedule(() => {
+            if (playingRef.current && tokenRef.current === token) {
+              setCurrentTick(tick);
+            }
+          }, time);
+
           tickRef.current += 1;
         },
         grooveStepDuration(bpm, '32n'),
@@ -187,5 +196,6 @@ export function useGroovePlayer(): GroovePlayer {
     stop,
     isPlaying,
     playingSectionId: playingSectionIdRef.current,
+    currentTick,
   };
 }

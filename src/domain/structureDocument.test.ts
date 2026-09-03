@@ -131,6 +131,28 @@ describe('structure document', () => {
       expect(result.sections[0].groove?.bumbo.every((hit) => !hit)).toBe(true);
     });
 
+    it('supports two measures and preserves each measure while resampling', () => {
+      const twoMeasures = module.setGrooveMeasureCount(
+        baseDocument,
+        'intro',
+        2,
+      );
+      const withHits = module.toggleGrooveHit(
+        module.toggleGrooveHit(twoMeasures, 'intro', 'bumbo', 0),
+        'intro',
+        'bumbo',
+        16,
+      );
+
+      expect(withHits.sections[0].groove?.bumbo).toHaveLength(32);
+      const result = module.setGrooveSubdivision(withHits, 'intro', '8n');
+
+      expect(result.sections[0].groove?.measureCount).toBe(2);
+      expect(result.sections[0].groove?.bumbo).toHaveLength(16);
+      expect(result.sections[0].groove?.bumbo[0]).toBe(true);
+      expect(result.sections[0].groove?.bumbo[8]).toBe(true);
+    });
+
     it('clears the whole pattern', () => {
       const withHit = module.toggleGrooveHit(
         baseDocument,

@@ -18,7 +18,7 @@ a dependency.
   order: `chimbal/HH`, `caixa/C`, `bumbo/B`).
 - `src/types/index.ts` — `DrumPiece`, `GroovePattern` (`{ bumbo, caixa,
 chimbal }` each matching the selected subdivision's step count),
-  `GrooveSubdivision`, and `StructureSection.groove?`.
+  `GrooveSubdivision`, `GrooveMeasureCount`, and `StructureSection.groove?`.
 - `src/domain/structureDocument.ts` — `toggleGrooveHit`/`clearGroove`
   commands; the section's groove is the playback source.
 - `src/components/structure/GrooveEditor.tsx` — where the play button goes
@@ -64,10 +64,11 @@ synth voices as a fallback when a sample cannot load.
 New `src/hooks/useGroovePlayer.ts`, modeled on `useStepPlayer`:
 
 - `play(groove: GroovePattern, bpm: number)` — uses `Tone.Transport` and a
-  fixed 32nd-note scheduler so the current pattern and selected resolution can
-  be read before every tick. Edits to hits or resolution take effect on the
-  next representable tick without restarting the loop. It loops the complete
-  measure and respects `Tone.start()` on user gesture.
+  fixed 32nd-note scheduler so the current pattern, selected resolution, and
+  one/two-measure length can be read before every tick. Edits to hits or
+  resolution take effect on the next representable tick without restarting
+  the loop. It loops the complete groove and respects `Tone.start()` on user
+  gesture.
 - `stop()` — cancels the scheduled loop, resets state.
 - Returns `{ play, stop, isPlaying }`. `isPlaying` drives the button label
   (pt-BR: "Ouvir groove" / "Parar").
@@ -83,14 +84,15 @@ store `structureBpm`. Hook into the focused section: the groove to play is
 the section currently being edited.
 
 The Structure PDF export includes a compact visual copy of every section's
-groove, including a section that has a groove but no bars.
+groove, including a section that has a groove but no bars. The visual copy is
+a compact percussion chart with barlines and drum noteheads.
 
 ## Completion criteria
 
 - `npm test` passes, including the new `grooveSchedule` tests.
 - `npm run build` passes (strict TS).
-- Structure PDF export includes groove rows and active cells at the selected
-  resolution.
+- Structure PDF export includes the chart at the selected resolution and
+  measure count.
 - Manual: Estrutura → open a section's Groove → choose a resolution → draw a
   pattern → "Ouvir groove" loops it at the structure BPM with three audibly
   distinct acoustic pieces; edits to the pattern while playing are audible on
@@ -102,7 +104,7 @@ groove, including a section that has a groove but no bars.
 ## Deferrals (not in scope)
 
 - Time-signature-aware grids; extra drum pieces; drag-to-paint; MIDI/export;
-  syncing playback to the section's bars rather than the one-measure grid.
+  syncing playback to the section's bars rather than the fixed 4/4 groove grid.
 
 ## Notes for the implementer
 

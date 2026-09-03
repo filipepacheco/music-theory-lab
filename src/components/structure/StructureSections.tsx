@@ -211,22 +211,6 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
-      {/* Groove preview: the at-a-glance pattern, always visible when set */}
-      {!grooveOpen && section.groove && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onFocus(section.id);
-            setGrooveOpen(true);
-          }}
-          className="self-start cursor-pointer"
-          title="Editar groove"
-        >
-          <GroovePreview groove={section.groove} color={color} />
-        </button>
-      )}
-
       {/* Horizontal layout: actions | bars grid | comment */}
       <div className="flex gap-3 sm:gap-4">
         {/* Left column: action buttons stacked vertically */}
@@ -355,12 +339,43 @@ function DroppableSection({
           ))}
         </div>
 
-        {/* Right column: comment */}
-        <div className="flex-1 min-w-[120px] self-stretch flex flex-col">
-          <SectionComment
-            comment={section.comment ?? ''}
-            onChange={(value) => onSetComment(section.id, value)}
-          />
+        {/* Right column: description and chart */}
+        <div
+          className={`flex-1 min-w-0 self-stretch grid items-start gap-2 ${
+            !grooveOpen && section.groove
+              ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]'
+              : 'grid-cols-1'
+          }`}
+        >
+          <div className="min-w-0">
+            <SectionComment
+              comment={section.comment ?? ''}
+              onChange={(value) => onSetComment(section.id, value)}
+            />
+          </div>
+
+          {!grooveOpen && section.groove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFocus(section.id);
+                setGrooveOpen(true);
+              }}
+              className="min-w-0 max-w-full cursor-pointer px-2 pb-1 text-left"
+              title="Editar groove"
+            >
+              <GroovePreview
+                groove={section.groove}
+                color={color}
+                currentTick={
+                  groovePlayer.playingSectionId === section.id
+                    ? groovePlayer.currentTick
+                    : undefined
+                }
+              />
+            </button>
+          )}
         </div>
       </div>
 

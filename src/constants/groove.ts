@@ -1,4 +1,4 @@
-import type { DrumPiece, GrooveSubdivision } from '@/types';
+import type { DrumPiece, GrooveMeasureCount, GrooveSubdivision } from '@/types';
 
 /** The default groove resolution retained by existing patterns. */
 export const GROOVE_STEPS = 16;
@@ -30,6 +30,15 @@ export const GROOVE_SUBDIVISIONS: ReadonlyArray<{
 ];
 
 export const DEFAULT_GROOVE_SUBDIVISION: GrooveSubdivision = '16n';
+export const DEFAULT_GROOVE_MEASURE_COUNT: GrooveMeasureCount = 1;
+
+export const GROOVE_MEASURE_COUNTS: ReadonlyArray<{
+  id: GrooveMeasureCount;
+  label: string;
+}> = [
+  { id: 1, label: '1 compasso' },
+  { id: 2, label: '2 compassos' },
+];
 
 export function grooveStepCount(
   subdivision: GrooveSubdivision | undefined,
@@ -47,6 +56,19 @@ export function grooveStepsPerBeat(
     GROOVE_SUBDIVISIONS.find((option) => option.id === subdivision)
       ?.stepsPerBeat ?? 4
   );
+}
+
+export function grooveMeasureCount(
+  measureCount: GrooveMeasureCount | undefined,
+): GrooveMeasureCount {
+  return measureCount === 2 ? 2 : DEFAULT_GROOVE_MEASURE_COUNT;
+}
+
+export function grooveTotalStepCount(
+  subdivision: GrooveSubdivision | undefined,
+  measureCount: GrooveMeasureCount | undefined,
+): number {
+  return grooveStepCount(subdivision) * grooveMeasureCount(measureCount);
 }
 
 /** The drum pieces, in display order, with compact pt-BR labels. */
