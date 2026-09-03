@@ -41,7 +41,12 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const bars = useMemo(() => {
     if (!data) return [];
-    return buildChordChartBars(data.chord, data.beat, track.duration_seconds);
+    return buildChordChartBars(
+      data.chord,
+      data.beat,
+      track.duration_seconds,
+      data.key,
+    );
   }, [data, track.duration_seconds]);
 
   const rows = useMemo(() => {
@@ -106,6 +111,11 @@ export default function LibraryTrackDetail({ track }: Props) {
                     <span className="font-heading text-sm text-text-primary">
                       {bar.chords[0].chord}
                     </span>
+                    {bar.chords[0].romanNumeral && (
+                      <span className="font-heading text-[11px] text-text-secondary">
+                        {bar.chords[0].romanNumeral}
+                      </span>
+                    )}
                     <span className="text-[10px] text-text-muted">
                       {formatDuration(bar.startSeconds)}
                     </span>
