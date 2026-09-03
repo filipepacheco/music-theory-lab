@@ -10,7 +10,8 @@ export type ActiveModule =
   | 'scales'
   | 'quiz'
   | 'transcription'
-  | 'structure';
+  | 'structure'
+  | 'library';
 
 export type ChordConfidence = 'sure' | 'unsure';
 

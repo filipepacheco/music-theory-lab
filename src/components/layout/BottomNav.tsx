@@ -59,6 +59,7 @@ const MAIN_TABS: { id: ActiveModule; label: string; Icon: typeof IconCampo }[] =
 const MORE_TABS: { id: ActiveModule; label: string }[] = [
   { id: "transcription", label: "Transcrição" },
   { id: "structure", label: "Estrutura" },
+  { id: "library", label: "Biblioteca" },
 ];
 
 export default function BottomNav() {

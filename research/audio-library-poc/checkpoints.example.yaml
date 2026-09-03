@@ -1,0 +1,21 @@
+# Example checkpoint manifest.
+#
+# Copy this file to workspace/checkpoints.local.yaml, then replace the URLs and
+# expected_sha256 values with the ones you actually intend to pin. On the very
+# first fetch of a new checkpoint you may set expected_sha256 to null and the
+# script will report the observed digest so you can paste it back here.
+#
+# The committed values below are placeholders and DO NOT point to real
+# checkpoint files. `scripts/fetch_checkpoints.py` will fail when it tries to
+# download them, which is intentional: the committed example is validation-only.
+schema_version: "1.0.0"
+manifest_id: example-phase-2-checkpoints
+checkpoints:
+  - candidate_id: bs_roformer
+    url: https://example.invalid/pinned/BS-Rofo-SW-Fixed.ckpt
+    target_filename: bs-rofo-sw-fixed.ckpt
+    expected_sha256: null
+  - candidate_id: demucs_htdemucs_6s
+    url: https://example.invalid/pinned/htdemucs_6s.th
+    target_filename: htdemucs_6s.th
+    expected_sha256: null

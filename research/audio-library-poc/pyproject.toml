@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio-library-poc"
+version = "0.1.0"
+description = "Reproducible offline harness for the Music Theory Lab audio library POC"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "PyYAML>=6.0.2,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "ruff>=0.9,<1",
+]
+# Phase 2 real inference. Install with:
+#   uv sync --extra dev --extra inference --python $installedPython
+# The [tool.uv] blocks below pin torch and torchaudio to the CUDA 12.4
+# wheel index; adjust or remove them for a CPU-only or CUDA 11.8 install.
+inference = [
+  "torch>=2.5,<3",
+  "torchaudio>=2.5,<3",
+  "bs-roformer-infer==0.1.5",
+  "demucs==4.1.0",
+  "beat-this==1.1.0",
+  "librosa>=0.10.1,<0.11",
+  "mir_eval>=0.8,<0.9",
+]
+
+[project.scripts]
+audio-library-poc = "audio_library_poc.cli:main"
+
+[tool.uv]
+# The POC targets one Windows machine (RTX 2060). Resolving for macOS and
+# Linux drags in Demucs's macOS-x86_64 torch<2.3 constraint, which conflicts
+# with the CUDA 12.4 wheels this project uses on Windows. Widen this list
+# only when the POC has to build on another platform.
+environments = ["sys_platform == 'win32'"]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+torchaudio = { index = "pytorch-cu124" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = [
+  # Vendored third-party code kept verbatim from upstream. See each vendor
+  # directory's README for provenance and refresh instructions.
+  "src/audio_library_poc/vendor",
+]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"

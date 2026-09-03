@@ -1,0 +1,15 @@
+schema_version: "1.0.0"
+pipeline_id: example-phase-1-pipeline
+code_revision: example-working-tree
+stages:
+  - stage_kind: fake.deterministic
+    implementation_version: "1.0.0"
+    output_schema_version: "1.0.0"
+    max_attempts: 3
+    config:
+      retryable_failures: 0
+      terminal_failure: false
+      interrupt_attempts: []
+      payload:
+        fixture: example
+        records: 1
