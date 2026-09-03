@@ -2,13 +2,16 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   grooveStepCount,
+  grooveTotalStepCount,
 } from '@/constants/groove';
 import type { DrumPiece, GroovePattern, GrooveSubdivision } from '@/types';
 
 /** Return the active drum pieces for each step in the groove grid. */
 export function grooveHits(groove: GroovePattern): DrumPiece[][] {
   return Array.from(
-    { length: grooveStepCount(groove.subdivision) },
+    {
+      length: grooveTotalStepCount(groove.subdivision, groove.measureCount),
+    },
     (_, step) =>
       DRUM_PIECES.filter((piece) => groove[piece.id][step]).map(
         (piece) => piece.id,
@@ -21,11 +24,11 @@ export function grooveHitsAtTick(
   groove: GroovePattern,
   tick: number,
 ): DrumPiece[] {
-  const ticksPerMeasure = grooveStepCount('32n');
-  const steps = grooveStepCount(groove.subdivision);
-  const ticksPerStep = ticksPerMeasure / steps;
+  const ticksPerGroove = grooveTotalStepCount('32n', groove.measureCount);
+  const steps = grooveTotalStepCount(groove.subdivision, groove.measureCount);
+  const ticksPerStep = ticksPerGroove / steps;
   const normalizedTick =
-    ((tick % ticksPerMeasure) + ticksPerMeasure) % ticksPerMeasure;
+    ((tick % ticksPerGroove) + ticksPerGroove) % ticksPerGroove;
 
   if (normalizedTick % ticksPerStep !== 0) return [];
 

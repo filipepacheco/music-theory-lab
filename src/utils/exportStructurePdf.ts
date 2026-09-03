@@ -3,8 +3,9 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   GROOVE_SUBDIVISIONS,
-  grooveStepCount,
+  grooveMeasureCount,
   grooveStepsPerBeat,
+  grooveTotalStepCount,
 } from '@/constants/groove';
 import {
   dotsForTimeSignature,
@@ -13,6 +14,7 @@ import {
   lightenRgb,
   getSectionBars,
 } from './structureLayout';
+import { grooveChartLayout } from './grooveChartLayout';
 import type {
   DrumPiece,
   GroovePattern,
@@ -58,11 +60,7 @@ export interface FormatConfig {
   grooveHeight: number;
   grooveFontSize: number;
   grooveLabelW: number;
-  grooveCellW: number;
-  grooveCellH: number;
-  grooveCellGap: number;
-  grooveBeatGap: number;
-  grooveRowGap: number;
+  grooveMeasureW: number;
 }
 
 export const FORMATS: Record<PdfFormat, FormatConfig> = {
@@ -89,15 +87,11 @@ export const FORMATS: Record<PdfFormat, FormatConfig> = {
     barsTopOffset: 5,
     commentLineHeight: 3,
     commentBesideMinW: 20,
-    grooveGapY: 3,
-    grooveHeight: 13,
+    grooveGapY: 2,
+    grooveHeight: 24,
     grooveFontSize: 5.5,
-    grooveLabelW: 6,
-    grooveCellW: 1.45,
-    grooveCellH: 1.8,
-    grooveCellGap: 0.45,
-    grooveBeatGap: 0.7,
-    grooveRowGap: 0.65,
+    grooveLabelW: 8,
+    grooveMeasureW: 43,
   },
   'ipad-air': {
     pageW: 160,
@@ -122,15 +116,11 @@ export const FORMATS: Record<PdfFormat, FormatConfig> = {
     barsTopOffset: 5.5,
     commentLineHeight: 3.2,
     commentBesideMinW: 20,
-    grooveGapY: 3,
-    grooveHeight: 13,
+    grooveGapY: 2,
+    grooveHeight: 24,
     grooveFontSize: 5.5,
-    grooveLabelW: 6,
-    grooveCellW: 1.45,
-    grooveCellH: 1.8,
-    grooveCellGap: 0.45,
-    grooveBeatGap: 0.7,
-    grooveRowGap: 0.65,
+    grooveLabelW: 8,
+    grooveMeasureW: 31,
   },
 };
 
@@ -143,6 +133,9 @@ export interface SectionLayout {
   commentLines: string[];
   commentBeside: boolean;
   contentH: number;
+  grooveX: number;
+  grooveY: number;
+  grooveMeasureW: number;
   grooveH: number;
   totalH: number;
 }
@@ -157,8 +150,9 @@ export interface GroovePdfRow {
 export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
   if (!groove) return [];
 
-  const stepCount = grooveStepCount(
+  const stepCount = grooveTotalStepCount(
     groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
+    groove.measureCount,
   );
   const rows = DRUM_PIECES.map((piece) => ({
     piece: piece.id,
@@ -173,10 +167,10 @@ export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
 
 function grooveResolutionLabel(groove: GroovePattern): string {
   const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
-  return (
+  const resolution =
     GROOVE_SUBDIVISIONS.find((option) => option.id === subdivision)
-      ?.shortLabel ?? '1/16'
-  );
+      ?.shortLabel ?? '1/16';
+  return `${resolution} - ${grooveMeasureCount(groove.measureCount)}c`;
 }
 
 type WrapText = (text: string, maxWidth: number) => string[];
@@ -223,6 +217,26 @@ export function calcSectionLayout(
       cfg.barsTopOffset + barsH + (commentLines.length > 0 ? 2 + commentH : 0);
   }
   const grooveH = groovePdfRows(section.groove).length ? cfg.grooveHeight : 0;
+  const measureCount = grooveMeasureCount(section.groove?.measureCount);
+  const grooveWidth = cfg.grooveLabelW + measureCount * cfg.grooveMeasureW;
+  const grooveBeside =
+    grooveH > 0 && commentBeside && grooveWidth <= availableBesideW;
+  const grooveAvailableW = grooveBeside ? availableBesideW : colW;
+  const grooveMeasureW = (grooveAvailableW - cfg.grooveLabelW) / measureCount;
+  let grooveX = 0;
+  let grooveY = contentH;
+
+  if (grooveH > 0) {
+    if (grooveBeside) {
+      grooveX = gridW + cfg.commentGap;
+      grooveY =
+        cfg.barsTopOffset +
+        (commentLines.length > 0 ? commentH + cfg.grooveGapY : 0);
+      contentH = Math.max(contentH, grooveY + grooveH);
+    } else {
+      grooveY = contentH + cfg.grooveGapY;
+    }
+  }
 
   return {
     section,
@@ -233,8 +247,11 @@ export function calcSectionLayout(
     commentLines,
     commentBeside,
     contentH,
+    grooveX,
+    grooveY,
+    grooveMeasureW,
     grooveH,
-    totalH: contentH + grooveH,
+    totalH: grooveBeside ? contentH : grooveY + grooveH,
   };
 }
 
@@ -267,53 +284,161 @@ function renderGroove(
   color: string,
   x: number,
   y: number,
+  grooveMeasureW: number,
   cfg: FormatConfig,
 ) {
-  const stepCount = rows[0]?.hits.length ?? 0;
-  if (stepCount === 0) return;
-
-  const [r, g, b] = hexToRgb(color);
+  const layout = grooveChartLayout(groove, {
+    measureWidth: grooveMeasureW,
+    labelWidth: cfg.grooveLabelW,
+    staffTop: 7,
+    staffSpacing: 2.2,
+    height: cfg.grooveHeight,
+  });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(cfg.grooveFontSize);
   doc.setTextColor(90, 90, 90);
   doc.text(`Groove ${grooveResolutionLabel(groove)}`, x, y + 2);
 
-  const stepsPerBeat = grooveStepsPerBeat(
-    groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
-  );
-  const gridX = x + cfg.grooveLabelW;
-  const gridY = y + cfg.grooveGapY;
+  const [r, g, b] = hexToRgb(color);
+  doc.setDrawColor(110, 110, 110);
+  doc.setLineWidth(0.12);
 
-  for (const [rowIndex, row] of rows.entries()) {
-    const rowY = gridY + rowIndex * (cfg.grooveCellH + cfg.grooveRowGap);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(cfg.grooveFontSize);
-    doc.setTextColor(100, 100, 100);
-    doc.text(row.label, x, rowY + cfg.grooveCellH * 0.8);
+  for (let line = 0; line < 5; line++) {
+    const lineY = y + layout.staffTop + line * layout.staffSpacing;
+    doc.line(x + layout.staffLeft, lineY, x + layout.staffRight, lineY);
+  }
 
-    for (let step = 0; step < stepCount; step++) {
-      const beatOffset = Math.floor(step / stepsPerBeat) * cfg.grooveBeatGap;
-      const cellX =
-        gridX + step * (cfg.grooveCellW + cfg.grooveCellGap) + beatOffset;
-      const active = row.hits[step] ?? false;
-      doc.setFillColor(active ? r : 225, active ? g : 225, active ? b : 225);
-      doc.setDrawColor(
-        step % stepsPerBeat === 0 ? 165 : 210,
-        step % stepsPerBeat === 0 ? 165 : 210,
-        step % stepsPerBeat === 0 ? 165 : 210,
-      );
-      doc.setLineWidth(0.12);
-      doc.roundedRect(
-        cellX,
-        rowY,
-        cfg.grooveCellW,
-        cfg.grooveCellH,
-        0.25,
-        0.25,
-        'FD',
+  for (let measure = 0; measure < layout.measureCount; measure++) {
+    for (let beat = 0; beat < 4; beat++) {
+      const beatX = x + layout.beatX(measure, beat);
+      doc.setDrawColor(185, 185, 185);
+      doc.setLineWidth(0.08);
+      doc.line(
+        beatX,
+        y + layout.staffTop - 2,
+        beatX,
+        y + layout.staffBottom + 2,
       );
     }
   }
+
+  doc.setDrawColor(80, 80, 80);
+  doc.setLineWidth(0.2);
+  for (let measure = 0; measure <= layout.measureCount; measure++) {
+    const barX = x + layout.measureX(measure);
+    doc.line(barX, y + layout.staffTop - 2, barX, y + layout.staffBottom + 2);
+    if (measure < layout.measureCount) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(cfg.grooveFontSize);
+      doc.setTextColor(r, g, b);
+      doc.text(String(measure + 1), barX + 1, y + 5);
+    }
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(cfg.grooveFontSize);
+  doc.setTextColor(100, 100, 100);
+  for (const row of rows) {
+    doc.text(row.label, x, y + layout.noteY[row.piece] + 1.2);
+  }
+
+  const hasHit = (step: number): boolean =>
+    rows.some((row) => row.hits[step] === true);
+
+  const stepsPerBeat = grooveStepsPerBeat(
+    groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
+  );
+  const noteRadiusX = Math.min(2, layout.stepWidth * 0.32);
+  const noteRadiusY = Math.min(1.4, layout.stepWidth * 0.22);
+  const crossHalf = Math.min(2, layout.stepWidth * 0.34);
+  const stemOffset = Math.min(1.5, layout.stepWidth * 0.25);
+  for (let measure = 0; measure < layout.measureCount; measure++) {
+    for (let beat = 0; beat < 4; beat++) {
+      const start = measure * layout.stepsPerMeasure + beat * stepsPerBeat;
+      const beatHasHit = Array.from({ length: stepsPerBeat }, (_, offset) =>
+        hasHit(start + offset),
+      ).some(Boolean);
+      if (beatHasHit) continue;
+
+      const restX = x + layout.beatX(measure, beat) + layout.measureWidth / 8;
+      const restY = y + layout.staffTop + layout.staffSpacing * 2;
+      doc.setDrawColor(110, 110, 110);
+      doc.setLineWidth(0.25);
+      doc.line(restX - 1.5, restY - 1.5, restX + 1, restY + 0.5);
+      doc.line(restX + 1, restY + 0.5, restX - 0.5, restY + 2.5);
+      doc.line(restX - 0.5, restY + 2.5, restX + 1.5, restY + 4.5);
+    }
+  }
+
+  for (let measure = 0; measure < layout.measureCount; measure++) {
+    for (let beat = 0; beat < 4; beat++) {
+      const start = measure * layout.stepsPerMeasure + beat * stepsPerBeat;
+      const end = start + stepsPerBeat;
+      const groups = Math.max(0, Math.log2(stepsPerBeat));
+      for (let level = 0; level < groups; level++) {
+        const groupSize = Math.max(1, stepsPerBeat / 2 ** (level + 1));
+        for (let group = 0; group < stepsPerBeat / groupSize; group++) {
+          const groupStart = start + group * groupSize;
+          const groupEnd = Math.min(end, groupStart + groupSize);
+          if (
+            !Array.from({ length: groupEnd - groupStart }, (_, offset) =>
+              hasHit(groupStart + offset),
+            ).some(Boolean)
+          ) {
+            continue;
+          }
+          const beamY = y + layout.staffTop - 3 - level * 1.7;
+          doc.setDrawColor(r, g, b);
+          doc.setLineWidth(0.45);
+          doc.line(
+            x + layout.stepX(groupStart),
+            beamY,
+            x + layout.stepX(groupEnd - 1),
+            beamY,
+          );
+        }
+      }
+    }
+  }
+
+  for (let step = 0; step < layout.totalSteps; step++) {
+    const stepX = x + layout.stepX(step);
+    for (const row of rows) {
+      if (!row.hits[step]) continue;
+
+      const noteY = y + layout.noteY[row.piece];
+      const isKick = row.piece === 'bumbo';
+      const stemX = stepX + (isKick ? -stemOffset : stemOffset);
+      const stemEnd =
+        y + (isKick ? layout.staffBottom + 4 : layout.staffTop - 3);
+      doc.setDrawColor(r, g, b);
+      doc.setFillColor(r, g, b);
+      doc.setLineWidth(0.3);
+      doc.line(stemX, isKick ? noteY + 0.8 : noteY - 0.8, stemX, stemEnd);
+
+      if (row.piece === 'chimbal') {
+        doc.line(
+          stepX - crossHalf,
+          noteY - crossHalf,
+          stepX + crossHalf,
+          noteY + crossHalf,
+        );
+        doc.line(
+          stepX + crossHalf,
+          noteY - crossHalf,
+          stepX - crossHalf,
+          noteY + crossHalf,
+        );
+      } else {
+        doc.ellipse(stepX, noteY, noteRadiusX, noteRadiusY, 'F');
+      }
+    }
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(cfg.grooveFontSize);
+  doc.setTextColor(110, 110, 110);
+  doc.text('HH chimbal - C caixa - B bumbo', x, y + cfg.grooveHeight - 1);
 }
 
 function renderSection(
@@ -331,7 +456,9 @@ function renderSection(
     commentLines,
     commentBeside,
     barsH,
-    contentH,
+    grooveX,
+    grooveY,
+    grooveMeasureW,
     grooveH,
   } = layout;
   const [r, g, b] = hexToRgb(section.color);
@@ -453,8 +580,9 @@ function renderSection(
       section.groove,
       groovePdfRows(section.groove),
       section.color,
-      x,
-      y + contentH,
+      x + grooveX,
+      y + grooveY,
+      grooveMeasureW,
       cfg,
     );
   }

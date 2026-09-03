@@ -1,11 +1,15 @@
 import { dotsForTimeSignature } from '@/utils/structureLayout';
 import {
+  DEFAULT_GROOVE_MEASURE_COUNT,
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   grooveStepCount,
+  grooveMeasureCount,
+  grooveTotalStepCount,
 } from '@/constants/groove';
 import type {
   DrumPiece,
+  GrooveMeasureCount,
   GroovePattern,
   GrooveSubdivision,
   StructureBar,
@@ -91,6 +95,11 @@ export interface StructureDocumentModule {
     sectionId: string,
     subdivision: GrooveSubdivision,
   ): StructureDocument;
+  setGrooveMeasureCount(
+    document: StructureDocument,
+    sectionId: string,
+    measureCount: GrooveMeasureCount,
+  ): StructureDocument;
   clearGroove(
     document: StructureDocument,
     sectionId: string,
@@ -134,10 +143,12 @@ function withReindexedBars(
 /** A groove with every step off — the starting shape for a new pattern. */
 function emptyGroove(
   subdivision: GrooveSubdivision = DEFAULT_GROOVE_SUBDIVISION,
+  measureCount: GrooveMeasureCount = DEFAULT_GROOVE_MEASURE_COUNT,
 ): GroovePattern {
-  const stepCount = grooveStepCount(subdivision);
+  const stepCount = grooveTotalStepCount(subdivision, measureCount);
   return {
     subdivision,
+    measureCount,
     bumbo: Array(stepCount).fill(false),
     caixa: Array(stepCount).fill(false),
     chimbal: Array(stepCount).fill(false),
@@ -147,8 +158,9 @@ function emptyGroove(
 /** Defensively normalize a persisted groove to its subdivision's row length. */
 function normalizedGroove(groove: GroovePattern): GroovePattern {
   const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
-  const normalized = emptyGroove(subdivision);
-  const stepCount = grooveStepCount(subdivision);
+  const measureCount = grooveMeasureCount(groove.measureCount);
+  const normalized = emptyGroove(subdivision, measureCount);
+  const stepCount = grooveTotalStepCount(subdivision, measureCount);
   for (const piece of DRUM_PIECES) {
     const row = groove[piece.id];
     if (Array.isArray(row)) {
@@ -164,19 +176,26 @@ function normalizedGroove(groove: GroovePattern): GroovePattern {
 function resampleGroove(
   groove: GroovePattern,
   subdivision: GrooveSubdivision,
+  measureCount = grooveMeasureCount(groove.measureCount),
 ): GroovePattern {
   const source = normalizedGroove(groove);
-  const target = emptyGroove(subdivision);
-  const sourceStepCount = source.bumbo.length;
-  const targetStepCount = target.bumbo.length;
+  const target = emptyGroove(subdivision, measureCount);
+  const sourceStepCount = grooveStepCount(source.subdivision);
+  const targetStepCount = grooveStepCount(subdivision);
+  const sourceMeasureCount = grooveMeasureCount(source.measureCount);
+  const measuresToCopy = Math.min(sourceMeasureCount, measureCount);
 
   for (const piece of DRUM_PIECES) {
-    for (let sourceStep = 0; sourceStep < sourceStepCount; sourceStep++) {
-      if (!source[piece.id][sourceStep]) continue;
+    for (let measure = 0; measure < measuresToCopy; measure++) {
+      for (let sourceStep = 0; sourceStep < sourceStepCount; sourceStep++) {
+        const sourceIndex = measure * sourceStepCount + sourceStep;
+        if (!source[piece.id][sourceIndex]) continue;
 
-      const scaledStep = sourceStep * targetStepCount;
-      if (scaledStep % sourceStepCount === 0) {
-        target[piece.id][scaledStep / sourceStepCount] = true;
+        const scaledStep = sourceStep * targetStepCount;
+        if (scaledStep % sourceStepCount === 0) {
+          const targetIndex = measure * targetStepCount;
+          target[piece.id][targetIndex + scaledStep / sourceStepCount] = true;
+        }
       }
     }
   }
@@ -287,6 +306,7 @@ export function createStructureDocumentModule(
         groove: sourceGroove
           ? {
               subdivision: sourceGroove.subdivision,
+              measureCount: sourceGroove.measureCount,
               bumbo: [...sourceGroove.bumbo],
               caixa: [...sourceGroove.caixa],
               chimbal: [...sourceGroove.chimbal],
@@ -352,7 +372,10 @@ export function createStructureDocumentModule(
       const section = document.sections.find((item) => item.id === sectionId);
       if (!section) return document;
       const groove = normalizedGroove(section.groove ?? emptyGroove());
-      if (step < 0 || step >= grooveStepCount(groove.subdivision)) {
+      if (
+        step < 0 ||
+        step >= grooveTotalStepCount(groove.subdivision, groove.measureCount)
+      ) {
         return document;
       }
       groove[piece][step] = !groove[piece][step];
@@ -371,6 +394,25 @@ export function createStructureDocumentModule(
       const groove = section.groove
         ? resampleGroove(section.groove, subdivision)
         : emptyGroove(subdivision);
+      return {
+        bars: document.bars,
+        sections: document.sections.map((item) =>
+          item.id === sectionId ? { ...item, groove } : item,
+        ),
+      };
+    },
+
+    setGrooveMeasureCount: (document, sectionId, measureCount) => {
+      const section = document.sections.find((item) => item.id === sectionId);
+      if (!section) return document;
+
+      const groove = section.groove
+        ? resampleGroove(
+            section.groove,
+            section.groove.subdivision,
+            measureCount,
+          )
+        : emptyGroove(DEFAULT_GROOVE_SUBDIVISION, measureCount);
       return {
         bars: document.bars,
         sections: document.sections.map((item) =>

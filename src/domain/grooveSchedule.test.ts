@@ -1,18 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { grooveStepCount } from '@/constants/groove';
-import type { GroovePattern, GrooveSubdivision } from '@/types';
+import { grooveTotalStepCount } from '@/constants/groove';
+import type {
+  GrooveMeasureCount,
+  GroovePattern,
+  GrooveSubdivision,
+} from '@/types';
 import {
   grooveHits,
   grooveHitsAtTick,
   grooveStepDuration,
 } from './grooveSchedule';
 
-function emptyGroove(subdivision: GrooveSubdivision = '16n'): GroovePattern {
+function emptyGroove(
+  subdivision: GrooveSubdivision = '16n',
+  measureCount: GrooveMeasureCount = 1,
+): GroovePattern {
   return {
     subdivision,
-    bumbo: Array(grooveStepCount(subdivision)).fill(false),
-    caixa: Array(grooveStepCount(subdivision)).fill(false),
-    chimbal: Array(grooveStepCount(subdivision)).fill(false),
+    measureCount,
+    bumbo: Array(grooveTotalStepCount(subdivision, measureCount)).fill(false),
+    caixa: Array(grooveTotalStepCount(subdivision, measureCount)).fill(false),
+    chimbal: Array(grooveTotalStepCount(subdivision, measureCount)).fill(false),
   };
 }
 
@@ -49,5 +57,16 @@ describe('groove schedule', () => {
     expect(grooveHitsAtTick(sixteenths, 2)).toEqual(['bumbo']);
     expect(grooveHitsAtTick(eighths, 4)).toEqual(['caixa']);
     expect(grooveHitsAtTick(eighths, 5)).toEqual([]);
+  });
+
+  it('keeps the second measure in the schedule', () => {
+    const groove = emptyGroove('16n', 2);
+    groove.bumbo[16] = true;
+    groove.chimbal[31] = true;
+
+    expect(grooveHits(groove)).toHaveLength(32);
+    expect(grooveHits(groove)[16]).toEqual(['bumbo']);
+    expect(grooveHitsAtTick(groove, 32)).toEqual(['bumbo']);
+    expect(grooveHitsAtTick(groove, 62)).toEqual(['chimbal']);
   });
 });

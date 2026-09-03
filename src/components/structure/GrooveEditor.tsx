@@ -1,56 +1,41 @@
 import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
+  GROOVE_MEASURE_COUNTS,
   GROOVE_SUBDIVISIONS,
+  grooveMeasureCount,
   grooveStepCount,
   grooveStepsPerBeat,
+  grooveTotalStepCount,
 } from '@/constants/groove';
 import type { GroovePlayer } from '@/hooks/useGroovePlayer';
 import { useAppStore } from '@/store/useAppStore';
+import { GrooveChart } from './GrooveChart';
 import type {
+  GrooveMeasureCount,
   GroovePattern,
   GrooveSubdivision,
   StructureSection,
 } from '@/types';
 
-const INACTIVE_DOT = 'var(--color-border-default)';
-
 function hasAnyHit(groove: GroovePattern): boolean {
   return DRUM_PIECES.some((piece) => groove[piece.id].some(Boolean));
 }
 
-/** Condensed groove dot strip: the at-a-glance pattern on a section card. */
+/** Songsterr-inspired chart preview shown on a section card. */
 export function GroovePreview({
   groove,
   color,
+  currentTick,
 }: {
   groove?: GroovePattern;
   color: string;
+  currentTick?: number;
 }) {
   if (!groove || !hasAnyHit(groove)) return null;
 
-  const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
-  const stepCount = grooveStepCount(subdivision);
-  const stepsPerBeat = grooveStepsPerBeat(subdivision);
-
   return (
-    <div className="flex flex-col gap-[3px]">
-      {DRUM_PIECES.map((piece) => (
-        <div key={piece.id} className="flex gap-[3px]">
-          {Array.from({ length: stepCount }, (_, step) => (
-            <span
-              key={step}
-              className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full"
-              style={{
-                backgroundColor: groove[piece.id][step] ? color : INACTIVE_DOT,
-                marginLeft:
-                  step % stepsPerBeat === 0 && step > 0 ? '4px' : undefined,
-              }}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
+    <GrooveChart groove={groove} color={color} currentTick={currentTick} />
   );
 }
 
@@ -67,12 +52,15 @@ export function GrooveEditor({
   const toggleGrooveHit = useAppStore((s) => s.toggleGrooveHit);
   const clearGroove = useAppStore((s) => s.clearGroove);
   const setGrooveSubdivision = useAppStore((s) => s.setGrooveSubdivision);
+  const setGrooveMeasureCount = useAppStore((s) => s.setGrooveMeasureCount);
   const structureBpm = useAppStore((s) => s.structureBpm);
   const setFocusedSection = useAppStore((s) => s.setFocusedSection);
 
   const hasGrooveHits = section.groove ? hasAnyHit(section.groove) : false;
   const subdivision = section.groove?.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
-  const stepCount = grooveStepCount(subdivision);
+  const measureCount = grooveMeasureCount(section.groove?.measureCount);
+  const stepsPerMeasure = grooveStepCount(subdivision);
+  const stepCount = grooveTotalStepCount(subdivision, measureCount);
   const stepsPerBeat = grooveStepsPerBeat(subdivision);
   const isPlaying =
     groovePlayer.isPlaying && groovePlayer.playingSectionId === section.id;
@@ -122,6 +110,26 @@ export function GrooveEditor({
             {GROOVE_SUBDIVISIONS.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.shortLabel} · {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={measureCount}
+            aria-label="Quantidade de compassos do groove"
+            onPointerDown={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation();
+              setFocusedSection(section.id);
+              setGrooveMeasureCount(
+                section.id,
+                Number(e.target.value) as GrooveMeasureCount,
+              );
+            }}
+            className="bg-bg-tertiary/70 border border-border-default rounded px-1.5 py-0.5 text-[10px] text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+          >
+            {GROOVE_MEASURE_COUNTS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.id}c
               </option>
             ))}
           </select>
@@ -175,10 +183,13 @@ export function GrooveEditor({
                         ? color
                         : 'var(--color-bg-tertiary)',
                       marginLeft:
-                        step % stepsPerBeat === 0 && step > 0
-                          ? '6px'
-                          : undefined,
+                        step > 0 && step % stepsPerMeasure === 0
+                          ? '10px'
+                          : step % stepsPerBeat === 0
+                            ? '6px'
+                            : undefined,
                       border:
+                        step % stepsPerMeasure === 0 ||
                         step % stepsPerBeat === 0
                           ? '1px solid var(--color-border-default)'
                           : '1px solid transparent',
