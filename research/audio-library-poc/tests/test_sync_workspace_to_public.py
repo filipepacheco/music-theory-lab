@@ -35,6 +35,13 @@ from audio_library_poc.key_analysis import (
     KeySourceFacts,
 )
 from audio_library_poc.models import TonalMode
+from audio_library_poc.section_analysis import (
+    EffectiveSectionAnalyzerSettings,
+    SectionAnalysisResult,
+    SectionAnalyzerProvenance,
+    SectionSegment,
+    SectionSourceFacts,
+)
 from audio_library_poc.separation import SeparatorPrecision
 
 PACKAGE_ROOT = Path(__file__).parents[1]
@@ -183,6 +190,44 @@ def _key_result(
     )
 
 
+def _section_result(source_sha: str, duration: float = 8.0) -> SectionAnalysisResult:
+    sections = (
+        SectionSegment(start_seconds=0.0, end_seconds=duration / 3, label="A"),
+        SectionSegment(
+            start_seconds=duration / 3,
+            end_seconds=2 * duration / 3,
+            label="B",
+        ),
+        SectionSegment(
+            start_seconds=2 * duration / 3,
+            end_seconds=duration,
+            label="A",
+        ),
+    )
+    return SectionAnalysisResult(
+        source_sha256=source_sha,
+        provenance=SectionAnalyzerProvenance(
+            candidate="librosa_segment",
+            implementation_version="1.0.0",
+            code_revision="test",
+        ),
+        settings=EffectiveSectionAnalyzerSettings(
+            sample_rate=22050,
+            hop_length=2048,
+            feature="chroma_cqt",
+            n_segments=7,
+        ),
+        source=SectionSourceFacts(
+            sample_rate=44100,
+            channels=2,
+            frame_count=int(duration * 44100),
+            duration_seconds=duration,
+            peak_absolute_sample=0.5,
+        ),
+        sections=sections,
+    )
+
+
 def _write_stage_result(
     workspace: Path,
     run_id: str,
@@ -205,6 +250,17 @@ def _write_stage_result(
     artifact_dir = stage_root / "artifacts" / cache_key
     artifact_dir.mkdir(parents=True, exist_ok=True)
     (artifact_dir / artifact_name).write_text(artifact_payload, encoding="utf-8")
+
+
+def _seed_section(workspace: Path, source_sha: str) -> None:
+    _write_stage_result(
+        workspace,
+        f"run-{source_sha[:6]}-sec",
+        "section.librosa_segment",
+        f"section-{source_sha[:6]}",
+        "section-analysis-result.json",
+        _section_result(source_sha).model_dump_json(),
+    )
 
 
 def _seed_full_triple(
@@ -449,6 +505,89 @@ def test_sync_skips_incomplete_tracks(tmp_path: Path) -> None:
     assert index["track_count"] == 0
     assert detail_files == []
     assert not (public / "library" / "tracks" / SOURCE_SHA_A[:12]).exists()
+
+
+def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _seed_section(workspace, SOURCE_SHA_A)
+
+    index_path, detail_files = sync_module.sync(workspace, public)
+
+    prefix = SOURCE_SHA_A[:12]
+    section_path = public / "library" / "tracks" / prefix / "section-analysis-result.json"
+    assert section_path.is_file()
+    # Round-trip through the frozen Pydantic contract.
+    SectionAnalysisResult.model_validate_json(
+        section_path.read_text(encoding="utf-8")
+    )
+    # The section file joins the existing three detail files.
+    assert section_path in detail_files
+    assert len(detail_files) == 4
+
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    (track,) = index["tracks"]
+    assert track["has_sections"] is True
+    assert track["section_count"] == 3
+
+
+def test_sync_omits_section_json_when_absent(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    # Full chord/beat/key triple but no section stage — track still ships.
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+
+    index_path, detail_files = sync_module.sync(workspace, public)
+
+    prefix = SOURCE_SHA_A[:12]
+    section_path = public / "library" / "tracks" / prefix / "section-analysis-result.json"
+    assert not section_path.exists()
+    assert len(detail_files) == 3
+
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    (track,) = index["tracks"]
+    assert track["has_sections"] is False
+    assert "section_count" not in track
+
+
+def test_sync_skips_orphan_section_without_required_triple(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    # A lone section result with no chord/beat/key — the triple guard
+    # excludes the track entirely; no section JSON should be written.
+    _seed_section(workspace, SOURCE_SHA_A)
+
+    index_path, detail_files = sync_module.sync(workspace, public)
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+
+    assert index["track_count"] == 0
+    assert detail_files == []
+    assert not (public / "library" / "tracks" / SOURCE_SHA_A[:12]).exists()
+
+
+def test_collect_analyses_attaches_section_when_present(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _seed_section(workspace, SOURCE_SHA_A)
+
+    analyses = sync_module.collect_analyses(workspace)
+    bundle = analyses[SOURCE_SHA_A]
+    assert bundle.section is not None
+    assert len(bundle.section.sections) == 3
+
+
+def test_collect_analyses_section_absent_when_only_triple(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+
+    analyses = sync_module.collect_analyses(workspace)
+    assert analyses[SOURCE_SHA_A].section is None
 
 
 def teardown_module(_module) -> None:

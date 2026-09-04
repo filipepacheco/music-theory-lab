@@ -45,6 +45,7 @@ import yaml
 from audio_library_poc.beat_analysis import BeatAnalysisResult
 from audio_library_poc.chord_analysis import ChordAnalysisResult
 from audio_library_poc.key_analysis import KeyAnalysisResult
+from audio_library_poc.section_analysis import SectionAnalysisResult
 
 _PITCH_CLASS_NAMES = (
     "C",
@@ -65,17 +66,26 @@ _STAGE_TO_ARTIFACT = {
     "chord.chordmini_btc": ("chord-analysis-result.json", ChordAnalysisResult),
     "beat.beat_this": ("beat-analysis-result.json", BeatAnalysisResult),
     "key.hpcp": ("key-analysis-result.json", KeyAnalysisResult),
+    "section.librosa_segment": (
+        "section-analysis-result.json",
+        SectionAnalysisResult,
+    ),
 }
+
+# Chord + beat + key must all be present for a track to appear in the index;
+# section analysis is optional and ships alongside when it exists.
+_REQUIRED_STAGES = ("chord.chordmini_btc", "beat.beat_this", "key.hpcp")
 
 
 @dataclass(frozen=True)
 class TrackAnalyses:
-    """The three analysis JSONs a track needs before it can appear in the app."""
+    """Analysis JSONs a track carries — chord/beat/key required, section optional."""
 
     source_sha256: str
     chord: ChordAnalysisResult
     beat: BeatAnalysisResult
     key: KeyAnalysisResult
+    section: SectionAnalysisResult | None = None
 
 
 def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
@@ -123,6 +133,7 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
             chord=chord,
             beat=beat,
             key=key,
+            section=per_stage.get("section.librosa_segment"),
         )
     return complete
 
@@ -162,26 +173,28 @@ def build_index(
     for sha256, bundle in sorted(analyses.items()):
         meta = corpus_meta.get(sha256, {})
         top = bundle.key.top_estimate
-        tracks.append(
-            {
-                "source_sha256": sha256,
-                "sha256_prefix": sha256[:12],
-                "title": meta.get("title") or "Untitled",
-                "artist": meta.get("artist") or "Unknown",
-                "duration_seconds": bundle.chord.source.duration_seconds,
-                "detected_key": {
-                    "tonic_pc": top.tonic_pc,
-                    "tonic_name": _PITCH_CLASS_NAMES[top.tonic_pc],
-                    "mode": top.mode.value,
-                    "confidence_score": top.score,
-                },
-                "detected_tempo_bpm": bundle.beat.tempo_median_bpm,
-                "beat_count": len(bundle.beat.beats),
-                "downbeat_count": bundle.beat.downbeat_count,
-                "chord_segment_count": len(bundle.chord.segments),
-                "detail_directory": f"tracks/{sha256[:12]}",
-            }
-        )
+        entry: dict[str, Any] = {
+            "source_sha256": sha256,
+            "sha256_prefix": sha256[:12],
+            "title": meta.get("title") or "Untitled",
+            "artist": meta.get("artist") or "Unknown",
+            "duration_seconds": bundle.chord.source.duration_seconds,
+            "detected_key": {
+                "tonic_pc": top.tonic_pc,
+                "tonic_name": _PITCH_CLASS_NAMES[top.tonic_pc],
+                "mode": top.mode.value,
+                "confidence_score": top.score,
+            },
+            "detected_tempo_bpm": bundle.beat.tempo_median_bpm,
+            "beat_count": len(bundle.beat.beats),
+            "downbeat_count": bundle.beat.downbeat_count,
+            "chord_segment_count": len(bundle.chord.segments),
+            "has_sections": bundle.section is not None,
+            "detail_directory": f"tracks/{sha256[:12]}",
+        }
+        if bundle.section is not None:
+            entry["section_count"] = len(bundle.section.sections)
+        tracks.append(entry)
     return {
         "schema_version": "1.0.0",
         "generated_at": stamp,
@@ -230,6 +243,13 @@ def sync(
                 bundle.key.model_dump(mode="json"),
             )
         )
+        if bundle.section is not None:
+            detail_files.append(
+                _atomic_write_json(
+                    track_dir / "section-analysis-result.json",
+                    bundle.section.model_dump(mode="json"),
+                )
+            )
     index_path = _atomic_write_json(library_root / "index.json", index_payload)
     return index_path, detail_files
 
