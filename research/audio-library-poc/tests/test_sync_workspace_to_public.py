@@ -388,7 +388,7 @@ def test_sync_writes_index_and_per_track_details(tmp_path: Path) -> None:
         ],
     )
 
-    index_path, detail_files = sync_module.sync(workspace, public)
+    index_path, detail_files, _ = sync_module.sync(workspace, public)
 
     assert index_path == public / "library" / "index.json"
     index = json.loads(index_path.read_text(encoding="utf-8"))
@@ -419,7 +419,7 @@ def test_sync_is_idempotent(tmp_path: Path) -> None:
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
-    index_path, _ = sync_module.sync(workspace, public)
+    index_path, _, _ = sync_module.sync(workspace, public)
     first_bytes = index_path.read_bytes()
     first_mtime = index_path.stat().st_mtime_ns
 
@@ -444,11 +444,125 @@ def test_sync_skips_incomplete_tracks(tmp_path: Path) -> None:
         _chord_result(SOURCE_SHA_A).model_dump_json(),
     )
 
-    index_path, detail_files = sync_module.sync(workspace, public)
+    index_path, detail_files, _ = sync_module.sync(workspace, public)
     index = json.loads(index_path.read_text(encoding="utf-8"))
     assert index["track_count"] == 0
     assert detail_files == []
     assert not (public / "library" / "tracks" / SOURCE_SHA_A[:12]).exists()
+
+
+def test_sync_copy_audio_copies_source_when_present(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+
+    # source_path is resolved relative to workspace.parent, matching the way
+    # the corpus manifest is written from the repo root.
+    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 fake mp3 bytes")
+
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "The Beatles"},
+            }
+        ],
+    )
+
+    _, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    prefix = SOURCE_SHA_A[:12]
+    dest = public / "library" / "tracks" / prefix / "source.mp3"
+    assert dest.is_file()
+    assert dest.read_bytes() == b"ID3 fake mp3 bytes"
+    assert audio_files == [dest]
+
+
+def test_sync_copy_audio_skipped_when_flag_off(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 fake mp3 bytes")
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+            }
+        ],
+    )
+
+    _, _, audio_files = sync_module.sync(workspace, public)
+
+    prefix = SOURCE_SHA_A[:12]
+    assert audio_files == []
+    assert not (public / "library" / "tracks" / prefix / "source.mp3").exists()
+
+
+def test_sync_copy_audio_ignores_missing_source(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+            }
+        ],
+    )
+
+    _, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    assert audio_files == []
+
+
+def test_sync_copy_audio_removes_stale_extension(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+
+    # A previous run left a .wav in the destination; the fresh corpus points
+    # at an .mp3 and we expect the .wav to be swept.
+    prefix = SOURCE_SHA_A[:12]
+    stale = public / "library" / "tracks" / prefix / "source.wav"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_bytes(b"old wav")
+
+    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"new mp3")
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+            }
+        ],
+    )
+
+    _, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    assert (public / "library" / "tracks" / prefix / "source.mp3").read_bytes() == b"new mp3"
+    assert not stale.exists()
+    assert len(audio_files) == 1
 
 
 def teardown_module(_module) -> None:
