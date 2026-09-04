@@ -197,6 +197,23 @@ function pickDominantSegment(
   return best;
 }
 
+/**
+ * Return the index of the bar whose [startSeconds, endSeconds) contains
+ * `seconds`, or -1 if none (before the first bar or after the last).
+ * Bars are assumed sorted by startSeconds and non-overlapping.
+ */
+export function barIndexAtSeconds(
+  bars: ChordChartBar[],
+  seconds: number,
+): number {
+  if (!Number.isFinite(seconds) || seconds < 0) return -1;
+  for (let i = 0; i < bars.length; i += 1) {
+    const bar = bars[i];
+    if (seconds >= bar.startSeconds && seconds < bar.endSeconds) return i;
+  }
+  return -1;
+}
+
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const total = Math.round(seconds);

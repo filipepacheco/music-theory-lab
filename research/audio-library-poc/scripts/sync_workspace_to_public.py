@@ -147,6 +147,7 @@ def load_corpus_titles(workspace: Path) -> dict[str, dict[str, Any]]:
             "title": annotation.get("title"),
             "artist": annotation.get("artist"),
             "track_id": track.get("track_id"),
+            "source_path": track.get("source_path"),
         }
     return entries
 
@@ -195,8 +196,13 @@ def sync(
     public: Path,
     *,
     generated_at: datetime | None = None,
-) -> tuple[Path, list[Path]]:
-    """Write the library manifest + per-track detail files. Returns (index, details)."""
+    copy_audio: bool = False,
+) -> tuple[Path, list[Path], list[Path]]:
+    """Write the library manifest + per-track detail files.
+
+    Returns ``(index_path, detail_files, audio_files)``. ``audio_files`` is
+    always the empty list when ``copy_audio`` is False.
+    """
 
     analyses = collect_analyses(workspace)
     corpus_meta = load_corpus_titles(workspace)
@@ -208,6 +214,7 @@ def sync(
     tracks_root.mkdir(parents=True, exist_ok=True)
 
     detail_files: list[Path] = []
+    audio_files: list[Path] = []
     for sha256, bundle in analyses.items():
         prefix = sha256[:12]
         track_dir = tracks_root / prefix
@@ -230,8 +237,48 @@ def sync(
                 bundle.key.model_dump(mode="json"),
             )
         )
+        if copy_audio:
+            audio_path = _copy_audio_source(
+                workspace, corpus_meta.get(sha256, {}), track_dir
+            )
+            if audio_path is not None:
+                audio_files.append(audio_path)
     index_path = _atomic_write_json(library_root / "index.json", index_payload)
-    return index_path, detail_files
+    return index_path, detail_files, audio_files
+
+
+def _copy_audio_source(
+    workspace: Path,
+    meta: dict[str, Any],
+    track_dir: Path,
+) -> Path | None:
+    """Copy the corpus source audio into ``track_dir/source<ext>`` atomically.
+
+    Returns the destination path when the copy happened, ``None`` when the
+    corpus entry has no ``source_path`` or the file is missing on disk. The
+    original file extension is preserved so the client can probe a small set
+    of common formats.
+    """
+
+    source_path_str = meta.get("source_path")
+    if not source_path_str:
+        return None
+    source_path = Path(source_path_str)
+    if not source_path.is_absolute():
+        source_path = workspace.parent / source_path
+    if not source_path.is_file():
+        return None
+    ext = source_path.suffix.lower() or ".bin"
+    destination = track_dir / f"source{ext}"
+    # Remove sibling source.* files for other extensions so old formats do
+    # not linger when the corpus swaps the source (e.g. wav → mp3).
+    for existing in track_dir.glob("source.*"):
+        if existing != destination:
+            existing.unlink()
+    staging = destination.with_suffix(destination.suffix + ".part")
+    shutil.copyfile(source_path, staging)
+    staging.replace(destination)
+    return destination
 
 
 def _load_json(path: Path) -> dict | None:
@@ -274,16 +321,28 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Path to the React app's public/ directory.",
     )
+    parser.add_argument(
+        "--copy-audio",
+        action="store_true",
+        help=(
+            "Also copy each corpus track's source_path into "
+            "public/library/tracks/<prefix>/source<ext>. The destination is "
+            "gitignored so copyrighted audio stays out of the repo."
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    index_path, detail_files = sync(args.workspace, args.public)
+    index_path, detail_files, audio_files = sync(
+        args.workspace, args.public, copy_audio=args.copy_audio
+    )
     summary = {
         "command": "sync-workspace-to-public",
         "index_path": str(index_path),
         "track_detail_files": len(detail_files),
+        "audio_files": len(audio_files),
         "ok": True,
     }
     sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True))

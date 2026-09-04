@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  barIndexAtSeconds,
   buildChordChartBars,
   chordDisplayName,
   formatDuration,
@@ -98,6 +99,42 @@ describe('buildChordChartBars', () => {
     const bars = buildChordChartBars(chord, beat, 30);
     expect(bars).toHaveLength(1);
     expect(bars[0].chords[0].chord).toBe('—');
+  });
+});
+
+describe('barIndexAtSeconds', () => {
+  const beat = {
+    schema_version: '1.0.0',
+    source_sha256: 'x'.repeat(64),
+    beats: [0, 1, 2, 3, 4, 5, 6, 7, 8].map((t, i) => ({
+      time_seconds: t,
+      is_downbeat: i % 4 === 0,
+    })),
+    downbeat_count: 3,
+    tempo_median_bpm: 120,
+  } satisfies BeatAnalysisJson;
+  const chord: ChordAnalysisJson = {
+    schema_version: '1.0.0',
+    source_sha256: 'x'.repeat(64),
+    segments: [
+      seg(0, 4, 'major', 0),
+      seg(4, 8, 'major', 5),
+    ],
+  };
+  const bars = buildChordChartBars(chord, beat, 8);
+
+  it('finds the bar containing the given time', () => {
+    expect(barIndexAtSeconds(bars, 0)).toBe(0);
+    expect(barIndexAtSeconds(bars, 3.999)).toBe(0);
+    expect(barIndexAtSeconds(bars, 4)).toBe(1);
+    expect(barIndexAtSeconds(bars, 7.5)).toBe(1);
+  });
+
+  it('returns -1 for times outside the bar range or negative', () => {
+    expect(barIndexAtSeconds(bars, -0.1)).toBe(-1);
+    expect(barIndexAtSeconds(bars, 8)).toBe(-1);
+    expect(barIndexAtSeconds(bars, 100)).toBe(-1);
+    expect(barIndexAtSeconds(bars, Number.NaN)).toBe(-1);
   });
 });
 

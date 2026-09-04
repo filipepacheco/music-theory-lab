@@ -34,3 +34,6 @@ public/sql-wasm.wasm
 
 # Screenshots
 *.png
+
+# Copyrighted audio sources copied by sync_workspace_to_public.py --copy-audio
+public/library/tracks/*/source.*
