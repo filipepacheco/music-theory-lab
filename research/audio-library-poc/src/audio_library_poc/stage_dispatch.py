@@ -24,6 +24,10 @@ from audio_library_poc.hpcp_key_stage import (
     HpcpKeyStageExecutor,
 )
 from audio_library_poc.models import StageSpecification, TypedError
+from audio_library_poc.section_stage import (
+    SECTION_LIBROSA_STAGE_KIND,
+    SectionLibrosaStageExecutor,
+)
 from audio_library_poc.separator_stage import SeparatorStageExecutor
 from audio_library_poc.separators.bs_roformer import (
     BS_ROFORMER_STAGE_KIND,
@@ -52,6 +56,9 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
     CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
     HPCP_KEY_STAGE_KIND: lambda workspace: HpcpKeyStageExecutor(workspace),
     CHORD_ROOT_KEY_STAGE_KIND: lambda workspace: ChordRootKeyStageExecutor(workspace),
+    SECTION_LIBROSA_STAGE_KIND: lambda workspace: SectionLibrosaStageExecutor(
+        workspace
+    ),
 }
 
 
