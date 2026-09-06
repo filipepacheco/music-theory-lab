@@ -213,9 +213,7 @@ def test_result_rejects_first_section_not_at_zero() -> None:
             provenance=_make_provenance(),
             settings=_make_settings(),
             source=_make_source(duration=10.0),
-            sections=(
-                SectionSegment(start_seconds=2.0, end_seconds=10.0, label="A"),
-            ),
+            sections=(SectionSegment(start_seconds=2.0, end_seconds=10.0, label="A"),),
         )
 
 
@@ -226,9 +224,7 @@ def test_result_rejects_last_section_before_duration() -> None:
             provenance=_make_provenance(),
             settings=_make_settings(),
             source=_make_source(duration=10.0),
-            sections=(
-                SectionSegment(start_seconds=0.0, end_seconds=8.0, label="A"),
-            ),
+            sections=(SectionSegment(start_seconds=0.0, end_seconds=8.0, label="A"),),
         )
 
 
