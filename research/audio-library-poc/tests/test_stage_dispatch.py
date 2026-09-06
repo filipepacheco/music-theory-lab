@@ -31,6 +31,10 @@ from audio_library_poc.models import (
     StageStatus,
 )
 from audio_library_poc.orchestrator import StageOrchestrator
+from audio_library_poc.section_stage import (
+    SECTION_LIBROSA_STAGE_KIND,
+    SectionLibrosaStageExecutor,
+)
 from audio_library_poc.separator_stage import SeparatorStageExecutor
 from audio_library_poc.separators import (
     BS_ROFORMER_STAGE_KIND,
@@ -53,9 +57,21 @@ def test_known_stage_kinds_are_stable_and_sorted() -> None:
         FAKE_STAGE_KIND,
         CHORD_ROOT_KEY_STAGE_KIND,
         HPCP_KEY_STAGE_KIND,
+        SECTION_LIBROSA_STAGE_KIND,
         BS_ROFORMER_STAGE_KIND,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     )
+
+
+def test_dispatcher_returns_section_stage_for_section_kind(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=SECTION_LIBROSA_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, SectionLibrosaStageExecutor)
 
 
 def test_dispatcher_returns_hpcp_key_stage_for_key_kind(tmp_path: Path) -> None:
