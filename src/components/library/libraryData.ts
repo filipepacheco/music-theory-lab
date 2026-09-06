@@ -116,8 +116,86 @@ export function chordDisplayName(segment: ChordSegment): string {
   return segment.label === 'minor' ? `${rootName}m` : rootName;
 }
 
+type DegreeEntry = readonly [number, '' | 'b' | '#'];
+
+const MAJOR_DEGREE_MAP: readonly DegreeEntry[] = [
+  [1, ''],
+  [2, 'b'],
+  [2, ''],
+  [3, 'b'],
+  [3, ''],
+  [4, ''],
+  [4, '#'],
+  [5, ''],
+  [6, 'b'],
+  [6, ''],
+  [7, 'b'],
+  [7, ''],
+];
+
+const MINOR_DEGREE_MAP: readonly DegreeEntry[] = [
+  [1, ''],
+  [2, 'b'],
+  [2, ''],
+  [3, ''],
+  [3, '#'],
+  [4, ''],
+  [5, 'b'],
+  [5, ''],
+  [6, ''],
+  [6, '#'],
+  [7, ''],
+  [7, '#'],
+];
+
+const DEGREE_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'] as const;
+
+/**
+ * Roman-numeral degree for a chord relative to a key. Case is upper for
+ * major chord quality, lower for minor. `relativeRootPc` is the chromatic
+ * offset (0-11) from the key's tonic — use `relativeRootOf` to compute it.
+ * Returns null for non-pitched or non-triadic chord labels.
+ */
+export function romanNumeral(
+  relativeRootPc: number,
+  chordLabel: ChordSegment['label'],
+  keyMode: 'major' | 'minor',
+): string | null {
+  if (chordLabel !== 'major' && chordLabel !== 'minor') return null;
+  const idx = ((relativeRootPc % 12) + 12) % 12;
+  const map = keyMode === 'major' ? MAJOR_DEGREE_MAP : MINOR_DEGREE_MAP;
+  const [degree, accidental] = map[idx];
+  const base = DEGREE_NUMERALS[degree - 1];
+  const numeral = chordLabel === 'minor' ? base.toLowerCase() : base;
+  return `${accidental}${numeral}`;
+}
+
+/**
+ * Chromatic offset (0-11) of a chord root from the key's tonic.
+ */
+export function relativeRootOf(
+  chordRootPc: number,
+  keyTonicPc: number,
+): number {
+  return (((chordRootPc - keyTonicPc) % 12) + 12) % 12;
+}
+
+/**
+ * Roman numeral for a chord segment given a key, or null if the segment is
+ * non-pitched or lacks a root_pc.
+ */
+export function segmentRomanNumeral(
+  segment: ChordSegment,
+  key: KeyAnalysisJson,
+): string | null {
+  if (segment.root_pc === null) return null;
+  const rel = relativeRootOf(segment.root_pc, key.top_estimate.tonic_pc);
+  return romanNumeral(rel, segment.label, key.top_estimate.mode);
+}
+
 export interface BarChord {
   chord: string;
+  romanNumeral: string | null;
   raw: ChordSegment | null;
 }
 
@@ -142,6 +220,7 @@ export function buildChordChartBars(
   chord: ChordAnalysisJson,
   beat: BeatAnalysisJson,
   totalDurationSeconds: number,
+  key?: KeyAnalysisJson,
 ): ChordChartBar[] {
   const downbeats = beat.beats.filter((b) => b.is_downbeat).map((b) => b.time_seconds);
   if (downbeats.length < 2) {
@@ -150,7 +229,7 @@ export function buildChordChartBars(
         index: 0,
         startSeconds: 0,
         endSeconds: totalDurationSeconds,
-        chords: [{ chord: '—', raw: null }],
+        chords: [{ chord: '—', romanNumeral: null, raw: null }],
       },
     ];
   }
@@ -169,6 +248,8 @@ export function buildChordChartBars(
       chords: [
         {
           chord: dominant ? chordDisplayName(dominant) : '—',
+          romanNumeral:
+            dominant && key ? segmentRomanNumeral(dominant, key) : null,
           raw: dominant,
         },
       ],

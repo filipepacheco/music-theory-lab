@@ -13,6 +13,10 @@ from typing import ClassVar
 
 from pydantic import Field, field_validator
 
+from audio_library_poc.asset_resolution import (
+    resolve_workspace,
+    resolve_workspace_asset,
+)
 from audio_library_poc.paths import validate_workspace_relative_path
 from audio_library_poc.separators.config import BaseSeparatorStageConfig
 from audio_library_poc.separators.protocol import (
@@ -69,6 +73,12 @@ class BsRoformerSeparator:
             raise TypeError(
                 "BsRoformerSeparator requires a validated BsRoformerStageConfig"
             )
+        # Resolve the model assets BEFORE the lazy import below: a missing
+        # checkpoint must surface as a typed failure, not as the
+        # ModuleNotFoundError the torch import would raise first on a
+        # machine without the inference extras.
+        _resolve_bs_roformer_assets(request)
+
         # Lazy imports so the module import stays free of torch — Phase 1
         # tests still pass without the inference extras installed.
         from audio_library_poc.separators._bs_roformer_runtime import (
@@ -79,4 +89,29 @@ class BsRoformerSeparator:
             request=request,
             candidate_id=self.candidate_id,
             implementation_version=self.implementation_version,
+        )
+
+
+def _resolve_bs_roformer_assets(request: SeparatorRequest) -> None:
+    """Validate the checkpoint and model config exist inside the workspace.
+
+    Mirrors the resolution the runtime performs, in the same order, so the
+    typed failure is identical whether or not torch is importable.
+    """
+
+    config = request.config
+    workspace = resolve_workspace(request.source_path, config.source_relative_path)
+    for relative_path, label in (
+        (config.checkpoint_relative_path, "checkpoint"),
+        (config.config_relative_path, "config"),
+    ):
+        resolve_workspace_asset(
+            workspace,
+            relative_path,
+            code_prefix="separator",
+            label=label,
+            outside_message=(
+                f"BS-RoFormer {label} path must resolve inside the workspace"
+            ),
+            missing_message=f"BS-RoFormer {label} file is missing",
         )

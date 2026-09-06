@@ -12,6 +12,10 @@ from typing import ClassVar
 
 from pydantic import Field, field_validator
 
+from audio_library_poc.asset_resolution import (
+    resolve_workspace,
+    resolve_workspace_asset,
+)
 from audio_library_poc.paths import validate_workspace_relative_path
 from audio_library_poc.separators.config import BaseSeparatorStageConfig
 from audio_library_poc.separators.protocol import (
@@ -53,6 +57,12 @@ class DemucsSeparator:
     def separate(self, request: SeparatorRequest) -> SeparatorResponse:
         if not isinstance(request.config, self.ConfigModel):
             raise TypeError("DemucsSeparator requires a validated DemucsStageConfig")
+        # Resolve the checkpoint BEFORE the lazy import below: a missing
+        # checkpoint must surface as a typed failure, not as the
+        # ModuleNotFoundError the torch import would raise first on a
+        # machine without the inference extras.
+        _resolve_demucs_assets(request)
+
         # Lazy import so bs_roformer.py / demucs.py load without torch installed.
         from audio_library_poc.separators._demucs_runtime import (
             run_demucs_inference,
@@ -63,3 +73,22 @@ class DemucsSeparator:
             candidate_id=self.candidate_id,
             implementation_version=self.implementation_version,
         )
+
+
+def _resolve_demucs_assets(request: SeparatorRequest) -> None:
+    """Validate the checkpoint exists inside the workspace.
+
+    Mirrors the resolution the runtime performs, so the typed failure is
+    identical whether or not torch is importable.
+    """
+
+    config = request.config
+    workspace = resolve_workspace(request.source_path, config.source_relative_path)
+    resolve_workspace_asset(
+        workspace,
+        config.checkpoint_relative_path,
+        code_prefix="separator",
+        label="checkpoint",
+        outside_message="Demucs checkpoint path must resolve inside the workspace",
+        missing_message="Demucs checkpoint file is missing",
+    )

@@ -16,6 +16,7 @@ from pathlib import Path
 
 from pydantic import Field, ValidationError, field_validator
 
+from audio_library_poc.asset_resolution import resolve_workspace_asset
 from audio_library_poc.chord_analysis import (
     ChordAnalysisResult,
     ChordLabel,
@@ -123,6 +124,12 @@ class ChordMiniBtcStageExecutor:
 
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
+
+        # Resolve the checkpoint BEFORE the lazy import below: a missing
+        # checkpoint must surface as a typed failure, not as the
+        # ModuleNotFoundError the torch import would raise first on a
+        # machine without the inference extras.
+        _resolve_checkpoint(self.workspace, config.checkpoint_relative_path)
 
         from audio_library_poc._chordmini_btc_runtime import run_chordmini_btc_inference
 
@@ -386,3 +393,20 @@ __all__ = (
     "normalize_chordmini_label",
     "summarize_coverage",
 )
+
+
+def _resolve_checkpoint(workspace: Path, checkpoint_relative_path: str) -> Path:
+    """Validate the checkpoint exists inside the workspace.
+
+    Mirrors the resolution the runtime performs, so the typed failure is
+    identical whether or not torch is importable.
+    """
+
+    return resolve_workspace_asset(
+        workspace,
+        checkpoint_relative_path,
+        code_prefix="chord",
+        label="checkpoint",
+        outside_message="ChordMini BTC checkpoint must resolve inside the workspace",
+        missing_message="ChordMini BTC checkpoint file is missing",
+    )
