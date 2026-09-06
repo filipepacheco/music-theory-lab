@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { probeAudioUrl } from './audioSource';
 import {
+  barIndexAtSeconds,
   buildChordChartBars,
   fetchTrackAnalyses,
   formatDuration,
@@ -8,6 +10,8 @@ import {
   type KeyAnalysisJson,
   type LibraryIndexEntry,
 } from './libraryData';
+import LibraryPlayer from './LibraryPlayer';
+import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
   track: LibraryIndexEntry;
@@ -24,6 +28,7 @@ const BARS_PER_ROW = 4;
 export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -38,6 +43,19 @@ export default function LibraryTrackDetail({ track }: Props) {
       });
     return () => controller.abort();
   }, [track]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setAudioUrl(null);
+    probeAudioUrl(track, controller.signal)
+      .then((url) => {
+        if (!controller.signal.aborted) setAudioUrl(url);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [track]);
+
+  const audio = useLibraryAudio(audioUrl);
 
   const bars = useMemo(() => {
     if (!data) return [];
@@ -56,6 +74,11 @@ export default function LibraryTrackDetail({ track }: Props) {
     }
     return grouped;
   }, [bars]);
+
+  const activeBarIndex = useMemo(
+    () => (audio.playing ? barIndexAtSeconds(bars, audio.currentSeconds) : -1),
+    [audio.playing, audio.currentSeconds, bars],
+  );
 
   return (
     <section className="flex flex-col gap-4">
@@ -78,6 +101,8 @@ export default function LibraryTrackDetail({ track }: Props) {
         <Stat label="Duração" value={formatDuration(track.duration_seconds)} />
         <Stat label="Compassos" value={String(track.downbeat_count)} />
       </dl>
+
+      {audioUrl && <LibraryPlayer audio={audio} />}
 
       {error && (
         <p className="text-sm text-red-400">
@@ -103,24 +128,40 @@ export default function LibraryTrackDetail({ track }: Props) {
                   gridTemplateColumns: `repeat(${BARS_PER_ROW}, minmax(0, 1fr))`,
                 }}
               >
-                {row.map((bar) => (
-                  <div
-                    key={bar.index}
-                    className="rounded-button border border-border-default bg-bg-card px-2 py-2 flex flex-col gap-0.5"
-                  >
-                    <span className="font-heading text-sm text-text-primary">
-                      {bar.chords[0].chord}
-                    </span>
-                    {bar.chords[0].romanNumeral && (
-                      <span className="font-heading text-[11px] text-text-secondary">
-                        {bar.chords[0].romanNumeral}
+                {row.map((bar) => {
+                  const isActive = bar.index === activeBarIndex;
+                  const clickable = audioUrl !== null && audio.ready;
+                  const className = [
+                    'rounded-button border px-2 py-2 flex flex-col gap-0.5 text-left transition-colors',
+                    isActive
+                      ? 'border-text-primary bg-bg-hover'
+                      : 'border-border-default bg-bg-card',
+                    clickable
+                      ? 'hover:border-text-primary cursor-pointer'
+                      : 'cursor-default',
+                  ].join(' ');
+                  return (
+                    <button
+                      key={bar.index}
+                      type="button"
+                      onClick={() => audio.seek(bar.startSeconds)}
+                      disabled={!clickable}
+                      className={className}
+                    >
+                      <span className="font-heading text-sm text-text-primary">
+                        {bar.chords[0].chord}
                       </span>
-                    )}
-                    <span className="text-[10px] text-text-muted">
-                      {formatDuration(bar.startSeconds)}
-                    </span>
-                  </div>
-                ))}
+                      {bar.chords[0].romanNumeral && (
+                        <span className="font-heading text-[11px] text-text-secondary">
+                          {bar.chords[0].romanNumeral}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-text-muted">
+                        {formatDuration(bar.startSeconds)}
+                      </span>
+                    </button>
+                  );
+                })}
                 {row.length < BARS_PER_ROW &&
                   Array.from({ length: BARS_PER_ROW - row.length }).map(
                     (_, gap) => <div key={`gap-${gap}`} />,
@@ -132,6 +173,9 @@ export default function LibraryTrackDetail({ track }: Props) {
             Um bloco = um compasso, agrupado a partir do down-beat detectado.
             Quando duas cifras compartilham o compasso, mostramos a de maior
             duração.
+            {audioUrl
+              ? ' Clique num compasso para saltar a reprodução até ele.'
+              : ''}
           </p>
         </div>
       )}
