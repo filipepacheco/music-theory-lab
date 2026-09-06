@@ -560,7 +560,9 @@ def test_sync_copy_audio_removes_stale_extension(tmp_path: Path) -> None:
 
     _, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
 
-    assert (public / "library" / "tracks" / prefix / "source.mp3").read_bytes() == b"new mp3"
+    assert (
+        public / "library" / "tracks" / prefix / "source.mp3"
+    ).read_bytes() == b"new mp3"
     assert not stale.exists()
     assert len(audio_files) == 1
 
