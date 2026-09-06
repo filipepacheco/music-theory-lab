@@ -1,0 +1,5 @@
+# The schema exporter writes LF, and tests/test_schemas.py asserts the
+# committed files reproduce byte for byte. Without this, a Windows clone
+# (core.autocrlf=true) checks them out with CRLF and that test fails —
+# which is exactly what the first CI run on windows-latest hit.
+research/audio-library-poc/schemas/*.json text eol=lf

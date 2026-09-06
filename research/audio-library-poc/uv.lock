@@ -44,8 +44,11 @@ name = "audio-library-poc"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "mir-eval", marker = "sys_platform == 'win32'" },
+    { name = "numpy", marker = "sys_platform == 'win32'" },
     { name = "pydantic", marker = "sys_platform == 'win32'" },
     { name = "pyyaml", marker = "sys_platform == 'win32'" },
+    { name = "soundfile", marker = "sys_platform == 'win32'" },
 ]
 
 [package.optional-dependencies]
@@ -58,7 +61,6 @@ inference = [
     { name = "bs-roformer-infer", marker = "sys_platform == 'win32'" },
     { name = "demucs", marker = "sys_platform == 'win32'" },
     { name = "librosa", marker = "sys_platform == 'win32'" },
-    { name = "mir-eval", marker = "sys_platform == 'win32'" },
     { name = "torch", marker = "sys_platform == 'win32'" },
     { name = "torchaudio", marker = "sys_platform == 'win32'" },
 ]
@@ -69,11 +71,13 @@ requires-dist = [
     { name = "bs-roformer-infer", marker = "extra == 'inference'", specifier = "==0.1.5" },
     { name = "demucs", marker = "extra == 'inference'", specifier = "==4.1.0" },
     { name = "librosa", marker = "extra == 'inference'", specifier = ">=0.10.1,<0.11" },
-    { name = "mir-eval", marker = "extra == 'inference'", specifier = ">=0.8,<0.9" },
+    { name = "mir-eval", specifier = ">=0.8,<0.9" },
+    { name = "numpy", specifier = ">=2.0,<3" },
     { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3,<9" },
     { name = "pyyaml", specifier = ">=6.0.2,<7" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9,<1" },
+    { name = "soundfile", specifier = ">=0.12,<0.15" },
     { name = "torch", marker = "extra == 'inference'", specifier = ">=2.5,<3", index = "https://download.pytorch.org/whl/cu124" },
     { name = "torchaudio", marker = "extra == 'inference'", specifier = ">=2.5,<3", index = "https://download.pytorch.org/whl/cu124" },
 ]

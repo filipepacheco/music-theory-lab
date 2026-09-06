@@ -10,6 +10,15 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "pydantic>=2.10,<3",
   "PyYAML>=6.0.2,<7",
+  # Not inference-only: chord_root_key_stage, chord_evaluation and
+  # key_evaluation import these at module level, and stage_dispatch pulls
+  # chord_root_key_stage in, so `import audio_library_poc.cli` fails without
+  # them. They carry no CUDA payload.
+  "numpy>=2.0,<3",
+  "mir_eval>=0.8,<0.9",
+  # scripts/sum_stems.py has a committed test but is not an inference
+  # runtime; it reads and writes stem WAVs directly.
+  "soundfile>=0.12,<0.15",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +37,6 @@ inference = [
   "demucs==4.1.0",
   "beat-this==1.1.0",
   "librosa>=0.10.1,<0.11",
-  "mir_eval>=0.8,<0.9",
 ]
 
 [project.scripts]
