@@ -24,6 +24,7 @@ import soundfile as sf
 import torch
 from beat_this.inference import Audio2Beats
 
+from audio_library_poc.asset_resolution import resolve_workspace_asset
 from audio_library_poc.beat_analysis import (
     BeatAnalysisResult,
     BeatAnalyzerProvenance,
@@ -123,26 +124,16 @@ def run_beat_this_inference(
 
 
 def _resolve_checkpoint(workspace: Path, checkpoint_relative_path: str) -> Path:
-    candidate = (workspace / Path(checkpoint_relative_path)).resolve()
-    if not candidate.is_relative_to(workspace):
-        raise ExpectedStageFailure(
-            TypedError(
-                code="beat.checkpoint_outside_workspace",
-                message="Beat This! checkpoint must resolve inside the workspace",
-                retryable=False,
-                details={"relative_path": checkpoint_relative_path},
-            )
-        )
-    if not candidate.is_file():
-        raise ExpectedStageFailure(
-            TypedError(
-                code="beat.checkpoint_missing",
-                message="Beat This! checkpoint file is missing",
-                retryable=False,
-                details={"relative_path": checkpoint_relative_path},
-            )
-        )
-    return candidate
+    """Delegate to the inference-free helper the stage also uses."""
+
+    return resolve_workspace_asset(
+        workspace,
+        checkpoint_relative_path,
+        code_prefix="beat",
+        label="checkpoint",
+        outside_message="Beat This! checkpoint must resolve inside the workspace",
+        missing_message="Beat This! checkpoint file is missing",
+    )
 
 
 def _resolve_device(device_str: str) -> torch.device:

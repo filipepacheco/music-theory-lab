@@ -29,6 +29,10 @@ import yaml
 from bs_roformer.inference import SafeLoaderWithTuple, demix_track
 from ml_collections import ConfigDict
 
+from audio_library_poc.asset_resolution import (
+    resolve_workspace,
+    resolve_workspace_asset,
+)
 from audio_library_poc.execution import ExpectedStageFailure
 from audio_library_poc.models import Metrics, TypedError
 from audio_library_poc.separation import (
@@ -218,41 +222,22 @@ def _require_supported_precision(precision: SeparatorPrecision) -> None:
 
 
 def _resolve_workspace(source_path: Path, source_relative_path: str) -> Path:
-    """Recover the workspace root from the bridge-resolved source_path.
+    """Delegate to the inference-free helper the adapter also uses."""
 
-    The bridge resolved ``workspace / source_relative_path`` into
-    ``source_path``. Stripping the relative components from the tail gives us
-    back the workspace root without threading it through the request.
-    """
-
-    relative_parts = Path(source_relative_path).as_posix().split("/")
-    root = source_path
-    for _ in relative_parts:
-        root = root.parent
-    return root
+    return resolve_workspace(source_path, source_relative_path)
 
 
 def _resolve_asset(workspace: Path, relative_path: str, *, label: str) -> Path:
-    candidate = (workspace / Path(relative_path)).resolve()
-    if not candidate.is_relative_to(workspace):
-        raise ExpectedStageFailure(
-            TypedError(
-                code=f"separator.{label}_outside_workspace",
-                message=(f"BS-RoFormer {label} path must resolve inside the workspace"),
-                retryable=False,
-                details={"relative_path": relative_path},
-            )
-        )
-    if not candidate.is_file():
-        raise ExpectedStageFailure(
-            TypedError(
-                code=f"separator.{label}_missing",
-                message=f"BS-RoFormer {label} file is missing",
-                retryable=False,
-                details={"relative_path": relative_path},
-            )
-        )
-    return candidate
+    """Delegate to the inference-free helper the adapter also uses."""
+
+    return resolve_workspace_asset(
+        workspace,
+        relative_path,
+        code_prefix="separator",
+        label=label,
+        outside_message=(f"BS-RoFormer {label} path must resolve inside the workspace"),
+        missing_message=f"BS-RoFormer {label} file is missing",
+    )
 
 
 def _load_bs_roformer_config(path: Path) -> ConfigDict:

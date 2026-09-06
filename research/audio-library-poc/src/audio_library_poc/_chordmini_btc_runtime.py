@@ -16,6 +16,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
+from audio_library_poc.asset_resolution import resolve_workspace_asset
 from audio_library_poc.chord_analysis import (
     ChordAnalysisResult,
     ChordAnalyzerProvenance,
@@ -218,26 +219,16 @@ def _run_inference(
 
 
 def _resolve_checkpoint(workspace: Path, checkpoint_relative_path: str) -> Path:
-    candidate = (workspace / Path(checkpoint_relative_path)).resolve()
-    if not candidate.is_relative_to(workspace):
-        raise ExpectedStageFailure(
-            TypedError(
-                code="chord.checkpoint_outside_workspace",
-                message="ChordMini BTC checkpoint must resolve inside the workspace",
-                retryable=False,
-                details={"relative_path": checkpoint_relative_path},
-            )
-        )
-    if not candidate.is_file():
-        raise ExpectedStageFailure(
-            TypedError(
-                code="chord.checkpoint_missing",
-                message="ChordMini BTC checkpoint file is missing",
-                retryable=False,
-                details={"relative_path": checkpoint_relative_path},
-            )
-        )
-    return candidate
+    """Delegate to the inference-free helper the stage also uses."""
+
+    return resolve_workspace_asset(
+        workspace,
+        checkpoint_relative_path,
+        code_prefix="chord",
+        label="checkpoint",
+        outside_message="ChordMini BTC checkpoint must resolve inside the workspace",
+        missing_message="ChordMini BTC checkpoint file is missing",
+    )
 
 
 def _resolve_device(device_str: str) -> torch.device:
