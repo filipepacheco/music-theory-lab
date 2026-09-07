@@ -49,6 +49,12 @@ export default function LibraryTrackList({ tracks, selectedSha, onSelect }: Prop
                 {track.detected_key.mode === 'minor' ? 'menor' : 'maior'}
                 {' · '}
                 {Math.round(track.detected_tempo_bpm)} bpm
+                {track.has_sections && track.section_count ? (
+                  <>
+                    {' · '}
+                    {track.section_count} trechos
+                  </>
+                ) : null}
               </div>
             </button>
           </li>

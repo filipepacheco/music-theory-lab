@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AUDIO_SOURCE_EXTENSIONS,
   candidateAudioUrls,
+  isAudioContentType,
   probeAudioUrl,
 } from './audioSource';
 import type { LibraryIndexEntry } from './libraryData';
@@ -45,7 +46,11 @@ describe('probeAudioUrl', () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       void init;
       const okAt = `/library/${entry.detail_directory}/source.wav`;
-      return new Response(null, { status: url === okAt ? 200 : 404 });
+      if (url !== okAt) return new Response(null, { status: 404 });
+      return new Response(null, {
+        status: 200,
+        headers: { 'content-type': 'audio/wav' },
+      });
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -83,5 +88,61 @@ describe('probeAudioUrl', () => {
     const found = await probeAudioUrl(entry, controller.signal);
     expect(found).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isAudioContentType', () => {
+  it('accepts audio types, octet-stream and video/mp4', () => {
+    expect(isAudioContentType('audio/mpeg')).toBe(true);
+    expect(isAudioContentType('audio/flac; charset=binary')).toBe(true);
+    expect(isAudioContentType('application/octet-stream')).toBe(true);
+    expect(isAudioContentType('video/mp4')).toBe(true);
+  });
+
+  it('accepts a missing or blank header', () => {
+    expect(isAudioContentType(null)).toBe(true);
+    expect(isAudioContentType('   ')).toBe(true);
+  });
+
+  it('rejects the HTML a dev server or SPA rewrite falls back to', () => {
+    expect(isAudioContentType('text/html')).toBe(false);
+    expect(isAudioContentType('text/html; charset=utf-8')).toBe(false);
+    expect(isAudioContentType('application/json')).toBe(false);
+  });
+});
+
+describe('probeAudioUrl content-type guard', () => {
+  it('rejects a 200 that is really the SPA index.html', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Every candidate "exists" as far as the status goes; none is audio.
+    await expect(probeAudioUrl(entry)).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(AUDIO_SOURCE_EXTENSIONS.length);
+  });
+
+  it('skips an HTML 200 and keeps looking for real audio', async () => {
+    const okAt = `/library/${entry.detail_directory}/source.m4a`;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === okAt) {
+        return new Response(null, {
+          status: 200,
+          headers: { 'content-type': 'audio/mp4' },
+        });
+      }
+      return new Response(null, {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(probeAudioUrl(entry)).resolves.toBe(okAt);
   });
 });
