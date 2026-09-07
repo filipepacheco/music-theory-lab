@@ -3,6 +3,7 @@ import { probeAudioUrl } from './audioSource';
 import {
   barIndexAtSeconds,
   buildChordChartBars,
+  collapseChartCells,
   fetchTrackAnalyses,
   formatDuration,
   groupBarsBySection,
@@ -31,13 +32,15 @@ interface DetailData {
   section: SectionAnalysisJson | null;
 }
 
-const BARS_PER_ROW = 4;
+/** `undefined` while the probe is still running, `null` once it found nothing. */
+type AudioProbe = string | null | undefined;
+
 const NO_SECTIONS: never[] = [];
 
 export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<AudioProbe>(undefined);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,16 +58,18 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setAudioUrl(null);
+    setAudioUrl(undefined);
     probeAudioUrl(track, controller.signal)
       .then((url) => {
         if (!controller.signal.aborted) setAudioUrl(url);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!controller.signal.aborted) setAudioUrl(null);
+      });
     return () => controller.abort();
   }, [track]);
 
-  const audio = useLibraryAudio(audioUrl);
+  const audio = useLibraryAudio(audioUrl ?? null);
 
   const bars = useMemo(() => {
     if (!data) return [];
@@ -96,8 +101,7 @@ export default function LibraryTrackDetail({ track }: Props) {
     [audio.playing, audio.currentSeconds, sections],
   );
 
-  const clickable = audioUrl !== null && audio.ready;
-  const seek = clickable ? audio.seek : null;
+  const seek = audioUrl && audio.ready ? audio.seek : null;
 
   return (
     <section className="flex flex-col gap-4">
@@ -122,6 +126,17 @@ export default function LibraryTrackDetail({ track }: Props) {
       </dl>
 
       {audioUrl && <LibraryPlayer audio={audio} />}
+
+      {audioUrl === null && (
+        <p className="text-[11px] text-text-muted rounded-button border border-border-default bg-bg-card px-3 py-2">
+          Sem áudio para esta faixa — só a análise foi publicada. Rode{' '}
+          <code className="font-mono text-[10px]">
+            sync_workspace_to_public.py --copy-audio
+          </code>{' '}
+          para copiar o arquivo original e habilitar a reprodução e o salto por
+          compasso.
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-red-400">
@@ -173,16 +188,17 @@ export default function LibraryTrackDetail({ track }: Props) {
                 ))}
               </div>
             ) : (
-              <BarGrid bars={bars} activeBarIndex={activeBarIndex} onSeek={seek} />
+              <ChordCells
+                bars={bars}
+                activeBarIndex={activeBarIndex}
+                onSeek={seek}
+              />
             )}
 
             <p className="text-[11px] text-text-muted">
               Um bloco = um compasso, agrupado a partir do down-beat detectado.
-              Quando duas cifras compartilham o compasso, mostramos a de maior
-              duração.
-              {audioUrl
-                ? ' Clique num compasso para saltar a reprodução até ele.'
-                : ''}
+              Compassos seguidos sem acorde detectado viram um bloco só.
+              {seek ? ' Clique num bloco para saltar a reprodução até ele.' : ''}
             </p>
           </div>
         </div>
@@ -231,7 +247,7 @@ function SectionBlock({
         </span>
       </div>
       {group.bars.length > 0 ? (
-        <BarGrid
+        <ChordCells
           bars={group.bars}
           activeBarIndex={activeBarIndex}
           onSeek={onSeek}
@@ -245,7 +261,12 @@ function SectionBlock({
   );
 }
 
-function BarGrid({
+/** Width of one bar's cell. Collapsed runs are a small multiple of it. */
+const CELL_WIDTH_REM = 4;
+/** Past this many bars a collapsed run stops growing — it is already clear. */
+const MAX_COLLAPSED_SPAN = 3;
+
+function ChordCells({
   bars,
   activeBarIndex,
   onSeek,
@@ -254,60 +275,58 @@ function BarGrid({
   activeBarIndex: number;
   onSeek: ((seconds: number) => void) | null;
 }) {
-  const rows: ChordChartBar[][] = [];
-  for (let i = 0; i < bars.length; i += BARS_PER_ROW) {
-    rows.push(bars.slice(i, i + BARS_PER_ROW));
-  }
+  const cells = useMemo(() => collapseChartCells(bars), [bars]);
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {rows.map((row, rowIndex) => (
-        <div
-          key={rowIndex}
-          className="grid gap-1.5"
-          style={{
-            gridTemplateColumns: `repeat(${BARS_PER_ROW}, minmax(0, 1fr))`,
-          }}
-        >
-          {row.map((bar) => {
-            const isActive = bar.index === activeBarIndex;
-            const className = [
-              'rounded-button border px-2 py-2 flex flex-col gap-0.5 text-left transition-colors',
-              isActive
-                ? 'border-text-primary bg-bg-hover'
-                : 'border-border-default bg-bg-card',
-              onSeek
-                ? 'hover:border-text-primary cursor-pointer'
-                : 'cursor-default',
-            ].join(' ');
-            return (
-              <button
-                key={bar.index}
-                type="button"
-                onClick={onSeek ? () => onSeek(bar.startSeconds) : undefined}
-                disabled={onSeek === null}
-                className={className}
-              >
-                <span className="font-heading text-sm text-text-primary">
-                  {bar.chords[0].chord}
+    <div className="flex flex-wrap gap-1">
+      {cells.map((cell) => {
+        const isActive = cell.bars.some((b) => b.index === activeBarIndex);
+        const widthUnits = Math.min(cell.span, MAX_COLLAPSED_SPAN);
+        const className = [
+          'rounded-button border px-2 py-1 flex flex-col items-start justify-center',
+          'text-left leading-tight transition-colors',
+          isActive
+            ? 'border-text-primary bg-bg-hover'
+            : 'border-border-default bg-bg-card',
+          onSeek ? 'hover:border-text-primary cursor-pointer' : 'cursor-default',
+        ].join(' ');
+        return (
+          <button
+            key={cell.bars[0].index}
+            type="button"
+            onClick={onSeek ? () => onSeek(cell.startSeconds) : undefined}
+            disabled={onSeek === null}
+            title={`${cell.chord} · ${formatDuration(
+              cell.startSeconds,
+            )}–${formatDuration(cell.endSeconds)}`}
+            className={className}
+            style={{
+              width: `calc(${widthUnits} * ${CELL_WIDTH_REM}rem + ${
+                widthUnits - 1
+              } * 0.25rem)`,
+            }}
+          >
+            <span className="flex items-baseline gap-1">
+              <span className="font-heading text-sm text-text-primary">
+                {cell.chord}
+              </span>
+              {cell.romanNumeral && (
+                <span className="font-heading text-[10px] text-text-secondary">
+                  {cell.romanNumeral}
                 </span>
-                {bar.chords[0].romanNumeral && (
-                  <span className="font-heading text-[11px] text-text-secondary">
-                    {bar.chords[0].romanNumeral}
-                  </span>
-                )}
-                <span className="text-[10px] text-text-muted">
-                  {formatDuration(bar.startSeconds)}
+              )}
+              {cell.span > 1 && (
+                <span className="font-heading text-[10px] text-text-secondary">
+                  ×{cell.span}
                 </span>
-              </button>
-            );
-          })}
-          {row.length < BARS_PER_ROW &&
-            Array.from({ length: BARS_PER_ROW - row.length }).map((_, gap) => (
-              <div key={`gap-${gap}`} />
-            ))}
-        </div>
-      ))}
+              )}
+            </span>
+            <span className="text-[9px] text-text-muted tabular-nums">
+              {formatDuration(cell.startSeconds)}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
