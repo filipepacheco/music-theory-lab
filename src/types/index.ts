@@ -11,7 +11,8 @@ export type ActiveModule =
   | 'quiz'
   | 'transcription'
   | 'structure'
-  | 'library';
+  | 'library'
+  | 'analyze';
 
 export type ChordConfidence = 'sure' | 'unsure';
 

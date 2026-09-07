@@ -26,6 +26,15 @@ dev = [
   "pytest>=8.3,<9",
   "ruff>=0.9,<1",
 ]
+# Local-only upload-and-analyze service (audio_library_poc.intake_server).
+# Development convenience, never a deployed surface: it binds loopback, has
+# no authentication, and runs inference for whoever reaches it. Install with:
+#   uv sync --extra dev --extra inference --extra server --python $installedPython
+server = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.32,<1",
+  "python-multipart>=0.0.18,<1",
+]
 # Phase 2 real inference. Install with:
 #   uv sync --extra dev --extra inference --python $installedPython
 # The [tool.uv] blocks below pin torch and torchaudio to the CUDA 12.4
@@ -45,6 +54,9 @@ inference = [
 
 [project.scripts]
 audio-library-poc = "audio_library_poc.cli:main"
+# Separate binary on purpose: the CLI above stays offline, and this one
+# listens on a socket. Needs the `server` extra.
+audio-library-intake = "audio_library_poc.intake_server:main"
 
 [tool.uv]
 # The POC targets one Windows machine (RTX 2060). Resolving for macOS and
@@ -80,6 +92,18 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "UP"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI declares request parsing through call expressions in argument
+# defaults (`file: UploadFile = File(...)`). That is the framework's only
+# way to say it, and these calls build descriptors rather than the mutable
+# shared state B008 exists to catch.
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.File",
+  "fastapi.Form",
+  "fastapi.Query",
+]
 
 [tool.ruff.format]
 quote-style = "double"

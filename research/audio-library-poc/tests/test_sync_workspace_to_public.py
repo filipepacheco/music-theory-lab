@@ -710,3 +710,72 @@ def test_collect_analyses_section_absent_when_only_triple(tmp_path: Path) -> Non
 
 def teardown_module(_module) -> None:
     sys.modules.pop("sync_workspace_to_public", None)
+
+
+class TestAtomicWritePublish:
+    """Publishing while the dev server watches public/ used to lose the run.
+
+    On Windows a process holding the destination open without
+    FILE_SHARE_DELETE makes os.replace raise PermissionError. Every stage
+    would succeed and the results would be discarded at the final rename.
+    """
+
+    def test_retries_a_transient_permission_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        target = tmp_path / "out.json"
+        calls = {"n": 0}
+        real_replace = Path.replace
+
+        def flaky(self: Path, other) -> Path:  # type: ignore[no-untyped-def]
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise PermissionError(5, "Access is denied")
+            return real_replace(self, other)
+
+        monkeypatch.setattr(Path, "replace", flaky)
+        monkeypatch.setattr(sync_module, "_REPLACE_BACKOFF_SECONDS", 0)
+
+        sync_module._atomic_write_json(target, {"ok": True})
+
+        assert json.loads(target.read_text(encoding="utf-8")) == {"ok": True}
+        assert calls["n"] == 3
+
+    def test_overwrites_in_place_when_rename_stays_denied(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Exactly what Vite's handle on public/ does: writes allowed, the
+        # delete that a rename needs is not.
+        target = tmp_path / "out.json"
+        target.write_text('{"stale": true}', encoding="utf-8")
+
+        def always_denied(self: Path, other) -> Path:  # type: ignore[no-untyped-def]
+            raise PermissionError(5, "Access is denied")
+
+        monkeypatch.setattr(Path, "replace", always_denied)
+        monkeypatch.setattr(sync_module, "_REPLACE_BACKOFF_SECONDS", 0)
+
+        sync_module._atomic_write_json(target, {"fresh": True})
+
+        assert json.loads(target.read_text(encoding="utf-8")) == {"fresh": True}
+        assert [p.name for p in tmp_path.iterdir()] == ["out.json"]
+
+    def test_raises_the_original_denial_when_nothing_works(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A directory in the destination's place fails the in-place write too,
+        # standing in for a handle that denies writes as well.
+        target = tmp_path / "out.json"
+        target.mkdir()
+
+        def always_denied(self: Path, other) -> Path:  # type: ignore[no-untyped-def]
+            raise PermissionError(5, "Access is denied")
+
+        monkeypatch.setattr(Path, "replace", always_denied)
+        monkeypatch.setattr(sync_module, "_REPLACE_BACKOFF_SECONDS", 0)
+
+        with pytest.raises(OSError):
+            sync_module._atomic_write_json(target, {"ok": True})
+
+        # No .part left behind for the next run to trip over.
+        assert [p.name for p in tmp_path.iterdir()] == ["out.json"]
