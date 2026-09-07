@@ -43,6 +43,7 @@ from audio_library_poc.section_analysis import (
     SectionSourceFacts,
 )
 from audio_library_poc.separation import SeparatorPrecision
+from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
 
 PACKAGE_ROOT = Path(__file__).parents[1]
 SCRIPT_PATH = PACKAGE_ROOT / "scripts" / "sync_workspace_to_public.py"
@@ -253,6 +254,13 @@ def _write_corpus(workspace: Path, entries: list[dict]) -> None:
     )
 
 
+def _write_intake_manifest(workspace: Path, entries: list[dict]) -> None:
+    payload = {"schema_version": "1.0.0", "tracks": entries}
+    (workspace / INTAKE_TRACKS_MANIFEST).write_text(
+        yaml.safe_dump(payload, sort_keys=False), encoding="utf-8"
+    )
+
+
 def test_collect_analyses_returns_only_complete_triples(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -303,7 +311,7 @@ def test_collect_analyses_handles_missing_runs_dir(tmp_path: Path) -> None:
     assert sync_module.collect_analyses(workspace) == {}
 
 
-def test_load_corpus_titles_maps_by_sha(tmp_path: Path) -> None:
+def test_load_track_metadata_maps_by_sha(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     _write_corpus(
@@ -321,7 +329,7 @@ def test_load_corpus_titles_maps_by_sha(tmp_path: Path) -> None:
             },
         ],
     )
-    meta = sync_module.load_corpus_titles(workspace)
+    meta = sync_module.load_track_metadata(workspace)
     assert meta[SOURCE_SHA_A]["title"] == "Come Together"
     assert meta[SOURCE_SHA_A]["artist"] == "The Beatles"
     assert meta[SOURCE_SHA_B]["title"] is None
@@ -343,7 +351,7 @@ def test_build_index_projects_expected_fields(tmp_path: Path) -> None:
         ],
     )
     analyses = sync_module.collect_analyses(workspace)
-    meta = sync_module.load_corpus_titles(workspace)
+    meta = sync_module.load_track_metadata(workspace)
     fixed = datetime(2026, 9, 3, 12, 0, 0, tzinfo=UTC)
     index = sync_module.build_index(analyses, meta, generated_at=fixed)
 
@@ -464,9 +472,9 @@ def test_sync_copy_audio_copies_source_when_present(tmp_path: Path) -> None:
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
-    # source_path is resolved relative to workspace.parent, matching the way
-    # the corpus manifest is written from the repo root.
-    audio_source = tmp_path / "originals" / "come-together.mp3"
+    # Relative source paths resolve against the manifest's own directory, so
+    # a corpus at workspace/corpus.local.yaml points into workspace/originals.
+    audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"ID3 fake mp3 bytes")
 
@@ -496,7 +504,7 @@ def test_sync_copy_audio_skipped_when_flag_off(tmp_path: Path) -> None:
     workspace.mkdir()
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
-    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"ID3 fake mp3 bytes")
     _write_corpus(
@@ -551,7 +559,7 @@ def test_sync_copy_audio_removes_stale_extension(tmp_path: Path) -> None:
     stale.parent.mkdir(parents=True, exist_ok=True)
     stale.write_bytes(b"old wav")
 
-    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"new mp3")
     _write_corpus(
@@ -779,3 +787,148 @@ class TestAtomicWritePublish:
 
         # No .part left behind for the next run to trip over.
         assert [p.name for p in tmp_path.iterdir()] == ["out.json"]
+
+
+def test_load_track_metadata_reads_uploaded_tracks(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_intake_manifest(
+        workspace,
+        [
+            {
+                "track_id": "here-comes-your-man",
+                "source_path": "originals/here-comes-your-man.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Here Comes Your Man", "artist": "Pixies"},
+            }
+        ],
+    )
+    meta = sync_module.load_track_metadata(workspace)
+    assert meta[SOURCE_SHA_A]["title"] == "Here Comes Your Man"
+    assert meta[SOURCE_SHA_A]["artist"] == "Pixies"
+    assert (
+        meta[SOURCE_SHA_A]["source_path"]
+        == (workspace / "originals" / "here-comes-your-man.mp3").resolve()
+    )
+
+
+def test_load_track_metadata_prefers_the_intake_row(tmp_path: Path) -> None:
+    # Someone re-uploaded a corpus track and typed their own title; that is a
+    # more recent, explicit statement than the corpus annotation, and only
+    # display fields are at stake -- trusted_key is never read here.
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {
+                    "title": "Come Together - Remastered 2009",
+                    "artist": "The Beatles",
+                },
+            }
+        ],
+    )
+    _write_intake_manifest(
+        workspace,
+        [
+            {
+                "track_id": "come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "Beatles"},
+            }
+        ],
+    )
+    meta = sync_module.load_track_metadata(workspace)
+    assert meta[SOURCE_SHA_A]["title"] == "Come Together"
+
+
+def test_sync_copies_audio_for_an_uploaded_track(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = workspace / "originals" / "here-comes-your-man.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 uploaded bytes")
+    _write_intake_manifest(
+        workspace,
+        [
+            {
+                "track_id": "here-comes-your-man",
+                "source_path": "originals/here-comes-your-man.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Here Comes Your Man", "artist": "Pixies"},
+            }
+        ],
+    )
+
+    index_path, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
+    assert audio_files == [dest]
+    assert dest.read_bytes() == b"ID3 uploaded bytes"
+    (track,) = json.loads(index_path.read_text(encoding="utf-8"))["tracks"]
+    assert track["title"] == "Here Comes Your Man"
+    assert track["artist"] == "Pixies"
+
+
+def test_sync_copy_audio_leaves_an_unchanged_file_alone(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = workspace / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 fake mp3 bytes")
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "The Beatles"},
+            }
+        ],
+    )
+
+    sync_module.sync(workspace, public, copy_audio=True)
+    dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
+    untouched = dest.stat().st_mtime_ns
+
+    _, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    assert audio_files == [dest]
+    assert dest.stat().st_mtime_ns == untouched
+
+
+def test_sync_copy_audio_rewrites_a_changed_file(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = workspace / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 fake mp3 bytes")
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "The Beatles"},
+            }
+        ],
+    )
+    sync_module.sync(workspace, public, copy_audio=True)
+
+    audio_source.write_bytes(b"ID3 a different master entirely")
+    sync_module.sync(workspace, public, copy_audio=True)
+
+    dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
+    assert dest.read_bytes() == b"ID3 a different master entirely"
