@@ -1,0 +1,489 @@
+{
+  "$defs": {
+    "AnnotationKind": {
+      "enum": [
+        "chord",
+        "key"
+      ],
+      "title": "AnnotationKind",
+      "type": "string"
+    },
+    "AnnotationOverlay": {
+      "additionalProperties": false,
+      "description": "A hash-bound, non-destructive set of interval replacements.",
+      "properties": {
+        "overlay_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Overlay Id",
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "overlay_id",
+        "version",
+        "reason"
+      ],
+      "title": "AnnotationOverlay",
+      "type": "object"
+    },
+    "CorpusBoundOriginal": {
+      "additionalProperties": false,
+      "description": "An original selected from a corpus manifest, including external sources.\n\n``corpus_manifest_path`` is contained in the evaluation workspace. The\ncorpus manifest remains the only place that can name an absolute source\npath, so an evaluation manifest stays portable and auditable.",
+      "properties": {
+        "corpus_manifest_path": {
+          "minLength": 1,
+          "title": "Corpus Manifest Path",
+          "type": "string"
+        },
+        "corpus_track_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Corpus Track Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "corpus_manifest_path",
+        "corpus_track_id",
+        "sha256"
+      ],
+      "title": "CorpusBoundOriginal",
+      "type": "object"
+    },
+    "EvaluationDisposition": {
+      "enum": [
+        "included",
+        "quarantined"
+      ],
+      "title": "EvaluationDisposition",
+      "type": "string"
+    },
+    "EvaluationExcerpt": {
+      "additionalProperties": false,
+      "properties": {
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "excerpt_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Excerpt Id",
+          "type": "string"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "excerpt_id",
+        "start_seconds",
+        "end_seconds"
+      ],
+      "title": "EvaluationExcerpt",
+      "type": "object"
+    },
+    "EvaluationSplit": {
+      "enum": [
+        "development",
+        "holdout"
+      ],
+      "title": "EvaluationSplit",
+      "type": "string"
+    },
+    "EvaluationTrack": {
+      "additionalProperties": false,
+      "description": "One original recording, never an adjacent excerpt, in the frozen split.",
+      "properties": {
+        "annotations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReferenceAnnotation"
+          },
+          "title": "Annotations",
+          "type": "array"
+        },
+        "excerpts": {
+          "items": {
+            "$ref": "#/$defs/EvaluationExcerpt"
+          },
+          "minItems": 1,
+          "title": "Excerpts",
+          "type": "array"
+        },
+        "original": {
+          "$ref": "#/$defs/CorpusBoundOriginal"
+        },
+        "recording_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Recording Id",
+          "type": "string"
+        },
+        "selections": {
+          "items": {
+            "$ref": "#/$defs/SelectedArtifact"
+          },
+          "minItems": 1,
+          "title": "Selections",
+          "type": "array"
+        },
+        "split": {
+          "$ref": "#/$defs/EvaluationSplit"
+        }
+      },
+      "required": [
+        "recording_id",
+        "original",
+        "split",
+        "excerpts",
+        "selections"
+      ],
+      "title": "EvaluationTrack",
+      "type": "object"
+    },
+    "ReferenceAnnotation": {
+      "additionalProperties": false,
+      "description": "Raw reference provenance, disposition, timing evidence, and overlays.",
+      "properties": {
+        "alignment_evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alignment Evidence"
+        },
+        "annotation_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Annotation Id",
+          "type": "string"
+        },
+        "available": {
+          "default": true,
+          "title": "Available",
+          "type": "boolean"
+        },
+        "disposition": {
+          "$ref": "#/$defs/EvaluationDisposition",
+          "default": "included"
+        },
+        "duration_alignment_evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Alignment Evidence"
+        },
+        "kind": {
+          "$ref": "#/$defs/AnnotationKind"
+        },
+        "offset_seconds": {
+          "default": 0.0,
+          "title": "Offset Seconds",
+          "type": "number"
+        },
+        "overlays": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AnnotationOverlay"
+          },
+          "title": "Overlays",
+          "type": "array"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "quarantine_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quarantine Reason"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "annotation_id",
+        "kind",
+        "source",
+        "version"
+      ],
+      "title": "ReferenceAnnotation",
+      "type": "object"
+    },
+    "SelectedArtifact": {
+      "additionalProperties": false,
+      "description": "The one artifact a candidate/config is allowed to contribute.\n\n``config_id`` is a readable report label. The immutable configuration\nbinding is ``identity.config_sha256``, which is verified with the envelope.",
+      "properties": {
+        "artifact_kind": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Artifact Kind",
+          "type": "string"
+        },
+        "artifact_path": {
+          "minLength": 1,
+          "title": "Artifact Path",
+          "type": "string"
+        },
+        "artifact_schema_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Artifact Schema Version",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "artifact_size_bytes": {
+          "minimum": 0,
+          "title": "Artifact Size Bytes",
+          "type": "integer"
+        },
+        "cache_key": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cache Key",
+          "type": "string"
+        },
+        "candidate_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "config_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Config Id",
+          "type": "string"
+        },
+        "envelope_path": {
+          "minLength": 1,
+          "title": "Envelope Path",
+          "type": "string"
+        },
+        "identity": {
+          "$ref": "#/$defs/StageIdentity"
+        },
+        "run_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "config_id",
+        "run_id",
+        "cache_key",
+        "envelope_path",
+        "identity",
+        "artifact_kind",
+        "artifact_path",
+        "artifact_sha256",
+        "artifact_size_bytes",
+        "artifact_schema_version"
+      ],
+      "title": "SelectedArtifact",
+      "type": "object"
+    },
+    "StageIdentity": {
+      "additionalProperties": false,
+      "description": "All output-defining provenance for one deterministic stage run.",
+      "properties": {
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Sha256",
+          "type": "string"
+        },
+        "implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Implementation Version",
+          "type": "string"
+        },
+        "input_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "model_identifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Identifier"
+        },
+        "model_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Sha256"
+        },
+        "output_schema_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Output Schema Version",
+          "type": "string"
+        },
+        "stage_kind": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Stage Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage_kind",
+        "input_sha256",
+        "implementation_version",
+        "config_sha256",
+        "output_schema_version",
+        "code_revision"
+      ],
+      "title": "StageIdentity",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Versioned selection and provenance for the inspected four-track pilot.",
+  "properties": {
+    "manifest_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "pilot_disclosure": {
+      "minLength": 1,
+      "title": "Pilot Disclosure",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "split_policy": {
+      "const": "recording",
+      "default": "recording",
+      "title": "Split Policy",
+      "type": "string"
+    },
+    "tracks": {
+      "items": {
+        "$ref": "#/$defs/EvaluationTrack"
+      },
+      "minItems": 1,
+      "title": "Tracks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "manifest_id",
+    "pilot_disclosure",
+    "tracks"
+  ],
+  "title": "EvaluationManifest",
+  "type": "object"
+}

@@ -7,7 +7,11 @@ from pydantic import BaseModel
 
 from audio_library_poc.beat_analysis import BeatAnalysisResult
 from audio_library_poc.checkpoints import CheckpointManifest
-from audio_library_poc.chord_analysis import ChordAnalysisResult
+from audio_library_poc.chord_analysis import (
+    ChordAnalysisResult,
+    ChordFrameEvidenceArtifact,
+)
+from audio_library_poc.evaluation_manifest import EvaluationManifest
 from audio_library_poc.io import atomic_write_json
 from audio_library_poc.key_analysis import KeyAnalysisResult
 from audio_library_poc.models import (
@@ -17,6 +21,8 @@ from audio_library_poc.models import (
     SourceInspectionReport,
     StageResultEnvelope,
 )
+from audio_library_poc.product_evaluation_report import ProductEvaluationReport
+from audio_library_poc.section_analysis import SectionAnalysisResult
 from audio_library_poc.separation import SeparationResult
 
 SchemaMode = Literal["validation", "serialization"]
@@ -31,7 +37,11 @@ SCHEMA_MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("checkpoint-manifest", CheckpointManifest),
     ("beat-analysis-result", BeatAnalysisResult),
     ("chord-analysis-result", ChordAnalysisResult),
+    ("chord-frame-evidence", ChordFrameEvidenceArtifact),
     ("key-analysis-result", KeyAnalysisResult),
+    ("section-analysis-result", SectionAnalysisResult),
+    ("evaluation-manifest", EvaluationManifest),
+    ("product-evaluation-report", ProductEvaluationReport),
 )
 SCHEMA_MODES: tuple[SchemaMode, ...] = ("validation", "serialization")
 

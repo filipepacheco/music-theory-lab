@@ -1,10 +1,9 @@
-"""BS-RoFormer six-stem separator adapter stub.
+"""BS-RoFormer six-stem separator adapter.
 
-Phase 2 will replace the ``separate`` body with the pinned inference pattern
-from ``research/audio-analysis-pipeline-options.md``. Everything else here —
-the stage-kind constant, the config surface, the stable candidate/version
-identifiers — is meant to be stable across that work so the pipeline manifest
-and cache identities stay valid.
+The adapter delegates real inference to ``_bs_roformer_runtime`` after its
+checkpoint and model config pass workspace-containment preflight checks. Its
+stage-kind constant, config surface, and stable candidate/version identifiers
+remain cache-identity inputs.
 """
 
 from __future__ import annotations
@@ -38,9 +37,9 @@ class BsRoformerStageConfig(BaseSeparatorStageConfig):
     ``config_sha256``) without the bridge doing any file I/O for them.
 
     ``segment``, ``overlap``, ``shifts``, ``batch_size`` and
-    ``use_test_time_augmentation`` are recorded in provenance but the current
-    inference path defers all chunking to the ``chunk_size`` / ``num_overlap``
-    baked into the model's own YAML config. Overrides land in a later slice.
+    ``use_test_time_augmentation`` are recorded in provenance. The runtime's
+    effective chunking must be captured from the selected model configuration
+    and verified in an empirical parity run.
     """
 
     checkpoint_relative_path: str = Field(min_length=1)

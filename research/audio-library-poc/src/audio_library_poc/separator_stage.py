@@ -3,10 +3,9 @@
 The orchestrator only knows about ``StageExecutor``. This bridge validates a
 separator's config, verifies the source audio hash, calls the separator, and
 translates its ``SeparatorResponse`` into the ``StagedArtifact`` bundle the
-orchestrator expects. When the underlying separator raises
-``SeparatorNotImplementedError`` (the current stubs), the failure flows
-through as a clean ``FAILED_TERMINAL`` result — no traceback and no partial
-publication.
+orchestrator expects. ``SeparatorNotImplementedError`` remains available for a
+future unimplemented candidate; it flows through as a clean
+``FAILED_TERMINAL`` result with no traceback or partial publication.
 """
 
 from __future__ import annotations

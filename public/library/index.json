@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-07T16:44:27+00:00",
+  "generated_at": "2026-09-07T19:14:21+00:00",
   "schema_version": "1.0.0",
-  "track_count": 5,
+  "track_count": 6,
   "tracks": [
     {
       "artist": "The Beatles",
       "beat_count": 354,
-      "chord_segment_count": 88,
+      "chord_segment_count": 158,
       "detail_directory": "tracks/99a86f276eff",
       "detected_key": {
         "confidence_score": 0.6978666681650671,
@@ -26,7 +26,7 @@
     {
       "artist": "Pixies",
       "beat_count": 405,
-      "chord_segment_count": 18,
+      "chord_segment_count": 140,
       "detail_directory": "tracks/9bcc6006f36b",
       "detected_key": {
         "confidence_score": 0.6143562986159284,
@@ -46,7 +46,7 @@
     {
       "artist": "The Beatles",
       "beat_count": 452,
-      "chord_segment_count": 84,
+      "chord_segment_count": 120,
       "detail_directory": "tracks/b1a8dc308adc",
       "detected_key": {
         "confidence_score": 0.7389605246603586,
@@ -66,7 +66,7 @@
     {
       "artist": "Radiohead",
       "beat_count": 324,
-      "chord_segment_count": 188,
+      "chord_segment_count": 165,
       "detail_directory": "tracks/d693cd68a24a",
       "detected_key": {
         "confidence_score": 0.8081345499222516,
@@ -86,7 +86,7 @@
     {
       "artist": "Pink Floyd",
       "beat_count": 344,
-      "chord_segment_count": 51,
+      "chord_segment_count": 125,
       "detail_directory": "tracks/e1e8824a8045",
       "detected_key": {
         "confidence_score": 0.8568505704273058,
@@ -102,6 +102,26 @@
       "sha256_prefix": "e1e8824a8045",
       "source_sha256": "e1e8824a80458c3047bc1bd7796ba50f62b902f531b6468644e627e2a09d8f89",
       "title": "Wish You Were Here"
+    },
+    {
+      "artist": "Beatles",
+      "beat_count": 242,
+      "chord_segment_count": 101,
+      "detail_directory": "tracks/e20579df56d9",
+      "detected_key": {
+        "confidence_score": 0.9248172862987543,
+        "mode": "major",
+        "tonic_name": "A",
+        "tonic_pc": 9
+      },
+      "detected_tempo_bpm": 103.44827586206927,
+      "downbeat_count": 61,
+      "duration_seconds": 146.34231292517006,
+      "has_sections": true,
+      "section_count": 8,
+      "sha256_prefix": "e20579df56d9",
+      "source_sha256": "e20579df56d986a665029eee0966b47124021b9327226f7a74834d08b7d7f6d9",
+      "title": "In My Life"
     }
   ]
 }

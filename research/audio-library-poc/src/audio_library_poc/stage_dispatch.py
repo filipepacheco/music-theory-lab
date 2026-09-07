@@ -14,8 +14,16 @@ from audio_library_poc.chord_root_key_stage import (
     ChordRootKeyStageExecutor,
 )
 from audio_library_poc.chordmini_btc_stage import (
+    CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND,
     CHORDMINI_BTC_STAGE_KIND,
+    CHORDMINI_BTC_VERIFIED_STAGE_KIND,
+    BaselineEvidenceChordMiniBtcStageExecutor,
     ChordMiniBtcStageExecutor,
+    VerifiedChordMiniBtcStageExecutor,
+)
+from audio_library_poc.chordnet_stage import (
+    CHORDMINI_CHORDNET_STAGE_KIND,
+    ChordNetStageExecutor,
 )
 from audio_library_poc.execution import ExpectedStageFailure, StageExecutor
 from audio_library_poc.fake_stage import FakeStage
@@ -54,6 +62,13 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
     ),
     BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
     CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
+    CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND: lambda workspace: (
+        BaselineEvidenceChordMiniBtcStageExecutor(workspace)
+    ),
+    CHORDMINI_BTC_VERIFIED_STAGE_KIND: lambda workspace: (
+        VerifiedChordMiniBtcStageExecutor(workspace)
+    ),
+    CHORDMINI_CHORDNET_STAGE_KIND: lambda workspace: ChordNetStageExecutor(workspace),
     HPCP_KEY_STAGE_KIND: lambda workspace: HpcpKeyStageExecutor(workspace),
     CHORD_ROOT_KEY_STAGE_KIND: lambda workspace: ChordRootKeyStageExecutor(workspace),
     SECTION_LIBROSA_STAGE_KIND: lambda workspace: SectionLibrosaStageExecutor(

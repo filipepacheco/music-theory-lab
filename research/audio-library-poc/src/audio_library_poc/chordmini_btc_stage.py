@@ -19,6 +19,7 @@ from pydantic import Field, ValidationError, field_validator
 from audio_library_poc.asset_resolution import resolve_workspace_asset
 from audio_library_poc.chord_analysis import (
     ChordAnalysisResult,
+    ChordFrameEvidenceArtifact,
     ChordLabel,
     ChordSegment,
     summarize_coverage,
@@ -42,8 +43,15 @@ from audio_library_poc.separation import SeparatorPrecision
 
 CHORDMINI_BTC_STAGE_KIND = "chord.chordmini_btc"
 CHORDMINI_BTC_CANDIDATE_ID = "chordmini_btc"
-CHORDMINI_BTC_IMPLEMENTATION_VERSION = "1.0.0"
+CHORDMINI_BTC_IMPLEMENTATION_VERSION = "1.1.0"
+CHORDMINI_BTC_VERIFIED_STAGE_KIND = "chord.chordmini_btc_verified"
+CHORDMINI_BTC_VERIFIED_CANDIDATE_ID = "chordmini_btc_verified"
+CHORDMINI_BTC_VERIFIED_IMPLEMENTATION_VERSION = "2.0.0"
+CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND = "chord.chordmini_btc_baseline_evidence"
+CHORDMINI_BTC_BASELINE_EVIDENCE_CANDIDATE_ID = "chordmini_btc_baseline_evidence"
+CHORDMINI_BTC_BASELINE_EVIDENCE_IMPLEMENTATION_VERSION = "1.0.0"
 _RESULT_ARTIFACT_FILENAME = "chord-analysis-result.json"
+_FRAME_EVIDENCE_ARTIFACT_FILENAME = "chord-frame-evidence-v1.json"
 
 _ROOT_TO_PITCH_CLASS: dict[str, int] = {
     "C": 0,
@@ -84,7 +92,17 @@ class ChordMiniBtcStageConfig(ContractModel):
     device: str = Field(default="cuda", min_length=1, max_length=128)
     precision: SeparatorPrecision = SeparatorPrecision.FLOAT16
     sliding_window_overlap: float = Field(default=0.5, ge=0, lt=0.95)
+    logit_smoothing_kernel: int = Field(default=1, ge=1, le=101)
+    logit_smoothing_gaussian: bool = False
+    categorical_smoothing_window: int = Field(default=1, ge=1, le=101)
     min_segment_seconds: float = Field(default=0.0, ge=0)
+
+    @field_validator("logit_smoothing_kernel", "categorical_smoothing_window")
+    @classmethod
+    def validate_odd_smoothing_window(cls, value: int) -> int:
+        if value % 2 == 0:
+            raise ValueError("smoothing windows must be odd")
+        return value
 
     @field_validator("source_relative_path", "checkpoint_relative_path")
     @classmethod
@@ -104,6 +122,10 @@ class ChordMiniBtcStageExecutor:
 
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
+        self.candidate_id = CHORDMINI_BTC_CANDIDATE_ID
+        self.is_verified = False
+        self.emit_evidence = False
+        self.implementation_version = CHORDMINI_BTC_IMPLEMENTATION_VERSION
 
     def execute(
         self,
@@ -117,6 +139,12 @@ class ChordMiniBtcStageExecutor:
         if attempt < 1:
             raise ValueError("attempt must be positive")
 
+        _require_owned_identity(
+            identity,
+            candidate_id=self.candidate_id,
+            implementation_version=self.implementation_version,
+        )
+
         config = _validate_config(specification)
         _require_model_identity(specification)
         source_path = _resolve_source(self.workspace, config.source_relative_path)
@@ -129,29 +157,75 @@ class ChordMiniBtcStageExecutor:
         # checkpoint must surface as a typed failure, not as the
         # ModuleNotFoundError the torch import would raise first on a
         # machine without the inference extras.
-        _resolve_checkpoint(self.workspace, config.checkpoint_relative_path)
+        checkpoint_path = _resolve_checkpoint(
+            self.workspace, config.checkpoint_relative_path
+        )
+        _verify_checkpoint_hash(checkpoint_path, identity.model_sha256)
 
         from audio_library_poc._chordmini_btc_runtime import run_chordmini_btc_inference
 
-        result, metrics = run_chordmini_btc_inference(
+        result, metrics, frame_evidence = run_chordmini_btc_inference(
             workspace=self.workspace,
             source_path=source_path,
+            checkpoint_path=checkpoint_path,
             config=config,
             identity=identity,
+            candidate_id=self.candidate_id,
+            verified=self.is_verified,
         )
-        _validate_result(result, identity=identity)
+        _validate_result(result, identity=identity, candidate_id=self.candidate_id)
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
+        if self.emit_evidence:
+            frame_evidence = ChordFrameEvidenceArtifact.model_validate(frame_evidence)
+            atomic_write_json(
+                staging / _FRAME_EVIDENCE_ARTIFACT_FILENAME,
+                frame_evidence,
+            )
 
-        return StageOutput(
-            artifacts=(
+        artifacts = [
+            StagedArtifact(
+                artifact_name=_RESULT_ARTIFACT_FILENAME,
+                artifact_kind="chord.analysis_result",
+                media_type="application/json",
+                durable=True,
+            )
+        ]
+        if self.emit_evidence:
+            artifacts.append(
                 StagedArtifact(
-                    artifact_name=_RESULT_ARTIFACT_FILENAME,
-                    artifact_kind="chord.analysis_result",
+                    artifact_name=_FRAME_EVIDENCE_ARTIFACT_FILENAME,
+                    artifact_kind="chord.frame_evidence",
                     media_type="application/json",
                     durable=True,
-                ),
-            ),
-            metrics=metrics,
+                )
+            )
+        return StageOutput(artifacts=tuple(artifacts), metrics=metrics)
+
+
+class VerifiedChordMiniBtcStageExecutor(ChordMiniBtcStageExecutor):
+    """Fixed BTC path under a new stage/candidate identity.
+
+    Existing ``chord.chordmini_btc`` envelopes stay addressable as the
+    baseline. New parity-fixed runs must opt into this distinct kind.
+    """
+
+    def __init__(self, workspace: Path) -> None:
+        super().__init__(workspace)
+        self.candidate_id = CHORDMINI_BTC_VERIFIED_CANDIDATE_ID
+        self.is_verified = True
+        self.emit_evidence = True
+        self.implementation_version = CHORDMINI_BTC_VERIFIED_IMPLEMENTATION_VERSION
+
+
+class BaselineEvidenceChordMiniBtcStageExecutor(ChordMiniBtcStageExecutor):
+    """Legacy BTC semantics with a distinct, evidence-bearing identity."""
+
+    def __init__(self, workspace: Path) -> None:
+        super().__init__(workspace)
+        self.candidate_id = CHORDMINI_BTC_BASELINE_EVIDENCE_CANDIDATE_ID
+        self.emit_evidence = True
+        self.implementation_version = (
+            CHORDMINI_BTC_BASELINE_EVIDENCE_IMPLEMENTATION_VERSION
         )
 
 
@@ -160,16 +234,19 @@ def normalize_chordmini_label(raw_label: str) -> tuple[ChordLabel, int | None]:
 
     - Root-only labels ("C", "D", "F#") map to (MAJOR, pitch_class).
     - "<root>:min" maps to (MINOR, pitch_class).
-    - "N" and "X" map to (NO_CHORD, None) — ChordMini emits both as its
-      explicit no-chord tokens.
+    - "N" maps to (NO_CHORD, None), the explicit no-chord token.
+    - "X" maps to (UNKNOWN, None).  It is a distinct ChordMini vocabulary
+      item and has not been established as silence.
     - Everything else (7ths, sus, aug, dim, hdim, min6, maj6, min7, maj7,
       minmaj7, dim7, sus2, sus4) maps to (UNKNOWN, None) — the caller can
       choose whether to promote or drop these later.
     """
 
     label = raw_label.strip()
-    if label in {"N", "X"}:
+    if label == "N":
         return ChordLabel.NO_CHORD, None
+    if label == "X":
+        return ChordLabel.UNKNOWN, None
     if ":" not in label:
         pitch_class = _ROOT_TO_PITCH_CLASS.get(label)
         if pitch_class is None:
@@ -182,6 +259,22 @@ def normalize_chordmini_label(raw_label: str) -> tuple[ChordLabel, int | None]:
     if quality == "min":
         return ChordLabel.MINOR, pitch_class
     return ChordLabel.UNKNOWN, None
+
+
+def normalize_chordmini_baseline_label(
+    raw_label: str,
+) -> tuple[ChordLabel, int | None]:
+    """Preserve the original BTC product mapping under its old identity.
+
+    The historical stage treated both upstream ``N`` and ``X`` as no-chord.
+    Its old envelopes and cache key remain meaningful only while that mapping
+    stays intact. The verified candidate uses ``normalize_chordmini_label``
+    instead, where ``X`` is the distinct unknown token documented upstream.
+    """
+
+    if raw_label.strip() == "X":
+        return ChordLabel.NO_CHORD, None
+    return normalize_chordmini_label(raw_label)
 
 
 def build_segments(
@@ -202,10 +295,12 @@ def build_segments(
     """
 
     if not predictions:
+        if duration_seconds <= 0:
+            return []
         return [
             ChordSegment(
                 start_seconds=0.0,
-                end_seconds=max(duration_seconds, frame_duration),
+                end_seconds=duration_seconds,
                 label=ChordLabel.UNKNOWN,
                 root_pc=None,
                 candidate_label="X",
@@ -240,6 +335,14 @@ def build_segments(
         else:
             merged.append((start, end, raw_label))
 
+    # Clip every tail to the source bound. CQT may add a final analysis frame
+    # beyond the PCM duration; that must not appear as invented audio.
+    merged = [
+        (start, min(end, duration_seconds), raw_label)
+        for start, end, raw_label in merged
+        if start < duration_seconds
+    ]
+
     # Stretch last segment to exactly source duration so downstream contracts
     # never see a sub-frame gap at the tail.
     if merged and duration_seconds > merged[-1][1]:
@@ -261,9 +364,81 @@ def build_segments(
     return segments
 
 
+def build_baseline_segments(
+    predictions: list[int],
+    idx_to_chord: dict[int, str],
+    frame_duration: float,
+    duration_seconds: float,
+    *,
+    min_segment_seconds: float = 0.0,
+) -> list[ChordSegment]:
+    """Reproduce the historical BTC segment behavior byte-for-byte in spirit.
+
+    This deliberately retains the old, un-clipped CQT tail and ``X`` mapping.
+    Corrected timing and product-token semantics belong only to the distinct
+    verified and evidence-bearing stage identities.
+    """
+
+    if not predictions:
+        label, root_pc = normalize_chordmini_baseline_label("X")
+        return [
+            ChordSegment(
+                start_seconds=0.0,
+                end_seconds=max(duration_seconds, frame_duration),
+                label=label,
+                root_pc=root_pc,
+                candidate_label="X",
+            )
+        ]
+
+    raw: list[tuple[float, float, str]] = []
+    start_frame = 0
+    for index in range(1, len(predictions)):
+        if predictions[index] != predictions[index - 1]:
+            raw.append(
+                (
+                    start_frame * frame_duration,
+                    index * frame_duration,
+                    idx_to_chord[int(predictions[index - 1])],
+                )
+            )
+            start_frame = index
+    raw.append(
+        (
+            start_frame * frame_duration,
+            len(predictions) * frame_duration,
+            idx_to_chord[int(predictions[-1])],
+        )
+    )
+
+    merged: list[tuple[float, float, str]] = []
+    for start, end, raw_label in raw:
+        if merged and (end - start) < min_segment_seconds:
+            previous_start, _previous_end, previous_label = merged[-1]
+            merged[-1] = (previous_start, end, previous_label)
+        else:
+            merged.append((start, end, raw_label))
+    if merged and duration_seconds > merged[-1][1]:
+        start, _end, raw_label = merged[-1]
+        merged[-1] = (start, duration_seconds, raw_label)
+
+    return [
+        ChordSegment(
+            start_seconds=start,
+            end_seconds=end,
+            label=normalize_chordmini_baseline_label(raw_label)[0],
+            root_pc=normalize_chordmini_baseline_label(raw_label)[1],
+            candidate_label=raw_label,
+        )
+        for start, end, raw_label in merged
+    ]
+
+
 def build_chordmini_metrics(
     *,
     wall_seconds: float,
+    end_to_end_seconds: float | None = None,
+    peak_vram_bytes: int = 0,
     frame_count: int,
     segment_count: int,
     coverage,
@@ -277,6 +452,11 @@ def build_chordmini_metrics(
             "segments_emitted": segment_count,
         },
         measurements={
+            "inference_seconds": wall_seconds,
+            "end_to_end_seconds": (
+                wall_seconds if end_to_end_seconds is None else end_to_end_seconds
+            ),
+            "peak_vram_bytes": float(peak_vram_bytes),
             "coverage_major_seconds": coverage.major_seconds,
             "coverage_minor_seconds": coverage.minor_seconds,
             "coverage_unknown_seconds": coverage.unknown_seconds,
@@ -353,7 +533,35 @@ def _verify_source_hash(source_path: Path, declared_sha256: str) -> None:
         )
 
 
-def _validate_result(result: ChordAnalysisResult, *, identity: StageIdentity) -> None:
+def _verify_checkpoint_hash(checkpoint_path: Path, expected_sha256: str | None) -> None:
+    """Bind the bytes about to be deserialized to the stage identity."""
+
+    if expected_sha256 is None:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="chord.missing_model_identity",
+                message="chord stage has no checkpoint SHA-256 to verify",
+                retryable=False,
+            )
+        )
+    actual = hash_file(checkpoint_path)
+    if actual != expected_sha256:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="chord.checkpoint_hash_mismatch",
+                message="checkpoint bytes do not match model_sha256",
+                retryable=False,
+                details={"expected": expected_sha256, "actual": actual},
+            )
+        )
+
+
+def _validate_result(
+    result: ChordAnalysisResult,
+    *,
+    identity: StageIdentity,
+    candidate_id: str | None = None,
+) -> None:
     if result.source_sha256 != identity.input_sha256:
         raise ExpectedStageFailure(
             TypedError(
@@ -368,15 +576,33 @@ def _validate_result(result: ChordAnalysisResult, *, identity: StageIdentity) ->
         or provenance.model_sha256 != identity.model_sha256
         or provenance.implementation_version != identity.implementation_version
         or provenance.code_revision != identity.code_revision
+        or (candidate_id is not None and provenance.candidate != candidate_id)
     ):
         raise ExpectedStageFailure(
             TypedError(
                 code="chord.provenance_mismatch",
-                message=(
-                    "ChordAnalysisResult.provenance must match the committed "
-                    "stage identity"
-                ),
+                message="ChordAnalysisResult.provenance must match the stage identity",
                 retryable=False,
+            )
+        )
+
+
+def _require_owned_identity(
+    identity: StageIdentity,
+    *,
+    candidate_id: str,
+    implementation_version: str,
+) -> None:
+    if identity.implementation_version != implementation_version:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="chord.identity_version_mismatch",
+                message="stage identity does not match the executor implementation",
+                retryable=False,
+                details={
+                    "expected": implementation_version,
+                    "actual": identity.implementation_version,
+                },
             )
         )
 
@@ -386,10 +612,16 @@ __all__ = (
     "CHORDMINI_BTC_STAGE_KIND",
     "CHORDMINI_BTC_CANDIDATE_ID",
     "CHORDMINI_BTC_IMPLEMENTATION_VERSION",
+    "CHORDMINI_BTC_VERIFIED_STAGE_KIND",
+    "CHORDMINI_BTC_VERIFIED_CANDIDATE_ID",
+    "CHORDMINI_BTC_VERIFIED_IMPLEMENTATION_VERSION",
     "ChordMiniBtcStageConfig",
     "ChordMiniBtcStageExecutor",
+    "VerifiedChordMiniBtcStageExecutor",
     "build_chordmini_metrics",
+    "build_baseline_segments",
     "build_segments",
+    "normalize_chordmini_baseline_label",
     "normalize_chordmini_label",
     "summarize_coverage",
 )
