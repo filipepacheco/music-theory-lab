@@ -9,6 +9,7 @@ import QuizModule from "@/components/quiz/QuizModule";
 import TranscriptionModule from "@/components/transcription/TranscriptionModule";
 import StructureModule from "@/components/structure/StructureModule";
 import LibraryModule from "@/components/library/LibraryModule";
+import AnalyzeModule from "@/components/analyze/AnalyzeModule";
 import Piano from "@/components/instruments/Piano";
 import BassNeck from "@/components/instruments/BassNeck";
 import { useAppStore } from "@/store/useAppStore";
@@ -34,6 +35,7 @@ export default function App() {
         {activeModule === "transcription" && <TranscriptionModule />}
         {activeModule === "structure" && <StructureModule />}
         {activeModule === "library" && <LibraryModule />}
+        {activeModule === "analyze" && import.meta.env.DEV && <AnalyzeModule />}
 
         <div className="section-panel">
           <button

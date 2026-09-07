@@ -1,7 +1,7 @@
 import { useAppStore } from "@/store/useAppStore";
 import type { ActiveModule } from "@/types";
 
-const MODULES: { id: ActiveModule; label: string }[] = [
+const MODULES: { id: ActiveModule; label: string; devOnly?: boolean }[] = [
   { id: "harmonicField", label: "Campo Harmônico" },
   { id: "progressions", label: "Progressões" },
   { id: "scales", label: "Escalas" },
@@ -9,7 +9,15 @@ const MODULES: { id: ActiveModule; label: string }[] = [
   { id: "transcription", label: "Transcrição" },
   { id: "structure", label: "Estrutura" },
   { id: "library", label: "Biblioteca" },
+  // Drives a service that only ever runs on the developer's machine, and the
+  // deployed site is public: a working upload box there would let anyone push
+  // audio into a public static export. Never shipped.
+  { id: "analyze", label: "Analisar", devOnly: true },
 ];
+
+const VISIBLE_MODULES = MODULES.filter(
+  (mod) => !mod.devOnly || import.meta.env.DEV,
+);
 
 export default function ModuleNav() {
   const activeModule = useAppStore((s) => s.activeModule);
@@ -21,7 +29,7 @@ export default function ModuleNav() {
       role="navigation"
       aria-label="Modulos"
     >
-      {MODULES.map((mod) => {
+      {VISIBLE_MODULES.map((mod) => {
         const isActive = activeModule === mod.id;
         return (
           <button

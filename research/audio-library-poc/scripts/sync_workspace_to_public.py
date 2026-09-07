@@ -34,6 +34,7 @@ import argparse
 import json
 import shutil
 import sys
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -315,6 +316,13 @@ def _load_pydantic(path: Path, model_cls):
         return None
 
 
+#: How long to keep retrying a replace Windows refuses, and how long to wait
+#: between tries. Long enough to outlast a watcher's or scanner's open handle,
+#: short enough not to hang a publish on a genuinely locked file.
+_REPLACE_ATTEMPTS = 10
+_REPLACE_BACKOFF_SECONDS = 0.1
+
+
 def _atomic_write_json(path: Path, payload: Any) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     staging = path.with_suffix(path.suffix + ".part")
@@ -322,8 +330,48 @@ def _atomic_write_json(path: Path, payload: Any) -> Path:
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    staging.replace(path)
+    _replace_with_retry(staging, path)
     return path
+
+
+def _replace_with_retry(staging: Path, path: Path) -> None:
+    """Put `staging`'s bytes at `path`, by rename if allowed, else in place.
+
+    POSIX rename is unconditional. On Windows it needs delete access to the
+    destination, and a process holding that file open without
+    FILE_SHARE_DELETE makes os.replace raise PermissionError even though the
+    same file can still be opened for writing. The Vite dev server serving
+    public/ does exactly that, so publishing while the app was running failed
+    every time: all four stages would succeed and the run would be thrown
+    away at the final rename.
+
+    A short retry covers a scanner or watcher that lets go on its own. When
+    the handle is durable, overwriting in place is the way through. That is a
+    real loss of atomicity -- a concurrent reader can observe a truncated
+    file -- which is acceptable here and nowhere else: these are derived
+    artifacts, the app re-fetches them, and the alternative is discarding a
+    completed analysis.
+    """
+
+    denied: PermissionError | None = None
+    for attempt in range(_REPLACE_ATTEMPTS):
+        try:
+            staging.replace(path)
+            return
+        except PermissionError as exc:
+            denied = exc
+            if attempt < _REPLACE_ATTEMPTS - 1:
+                time.sleep(_REPLACE_BACKOFF_SECONDS)
+
+    try:
+        with open(path, "wb") as handle:
+            handle.write(staging.read_bytes())
+    except OSError:
+        staging.unlink(missing_ok=True)
+        if denied is not None:
+            raise denied from None
+        raise
+    staging.unlink(missing_ok=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
