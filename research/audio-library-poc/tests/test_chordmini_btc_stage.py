@@ -133,7 +133,7 @@ def test_config_rejects_overlap_out_of_range() -> None:
 def test_stage_kind_and_identity_constants() -> None:
     assert CHORDMINI_BTC_STAGE_KIND == "chord.chordmini_btc"
     assert CHORDMINI_BTC_CANDIDATE_ID == "chordmini_btc"
-    assert CHORDMINI_BTC_IMPLEMENTATION_VERSION == "1.0.0"
+    assert CHORDMINI_BTC_IMPLEMENTATION_VERSION == "1.1.0"
 
 
 def test_normalize_labels_covers_expected_families() -> None:

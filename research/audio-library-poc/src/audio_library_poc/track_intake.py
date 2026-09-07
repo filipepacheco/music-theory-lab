@@ -14,6 +14,11 @@ stages and publishing results all live in the caller.
 The four stages are exactly the ones ``sync_workspace_to_public.py``
 consumes. ``key.chord_root_profile`` is deliberately absent: it is an
 evaluation baseline the public export never reads.
+
+Stage versions come from the stage modules rather than literals: each stage
+rejects a result whose provenance disagrees with the version its manifest
+declared, so a hand-written "1.0.0" here would start failing the moment a
+runtime was corrected.
 """
 
 from __future__ import annotations
@@ -23,6 +28,13 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any, Final
+
+from audio_library_poc.beat_this_stage import BEAT_THIS_IMPLEMENTATION_VERSION
+from audio_library_poc.chordmini_btc_stage import (
+    CHORDMINI_BTC_IMPLEMENTATION_VERSION,
+)
+from audio_library_poc.hpcp_key_stage import HPCP_KEY_IMPLEMENTATION_VERSION
+from audio_library_poc.section_stage import SECTION_LIBROSA_IMPLEMENTATION_VERSION
 
 DEFAULT_DEVICE: Final = "cuda"
 DEFAULT_PRECISION: Final = "float16"
@@ -122,7 +134,7 @@ def build_intake_manifest(
         "stages": [
             {
                 "stage_kind": "beat.beat_this",
-                "implementation_version": "1.0.0",
+                "implementation_version": BEAT_THIS_IMPLEMENTATION_VERSION,
                 "model_identifier": beat_checkpoint.identifier,
                 "model_sha256": beat_checkpoint.sha256,
                 "max_attempts": 1,
@@ -136,7 +148,7 @@ def build_intake_manifest(
             },
             {
                 "stage_kind": "chord.chordmini_btc",
-                "implementation_version": "1.0.0",
+                "implementation_version": CHORDMINI_BTC_IMPLEMENTATION_VERSION,
                 "model_identifier": chord_checkpoint.identifier,
                 "model_sha256": chord_checkpoint.sha256,
                 "max_attempts": 1,
@@ -151,7 +163,7 @@ def build_intake_manifest(
             },
             {
                 "stage_kind": "key.hpcp",
-                "implementation_version": "1.0.0",
+                "implementation_version": HPCP_KEY_IMPLEMENTATION_VERSION,
                 "max_attempts": 1,
                 "config": {
                     "source_relative_path": source_relative_path,
@@ -161,7 +173,7 @@ def build_intake_manifest(
             },
             {
                 "stage_kind": "section.librosa_segment",
-                "implementation_version": "1.0.0",
+                "implementation_version": SECTION_LIBROSA_IMPLEMENTATION_VERSION,
                 "model_identifier": "librosa_segment",
                 "max_attempts": 1,
                 "config": {

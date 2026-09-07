@@ -198,12 +198,14 @@ def _write_stage_result(
     cache_key: str,
     artifact_name: str,
     artifact_payload: str,
+    implementation_version: str = "1.0.0",
 ) -> None:
     stage_root = workspace / "runs" / run_id / "stages" / stage_kind
     envelope = {
         "status": "succeeded",
         "cache_key": cache_key,
         "attempts": 1,
+        "identity": {"implementation_version": implementation_version},
     }
     results_dir = stage_root / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -932,3 +934,44 @@ def test_sync_copy_audio_rewrites_a_changed_file(tmp_path: Path) -> None:
 
     dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
     assert dest.read_bytes() == b"ID3 a different master entirely"
+
+
+def test_collect_analyses_prefers_the_newest_implementation_version(
+    tmp_path: Path,
+) -> None:
+    # Both results are for the same source and both succeeded; only the
+    # version separates them. Ordering by run id or cache key would publish
+    # whichever string sorted last, so the cache keys here are chosen to make
+    # the stale result win under that rule.
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _write_stage_result(
+        workspace,
+        "aaa-newer-run",
+        "chord.chordmini_btc",
+        "aaa-newer-chord",
+        "chord-analysis-result.json",
+        _chord_result(SOURCE_SHA_A, duration=12.0).model_dump_json(),
+        implementation_version="1.1.0",
+    )
+    _write_stage_result(
+        workspace,
+        "zzz-older-run",
+        "chord.chordmini_btc",
+        "zzz-older-chord",
+        "chord-analysis-result.json",
+        _chord_result(SOURCE_SHA_A, duration=4.0).model_dump_json(),
+        implementation_version="1.0.0",
+    )
+
+    analyses = sync_module.collect_analyses(workspace)
+
+    assert analyses[SOURCE_SHA_A].chord.source.duration_seconds == 12.0
+
+
+def test_version_key_sorts_an_unparseable_version_lowest() -> None:
+    assert sync_module._version_key("1.1.0") > sync_module._version_key("1.0.0")
+    assert sync_module._version_key("1.10.0") > sync_module._version_key("1.9.0")
+    assert sync_module._version_key(None) < sync_module._version_key("0.0.1")
+    assert sync_module._version_key("not-a-version") < sync_module._version_key("0.0.1")

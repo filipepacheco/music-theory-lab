@@ -42,7 +42,7 @@ from audio_library_poc.separation import SeparatorPrecision
 
 CHORDMINI_BTC_STAGE_KIND = "chord.chordmini_btc"
 CHORDMINI_BTC_CANDIDATE_ID = "chordmini_btc"
-CHORDMINI_BTC_IMPLEMENTATION_VERSION = "1.0.0"
+CHORDMINI_BTC_IMPLEMENTATION_VERSION = "1.1.0"
 _RESULT_ARTIFACT_FILENAME = "chord-analysis-result.json"
 
 _ROOT_TO_PITCH_CLASS: dict[str, int] = {

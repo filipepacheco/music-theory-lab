@@ -95,10 +95,31 @@ class TrackAnalyses:
     section: SectionAnalysisResult | None = None
 
 
-def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
-    """Group succeeded analysis stages by source_sha256; keep only complete triples."""
+def _version_key(value: Any) -> tuple[int, ...]:
+    """Sortable form of a stage's implementation version.
 
-    per_source: dict[str, dict[str, Any]] = defaultdict(dict)
+    Anything unparseable sorts lowest, so a malformed version can never
+    shadow a good result.
+    """
+
+    try:
+        return tuple(int(part) for part in str(value or "").split("."))
+    except ValueError:
+        return ()
+
+
+def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
+    """Group succeeded analysis stages by source_sha256; keep only complete triples.
+
+    A workspace accumulates a result for every code version that has run in
+    it, and the same track is often reachable through several run ids. Where
+    a stage has more than one succeeded result for one source, the newest
+    implementation version wins -- picking by directory or cache-key order
+    would publish whichever hash happened to sort last, which is how a
+    corrected stage can re-run successfully and change nothing.
+    """
+
+    per_source: dict[str, dict[str, tuple[tuple[int, ...], Any]]] = defaultdict(dict)
     runs_root = workspace / "runs"
     if not runs_root.is_dir():
         return {}
@@ -127,9 +148,18 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
                 result = _load_pydantic(artifact_path, model_cls)
                 if result is None:
                     continue
-                per_source[result.source_sha256][stage_dir.name] = result
+                version = _version_key(
+                    (envelope.get("identity") or {}).get("implementation_version")
+                )
+                previous = per_source[result.source_sha256].get(stage_dir.name)
+                if previous is None or version >= previous[0]:
+                    per_source[result.source_sha256][stage_dir.name] = (
+                        version,
+                        result,
+                    )
     complete: dict[str, TrackAnalyses] = {}
-    for source_sha256, per_stage in per_source.items():
+    for source_sha256, versioned in per_source.items():
+        per_stage = {kind: result for kind, (_, result) in versioned.items()}
         chord = per_stage.get("chord.chordmini_btc")
         beat = per_stage.get("beat.beat_this")
         key = per_stage.get("key.hpcp")

@@ -38,6 +38,10 @@ from audio_library_poc.vendor.chordmini.model.btc_model import BTC_model
 from audio_library_poc.vendor.chordmini.model.chords import idx2voca_chord
 from audio_library_poc.vendor.chordmini.model.config import ModelConfig
 
+#: Floor for the log, so digital silence maps to a large finite number
+#: instead of -inf.
+_LOG_EPSILON = 1e-6
+
 
 def run_chordmini_btc_inference(
     *,
@@ -103,7 +107,14 @@ def run_chordmini_btc_inference(
     )
     cqt_mag = np.abs(cqt).astype(np.float32).T  # (T, n_bins)
 
-    features = torch.from_numpy(cqt_mag).to(device)
+    # Log magnitude, not linear. The checkpoint's normalization statistics
+    # (mean -2.37, std 1.96) are log-domain -- a magnitude spectrogram cannot
+    # have a negative mean -- so feeding linear magnitude puts every frame
+    # out of distribution and the model falls back to predicting "N". It also
+    # makes the features scale with the recording's level rather than shift
+    # with it, which is why quiet masters failed hardest: Doolittle-era
+    # Pixies came back 93% no-chord where a loud remaster came back 16%.
+    features = torch.from_numpy(np.log(cqt_mag + _LOG_EPSILON)).to(device)
     features = (features - mean) / std
 
     predictions, wall_seconds = _run_inference(
