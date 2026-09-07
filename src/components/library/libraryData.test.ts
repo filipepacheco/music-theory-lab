@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
+  SECTION_COLOR_COUNT,
   barIndexAtSeconds,
   buildChordChartBars,
   chordDisplayName,
   formatDuration,
+  groupBarsBySection,
   relativeRootOf,
   romanNumeral,
+  sectionColorIndexes,
+  sectionColorVar,
+  sectionIndexAtSeconds,
   segmentRomanNumeral,
   type BeatAnalysisJson,
   type ChordAnalysisJson,
+  type ChordChartBar,
   type ChordSegment,
   type KeyAnalysisJson,
+  type SectionSegment,
 } from './libraryData';
 
 function seg(
@@ -255,5 +262,153 @@ describe('formatDuration', () => {
     expect(formatDuration(-1)).toBe('0:00');
     expect(formatDuration(Number.NaN)).toBe('0:00');
     expect(formatDuration(Number.POSITIVE_INFINITY)).toBe('0:00');
+  });
+});
+
+
+function section(start: number, end: number, label: string): SectionSegment {
+  return { start_seconds: start, end_seconds: end, label };
+}
+
+function bar(index: number, start: number, end: number): ChordChartBar {
+  return {
+    index,
+    startSeconds: start,
+    endSeconds: end,
+    chords: [{ chord: 'C', romanNumeral: 'I', raw: null }],
+  };
+}
+
+describe('sectionColorVar', () => {
+  it('maps slot 0 to the first form token', () => {
+    expect(sectionColorVar(0)).toBe('var(--color-form-1)');
+  });
+
+  it('cycles once past the last token', () => {
+    expect(sectionColorVar(SECTION_COLOR_COUNT)).toBe(sectionColorVar(0));
+    expect(sectionColorVar(SECTION_COLOR_COUNT + 2)).toBe(sectionColorVar(2));
+  });
+
+  it('handles negative indexes without producing an invalid slot', () => {
+    expect(sectionColorVar(-1)).toBe(
+      `var(--color-form-${SECTION_COLOR_COUNT})`,
+    );
+  });
+});
+
+describe('sectionColorIndexes', () => {
+  it('assigns slots by order of first appearance', () => {
+    const map = sectionColorIndexes([
+      section(0, 10, 'B'),
+      section(10, 20, 'A'),
+      section(20, 30, 'C'),
+    ]);
+    expect(map.get('B')).toBe(0);
+    expect(map.get('A')).toBe(1);
+    expect(map.get('C')).toBe(2);
+  });
+
+  it('reuses one slot for every repeat of a label', () => {
+    const map = sectionColorIndexes([
+      section(0, 10, 'A'),
+      section(10, 20, 'B'),
+      section(20, 30, 'A'),
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get('A')).toBe(0);
+  });
+});
+
+describe('sectionIndexAtSeconds', () => {
+  const sections = [
+    section(0, 10, 'A'),
+    section(10, 25, 'B'),
+    section(25, 40, 'A'),
+  ];
+
+  it('finds the containing section', () => {
+    expect(sectionIndexAtSeconds(sections, 5)).toBe(0);
+    expect(sectionIndexAtSeconds(sections, 12)).toBe(1);
+    expect(sectionIndexAtSeconds(sections, 39.9)).toBe(2);
+  });
+
+  it('treats a boundary as the start of the next section', () => {
+    expect(sectionIndexAtSeconds(sections, 10)).toBe(1);
+    expect(sectionIndexAtSeconds(sections, 25)).toBe(2);
+  });
+
+  it('includes the very end of the last section', () => {
+    expect(sectionIndexAtSeconds(sections, 40)).toBe(2);
+  });
+
+  it('returns -1 outside the track and for junk input', () => {
+    expect(sectionIndexAtSeconds(sections, 40.1)).toBe(-1);
+    expect(sectionIndexAtSeconds(sections, -1)).toBe(-1);
+    expect(sectionIndexAtSeconds(sections, Number.NaN)).toBe(-1);
+    expect(sectionIndexAtSeconds([], 1)).toBe(-1);
+  });
+});
+
+describe('groupBarsBySection', () => {
+  it('returns no groups when the track has no sections', () => {
+    expect(groupBarsBySection([bar(0, 0, 2)], [])).toEqual([]);
+  });
+
+  it('puts each bar in the section it overlaps most', () => {
+    const sections = [section(0, 10, 'A'), section(10, 20, 'B')];
+    const bars = [bar(0, 0, 4), bar(1, 4, 8), bar(2, 12, 16)];
+    const groups = groupBarsBySection(bars, sections);
+    expect(groups.map((g) => g.bars.map((b) => b.index))).toEqual([
+      [0, 1],
+      [2],
+    ]);
+  });
+
+  it('assigns a straddling bar to the side it spends longer in', () => {
+    const sections = [section(0, 10, 'A'), section(10, 20, 'B')];
+    // 8-12 sits 2s in A and 2s in B; 9-14 sits 1s in A and 4s in B.
+    const groups = groupBarsBySection([bar(0, 9, 14)], sections);
+    expect(groups[0].bars).toHaveLength(0);
+    expect(groups[1].bars.map((b) => b.index)).toEqual([0]);
+  });
+
+  it('keeps every bar exactly once even past the last boundary', () => {
+    const sections = [section(0, 10, 'A'), section(10, 20, 'B')];
+    const bars = [bar(0, 0, 4), bar(1, 25, 25), bar(2, 30, 34)];
+    const groups = groupBarsBySection(bars, sections);
+    const placed = groups.flatMap((g) => g.bars.map((b) => b.index));
+    expect(placed.slice().sort()).toEqual([0, 1, 2]);
+    expect(groups[1].bars.map((b) => b.index)).toEqual([1, 2]);
+  });
+
+  it('numbers repeats of a label and carries the total', () => {
+    const sections = [
+      section(0, 10, 'A'),
+      section(10, 20, 'B'),
+      section(20, 30, 'A'),
+    ];
+    const groups = groupBarsBySection([], sections);
+    expect(groups.map((g) => [g.occurrence, g.occurrenceTotal])).toEqual([
+      [1, 2],
+      [1, 1],
+      [2, 2],
+    ]);
+  });
+
+  it('shares one colour slot across repeats of a label', () => {
+    const groups = groupBarsBySection(
+      [],
+      [section(0, 10, 'A'), section(10, 20, 'B'), section(20, 30, 'A')],
+    );
+    expect(groups[0].colorIndex).toBe(groups[2].colorIndex);
+    expect(groups[1].colorIndex).not.toBe(groups[0].colorIndex);
+  });
+
+  it('keeps a section that is too short to hold a bar, with no bars', () => {
+    const sections = [section(0, 10, 'A'), section(10, 10.2, 'B')];
+    const groups = groupBarsBySection([bar(0, 0, 4)], sections);
+    expect(groups).toHaveLength(2);
+    expect(groups[1].bars).toEqual([]);
+    expect(groups[1].section.label).toBe('B');
   });
 });

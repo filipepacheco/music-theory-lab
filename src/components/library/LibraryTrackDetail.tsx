@@ -5,12 +5,19 @@ import {
   buildChordChartBars,
   fetchTrackAnalyses,
   formatDuration,
+  groupBarsBySection,
+  sectionColorVar,
+  sectionIndexAtSeconds,
   type BeatAnalysisJson,
   type ChordAnalysisJson,
+  type ChordChartBar,
   type KeyAnalysisJson,
   type LibraryIndexEntry,
+  type SectionAnalysisJson,
+  type SectionGroup,
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
+import LibrarySectionTimeline from './LibrarySectionTimeline';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
@@ -21,9 +28,11 @@ interface DetailData {
   chord: ChordAnalysisJson;
   beat: BeatAnalysisJson;
   key: KeyAnalysisJson;
+  section: SectionAnalysisJson | null;
 }
 
 const BARS_PER_ROW = 4;
+const NO_SECTIONS: never[] = [];
 
 export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
@@ -67,18 +76,28 @@ export default function LibraryTrackDetail({ track }: Props) {
     );
   }, [data, track.duration_seconds]);
 
-  const rows = useMemo(() => {
-    const grouped: (typeof bars)[] = [];
-    for (let i = 0; i < bars.length; i += BARS_PER_ROW) {
-      grouped.push(bars.slice(i, i + BARS_PER_ROW));
-    }
-    return grouped;
-  }, [bars]);
+  // Stable identity while loading, so the memos below do not re-run on every
+  // render just because `?? []` built a fresh array.
+  const sections = data?.section?.sections ?? NO_SECTIONS;
+
+  const sectionGroups = useMemo(
+    () => groupBarsBySection(bars, sections),
+    [bars, sections],
+  );
 
   const activeBarIndex = useMemo(
     () => (audio.playing ? barIndexAtSeconds(bars, audio.currentSeconds) : -1),
     [audio.playing, audio.currentSeconds, bars],
   );
+
+  const activeSectionIndex = useMemo(
+    () =>
+      audio.playing ? sectionIndexAtSeconds(sections, audio.currentSeconds) : -1,
+    [audio.playing, audio.currentSeconds, sections],
+  );
+
+  const clickable = audioUrl !== null && audio.ready;
+  const seek = clickable ? audio.seek : null;
 
   return (
     <section className="flex flex-col gap-4">
@@ -115,71 +134,181 @@ export default function LibraryTrackDetail({ track }: Props) {
       )}
 
       {data && (
-        <div className="flex flex-col gap-2">
-          <h4 className="font-heading text-sm text-text-secondary">
-            Cifra por compasso
-          </h4>
-          <div className="flex flex-col gap-1.5">
-            {rows.map((row, rowIndex) => (
-              <div
-                key={rowIndex}
-                className="grid gap-1.5"
-                style={{
-                  gridTemplateColumns: `repeat(${BARS_PER_ROW}, minmax(0, 1fr))`,
-                }}
-              >
-                {row.map((bar) => {
-                  const isActive = bar.index === activeBarIndex;
-                  const clickable = audioUrl !== null && audio.ready;
-                  const className = [
-                    'rounded-button border px-2 py-2 flex flex-col gap-0.5 text-left transition-colors',
-                    isActive
-                      ? 'border-text-primary bg-bg-hover'
-                      : 'border-border-default bg-bg-card',
-                    clickable
-                      ? 'hover:border-text-primary cursor-pointer'
-                      : 'cursor-default',
-                  ].join(' ');
-                  return (
-                    <button
-                      key={bar.index}
-                      type="button"
-                      onClick={() => audio.seek(bar.startSeconds)}
-                      disabled={!clickable}
-                      className={className}
-                    >
-                      <span className="font-heading text-sm text-text-primary">
-                        {bar.chords[0].chord}
-                      </span>
-                      {bar.chords[0].romanNumeral && (
-                        <span className="font-heading text-[11px] text-text-secondary">
-                          {bar.chords[0].romanNumeral}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-text-muted">
-                        {formatDuration(bar.startSeconds)}
-                      </span>
-                    </button>
-                  );
-                })}
-                {row.length < BARS_PER_ROW &&
-                  Array.from({ length: BARS_PER_ROW - row.length }).map(
-                    (_, gap) => <div key={`gap-${gap}`} />,
-                  )}
+        <div className="flex flex-col gap-5">
+          {sections.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <h4 className="font-heading text-sm text-text-secondary">
+                Forma detectada
+              </h4>
+              <LibrarySectionTimeline
+                sections={sections}
+                durationSeconds={track.duration_seconds}
+                activeIndex={activeSectionIndex}
+                progressSeconds={audioUrl ? audio.currentSeconds : null}
+                onSeek={seek}
+              />
+              <p className="text-[11px] text-text-muted">
+                As letras agrupam trechos que soam parecidos entre si — são
+                marcações automáticas, não intro, verso ou refrão.
+                {seek ? ' Clique num trecho para saltar até ele.' : ''}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <h4 className="font-heading text-sm text-text-secondary">
+              Cifra por compasso
+            </h4>
+
+            {sectionGroups.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {sectionGroups.map((group) => (
+                  <SectionBlock
+                    key={group.index}
+                    group={group}
+                    isActive={group.index === activeSectionIndex}
+                    activeBarIndex={activeBarIndex}
+                    onSeek={seek}
+                  />
+                ))}
               </div>
-            ))}
+            ) : (
+              <BarGrid bars={bars} activeBarIndex={activeBarIndex} onSeek={seek} />
+            )}
+
+            <p className="text-[11px] text-text-muted">
+              Um bloco = um compasso, agrupado a partir do down-beat detectado.
+              Quando duas cifras compartilham o compasso, mostramos a de maior
+              duração.
+              {audioUrl
+                ? ' Clique num compasso para saltar a reprodução até ele.'
+                : ''}
+            </p>
           </div>
-          <p className="text-[11px] text-text-muted">
-            Um bloco = um compasso, agrupado a partir do down-beat detectado.
-            Quando duas cifras compartilham o compasso, mostramos a de maior
-            duração.
-            {audioUrl
-              ? ' Clique num compasso para saltar a reprodução até ele.'
-              : ''}
-          </p>
         </div>
       )}
     </section>
+  );
+}
+
+function SectionBlock({
+  group,
+  isActive,
+  activeBarIndex,
+  onSeek,
+}: {
+  group: SectionGroup;
+  isActive: boolean;
+  activeBarIndex: number;
+  onSeek: ((seconds: number) => void) | null;
+}) {
+  const color = sectionColorVar(group.colorIndex);
+  return (
+    <div
+      className="flex flex-col gap-1.5 pl-2.5"
+      style={{ borderLeft: `3px solid ${color}` }}
+    >
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span
+          className={`font-heading text-sm ${
+            isActive ? 'text-text-primary' : 'text-text-secondary'
+          }`}
+        >
+          Trecho {group.section.label}
+        </span>
+        {group.occurrenceTotal > 1 && (
+          <span className="text-[11px] text-text-muted">
+            {group.occurrence}ª de {group.occurrenceTotal}
+          </span>
+        )}
+        <span className="text-[11px] text-text-muted ml-auto tabular-nums">
+          {formatDuration(group.section.start_seconds)}–
+          {formatDuration(group.section.end_seconds)}
+          {group.bars.length > 0 &&
+            ` · ${group.bars.length} ${
+              group.bars.length === 1 ? 'compasso' : 'compassos'
+            }`}
+        </span>
+      </div>
+      {group.bars.length > 0 ? (
+        <BarGrid
+          bars={group.bars}
+          activeBarIndex={activeBarIndex}
+          onSeek={onSeek}
+        />
+      ) : (
+        <p className="text-[11px] text-text-muted">
+          Trecho curto demais para conter um compasso inteiro.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BarGrid({
+  bars,
+  activeBarIndex,
+  onSeek,
+}: {
+  bars: ChordChartBar[];
+  activeBarIndex: number;
+  onSeek: ((seconds: number) => void) | null;
+}) {
+  const rows: ChordChartBar[][] = [];
+  for (let i = 0; i < bars.length; i += BARS_PER_ROW) {
+    rows.push(bars.slice(i, i + BARS_PER_ROW));
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {rows.map((row, rowIndex) => (
+        <div
+          key={rowIndex}
+          className="grid gap-1.5"
+          style={{
+            gridTemplateColumns: `repeat(${BARS_PER_ROW}, minmax(0, 1fr))`,
+          }}
+        >
+          {row.map((bar) => {
+            const isActive = bar.index === activeBarIndex;
+            const className = [
+              'rounded-button border px-2 py-2 flex flex-col gap-0.5 text-left transition-colors',
+              isActive
+                ? 'border-text-primary bg-bg-hover'
+                : 'border-border-default bg-bg-card',
+              onSeek
+                ? 'hover:border-text-primary cursor-pointer'
+                : 'cursor-default',
+            ].join(' ');
+            return (
+              <button
+                key={bar.index}
+                type="button"
+                onClick={onSeek ? () => onSeek(bar.startSeconds) : undefined}
+                disabled={onSeek === null}
+                className={className}
+              >
+                <span className="font-heading text-sm text-text-primary">
+                  {bar.chords[0].chord}
+                </span>
+                {bar.chords[0].romanNumeral && (
+                  <span className="font-heading text-[11px] text-text-secondary">
+                    {bar.chords[0].romanNumeral}
+                  </span>
+                )}
+                <span className="text-[10px] text-text-muted">
+                  {formatDuration(bar.startSeconds)}
+                </span>
+              </button>
+            );
+          })}
+          {row.length < BARS_PER_ROW &&
+            Array.from({ length: BARS_PER_ROW - row.length }).map((_, gap) => (
+              <div key={`gap-${gap}`} />
+            ))}
+        </div>
+      ))}
+    </div>
   );
 }
 

@@ -19,6 +19,10 @@ export interface LibraryIndexEntry {
   downbeat_count: number;
   chord_segment_count: number;
   detail_directory: string;
+  /** Present since the section stage shipped; absent on older indexes. */
+  has_sections?: boolean;
+  /** Only written when `has_sections` is true. */
+  section_count?: number;
 }
 
 export interface LibraryIndex {
@@ -69,6 +73,31 @@ export interface KeyAnalysisJson {
   top_estimate: KeyEstimate;
 }
 
+/**
+ * One contiguous stretch of the track. `label` is a letter tag the detector
+ * uses to group parts it considers similar (two segments labelled "A" are
+ * its guess at the same repeated part). The labels carry no semantic
+ * meaning — they are never "verse" or "chorus", only opaque cluster ids.
+ */
+export interface SectionSegment {
+  start_seconds: number;
+  end_seconds: number;
+  label: string;
+}
+
+export interface SectionAnalysisJson {
+  schema_version: string;
+  source_sha256: string;
+  sections: SectionSegment[];
+  settings: {
+    sample_rate: number;
+    hop_length: number;
+    feature: string;
+    n_segments: number;
+  };
+  warnings: string[];
+}
+
 export async function fetchLibraryIndex(
   signal?: AbortSignal,
 ): Promise<LibraryIndex> {
@@ -86,14 +115,37 @@ export async function fetchTrackAnalyses(
   chord: ChordAnalysisJson;
   beat: BeatAnalysisJson;
   key: KeyAnalysisJson;
+  section: SectionAnalysisJson | null;
 }> {
   const base = `${LIBRARY_ROOT}/${entry.detail_directory}`;
-  const [chord, beat, key] = await Promise.all([
+  const [chord, beat, key, section] = await Promise.all([
     fetchJson<ChordAnalysisJson>(`${base}/chord-analysis-result.json`, signal),
     fetchJson<BeatAnalysisJson>(`${base}/beat-analysis-result.json`, signal),
     fetchJson<KeyAnalysisJson>(`${base}/key-analysis-result.json`, signal),
+    fetchSection(entry, base, signal),
   ]);
-  return { chord, beat, key };
+  return { chord, beat, key, section };
+}
+
+/**
+ * Sections are optional: older tracks predate the stage, and an index can
+ * outrun the files on disk. Either way a missing section file degrades to
+ * the flat chord chart rather than failing the whole detail view.
+ */
+async function fetchSection(
+  entry: LibraryIndexEntry,
+  base: string,
+  signal?: AbortSignal,
+): Promise<SectionAnalysisJson | null> {
+  if (entry.has_sections === false) return null;
+  try {
+    return await fetchJson<SectionAnalysisJson>(
+      `${base}/section-analysis-result.json`,
+      signal,
+    );
+  } catch {
+    return null;
+  }
 }
 
 async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -293,6 +345,161 @@ export function barIndexAtSeconds(
     if (seconds >= bar.startSeconds && seconds < bar.endSeconds) return i;
   }
   return -1;
+}
+
+/**
+ * Accent colours for song-form labels, defined in globals.css.
+ *
+ * Spelled out one literal at a time on purpose: Tailwind v4 drops `@theme`
+ * variables whose names it cannot find in the scanned source, so a
+ * `var(--color-form-${n})` built at runtime would leave every slot but the
+ * one that happens to appear literally somewhere undefined — the colour
+ * silently falls back to transparent.
+ */
+const SECTION_COLOR_VARS = [
+  'var(--color-form-1)',
+  'var(--color-form-2)',
+  'var(--color-form-3)',
+  'var(--color-form-4)',
+  'var(--color-form-5)',
+  'var(--color-form-6)',
+] as const;
+
+export const SECTION_COLOR_COUNT = SECTION_COLOR_VARS.length;
+
+/**
+ * CSS variable for a section's accent colour. `colorIndex` comes from
+ * `sectionColorIndexes` and cycles once a track has more distinct labels
+ * than we have tokens.
+ */
+export function sectionColorVar(colorIndex: number): string {
+  const slot =
+    ((colorIndex % SECTION_COLOR_COUNT) + SECTION_COLOR_COUNT) %
+    SECTION_COLOR_COUNT;
+  return SECTION_COLOR_VARS[slot];
+}
+
+/**
+ * Map each distinct section label to a colour slot by order of first
+ * appearance. Keyed off appearance rather than the letter itself so the
+ * first labels of a track always get distinct colours, whatever the
+ * detector happened to name them.
+ */
+export function sectionColorIndexes(
+  sections: SectionSegment[],
+): Map<string, number> {
+  const byLabel = new Map<string, number>();
+  for (const section of sections) {
+    if (!byLabel.has(section.label)) byLabel.set(section.label, byLabel.size);
+  }
+  return byLabel;
+}
+
+/**
+ * Index of the section whose [start_seconds, end_seconds) contains
+ * `seconds`, or -1 if none. Sections are contiguous and ordered, so the
+ * last section's end is treated as inclusive to avoid a dead frame at the
+ * very end of the track.
+ */
+export function sectionIndexAtSeconds(
+  sections: SectionSegment[],
+  seconds: number,
+): number {
+  if (!Number.isFinite(seconds) || seconds < 0) return -1;
+  for (let i = 0; i < sections.length; i += 1) {
+    const section = sections[i];
+    const isLast = i === sections.length - 1;
+    const withinEnd = isLast
+      ? seconds <= section.end_seconds
+      : seconds < section.end_seconds;
+    if (seconds >= section.start_seconds && withinEnd) return i;
+  }
+  return -1;
+}
+
+export interface SectionGroup {
+  section: SectionSegment;
+  /** Position in the track, 0-based. */
+  index: number;
+  /** Colour slot for this group's label — see `sectionColorVar`. */
+  colorIndex: number;
+  /** Which appearance of this label this is, 1-based. */
+  occurrence: number;
+  /** How many times this label appears across the track. */
+  occurrenceTotal: number;
+  bars: ChordChartBar[];
+}
+
+/**
+ * Distribute chord-chart bars across the detected sections.
+ *
+ * Section boundaries come from a spectral segmentation that knows nothing
+ * about the beat grid, so a bar can straddle one. Each bar goes to the
+ * section it overlaps most — the same rule `buildChordChartBars` already
+ * uses to pick one chord per bar. Every bar lands in exactly one group even
+ * when nothing overlaps it, so the grouped chart can never drop content the
+ * flat chart would have shown.
+ *
+ * Returns [] when there are no sections, which callers read as "render the
+ * flat chart instead".
+ */
+export function groupBarsBySection(
+  bars: ChordChartBar[],
+  sections: SectionSegment[],
+): SectionGroup[] {
+  if (sections.length === 0) return [];
+
+  const colorIndexes = sectionColorIndexes(sections);
+  const totals = new Map<string, number>();
+  for (const section of sections) {
+    totals.set(section.label, (totals.get(section.label) ?? 0) + 1);
+  }
+
+  const seen = new Map<string, number>();
+  const groups: SectionGroup[] = sections.map((section, index) => {
+    const occurrence = (seen.get(section.label) ?? 0) + 1;
+    seen.set(section.label, occurrence);
+    return {
+      section,
+      index,
+      colorIndex: colorIndexes.get(section.label) ?? 0,
+      occurrence,
+      occurrenceTotal: totals.get(section.label) ?? 1,
+      bars: [],
+    };
+  });
+
+  for (const bar of bars) {
+    groups[pickSectionForBar(sections, bar)].bars.push(bar);
+  }
+  return groups;
+}
+
+function pickSectionForBar(
+  sections: SectionSegment[],
+  bar: ChordChartBar,
+): number {
+  let best = -1;
+  let bestOverlap = 0;
+  for (let i = 0; i < sections.length; i += 1) {
+    const overlap = Math.max(
+      0,
+      Math.min(sections[i].end_seconds, bar.endSeconds) -
+        Math.max(sections[i].start_seconds, bar.startSeconds),
+    );
+    if (overlap > bestOverlap) {
+      bestOverlap = overlap;
+      best = i;
+    }
+  }
+  if (best !== -1) return best;
+  // No overlap at all (a zero-length bar, or one past the last boundary):
+  // fall back to the last section that starts at or before the bar.
+  let fallback = 0;
+  for (let i = 0; i < sections.length; i += 1) {
+    if (sections[i].start_seconds <= bar.startSeconds) fallback = i;
+  }
+  return fallback;
 }
 
 export function formatDuration(seconds: number): string {
