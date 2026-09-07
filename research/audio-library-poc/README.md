@@ -3,12 +3,23 @@
 This directory is the reproducible, offline harness for the Music Theory Lab
 audio-library project. It validates a trusted evaluation corpus, hashes and
 probes local audio, exports versioned JSON Schemas, exercises deterministic
-stage orchestration, and defines the first track-independent Phase 2 stem
-contracts without downloading model weights.
+stage orchestration, and provides concrete local stages for separation, beat,
+key, chord, and experimental section analysis. Quality acceptance remains
+unfinished.
 
-The harness is deliberately separate from the React application. It does not
-yet run a real separator, infer musical content, provide an HTTP API, store data
-in a database, upload audio, or alter the existing transcription feature.
+The harness is deliberately separate from the React application. It runs local
+inference stages but does not store data in a database or alter the existing
+transcription feature. The static `public/library`
+viewer is an explicit export of derived results; it is not authenticated private
+storage and must never be used to publish originals, private annotations, or
+private run artifacts.
+
+One exception to "no HTTP API": `audio-library-intake` (see [Local intake
+service](#local-intake-service)) accepts an audio upload and runs the four
+publishable stages for it. It is a development convenience that binds
+loopback, has no authentication, and is never deployed. The offline
+`audio-library-poc` CLI is unchanged and still reaches the network only
+through `fetch_checkpoints.py`.
 
 ## Requirements and setup
 
@@ -52,6 +63,12 @@ Phase 2 stem separation, add the `inference` extra:
 uv sync --extra dev --extra inference --python $installedPython
 ```
 
+To run the local intake service on top of that, add the `server` extra:
+
+```powershell
+uv sync --extra dev --extra inference --extra server --python $installedPython
+```
+
 That installs `torch` and `torchaudio` from PyTorch's CUDA 12.4 wheel index
 (pinned via `[tool.uv.sources]` in `pyproject.toml`), plus
 `bs-roformer-infer==0.1.5` and `demucs==4.1.0`. Only Windows is resolved
@@ -59,19 +76,18 @@ That installs `torch` and `torchaudio` from PyTorch's CUDA 12.4 wheel index
 macOS-x86_64 leg constrains torch to `<2.3`; widen that list if you ever
 need to build on another platform.
 
-After the install, verify PyTorch sees the RTX 2060:
+The target machine has an NVIDIA GeForce RTX 2060 with 6 GiB of memory and
+compute capability 7.5 according to `nvidia-smi`. This inventories available
+hardware; it does not establish a compatible PyTorch build or measured model
+performance. Verify the installed runtime before running an inference stage:
 
 ```powershell
 .venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
 
-The line must print a `+cu124` torch version, `True`, and a device name that
-starts with `NVIDIA GeForce RTX 2060`. Turing has tensor cores for `float16`
-and `float32` (via TF32-style acceleration) but not for `bfloat16`; bf16
-still runs on this GPU — `torch.cuda.is_bf16_supported()` returns `True` —
-just on the general-purpose CUDA cores rather than the tensor cores, which
-is markedly slower. Prefer `precision: float16` for real inference on this
-box; use `float32` when you need matching CPU/GPU numerics.
+Record the exact torch/CUDA version, the result of that command, end-to-end
+elapsed time, inference time, and peak VRAM with each measured run. Choose
+precision only after that compatibility and parity evidence exists.
 
 ## CLI
 
@@ -115,9 +131,10 @@ raw FFprobe tags and source paths, so treat it as private data.
 
 The command exports validation and serialization schemas for each committed
 contract. Repeating it must reproduce the files under `schemas` byte for byte.
-There are currently 20 committed files: two schema modes for ten top-level
+There are currently 28 committed files: two schema modes for fourteen top-level
 contracts, including `SeparationResult`, `CheckpointManifest`,
-`BeatAnalysisResult`, `ChordAnalysisResult`, and `KeyAnalysisResult`.
+`BeatAnalysisResult`, `ChordAnalysisResult`, `KeyAnalysisResult`, and
+`SectionAnalysisResult`.
 
 ## Synthetic Phase 2 separation validation
 
@@ -185,17 +202,73 @@ executor registered for its `stage_kind`:
 The registered kinds are:
 
 - `fake.deterministic` — the same `FakeStage` `run-fake` uses.
-- `separator.bs_roformer` — BS-RoFormer six-stem stub.
-- `separator.demucs_htdemucs_6s` — Demucs `htdemucs_6s` stub.
+- `separator.bs_roformer` — BS-RoFormer six-stem inference adapter.
+- `separator.demucs_htdemucs_6s` — Demucs `htdemucs_6s` inference adapter.
+- `beat.beat_this` — Beat This! beat and downbeat analysis.
+- `chord.chordmini_btc` — vendored ChordMini BTC chord analysis.
+- `chord.chordmini_btc_baseline_evidence` — legacy BTC semantics with private
+  frame evidence under a new identity.
+- `chord.chordmini_btc_verified` — parity-fixed BTC candidate.
+- `chord.chordmini_chordnet` — pinned-source ChordNet candidate.
+- `key.hpcp` and `key.chord_root_profile` — independent key baselines.
+- `section.librosa_segment` — experimental repeated-section clustering.
 
-Both separator kinds currently validate the stage's configuration, verify the
-source audio is inside the workspace and hashes to the declared `input_sha256`,
-and then raise a typed `separator.not_implemented` `FAILED_TERMINAL` result.
-Real inference lands in a later slice.
+Both separator kinds validate their configuration and workspace-contained model
+assets before lazy-loading their inference runtime. A checkpoint must be pinned
+and hash-verified in the selected private manifest before an empirical run is
+accepted; execution and listening evidence still do not establish a quality
+winner.
 
 Unknown stage kinds fail as `stage.unknown_kind` `FAILED_TERMINAL` — the
 pipeline manifest is validated statically, but a missing executor is treated
 like any other stage failure.
+
+## Local intake service
+
+Adding a track by hand means writing a manifest per stage, pasting the same
+source path into each, pinning both checkpoint digests, inventing a run id,
+running the CLI once per stage, and then running the sync script. The intake
+service does all of that for one uploaded file.
+
+```powershell
+.venv\Scripts\audio-library-intake.exe --workspace workspace --public ..\..\public
+```
+
+`--public` is the React app's `public/` directory, **not** `public/library` --
+the sync script appends `library` itself. Passing the deeper path is refused
+with a message rather than silently publishing into `public/library/library`.
+
+With the service running, `npm run dev` shows an extra "Analisar" module. Drop
+in an `.mp3`, `.m4a`, `.wav`, `.flac` or `.ogg`, and the service:
+
+1. validates the upload and writes it to `workspace/originals/<slug><ext>`,
+2. writes `workspace/intake-<slug>.local.yaml` -- one manifest carrying all
+   four publishable stages under one run id,
+3. runs `beat.beat_this`, `chord.chordmini_btc`, `key.hpcp` and
+   `section.librosa_segment` in order, stopping at the first failure that
+   matters (a `section` failure is survivable; the other three are not),
+4. runs `sync_workspace_to_public.py --copy-audio`, so the viewer gets a
+   player as well as a chord chart.
+
+The copied source lands at `public/library/tracks/<prefix>/source<ext>`, which
+`.gitignore` covers -- originals stay on the machine. A measured run of a
+3'06" track on the RTX 2060 took about 17 seconds for all four stages.
+
+Endpoints, all under `/intake` (the Vite dev server proxies that prefix to
+port 8756; `/api` already belongs to the deployed sync endpoints):
+
+- `GET /intake/health` -- checkpoint presence, device, resolved library root.
+- `POST /intake/tracks` -- multipart `file`, `title`, `artist`, `segment_count`.
+- `GET /intake/jobs` and `GET /intake/jobs/{id}` -- queue and per-stage status.
+
+One job runs at a time; there is one GPU. The job list is in memory, so a
+restart forgets it -- but not the work, since completed stages stay in the
+workspace cache and re-uploading the same file under the same title replays as
+cache hits.
+
+The "Analisar" module is hidden from production builds and nothing proxies
+`/intake` there. That is deliberate: the deployed site is public, and a working
+upload box on it would let anyone push audio into a public static export.
 
 ## Model checkpoints
 
@@ -348,19 +421,71 @@ byte-level requirement automatically.
 - Commit only code, fictional examples, versioned schemas, and anonymous
   aggregate measurements that are safe to share.
 
-## Remaining Phase 2 work
+## Remaining POC work
 
-Real stem separation is still absent. The scaffolding needed to plug it in
-has landed: a `Separator` protocol, BS-RoFormer and Demucs adapter stubs, a
-`SeparatorStageExecutor` bridge that verifies source-audio identity, a
-stage-kind dispatcher, the new `run` CLI subcommand, and a hash-verified
-checkpoint fetcher. Every stub still declines to run inference with a typed
-`separator.not_implemented` `FAILED_TERMINAL` result.
+The separation adapters, `SeparatorStageExecutor` bridge, stage-kind dispatcher,
+`run` CLI subcommand, and hash-verified checkpoint fetcher have landed. The
+remaining work is to establish reproducible evidence for the selected runs,
+not to claim a separator winner merely because an adapter executes.
 
-Still open: pin the exact vendor URLs and hashes for both checkpoints in a
-private manifest, replace each stub's `separate()` body with the real
-inference call, run the GPU/VRAM measurements, and produce the listening
-report that decides between candidates. Phase 1 proved reproducibility,
-metadata boundaries, cache identity, resume behavior, and safe local
-orchestration; the seam described above extends those guarantees across the
-Phase 2 boundary without claiming that either real separator runs yet.
+Still open: retain selected checkpoint source/terms/hashes in the private
+manifest and dependency record, run GPU/VRAM measurements, and produce the
+listening report that decides between candidates. Phase 1 proved
+reproducibility, metadata boundaries, cache identity, resume behavior, and
+safe local orchestration; the seam described above extends those guarantees
+across the Phase 2 boundary without claiming a quality result.
+
+Beat, key, BTC chord, section, and separation executors are registered. Their
+presence is not a quality result: each evaluation must
+select hash-verified artifacts through a frozen manifest, verify annotation and
+recording alignment, and report raw predictions separately from accepted
+product output. See `research/audio-library-harmony-dependencies.md` and
+`design-plans/audio-library-quality-handoff.md` before changing the chord path.
+
+For the evaluation contract, copy `evaluation.example.yaml` to the ignored
+`workspace/evaluation.local.yaml`. Bind each recording to its `corpus.local.yaml`
+entry, retain the original and annotation hashes, select each successful
+envelope and declared artifact explicitly, and document any master-duration
+difference or annotation offset. A quarantined reference is retained for audit
+but excluded from scores; it does not suppress another valid reference for the
+same recording. Corpus sources may be absolute external paths, but only the
+private corpus manifest names them.
+
+Render the historical raw-label diagnostic only from that frozen selection:
+
+```powershell
+$env:PYTHONPATH = 'src'
+.venv\Scripts\python.exe scripts\phase3_evaluation_report.py `
+  --workspace workspace `
+  --manifest workspace\evaluation.local.yaml `
+  --out workspace\reports\phase1_frozen_raw.md
+```
+
+The report validates original bytes, raw annotations and overlays, successful
+envelopes, artifact size/hash/schema, source hash, and typed provenance before
+reading a score. It never searches `runs/` for a replacement result. The pilot
+split is recording-level but already inspected, so neither label is a blind
+holdout or an acceptance result.
+
+Render the separate normalized Biblioteca-output report as both private JSON
+and Markdown. It reports uncalibrated vocabulary-filtered acceptance only;
+confidence thresholds remain a later calibration decision. `N` is scored as
+no-chord and `X` remains unknown, while unsupported reference qualities are
+shown as exclusions. Both output paths must stay under `workspace/reports`.
+The retained raw diagnostic is explicitly post-segment-smoothing. The
+baseline-evidence and verified chord identities retain private pre- and
+post-smoothing frame evidence. Existing public sync/index data, including its consumer confidence
+field, is inspection drift rather than this frozen pilot and is unchanged here.
+
+```powershell
+$env:PYTHONPATH = 'src'
+.venv\Scripts\python.exe scripts\product_evaluation_report.py `
+  --workspace workspace `
+  --manifest workspace\evaluation.local.yaml `
+  --markdown-out workspace\reports\phase2_product.md `
+  --json-out workspace\reports\phase2_product.json
+```
+
+The reports are private evaluation artifacts. Do not run the public-library
+sync as part of evaluation: its public index and selected runs are inspection
+data and can differ from this four-recording frozen pilot.

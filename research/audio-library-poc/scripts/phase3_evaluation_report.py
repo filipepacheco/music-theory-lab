@@ -1,343 +1,298 @@
-"""Score every Phase 3 chord + key run against ground-truth annotations.
+"""Render raw harmony diagnostics from one frozen evaluation manifest.
 
-Reads ``workspace/annotations/annotations.local.yaml`` for the mapping
-from audio source_sha256 → reference .lab file(s), walks the analysis
-results under ``workspace/runs/``, and emits a Markdown report of
-mir_eval-standard scores per (track, candidate).
-
-Standard library + mir_eval + yaml (already in the [inference] extras).
-
-Invocation:
-
-    .venv\\Scripts\\python.exe scripts/phase3_evaluation_report.py \\
-        --workspace workspace \\
-        --out workspace/reports/phase3_evaluation.md
+This intentionally does not discover directories or select a "latest" result.
+It verifies every selected envelope and artifact before scoring. Product-output
+metrics belong to Phase 2 and are not calculated here.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
-import yaml
+import numpy as np
 
 from audio_library_poc.chord_analysis import ChordAnalysisResult
-from audio_library_poc.chord_evaluation import (
-    chord_result_to_estimate,
-    load_reference_lab,
-)
-from audio_library_poc.chord_evaluation import (
-    evaluate as evaluate_chord,
+from audio_library_poc.chord_evaluation import chord_result_to_estimate
+from audio_library_poc.chord_evaluation import evaluate as evaluate_chord
+from audio_library_poc.evaluation_manifest import (
+    AnnotationKind,
+    EvaluationDisposition,
+    EvaluationManifest,
+    EvaluationSplit,
+    ResolvedAnnotation,
+    ResolvedArtifact,
+    load_evaluation_manifest,
+    resolve_manifest_annotations,
+    resolve_manifest_artifacts,
 )
 from audio_library_poc.key_analysis import KeyAnalysisResult
-from audio_library_poc.key_evaluation import (
-    evaluate as evaluate_key,
-)
-from audio_library_poc.key_evaluation import (
-    load_reference_key,
-)
-
-_CHORD_STAGE_KINDS = ("chord.chordmini_btc",)
-_KEY_STAGE_KINDS = ("key.hpcp", "key.chord_root_profile")
-
-
-@dataclass(frozen=True)
-class AnnotationEntry:
-    source_sha256: str
-    title: str
-    reference: str
-    chord_lab: Path | None
-    key_lab: Path | None
-
-
-def load_annotations(workspace: Path) -> list[AnnotationEntry]:
-    manifest_path = workspace / "annotations" / "annotations.local.yaml"
-    if not manifest_path.is_file():
-        return []
-    raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-    entries: list[AnnotationEntry] = []
-    for entry in raw.get("annotations", []):
-        chord_lab = entry.get("chord_lab")
-        key_lab = entry.get("key_lab")
-        entries.append(
-            AnnotationEntry(
-                source_sha256=str(entry["source_sha256"]),
-                title=str(entry.get("title", entry["source_sha256"][:12])),
-                reference=str(entry.get("reference", "unknown")),
-                chord_lab=(workspace / "annotations" / chord_lab)
-                if chord_lab
-                else None,
-                key_lab=(workspace / "annotations" / key_lab) if key_lab else None,
-            )
-        )
-    return entries
-
-
-def collect_results(
-    workspace: Path,
-) -> tuple[
-    dict[str, list[tuple[str, ChordAnalysisResult]]],
-    dict[str, list[tuple[str, KeyAnalysisResult]]],
-]:
-    """Group succeeded chord + key stage results by source_sha256."""
-
-    chord_by_source: dict[str, list[tuple[str, ChordAnalysisResult]]] = defaultdict(
-        list
-    )
-    key_by_source: dict[str, list[tuple[str, KeyAnalysisResult]]] = defaultdict(list)
-    runs_root = workspace / "runs"
-    if not runs_root.is_dir():
-        return chord_by_source, key_by_source
-    for run_dir in sorted(runs_root.iterdir()):
-        stages_root = run_dir / "stages"
-        if not stages_root.is_dir():
-            continue
-        for stage_dir in sorted(stages_root.iterdir()):
-            kind = stage_dir.name
-            results_dir = stage_dir / "results"
-            if not results_dir.is_dir():
-                continue
-            for envelope_path in sorted(results_dir.glob("*.json")):
-                envelope = _load_json(envelope_path)
-                if envelope is None or envelope.get("status") != "succeeded":
-                    continue
-                cache_key = envelope.get("cache_key")
-                if not cache_key:
-                    continue
-                if kind in _CHORD_STAGE_KINDS:
-                    art = (
-                        stage_dir
-                        / "artifacts"
-                        / cache_key
-                        / "chord-analysis-result.json"
-                    )
-                    result = _load_pydantic(art, ChordAnalysisResult)
-                    if result is not None:
-                        chord_by_source[result.source_sha256].append((kind, result))
-                elif kind in _KEY_STAGE_KINDS:
-                    art = (
-                        stage_dir / "artifacts" / cache_key / "key-analysis-result.json"
-                    )
-                    result = _load_pydantic(art, KeyAnalysisResult)
-                    if result is not None:
-                        key_by_source[result.source_sha256].append((kind, result))
-    return chord_by_source, key_by_source
-
-
-def _load_json(path: Path) -> dict | None:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def _load_pydantic(path: Path, model_cls):
-    try:
-        return model_cls.model_validate_json(path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        return None
+from audio_library_poc.key_evaluation import evaluate as evaluate_key
 
 
 def render_report(
-    annotations: list[AnnotationEntry],
-    chord_by_source: dict[str, list[tuple[str, ChordAnalysisResult]]],
-    key_by_source: dict[str, list[tuple[str, KeyAnalysisResult]]],
+    manifest: EvaluationManifest,
+    artifacts: tuple[ResolvedArtifact, ...],
+    annotations: tuple[ResolvedAnnotation, ...],
     *,
+    split: EvaluationSplit | None = None,
     generated_at: datetime | None = None,
 ) -> str:
+    """Render selected raw-model diagnostics without changing selection."""
+
     stamp = (generated_at or datetime.now(UTC)).isoformat(timespec="seconds")
-    lines: list[str] = [
-        "# Phase 3 evaluation report",
+    tracks = [
+        track for track in manifest.tracks if split is None or track.split is split
+    ]
+    selected_ids = {track.recording_id for track in tracks}
+    lines = [
+        "# Frozen harmony evaluation report",
         "",
         f"Generated: {stamp}",
-        f"Annotated tracks: {len(annotations)}",
+        f"Manifest: `{manifest.manifest_id}` (schema {manifest.schema_version})",
+        "Selection: explicit successful envelopes and hash-verified artifacts.",
+        "Metrics: historical raw candidate labels only; no product acceptance metrics.",
+        f"Split: {split.value if split else 'all frozen recordings'}",
         "",
     ]
+    by_track_kind: dict[tuple[str, AnnotationKind], list[ResolvedArtifact]] = (
+        defaultdict(list)
+    )
+    for artifact in artifacts:
+        if artifact.track.recording_id in selected_ids:
+            kind = _annotation_kind_for_artifact(artifact)
+            if kind is not None:
+                by_track_kind[(artifact.track.recording_id, kind)].append(artifact)
 
-    if not annotations:
-        lines.append(
-            "No entries in `workspace/annotations/annotations.local.yaml`. "
-            "Add at least one track with a chord and/or key ground-truth "
-            "label to generate scores.\n"
-        )
-        return "\n".join(lines) + "\n"
+    active_annotations = [
+        annotation
+        for annotation in annotations
+        if annotation.track.recording_id in selected_ids
+    ]
+    if not active_annotations:
+        lines.extend(["No included, resolved annotations in this split.", ""])
+    for annotation in active_annotations:
+        _render_annotation(lines, annotation, by_track_kind)
 
-    for ann in annotations:
-        _render_annotation(lines, ann, chord_by_source, key_by_source)
-
-    _render_aggregate(lines, annotations, chord_by_source, key_by_source)
+    quarantined = [
+        (track.recording_id, annotation)
+        for track in tracks
+        for annotation in track.annotations
+        if annotation.disposition is EvaluationDisposition.QUARANTINED
+    ]
+    if quarantined:
+        lines.extend(["## Quarantined references", ""])
+        for recording_id, annotation in quarantined:
+            lines.append(
+                f"- `{recording_id}` / `{annotation.annotation_id}`: "
+                f"{annotation.quarantine_reason}"
+            )
+        lines.append("")
     return "\n".join(lines) + "\n"
 
 
 def _render_annotation(
     lines: list[str],
-    ann: AnnotationEntry,
-    chord_by_source: dict[str, list[tuple[str, ChordAnalysisResult]]],
-    key_by_source: dict[str, list[tuple[str, KeyAnalysisResult]]],
+    annotation: ResolvedAnnotation,
+    artifacts: dict[tuple[str, AnnotationKind], list[ResolvedArtifact]],
 ) -> None:
-    lines.append(f"### {ann.title}")
-    lines.append("")
-    lines.append(
-        f"Reference: {ann.reference}. source_sha256 `{ann.source_sha256[:12]}…`."
+    track = annotation.track
+    reference = annotation.annotation
+    lines.extend(
+        [
+            f"## {track.recording_id} — {reference.annotation_id}",
+            "",
+            f"Split: `{track.split.value}`. Reference: {reference.source} "
+            f"(version `{reference.version}`).",
+            f"Scored interval count: {len(annotation.intervals)}.",
+            "",
+        ]
     )
+    candidates = artifacts.get((track.recording_id, reference.kind), [])
+    if not candidates:
+        lines.extend(["No selected compatible artifacts.", ""])
+        return
+    if reference.kind is AnnotationKind.CHORD:
+        _render_chords(lines, annotation, candidates)
+    else:
+        _render_keys(lines, annotation, candidates)
+
+
+def _render_chords(
+    lines: list[str],
+    annotation: ResolvedAnnotation,
+    artifacts: list[ResolvedArtifact],
+) -> None:
+    reference_intervals, reference_labels = _project_intervals(
+        [(row.start_seconds, row.end_seconds) for row in annotation.intervals],
+        [row.label for row in annotation.intervals],
+        annotation.track.excerpts,
+    )
+    lines.extend(
+        [
+            "Raw chord metrics (mir_eval, duration-weighted 0–1):",
+            "",
+            "| Candidate/config | root | majmin | mirex | selected cache |",
+            "|---|---:|---:|---:|:---:|",
+        ]
+    )
+    for item in artifacts:
+        if not isinstance(item.result, ChordAnalysisResult):
+            continue
+        estimate_intervals, estimate_labels = chord_result_to_estimate(item.result)
+        estimate_intervals, estimate_labels = _project_intervals(
+            estimate_intervals.tolist(),
+            estimate_labels,
+            annotation.track.excerpts,
+        )
+        score = evaluate_chord(
+            reference_intervals,
+            reference_labels,
+            estimate_intervals,
+            estimate_labels,
+            reference_label=annotation.annotation.annotation_id,
+            candidate_id=item.selection.candidate_id,
+        )
+        lines.append(
+            f"| {item.selection.candidate_id}/{item.selection.config_id} | "
+            f"{score.scores['root']:.3f} | {score.scores['majmin']:.3f} | "
+            f"{score.scores['mirex']:.3f} | `{item.selection.cache_key[:12]}` |"
+        )
     lines.append("")
 
-    if ann.chord_lab is not None and ann.chord_lab.is_file():
-        ref_intervals, ref_labels = load_reference_lab(ann.chord_lab)
-        chord_results = chord_by_source.get(ann.source_sha256, [])
-        if not chord_results:
-            lines.append("Chord: no candidate results on disk.")
-        else:
-            lines.append("**Chord metrics** (mir_eval, weighted 0-1):")
-            lines.append("")
-            lines.append(
-                "| Candidate | root | majmin | majmin_inv | thirds | triads | "
-                "sevenths | mirex | segments (ref → est) |"
-            )
-            lines.append("|---|---:|---:|---:|---:|---:|---:|---:|:---:|")
-            for candidate_id, result in chord_results:
-                est_intervals, est_labels = chord_result_to_estimate(result)
-                scores = evaluate_chord(
-                    ref_intervals,
-                    ref_labels,
-                    est_intervals,
-                    est_labels,
-                    reference_label=ann.reference,
-                    candidate_id=candidate_id,
-                )
-                cells = " | ".join(
-                    f"{scores.scores.get(name, 0.0):.3f}"
-                    for name in (
-                        "root",
-                        "majmin",
-                        "majmin_inv",
-                        "thirds",
-                        "triads",
-                        "sevenths",
-                        "mirex",
+
+def _render_keys(
+    lines: list[str],
+    annotation: ResolvedAnnotation,
+    artifacts: list[ResolvedArtifact],
+) -> None:
+    reference_label, duration = _dominant_key(annotation)
+    lines.extend(
+        [
+            "Raw key metric (mir_eval weighted score):",
+            "",
+            "| Candidate/config | Reference | Top | Score | selected cache |",
+            "|---|:---:|:---:|---:|:---:|",
+        ]
+    )
+    for item in artifacts:
+        if not isinstance(item.result, KeyAnalysisResult):
+            continue
+        score = evaluate_key(
+            reference_label,
+            duration,
+            item.result,
+            candidate_id=item.selection.candidate_id,
+        )
+        lines.append(
+            f"| {item.selection.candidate_id}/{item.selection.config_id} | "
+            f"{reference_label} | {score.top_label} | {score.score:.3f} | "
+            f"`{item.selection.cache_key[:12]}` |"
+        )
+    lines.append("")
+
+
+def _dominant_key(annotation: ResolvedAnnotation) -> tuple[str, float]:
+    durations: dict[str, float] = defaultdict(float)
+    for row in annotation.intervals:
+        if row.label not in {"Silence", "Modulation"}:
+            durations[row.label] += row.end_seconds - row.start_seconds
+    if not durations:
+        raise ValueError(f"{annotation.annotation.annotation_id} has no key label")
+    label = max(durations, key=durations.__getitem__)
+    return _normalize_key(label), sum(durations.values())
+
+
+def _normalize_key(label: str) -> str:
+    if ":" not in label:
+        return f"{label} major"
+    root, quality = label.split(":", 1)
+    normalized = quality.strip().lower()
+    if normalized in {"major", "maj"}:
+        normalized = "major"
+    elif normalized in {"minor", "min"}:
+        normalized = "minor"
+    return f"{root} {normalized}"
+
+
+def _annotation_kind_for_artifact(item: ResolvedArtifact) -> AnnotationKind | None:
+    if item.selection.artifact_kind == "chord.analysis_result":
+        return AnnotationKind.CHORD
+    if item.selection.artifact_kind == "key.analysis_result":
+        return AnnotationKind.KEY
+    return None
+
+
+def _project_intervals(
+    intervals: list[tuple[float, float]] | list[list[float]],
+    labels: list[str],
+    excerpts: tuple,
+) -> tuple[np.ndarray, list[str]]:
+    """Clip intervals to the frozen excerpts and concatenate their timeline."""
+
+    projected: list[tuple[float, float]] = []
+    projected_labels: list[str] = []
+    output_start = 0.0
+    for excerpt in excerpts:
+        for (start, end), label in zip(intervals, labels, strict=True):
+            clipped_start = max(start, excerpt.start_seconds)
+            clipped_end = min(end, excerpt.end_seconds)
+            if clipped_end > clipped_start:
+                projected.append(
+                    (
+                        output_start + clipped_start - excerpt.start_seconds,
+                        output_start + clipped_end - excerpt.start_seconds,
                     )
                 )
-                lines.append(
-                    f"| {candidate_id} | {cells} | "
-                    f"{scores.reference_segment_count} → "
-                    f"{scores.estimate_segment_count} |"
-                )
-            lines.append("")
-    else:
-        lines.append("No chord reference on disk.")
-        lines.append("")
-
-    if ann.key_lab is not None and ann.key_lab.is_file():
-        ref_label, ref_duration = load_reference_key(ann.key_lab)
-        key_results = key_by_source.get(ann.source_sha256, [])
-        if not key_results:
-            lines.append("Key: no candidate results on disk.")
-        else:
-            lines.append(
-                f"**Key metric** (mir_eval, weighted score 0-1). "
-                f"Reference: `{ref_label}` ({ref_duration:.1f} s)."
-            )
-            lines.append("")
-            lines.append("| Candidate | Top | Score |")
-            lines.append("|---|:---:|---:|")
-            for candidate_id, result in key_results:
-                score = evaluate_key(
-                    ref_label,
-                    ref_duration,
-                    result,
-                    candidate_id=candidate_id,
-                )
-                lines.append(
-                    f"| {candidate_id} | {score.top_label} | {score.score:.3f} |"
-                )
-            lines.append("")
-    else:
-        lines.append("No key reference on disk.")
-        lines.append("")
-
-
-def _render_aggregate(
-    lines: list[str],
-    annotations: list[AnnotationEntry],
-    chord_by_source: dict[str, list[tuple[str, ChordAnalysisResult]]],
-    key_by_source: dict[str, list[tuple[str, KeyAnalysisResult]]],
-) -> None:
-    # Only meaningful when we have more than one annotated track.
-    if len(annotations) < 2:
-        return
-    lines.append("### Aggregate (mean across annotated tracks)")
-    lines.append("")
-
-    chord_agg: dict[str, dict[str, list[float]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
-    for ann in annotations:
-        if ann.chord_lab is None or not ann.chord_lab.is_file():
-            continue
-        ref_intervals, ref_labels = load_reference_lab(ann.chord_lab)
-        for candidate_id, result in chord_by_source.get(ann.source_sha256, []):
-            est_intervals, est_labels = chord_result_to_estimate(result)
-            scores = evaluate_chord(
-                ref_intervals,
-                ref_labels,
-                est_intervals,
-                est_labels,
-                reference_label=ann.reference,
-                candidate_id=candidate_id,
-            )
-            for name, value in scores.scores.items():
-                chord_agg[candidate_id][name].append(value)
-
-    if chord_agg:
-        lines.append("Chord means:")
-        lines.append("")
-        metric_names = sorted({m for d in chord_agg.values() for m in d})
-        header = "| Candidate | " + " | ".join(metric_names) + " |"
-        rule = "|---|" + "|".join("---:" for _ in metric_names) + "|"
-        lines.append(header)
-        lines.append(rule)
-        for candidate_id, per_metric in chord_agg.items():
-            cells: list[str] = []
-            for m in metric_names:
-                values = per_metric.get(m, [0])
-                mean = sum(values) / max(1, len(values))
-                cells.append(f"{mean:.3f}")
-            lines.append(f"| {candidate_id} | {' | '.join(cells)} |")
-        lines.append("")
+                projected_labels.append(label)
+        output_start += excerpt.end_seconds - excerpt.start_seconds
+    return np.array(projected, dtype=np.float64), projected_labels
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="phase3_evaluation_report",
-        description="Score Phase 3 chord + key runs against ground truth.",
+        description="Render raw diagnostics from a frozen evaluation manifest.",
     )
     parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument(
+        "--split",
+        choices=[split.value for split in EvaluationSplit],
+        default=None,
+    )
     parser.add_argument("--out", type=Path, default=None)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    annotations = load_annotations(args.workspace)
-    chord_by_source, key_by_source = collect_results(args.workspace)
-    report = render_report(annotations, chord_by_source, key_by_source)
-    if args.out is not None:
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(report, encoding="utf-8")
-    else:
+    manifest = load_evaluation_manifest(args.manifest)
+    artifacts = resolve_manifest_artifacts(manifest, args.workspace)
+    annotations = resolve_manifest_annotations(manifest, args.workspace)
+    split = EvaluationSplit(args.split) if args.split else None
+    report = render_report(manifest, artifacts, annotations, split=split)
+    if args.out is None:
         sys.stdout.write(report)
+    else:
+        output = _private_report_path(args.workspace, args.out)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(report, encoding="utf-8")
     return 0
+
+
+def _private_report_path(workspace: Path, output: Path) -> Path:
+    """Keep raw diagnostics in the private workspace reports directory."""
+
+    reports_root = (workspace.resolve() / "reports").resolve()
+    target = output.resolve()
+    if not target.is_relative_to(reports_root):
+        raise ValueError("evaluation reports must be written under workspace/reports")
+    return target
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-# Silence unused-import lint noise: Any is re-exported for callers.
-_ = Any

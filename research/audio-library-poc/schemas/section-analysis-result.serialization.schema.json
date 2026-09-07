@@ -1,0 +1,190 @@
+{
+  "$defs": {
+    "EffectiveSectionAnalyzerSettings": {
+      "additionalProperties": false,
+      "description": "Resolved runtime settings a real analyzer used.",
+      "properties": {
+        "feature": {
+          "const": "chroma_cqt",
+          "title": "Feature",
+          "type": "string"
+        },
+        "hop_length": {
+          "exclusiveMinimum": 0,
+          "title": "Hop Length",
+          "type": "integer"
+        },
+        "n_segments": {
+          "exclusiveMinimum": 0,
+          "maximum": 64,
+          "title": "N Segments",
+          "type": "integer"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "hop_length",
+        "feature",
+        "n_segments"
+      ],
+      "title": "EffectiveSectionAnalyzerSettings",
+      "type": "object"
+    },
+    "SectionAnalyzerProvenance": {
+      "additionalProperties": false,
+      "description": "Adapter identity used for one section analysis.\n\nNo pinned checkpoint — the librosa-segment baseline is a pure algorithm,\nso ``model_identifier`` and ``model_sha256`` are absent by design.",
+      "properties": {
+        "candidate": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Implementation Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate",
+        "implementation_version",
+        "code_revision"
+      ],
+      "title": "SectionAnalyzerProvenance",
+      "type": "object"
+    },
+    "SectionSegment": {
+      "additionalProperties": false,
+      "description": "One contiguous section of the source with a repeat-group label.\n\n``start_seconds`` and ``end_seconds`` are inclusive-of-start,\nexclusive-of-end. ``label`` is a letter tag (A, B, C, ...) that groups\nsegments the detector considers similar — two segments sharing the same\nlabel are the analyzer's best guess at the same repeated part (e.g. two\nchoruses). Labels carry no semantic meaning; downstream consumers\nshould treat them as opaque cluster ids.",
+      "properties": {
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "label": {
+          "maxLength": 8,
+          "minLength": 1,
+          "pattern": "^[A-Z][0-9A-Z]*$",
+          "title": "Label",
+          "type": "string"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_seconds",
+        "end_seconds",
+        "label"
+      ],
+      "title": "SectionSegment",
+      "type": "object"
+    },
+    "SectionSourceFacts": {
+      "additionalProperties": false,
+      "description": "Facts about the source audio the analyzer read.",
+      "properties": {
+        "channels": {
+          "exclusiveMinimum": 0,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "minimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "peak_absolute_sample": {
+          "minimum": 0,
+          "title": "Peak Absolute Sample",
+          "type": "number"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "channels",
+        "frame_count",
+        "duration_seconds",
+        "peak_absolute_sample"
+      ],
+      "title": "SectionSourceFacts",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portable, versioned description of one accepted section analysis.\n\n``sections`` must be non-empty and strictly ordered by ``start_seconds``\nwith no gaps or overlaps: consecutive segments must satisfy\n``prev.end_seconds == curr.start_seconds`` (within 1 ms). The full\n``[0, source.duration_seconds]`` span is covered; when the analyzer\ndetected no interior boundaries it emits a single segment labelled\n``\"A\"`` spanning the whole track.",
+  "properties": {
+    "provenance": {
+      "$ref": "#/$defs/SectionAnalyzerProvenance"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/SectionSegment"
+      },
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    },
+    "settings": {
+      "$ref": "#/$defs/EffectiveSectionAnalyzerSettings"
+    },
+    "source": {
+      "$ref": "#/$defs/SectionSourceFacts"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "provenance",
+    "settings",
+    "source",
+    "sections"
+  ],
+  "title": "SectionAnalysisResult",
+  "type": "object"
+}

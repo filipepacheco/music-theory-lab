@@ -70,7 +70,7 @@ class Separator(Protocol):
 
 
 class SeparatorNotImplementedError(ExpectedStageFailure):
-    """Typed failure raised by stub separators before real inference lands.
+    """Typed failure available to an unimplemented separator candidate.
 
     Uses the shared ``TypedError`` contract with a non-retryable
     ``separator.not_implemented`` code so the orchestrator publishes a clean
