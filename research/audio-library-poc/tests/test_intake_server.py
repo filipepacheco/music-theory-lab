@@ -26,6 +26,7 @@ from audio_library_poc.intake_server import (
     prepare_job,
 )
 from audio_library_poc.models import PipelineManifest
+from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
 
 PAYLOAD = b"not really audio, but the intake never decodes it"
 
@@ -155,3 +156,65 @@ class TestPrepareJob:
         second = prepare(workspace)
         assert first.slug == second.slug
         assert first.id != second.id
+
+
+class TestTrackRegistration:
+    """`prepare_job` must leave the export enough to display and play a track.
+
+    Without a row in the intake manifest the published track reaches the app
+    as "Untitled" by "Unknown" with the player disabled, because the export's
+    only other metadata source is the curated corpus.
+    """
+
+    def _rows(self, workspace: Path) -> list[dict]:
+        manifest = yaml.safe_load(
+            (workspace / INTAKE_TRACKS_MANIFEST).read_text(encoding="utf-8")
+        )
+        return manifest["tracks"]
+
+    def test_records_title_artist_and_source(self, workspace: Path) -> None:
+        job = prepare(workspace)
+        (row,) = self._rows(workspace)
+        assert row["track_id"] == job.slug
+        assert row["expected_sha256"] == job.source_sha256
+        assert row["source_path"] == "originals/come-together.mp3"
+        assert row["annotation"] == {
+            "title": "Come Together",
+            "artist": "The Beatles",
+        }
+
+    def test_falls_back_to_the_filename_for_an_empty_title(
+        self, workspace: Path
+    ) -> None:
+        job = prepare(workspace, title="")
+        (row,) = self._rows(workspace)
+        assert row["annotation"]["title"] == "Come Together"
+        assert job.title == "Come Together"
+
+    def test_keeps_rows_for_other_tracks(self, workspace: Path) -> None:
+        prepare(workspace)
+        prepare(
+            workspace,
+            filename="Karma Police.mp3",
+            title="Karma Police",
+            payload=PAYLOAD + b" (a different recording)",
+        )
+        assert {row["track_id"] for row in self._rows(workspace)} == {
+            "come-together",
+            "karma-police",
+        }
+
+    def test_same_audio_under_a_new_title_leaves_one_row(self, workspace: Path) -> None:
+        # Same bytes, so the export would group both under one sha256 anyway;
+        # keeping both rows would just mean the display metadata depended on
+        # which one the loader happened to read last.
+        prepare(workspace)
+        prepare(workspace, title="Come Together (remaster)")
+        (row,) = self._rows(workspace)
+        assert row["annotation"]["title"] == "Come Together (remaster)"
+
+    def test_re_upload_replaces_rather_than_duplicates(self, workspace: Path) -> None:
+        prepare(workspace)
+        prepare(workspace, artist="Beatles")
+        (row,) = self._rows(workspace)
+        assert row["annotation"]["artist"] == "Beatles"

@@ -16,6 +16,7 @@ from audio_library_poc.track_intake import (
     build_intake_manifest,
     intake_source_relative_path,
     slugify,
+    upsert_intake_track,
 )
 
 BEAT = CheckpointRef(relative_path="models/beat_this-final0.ckpt", sha256="a" * 64)
@@ -157,3 +158,71 @@ class TestManifest:
         assert kinds.index("chord.chordmini_btc") < kinds.index(
             "section.librosa_segment"
         )
+
+
+class TestUpsertIntakeTrack:
+    ROW = {
+        "track_id": "come-together",
+        "source_relative_path": "originals/come-together.mp3",
+        "sha256": "a" * 64,
+        "title": "Come Together",
+        "artist": "The Beatles",
+    }
+
+    def test_builds_a_corpus_shaped_row_from_nothing(self) -> None:
+        manifest = upsert_intake_track(None, **self.ROW)
+        assert manifest["schema_version"] == "1.0.0"
+        assert manifest["tracks"] == [
+            {
+                "track_id": "come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": "a" * 64,
+                "annotation": {
+                    "title": "Come Together",
+                    "artist": "The Beatles",
+                },
+            }
+        ]
+
+    def test_appends_a_distinct_track(self) -> None:
+        first = upsert_intake_track(None, **self.ROW)
+        second = upsert_intake_track(
+            first,
+            track_id="karma-police",
+            source_relative_path="originals/karma-police.mp3",
+            sha256="b" * 64,
+            title="Karma Police",
+            artist="Radiohead",
+        )
+        assert [row["track_id"] for row in second["tracks"]] == [
+            "come-together",
+            "karma-police",
+        ]
+
+    def test_replaces_the_row_for_the_same_audio(self) -> None:
+        first = upsert_intake_track(None, **self.ROW)
+        second = upsert_intake_track(
+            first, **{**self.ROW, "track_id": "come-together-remaster"}
+        )
+        (row,) = second["tracks"]
+        assert row["track_id"] == "come-together-remaster"
+
+    def test_replaces_the_row_whose_slug_named_the_same_file(self) -> None:
+        # A re-upload under the same title overwrites originals/<slug>.mp3, so
+        # the old row would describe bytes that no longer exist there.
+        first = upsert_intake_track(None, **self.ROW)
+        second = upsert_intake_track(first, **{**self.ROW, "sha256": "c" * 64})
+        (row,) = second["tracks"]
+        assert row["expected_sha256"] == "c" * 64
+
+    def test_does_not_mutate_the_manifest_it_was_given(self) -> None:
+        first = upsert_intake_track(None, **self.ROW)
+        upsert_intake_track(
+            first,
+            track_id="karma-police",
+            source_relative_path="originals/karma-police.mp3",
+            sha256="b" * 64,
+            title="Karma Police",
+            artist="Radiohead",
+        )
+        assert len(first["tracks"]) == 1

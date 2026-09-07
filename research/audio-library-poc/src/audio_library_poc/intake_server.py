@@ -39,10 +39,12 @@ from audio_library_poc.orchestrator import StageOrchestrator
 from audio_library_poc.stage_dispatch import build_stage_dispatcher
 from audio_library_poc.track_intake import (
     INTAKE_STAGE_KINDS,
+    INTAKE_TRACKS_MANIFEST,
     CheckpointRef,
     build_intake_manifest,
     intake_source_relative_path,
     slugify,
+    upsert_intake_track,
 )
 
 BEAT_CHECKPOINT_PATH = "models/beat_this-final0.ckpt"
@@ -309,13 +311,58 @@ def prepare_job(
         encoding="utf-8",
     )
 
+    display_title = title or Path(filename).stem
+    source_sha256 = hash_file(destination)
+    _register_track(
+        workspace,
+        track_id=slug,
+        source_relative_path=relative,
+        sha256=source_sha256,
+        title=display_title,
+        artist=artist,
+    )
+
     return Job(
         id=uuid.uuid4().hex,
         slug=slug,
-        title=title or Path(filename).stem,
+        title=display_title,
         artist=artist,
         filename=filename,
-        source_sha256=hash_file(destination),
+        source_sha256=source_sha256,
+    )
+
+
+def _register_track(
+    workspace: Path,
+    *,
+    track_id: str,
+    source_relative_path: str,
+    sha256: str,
+    title: str,
+    artist: str,
+) -> None:
+    """Tell the public export what this upload is and where its audio lives.
+
+    Recorded here rather than at publish time so the metadata survives a
+    crash mid-analysis: re-running the sync script by hand then still finds
+    the title, the artist and the file to copy for the player.
+    """
+
+    path = workspace / INTAKE_TRACKS_MANIFEST
+    existing = (
+        yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else None
+    )
+    updated = upsert_intake_track(
+        existing,
+        track_id=track_id,
+        source_relative_path=source_relative_path,
+        sha256=sha256,
+        title=title,
+        artist=artist,
+    )
+    path.write_text(
+        yaml.safe_dump(updated, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
     )
 
 

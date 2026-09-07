@@ -1,0 +1,60 @@
+{
+  "provenance": {
+    "candidate": "librosa_segment",
+    "code_revision": "workspace-local",
+    "implementation_version": "1.0.0"
+  },
+  "schema_version": "1.0.0",
+  "sections": [
+    {
+      "end_seconds": 3.8080725623582765,
+      "label": "A",
+      "start_seconds": 0.0
+    },
+    {
+      "end_seconds": 137.55501133786848,
+      "label": "A",
+      "start_seconds": 3.8080725623582765
+    },
+    {
+      "end_seconds": 140.89868480725625,
+      "label": "B",
+      "start_seconds": 137.55501133786848
+    },
+    {
+      "end_seconds": 143.03492063492064,
+      "label": "A",
+      "start_seconds": 140.89868480725625
+    },
+    {
+      "end_seconds": 146.00707482993198,
+      "label": "A",
+      "start_seconds": 143.03492063492064
+    },
+    {
+      "end_seconds": 195.32625850340136,
+      "label": "B",
+      "start_seconds": 146.00707482993198
+    },
+    {
+      "end_seconds": 201.18784580498865,
+      "label": "C",
+      "start_seconds": 195.32625850340136
+    }
+  ],
+  "settings": {
+    "feature": "chroma_cqt",
+    "hop_length": 2048,
+    "n_segments": 7,
+    "sample_rate": 22050
+  },
+  "source": {
+    "channels": 2,
+    "duration_seconds": 201.18784580498865,
+    "frame_count": 8872384,
+    "peak_absolute_sample": 0.974314272403717,
+    "sample_rate": 44100
+  },
+  "source_sha256": "9bcc6006f36b7ed45ee8b11184624e76154c1a49c2b87f986cf2f5f3c98ef390",
+  "warnings": []
+}

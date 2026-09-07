@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-04T04:24:04+00:00",
+  "generated_at": "2026-09-07T16:44:27+00:00",
   "schema_version": "1.0.0",
-  "track_count": 4,
+  "track_count": 5,
   "tracks": [
     {
       "artist": "The Beatles",
@@ -22,6 +22,26 @@
       "sha256_prefix": "99a86f276eff",
       "source_sha256": "99a86f276eff950d7e5c35ed8f0463764b6f73228ee8e59e27367f41af7e2619",
       "title": "Come Together - Remastered 2009"
+    },
+    {
+      "artist": "Pixies",
+      "beat_count": 405,
+      "chord_segment_count": 18,
+      "detail_directory": "tracks/9bcc6006f36b",
+      "detected_key": {
+        "confidence_score": 0.6143562986159284,
+        "mode": "major",
+        "tonic_name": "D",
+        "tonic_pc": 2
+      },
+      "detected_tempo_bpm": 124.99999999999989,
+      "downbeat_count": 102,
+      "duration_seconds": 201.18784580498865,
+      "has_sections": true,
+      "section_count": 7,
+      "sha256_prefix": "9bcc6006f36b",
+      "source_sha256": "9bcc6006f36b7ed45ee8b11184624e76154c1a49c2b87f986cf2f5f3c98ef390",
+      "title": "Here Comes Your Man"
     },
     {
       "artist": "The Beatles",

@@ -50,6 +50,12 @@ INTAKE_STAGE_KINDS: Final = (
 _IDENTIFIER_MAX_LENGTH: Final = 128
 _SLUG_FALLBACK: Final = "faixa"
 
+#: Where the intake records what it analyzed, for the public export to read.
+#: Deliberately not ``corpus.local.yaml``: that one is the curated evaluation
+#: set whose ``trusted_key`` annotations evaluation runs score against, and an
+#: upload has no ground truth to contribute to it.
+INTAKE_TRACKS_MANIFEST: Final = "intake-tracks.local.yaml"
+
 
 @dataclass(frozen=True)
 class CheckpointRef:
@@ -167,6 +173,46 @@ def build_intake_manifest(
             },
         ],
     }
+
+
+def upsert_intake_track(
+    manifest: dict[str, Any] | None,
+    *,
+    track_id: str,
+    source_relative_path: str,
+    sha256: str,
+    title: str,
+    artist: str,
+) -> dict[str, Any]:
+    """Record one uploaded track's display metadata, replacing any older row.
+
+    The public export reads title, artist and source path from here. Without
+    a row a track reaches the app as "Untitled" by "Unknown" with no audio to
+    play, because the only other place the export looks is the corpus. Rows
+    are shaped like corpus entries so the export parses both the same way,
+    minus the annotation fields an upload cannot honestly fill in.
+
+    A row is replaced when it matches on ``expected_sha256`` -- the key the
+    export groups tracks by -- or on ``track_id``, whose slug also names the
+    file on disk, so re-uploading under the same title overwrites that audio
+    and leaves the older row describing bytes that are gone.
+    """
+
+    tracks = list((manifest or {}).get("tracks") or [])
+    kept = [
+        track
+        for track in tracks
+        if track.get("expected_sha256") != sha256 and track.get("track_id") != track_id
+    ]
+    kept.append(
+        {
+            "track_id": track_id,
+            "source_path": source_relative_path,
+            "expected_sha256": sha256,
+            "annotation": {"title": title, "artist": artist},
+        }
+    )
+    return {"schema_version": "1.0.0", "tracks": kept}
 
 
 def intake_source_relative_path(slug: str, suffix: str) -> str:

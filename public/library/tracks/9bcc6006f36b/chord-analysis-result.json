@@ -1,0 +1,179 @@
+{
+  "coverage": {
+    "major_seconds": 14.76791999999999,
+    "minor_seconds": 0.0,
+    "no_chord_seconds": 186.50304,
+    "unknown_seconds": 0.0
+  },
+  "provenance": {
+    "candidate": "chordmini_btc",
+    "code_revision": "workspace-local",
+    "implementation_version": "1.0.0",
+    "model_identifier": "chordmini-btc-model-best.pth",
+    "model_sha256": "e0a12ca6d881f81e01dfb459b4836ec7dac8d8f87b0170a412b5807256b3a1fc"
+  },
+  "schema_version": "1.0.0",
+  "segments": [
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 106.90488,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 0.0
+    },
+    {
+      "candidate_label": "D",
+      "confidence": null,
+      "end_seconds": 108.39096,
+      "label": "major",
+      "root_pc": 2,
+      "start_seconds": 106.90488
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 111.08448,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 108.39096
+    },
+    {
+      "candidate_label": "E",
+      "confidence": null,
+      "end_seconds": 111.9204,
+      "label": "major",
+      "root_pc": 4,
+      "start_seconds": 111.08448
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 115.35696,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 111.9204
+    },
+    {
+      "candidate_label": "D",
+      "confidence": null,
+      "end_seconds": 116.19288,
+      "label": "major",
+      "root_pc": 2,
+      "start_seconds": 115.35696
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 116.37864,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 116.19288
+    },
+    {
+      "candidate_label": "A",
+      "confidence": null,
+      "end_seconds": 118.14336,
+      "label": "major",
+      "root_pc": 9,
+      "start_seconds": 116.37864
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 122.50872000000001,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 118.14336
+    },
+    {
+      "candidate_label": "D",
+      "confidence": null,
+      "end_seconds": 123.99480000000001,
+      "label": "major",
+      "root_pc": 2,
+      "start_seconds": 122.50872000000001
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 124.08768,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 123.99480000000001
+    },
+    {
+      "candidate_label": "A",
+      "confidence": null,
+      "end_seconds": 126.68832,
+      "label": "major",
+      "root_pc": 9,
+      "start_seconds": 124.08768
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 130.21776,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 126.68832
+    },
+    {
+      "candidate_label": "D",
+      "confidence": null,
+      "end_seconds": 131.70384,
+      "label": "major",
+      "root_pc": 2,
+      "start_seconds": 130.21776
+    },
+    {
+      "candidate_label": "A",
+      "confidence": null,
+      "end_seconds": 134.58312,
+      "label": "major",
+      "root_pc": 9,
+      "start_seconds": 131.70384
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 141.54912000000002,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 134.58312
+    },
+    {
+      "candidate_label": "A",
+      "confidence": null,
+      "end_seconds": 142.94232,
+      "label": "major",
+      "root_pc": 9,
+      "start_seconds": 141.54912000000002
+    },
+    {
+      "candidate_label": "N",
+      "confidence": null,
+      "end_seconds": 201.27096,
+      "label": "no_chord",
+      "root_pc": null,
+      "start_seconds": 142.94232
+    }
+  ],
+  "settings": {
+    "device": "cuda",
+    "frame_duration_seconds": 0.09288,
+    "hop_length": 2048,
+    "precision": "float16",
+    "sample_rate": 22050,
+    "seq_len": 108
+  },
+  "source": {
+    "channels": 2,
+    "duration_seconds": 201.18784580498865,
+    "frame_count": 8872384,
+    "peak_absolute_sample": 0.974314272403717,
+    "sample_rate": 44100
+  },
+  "source_sha256": "9bcc6006f36b7ed45ee8b11184624e76154c1a49c2b87f986cf2f5f3c98ef390",
+  "warnings": []
+}

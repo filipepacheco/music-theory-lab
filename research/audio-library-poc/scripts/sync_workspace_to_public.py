@@ -5,6 +5,9 @@ groups them by ``source_sha256`` (i.e. per source track), and writes:
 
 - ``public/library/index.json``: the top-level track list the app reads on
   boot (title, artist, duration, detected key/tempo, per-track detail URLs).
+  Title, artist and the audio to copy come from ``corpus.local.yaml`` and
+  ``intake-tracks.local.yaml`` in the workspace; a track described by neither
+  still publishes, as "Untitled" by "Unknown" with no player.
 - ``public/library/tracks/<sha256_prefix>/chord-analysis-result.json``,
   ``beat-analysis-result.json``, ``key-analysis-result.json``: per-track
   analysis JSONs the app fetches on demand when a track is selected.
@@ -46,7 +49,10 @@ import yaml
 from audio_library_poc.beat_analysis import BeatAnalysisResult
 from audio_library_poc.chord_analysis import ChordAnalysisResult
 from audio_library_poc.key_analysis import KeyAnalysisResult
+from audio_library_poc.manifest import resolve_source_path
+from audio_library_poc.metadata import hash_file
 from audio_library_poc.section_analysis import SectionAnalysisResult
+from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
 
 _PITCH_CLASS_NAMES = (
     "C",
@@ -139,28 +145,44 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
     return complete
 
 
-def load_corpus_titles(workspace: Path) -> dict[str, dict[str, Any]]:
-    """Return per-source_sha256 metadata pulled from the corpus manifest.
+#: Manifests carrying display metadata, in increasing priority. The corpus is
+#: the curated evaluation set; the intake file is written by the local upload
+#: service, where the title and artist are what a person just typed into the
+#: form, so it wins when both describe the same audio.
+_METADATA_MANIFESTS = ("corpus.local.yaml", INTAKE_TRACKS_MANIFEST)
 
-    Missing corpus → empty dict; the app just gets less friendly display.
+
+def load_track_metadata(workspace: Path) -> dict[str, dict[str, Any]]:
+    """Return per-source_sha256 display metadata from the workspace manifests.
+
+    Relative ``source_path`` values resolve against their own manifest's
+    directory, the rule `resolve_source_path` documents, and are returned
+    absolute. Neither manifest present → empty dict; the app just gets less
+    friendly display and no audio.
     """
 
-    manifest_path = workspace / "corpus.local.yaml"
-    if not manifest_path.is_file():
-        return {}
-    raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     entries: dict[str, dict[str, Any]] = {}
-    for track in raw.get("tracks", []):
-        sha256 = str(track.get("expected_sha256", ""))
-        if not sha256:
+    for name in _METADATA_MANIFESTS:
+        manifest_path = workspace / name
+        if not manifest_path.is_file():
             continue
-        annotation = track.get("annotation") or {}
-        entries[sha256] = {
-            "title": annotation.get("title"),
-            "artist": annotation.get("artist"),
-            "track_id": track.get("track_id"),
-            "source_path": track.get("source_path"),
-        }
+        raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+        for track in raw.get("tracks", []) or []:
+            sha256 = str(track.get("expected_sha256", ""))
+            if not sha256:
+                continue
+            annotation = track.get("annotation") or {}
+            source_path = track.get("source_path")
+            entries[sha256] = {
+                "title": annotation.get("title"),
+                "artist": annotation.get("artist"),
+                "track_id": track.get("track_id"),
+                "source_path": (
+                    resolve_source_path(manifest_path, source_path)
+                    if source_path
+                    else None
+                ),
+            }
     return entries
 
 
@@ -219,8 +241,8 @@ def sync(
     """
 
     analyses = collect_analyses(workspace)
-    corpus_meta = load_corpus_titles(workspace)
-    index_payload = build_index(analyses, corpus_meta, generated_at=generated_at)
+    track_meta = load_track_metadata(workspace)
+    index_payload = build_index(analyses, track_meta, generated_at=generated_at)
 
     library_root = public / "library"
     tracks_root = library_root / "tracks"
@@ -259,9 +281,7 @@ def sync(
                 )
             )
         if copy_audio:
-            audio_path = _copy_audio_source(
-                workspace, corpus_meta.get(sha256, {}), track_dir
-            )
+            audio_path = _copy_audio_source(track_meta.get(sha256, {}), track_dir)
             if audio_path is not None:
                 audio_files.append(audio_path)
     index_path = _atomic_write_json(library_root / "index.json", index_payload)
@@ -269,25 +289,24 @@ def sync(
 
 
 def _copy_audio_source(
-    workspace: Path,
     meta: dict[str, Any],
     track_dir: Path,
 ) -> Path | None:
-    """Copy the corpus source audio into ``track_dir/source<ext>`` atomically.
+    """Copy a track's source audio into ``track_dir/source<ext>``.
 
-    Returns the destination path when the copy happened, ``None`` when the
-    corpus entry has no ``source_path`` or the file is missing on disk. The
+    Returns the destination path when the file is in place, ``None`` when the
+    manifest entry has no ``source_path`` or the file is missing on disk. The
     original file extension is preserved so the client can probe a small set
     of common formats.
+
+    An unchanged track is left alone. These are the only large files the
+    export writes, they never change once published, and rewriting one on
+    every publish is both wasted I/O and an unnecessary run at a file the dev
+    server may be holding open.
     """
 
-    source_path_str = meta.get("source_path")
-    if not source_path_str:
-        return None
-    source_path = Path(source_path_str)
-    if not source_path.is_absolute():
-        source_path = workspace.parent / source_path
-    if not source_path.is_file():
+    source_path = meta.get("source_path")
+    if source_path is None or not source_path.is_file():
         return None
     ext = source_path.suffix.lower() or ".bin"
     destination = track_dir / f"source{ext}"
@@ -296,10 +315,26 @@ def _copy_audio_source(
     for existing in track_dir.glob("source.*"):
         if existing != destination:
             existing.unlink()
+    if _same_file_contents(source_path, destination):
+        return destination
     staging = destination.with_suffix(destination.suffix + ".part")
     shutil.copyfile(source_path, staging)
-    staging.replace(destination)
+    _replace_with_retry(staging, destination)
     return destination
+
+
+def _same_file_contents(source: Path, destination: Path) -> bool:
+    """Whether `destination` already holds exactly `source`'s bytes.
+
+    Size first because it settles almost every call without reading anything;
+    the hash is what makes a match trustworthy.
+    """
+
+    if not destination.is_file():
+        return False
+    if source.stat().st_size != destination.stat().st_size:
+        return False
+    return hash_file(source) == hash_file(destination)
 
 
 def _load_json(path: Path) -> dict | None:
