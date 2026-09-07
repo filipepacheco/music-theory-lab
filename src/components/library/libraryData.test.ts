@@ -4,6 +4,7 @@ import {
   barIndexAtSeconds,
   buildChordChartBars,
   chordDisplayName,
+  collapseChartCells,
   formatDuration,
   groupBarsBySection,
   relativeRootOf,
@@ -410,5 +411,111 @@ describe('groupBarsBySection', () => {
     expect(groups).toHaveLength(2);
     expect(groups[1].bars).toEqual([]);
     expect(groups[1].section.label).toBe('B');
+  });
+});
+
+function chartBar(
+  index: number,
+  start: number,
+  end: number,
+  chord: string,
+  numeral: string | null = null,
+): ChordChartBar {
+  return {
+    index,
+    startSeconds: start,
+    endSeconds: end,
+    chords: [{ chord, romanNumeral: numeral, raw: null }],
+  };
+}
+
+describe('collapseChartCells', () => {
+  it('returns one cell per bar when every bar carries a chord', () => {
+    const cells = collapseChartCells([
+      chartBar(0, 0, 2, 'A', 'I'),
+      chartBar(1, 2, 4, 'D', 'IV'),
+      chartBar(2, 4, 6, 'E', 'V'),
+    ]);
+    expect(cells.map((c) => [c.chord, c.span])).toEqual([
+      ['A', 1],
+      ['D', 1],
+      ['E', 1],
+    ]);
+  });
+
+  it('never merges a repeated real chord — bar count is the point', () => {
+    const cells = collapseChartCells([
+      chartBar(0, 0, 2, 'A', 'I'),
+      chartBar(1, 2, 4, 'A', 'I'),
+      chartBar(2, 4, 6, 'A', 'I'),
+    ]);
+    expect(cells).toHaveLength(3);
+    expect(cells.every((c) => c.span === 1)).toBe(true);
+  });
+
+  it('collapses a run of N.C. into one cell spanning it', () => {
+    const bars = [
+      chartBar(0, 0, 2, 'N.C.'),
+      chartBar(1, 2, 4, 'N.C.'),
+      chartBar(2, 4, 6, 'N.C.'),
+      chartBar(3, 6, 8, 'A', 'I'),
+    ];
+    const cells = collapseChartCells(bars);
+    expect(cells).toHaveLength(2);
+    expect(cells[0].chord).toBe('N.C.');
+    expect(cells[0].span).toBe(3);
+    expect(cells[0].startSeconds).toBe(0);
+    expect(cells[0].endSeconds).toBe(6);
+    expect(cells[0].bars.map((b) => b.index)).toEqual([0, 1, 2]);
+    expect(cells[1].chord).toBe('A');
+  });
+
+  it('collapses unknown and empty bars too, but keeps the kinds apart', () => {
+    const cells = collapseChartCells([
+      chartBar(0, 0, 2, '?'),
+      chartBar(1, 2, 4, '?'),
+      chartBar(2, 4, 6, 'N.C.'),
+      chartBar(3, 6, 8, 'N.C.'),
+    ]);
+    expect(cells.map((c) => [c.chord, c.span])).toEqual([
+      ['?', 2],
+      ['N.C.', 2],
+    ]);
+  });
+
+  it('starts a new cell when a chord interrupts a run', () => {
+    const cells = collapseChartCells([
+      chartBar(0, 0, 2, 'N.C.'),
+      chartBar(1, 2, 4, 'A', 'I'),
+      chartBar(2, 4, 6, 'N.C.'),
+      chartBar(3, 6, 8, 'N.C.'),
+    ]);
+    expect(cells.map((c) => [c.chord, c.span])).toEqual([
+      ['N.C.', 1],
+      ['A', 1],
+      ['N.C.', 2],
+    ]);
+  });
+
+  it('keeps every bar exactly once', () => {
+    const bars = [
+      chartBar(0, 0, 2, 'N.C.'),
+      chartBar(1, 2, 4, 'N.C.'),
+      chartBar(2, 4, 6, 'A', 'I'),
+      chartBar(3, 6, 8, 'D', 'IV'),
+    ];
+    const placed = collapseChartCells(bars).flatMap((c) =>
+      c.bars.map((b) => b.index),
+    );
+    expect(placed).toEqual([0, 1, 2, 3]);
+  });
+
+  it('carries the roman numeral of the bar that opens the cell', () => {
+    const cells = collapseChartCells([chartBar(0, 0, 2, 'A', 'I')]);
+    expect(cells[0].romanNumeral).toBe('I');
+  });
+
+  it('handles an empty chart', () => {
+    expect(collapseChartCells([])).toEqual([]);
   });
 });

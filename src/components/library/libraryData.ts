@@ -348,6 +348,58 @@ export function barIndexAtSeconds(
 }
 
 /**
+ * Chord names that carry no harmony: a run of them says "nothing was
+ * detected here", which is worth one cell however long it lasts.
+ */
+const EMPTY_CHORD_NAMES = new Set(['N.C.', '?', '—']);
+
+export interface ChartCell {
+  /** Bars this cell stands for, in order. Never empty. */
+  bars: ChordChartBar[];
+  chord: string;
+  romanNumeral: string | null;
+  startSeconds: number;
+  endSeconds: number;
+  /** `bars.length`. Greater than 1 only for a collapsed run. */
+  span: number;
+}
+
+/**
+ * Collapse consecutive bars that carry no chord into a single cell.
+ *
+ * Fourteen "N.C." squares in a row tell the reader nothing that one square
+ * reading "N.C. x14" does not, and they push the actual harmony off the
+ * screen. Real chords are never merged: how many bars a chord lasts is the
+ * whole point of a chord chart, so a repeated D stays one square per bar.
+ */
+export function collapseChartCells(bars: ChordChartBar[]): ChartCell[] {
+  const cells: ChartCell[] = [];
+  for (const bar of bars) {
+    const chord = bar.chords[0].chord;
+    const previous = cells[cells.length - 1];
+    const mergeable =
+      previous !== undefined &&
+      EMPTY_CHORD_NAMES.has(chord) &&
+      previous.chord === chord;
+    if (mergeable) {
+      previous.bars.push(bar);
+      previous.span = previous.bars.length;
+      previous.endSeconds = bar.endSeconds;
+      continue;
+    }
+    cells.push({
+      bars: [bar],
+      chord,
+      romanNumeral: bar.chords[0].romanNumeral,
+      startSeconds: bar.startSeconds,
+      endSeconds: bar.endSeconds,
+      span: 1,
+    });
+  }
+  return cells;
+}
+
+/**
  * Accent colours for song-form labels, defined in globals.css.
  *
  * Spelled out one literal at a time on purpose: Tailwind v4 drops `@theme`
