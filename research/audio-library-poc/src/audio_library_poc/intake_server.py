@@ -39,6 +39,9 @@ from audio_library_poc.metadata import hash_file
 from audio_library_poc.models import PipelineManifest, StageStatus
 from audio_library_poc.orchestrator import StageOrchestrator
 from audio_library_poc.stage_dispatch import build_stage_dispatcher
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+)
 from audio_library_poc.track_intake import (
     INTAKE_STAGE_KINDS,
     INTAKE_TRACKS_MANIFEST,
@@ -207,22 +210,23 @@ class JobRunner:
                 )
             progress = by_kind[specification.stage_kind]
             if (
-                specification.stage_kind == "section.librosa_segment"
+                specification.stage_kind == STRUCTURAL_SEGMENTATION_STAGE_KIND
                 and quality_allows_publication is False
             ):
                 progress.status = "succeeded"
                 progress.detail = "fallback: beat input inválido ou não calibrado"
                 continue
-            if specification.stage_kind == "section.librosa_segment":
+            if specification.stage_kind == STRUCTURAL_SEGMENTATION_STAGE_KIND:
                 if quality_result_path is None or quality_result_sha256 is None:
                     raise RuntimeError("section stage requires a quality decision")
                 specification = specification.model_copy(
                     update={
                         "config": {
                             **specification.config,
+                            "beat_result_relative_path": beat_result_path,
+                            "beat_result_sha256": beat_result_sha256,
                             "beat_quality_decision_relative_path": quality_result_path,
                             "beat_quality_decision_sha256": quality_result_sha256,
-                            "beat_result_sha256": beat_result_sha256,
                         }
                     }
                 )
@@ -259,7 +263,7 @@ class JobRunner:
             progress.detail = _describe_failure(result)
             # section is optional to the public export; the other three are
             # not, so only a section failure is worth continuing past.
-            if specification.stage_kind != "section.librosa_segment":
+            if specification.stage_kind != STRUCTURAL_SEGMENTATION_STAGE_KIND:
                 job.status = "failed"
                 job.error = f"{specification.stage_kind}: {progress.detail}"
                 job.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
@@ -325,7 +329,6 @@ def prepare_job(
     payload: bytes,
     title: str,
     artist: str,
-    segment_count: int,
     device: str,
 ) -> Job:
     """Validate an upload, land it in the workspace, and write its manifest.
@@ -358,7 +361,6 @@ def prepare_job(
         beat_checkpoint=checkpoint_ref(workspace, BEAT_CHECKPOINT_PATH),
         chord_checkpoint=checkpoint_ref(workspace, CHORD_CHECKPOINT_PATH),
         device=device,
-        segment_count=segment_count,
     )
     # Validate before writing: a manifest that cannot load is a bug here, not
     # something the operator should discover mid-run.

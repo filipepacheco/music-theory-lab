@@ -7,8 +7,6 @@ nothing: the operator finds out it is wrong halfway through a GPU run.
 
 from __future__ import annotations
 
-import pytest
-
 from audio_library_poc.models import PipelineManifest
 from audio_library_poc.track_intake import (
     INTAKE_STAGE_KINDS,
@@ -117,7 +115,7 @@ class TestManifest:
         manifest = PipelineManifest.model_validate(build())
         by_kind = {stage.stage_kind: stage for stage in manifest.stages}
         assert by_kind["key.hpcp"].model_sha256 is None
-        assert by_kind["section.librosa_segment"].model_sha256 is None
+        assert by_kind["section.mcfee_ellis_laplacian"].model_sha256 is None
 
     def test_device_reaches_only_the_gpu_stages(self) -> None:
         manifest = PipelineManifest.model_validate(build(device="cpu"))
@@ -125,24 +123,14 @@ class TestManifest:
         assert by_kind["beat.beat_this"].config["device"] == "cpu"
         assert by_kind["chord.chordmini_btc"].config["device"] == "cpu"
         assert "device" not in by_kind["key.hpcp"].config
-        assert "device" not in by_kind["section.librosa_segment"].config
+        assert "device" not in by_kind["section.mcfee_ellis_laplacian"].config
 
-    def test_segment_count_reaches_the_section_stage(self) -> None:
-        manifest = PipelineManifest.model_validate(build(segment_count=12))
+    def test_section_count_is_selected_by_the_hierarchy(self) -> None:
+        manifest = PipelineManifest.model_validate(build())
         by_kind = {stage.stage_kind: stage for stage in manifest.stages}
-        assert by_kind["section.librosa_segment"].config["n_segments"] == 12
-
-    @pytest.mark.parametrize("count", [0, -1, 65, 1000])
-    def test_rejects_a_segment_count_outside_the_contract(self, count: int) -> None:
-        # A stage config is a free-form dict at manifest load, so nothing
-        # downstream of here would reject the value until the section runtime
-        # built its settings -- minutes in, with the GPU stages already spent.
-        with pytest.raises(ValueError, match="segment_count"):
-            build(segment_count=count)
-
-    @pytest.mark.parametrize("count", [1, 7, 64])
-    def test_accepts_the_whole_contract_range(self, count: int) -> None:
-        PipelineManifest.model_validate(build(segment_count=count))
+        section = by_kind["section.mcfee_ellis_laplacian"]
+        assert "n_segments" not in section.config
+        assert section.config["hop_length"] == 512
 
     def test_stage_kinds_are_unique(self) -> None:
         # PipelineManifest enforces this; the assertion documents that the
@@ -156,7 +144,7 @@ class TestManifest:
         kinds = [stage["stage_kind"] for stage in build()["stages"]]
         assert kinds.index("beat.beat_this") < kinds.index("key.hpcp")
         assert kinds.index("chord.chordmini_btc") < kinds.index(
-            "section.librosa_segment"
+            "section.mcfee_ellis_laplacian"
         )
 
 

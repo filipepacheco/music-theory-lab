@@ -38,21 +38,15 @@ from audio_library_poc.chordmini_btc_stage import (
     CHORDMINI_BTC_IMPLEMENTATION_VERSION,
 )
 from audio_library_poc.hpcp_key_stage import HPCP_KEY_IMPLEMENTATION_VERSION
-from audio_library_poc.section_stage import SECTION_LIBROSA_IMPLEMENTATION_VERSION
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION,
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+)
 
 DEFAULT_DEVICE: Final = "cuda"
 DEFAULT_PRECISION: Final = "float16"
 DEFAULT_SAMPLE_RATE: Final = 22050
 DEFAULT_HOP_LENGTH: Final = 2048
-DEFAULT_SEGMENT_COUNT: Final = 7
-
-#: ``EffectiveSectionAnalyzerSettings.n_segments`` is ``gt=0, le=64``. A stage
-#: ``config`` is a free-form dict at manifest load, so nothing between an
-#: upload form and the section runtime would catch a bad value -- it would
-#: surface minutes in, after the GPU stages had already run.
-MIN_SEGMENT_COUNT: Final = 1
-MAX_SEGMENT_COUNT: Final = 64
-
 #: Stages the public export needs, in the order they run. Beat and chord are
 #: the GPU stages; key, quality, and section are CPU-only and comparatively cheap.
 INTAKE_STAGE_KINDS: Final = (
@@ -60,7 +54,7 @@ INTAKE_STAGE_KINDS: Final = (
     "chord.chordmini_btc",
     "key.hpcp",
     "quality.beat_input",
-    "section.librosa_segment",
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
 )
 
 #: ``Identifier`` in models.py, which run_id and pipeline_id both use.
@@ -116,7 +110,6 @@ def build_intake_manifest(
     precision: str = DEFAULT_PRECISION,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     hop_length: int = DEFAULT_HOP_LENGTH,
-    segment_count: int = DEFAULT_SEGMENT_COUNT,
 ) -> dict[str, Any]:
     """Assemble the intake manifest for one source file.
 
@@ -127,11 +120,6 @@ def build_intake_manifest(
     whatever run directories it finds. One run is simply less to name.
     """
 
-    if not MIN_SEGMENT_COUNT <= segment_count <= MAX_SEGMENT_COUNT:
-        raise ValueError(
-            f"segment_count must be between {MIN_SEGMENT_COUNT} and "
-            f"{MAX_SEGMENT_COUNT}, got {segment_count}"
-        )
     return {
         "schema_version": "1.0.0",
         "pipeline_id": f"intake-{slug}"[:_IDENTIFIER_MAX_LENGTH].rstrip("-"),
@@ -196,15 +184,28 @@ def build_intake_manifest(
                 },
             },
             {
-                "stage_kind": "section.librosa_segment",
-                "implementation_version": SECTION_LIBROSA_IMPLEMENTATION_VERSION,
-                "model_identifier": "librosa_segment",
+                "stage_kind": STRUCTURAL_SEGMENTATION_STAGE_KIND,
+                "implementation_version": (
+                    STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION
+                ),
                 "max_attempts": 1,
                 "config": {
                     "source_relative_path": source_relative_path,
+                    "beat_result_relative_path": ".pending/beat-analysis-result.json",
+                    "beat_result_sha256": "0" * 64,
+                    "beat_quality_decision_relative_path": (
+                        ".pending/beat-input-quality-decision.json"
+                    ),
+                    "beat_quality_decision_sha256": "0" * 64,
                     "sample_rate": sample_rate,
-                    "hop_length": hop_length,
-                    "n_segments": segment_count,
+                    "fft_window": 2048,
+                    "hop_length": 512,
+                    "librosa_version": "0.10.2.post1",
+                    "numpy_version": "2.5.2",
+                    "scipy_version": "1.18.1",
+                    "scikit_learn_version": "1.9.0",
+                    "section_gate_version": "1.0.0-provisional",
+                    "section_calibration_id": None,
                 },
             },
         ],

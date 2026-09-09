@@ -85,6 +85,9 @@ export interface SectionSegment {
   start_seconds: number;
   end_seconds: number;
   label: string;
+  cluster_id?: number | null;
+  origin?: 'automatic' | 'fallback';
+  review_required?: boolean;
 }
 
 export interface SectionAnalysisJson {
@@ -97,8 +100,10 @@ export interface SectionAnalysisJson {
   settings: {
     sample_rate: number;
     hop_length: number;
-    feature: string;
-    n_segments: number;
+    feature?: string;
+    n_segments?: number;
+    candidate_m_min?: number;
+    candidate_m_max?: number;
   } | null;
   warnings: string[];
 }

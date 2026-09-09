@@ -56,6 +56,10 @@ from audio_library_poc.stage_dispatch import (
     build_stage_dispatcher,
     known_stage_kinds,
 )
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageExecutor,
+)
 
 INPUT_SHA256 = "a" * 64
 CODE_REVISION = "test-revision"
@@ -73,6 +77,7 @@ def test_known_stage_kinds_are_stable_and_sorted() -> None:
         HPCP_KEY_STAGE_KIND,
         BEAT_INPUT_QUALITY_STAGE_KIND,
         SECTION_LIBROSA_STAGE_KIND,
+        STRUCTURAL_SEGMENTATION_STAGE_KIND,
         BS_ROFORMER_STAGE_KIND,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     )
@@ -98,6 +103,17 @@ def test_dispatcher_returns_section_stage_for_section_kind(tmp_path: Path) -> No
         )
     )
     assert isinstance(executor, SectionLibrosaStageExecutor)
+
+
+def test_dispatcher_returns_structural_segmentation_stage(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=STRUCTURAL_SEGMENTATION_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, StructuralSegmentationStageExecutor)
 
 
 def test_dispatcher_returns_hpcp_key_stage_for_key_kind(tmp_path: Path) -> None:

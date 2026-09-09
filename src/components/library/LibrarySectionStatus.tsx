@@ -6,6 +6,9 @@ interface Props {
 
 export default function LibrarySectionStatus({ analysis }: Props) {
   if (!analysis?.review_required) return null;
+  const unstableStructure = analysis.fallback_reason_codes.some((code) =>
+    code.startsWith('section.'),
+  );
 
   return (
     <div
@@ -16,8 +19,11 @@ export default function LibrarySectionStatus({ analysis }: Props) {
         Seções automáticas não publicadas
       </p>
       <p className="mt-1 text-[11px] text-text-secondary">
-        A grade de pulsos não passou pela validação calibrada. A faixa foi
-        mantida como uma única seção neutra e editável para sua revisão.
+        {unstableStructure
+          ? 'A análise estrutural não permaneceu estável nas variações de teste.'
+          : 'A grade de pulsos não passou pela validação calibrada.'}{' '}
+        A faixa foi mantida como uma única seção neutra e editável para sua
+        revisão.
       </p>
     </div>
   );

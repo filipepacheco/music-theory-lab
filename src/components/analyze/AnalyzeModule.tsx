@@ -12,7 +12,6 @@ import {
 } from './intakeClient';
 
 const POLL_INTERVAL_MS = 2000;
-const DEFAULT_SEGMENT_COUNT = 7;
 
 export default function AnalyzeModule() {
   const [health, setHealth] = useState<IntakeHealth | null>(null);
@@ -23,7 +22,6 @@ export default function AnalyzeModule() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
-  const [segmentCount, setSegmentCount] = useState(DEFAULT_SEGMENT_COUNT);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
@@ -74,7 +72,7 @@ export default function AnalyzeModule() {
     setBusy(true);
     setError(null);
     try {
-      const job = await uploadTrack({ file, title, artist, segmentCount });
+      const job = await uploadTrack({ file, title, artist });
       setJobs((current) => [job, ...current]);
       setFile(null);
       setTitle('');
@@ -92,7 +90,9 @@ export default function AnalyzeModule() {
   return (
     <section className="section-panel flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-lg text-text-primary">Analisar faixa</h2>
+        <h2 className="font-heading text-lg text-text-primary">
+          Analisar faixa
+        </h2>
         <p className="text-xs text-text-muted">
           Envia um arquivo de áudio para o pipeline local (compassos, acordes,
           tom e trechos) e publica o resultado na Biblioteca. Roda na sua
@@ -105,7 +105,9 @@ export default function AnalyzeModule() {
       {!offline && health && !health.ok && (
         <p className="text-sm text-amber-400 rounded-button border border-amber-400/30 bg-amber-400/10 px-3 py-2">
           Checkpoints ausentes: {health.missing_checkpoints.join(', ')}. Rode{' '}
-          <code className="font-mono text-xs">scripts/fetch_checkpoints.py</code>{' '}
+          <code className="font-mono text-xs">
+            scripts/fetch_checkpoints.py
+          </code>{' '}
           antes de analisar.
         </p>
       )}
@@ -132,25 +134,18 @@ export default function AnalyzeModule() {
             />
           </label>
 
-          <Field label="Título" value={title} onChange={setTitle} disabled={blocked || busy} />
-          <Field label="Artista" value={artist} onChange={setArtist} disabled={blocked || busy} />
-
-          <label className="flex flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-text-muted">
-              Trechos a detectar
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={64}
-              value={segmentCount}
-              disabled={blocked || busy}
-              onChange={(event) =>
-                setSegmentCount(Number(event.target.value) || DEFAULT_SEGMENT_COUNT)
-              }
-              className="rounded-button border border-border-default bg-bg-card px-2 py-1.5 text-sm text-text-primary disabled:opacity-50"
-            />
-          </label>
+          <Field
+            label="Título"
+            value={title}
+            onChange={setTitle}
+            disabled={blocked || busy}
+          />
+          <Field
+            label="Artista"
+            value={artist}
+            onChange={setArtist}
+            disabled={blocked || busy}
+          />
 
           <button
             type="submit"
@@ -164,8 +159,8 @@ export default function AnalyzeModule() {
 
           {health?.ok && (
             <p className="text-[11px] text-text-muted">
-              Dispositivo: <span className="font-mono">{health.device}</span>. Uma
-              faixa por vez — há só uma GPU.
+              Dispositivo: <span className="font-mono">{health.device}</span>.
+              Uma faixa por vez — há só uma GPU.
             </p>
           )}
         </form>

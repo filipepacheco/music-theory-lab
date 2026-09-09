@@ -54,6 +54,10 @@ from audio_library_poc.key_analysis import KeyAnalysisResult
 from audio_library_poc.manifest import resolve_source_path
 from audio_library_poc.metadata import hash_file
 from audio_library_poc.section_analysis import SectionAnalysisResult
+from audio_library_poc.structural_segmentation import (
+    SectionDecision,
+    StructuralSegmentationResult,
+)
 from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
 
 _PITCH_CLASS_NAMES = (
@@ -83,6 +87,10 @@ _STAGE_TO_ARTIFACT = {
         "section-analysis-result.json",
         SectionAnalysisResult,
     ),
+    "section.mcfee_ellis_laplacian": (
+        "structural-segmentation-result.json",
+        StructuralSegmentationResult,
+    ),
 }
 
 # Chord + beat + key must all be present for a track to appear in the index;
@@ -101,6 +109,7 @@ class TrackAnalyses:
     beat_quality: BeatInputQualityDecision | None = None
     beat_quality_sha256: str | None = None
     section: SectionAnalysisResult | None = None
+    structural_segmentation: StructuralSegmentationResult | None = None
 
 
 def _version_key(value: Any) -> tuple[int, ...]:
@@ -191,6 +200,7 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
                 versioned["quality.beat_input"][2] if quality is not None else None
             ),
             section=per_stage.get("section.librosa_segment"),
+            structural_segmentation=per_stage.get("section.mcfee_ellis_laplacian"),
         )
     return complete
 
@@ -287,11 +297,7 @@ def build_index(
             "review_required": _section_origin(bundle) == "fallback",
             "detail_directory": f"tracks/{sha256[:12]}",
         }
-        entry["section_count"] = (
-            len(bundle.section.sections)
-            if _section_origin(bundle) == "automatic" and bundle.section is not None
-            else 1
-        )
+        entry["section_count"] = len(_section_export(bundle)["sections"])
         tracks.append(entry)
     return {
         "schema_version": "1.0.0",
@@ -370,6 +376,21 @@ def sync(
 
 def _section_origin(bundle: TrackAnalyses) -> str:
     quality = bundle.beat_quality
+    structural = bundle.structural_segmentation
+    if structural is not None:
+        if (
+            quality is not None
+            and quality.publication_allowed
+            and structural.beat_result_sha256
+            == quality.beat_result_identity.result_sha256
+            and structural.beat_quality_decision_sha256 == bundle.beat_quality_sha256
+        ):
+            return (
+                "automatic"
+                if structural.decision is SectionDecision.ACCEPTED
+                else "fallback"
+            )
+        return "fallback"
     section = bundle.section
     if (
         quality is not None
@@ -383,6 +404,27 @@ def _section_origin(bundle: TrackAnalyses) -> str:
 
 
 def _section_export(bundle: TrackAnalyses) -> dict[str, Any]:
+    structural = bundle.structural_segmentation
+    quality = bundle.beat_quality
+    if (
+        structural is not None
+        and quality is not None
+        and quality.publication_allowed
+        and structural.beat_result_sha256 == quality.beat_result_identity.result_sha256
+        and structural.beat_quality_decision_sha256 == bundle.beat_quality_sha256
+    ):
+        payload = structural.model_dump(mode="json")
+        payload.update(
+            {
+                "origin": _section_origin(bundle),
+                "review_required": structural.decision is SectionDecision.FALLBACK,
+                "fallback_reason_codes": [
+                    str(reason) for reason in structural.reason_codes
+                ],
+                "settings": structural.resolved_parameters.model_dump(mode="json"),
+            }
+        )
+        return payload
     if _section_origin(bundle) == "automatic":
         assert bundle.section is not None
         payload = bundle.section.model_dump(mode="json")
@@ -395,12 +437,12 @@ def _section_export(bundle: TrackAnalyses) -> dict[str, Any]:
         )
         return payload
 
-    quality = bundle.beat_quality
-    reasons = (
-        [str(reason) for reason in quality.fatal_reason_codes]
-        if quality is not None and quality.fatal_reason_codes
-        else ["beat.gate_uncalibrated"]
-    )
+    if quality is not None and quality.fatal_reason_codes:
+        reasons = [str(reason) for reason in quality.fatal_reason_codes]
+    elif quality is not None and quality.publication_allowed:
+        reasons = ["section.analysis_unavailable"]
+    else:
+        reasons = ["beat.gate_uncalibrated"]
     duration = bundle.chord.source.duration_seconds
     return {
         "schema_version": "1.0.0",

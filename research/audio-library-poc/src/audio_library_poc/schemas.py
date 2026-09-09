@@ -24,6 +24,7 @@ from audio_library_poc.models import (
 )
 from audio_library_poc.product_evaluation_report import ProductEvaluationReport
 from audio_library_poc.section_analysis import SectionAnalysisResult
+from audio_library_poc.structural_segmentation import StructuralSegmentationResult
 from audio_library_poc.separation import SeparationResult
 
 SchemaMode = Literal["validation", "serialization"]
@@ -42,6 +43,7 @@ SCHEMA_MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("chord-frame-evidence", ChordFrameEvidenceArtifact),
     ("key-analysis-result", KeyAnalysisResult),
     ("section-analysis-result", SectionAnalysisResult),
+    ("structural-segmentation-result", StructuralSegmentationResult),
     ("evaluation-manifest", EvaluationManifest),
     ("product-evaluation-report", ProductEvaluationReport),
 )

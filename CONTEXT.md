@@ -92,6 +92,20 @@ go through the `structureDocument` commands and persist in the section's JSON.
 The section preview renders a compact standard-style percussion chart.
 _Avoid_: beat, rhythm
 
+**Structural segmentation result**:
+The immutable offline evidence for a Library track's neutral chronological
+sections. It contains every `m = 2…10` hierarchy candidate from the baseline
+and all 36 perturbation runs, plus stability measurements and the accepted or
+fallback partition. It may seed a [[library-annotation-document]], but user
+edits never rewrite it.
+_Avoid_: annotation, verse/chorus detection, semantic sections
+
+**Library annotation document**:
+The locally persisted, editable section partition for one immutable source
+hash. A newly analyzed track can seed it from an accepted [[structural-segmentation-result]];
+once it exists, regenerating analysis never replaces its manual corrections.
+_Avoid_: analysis result, inferred structure
+
 **Drum piece**:
 One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`
 (hi-hat). The piece list is a constant, so new pieces are an addition rather

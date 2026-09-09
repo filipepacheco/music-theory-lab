@@ -41,4 +41,18 @@ describe('Library section quality status', () => {
       ),
     ).toBe('');
   });
+
+  it('explains abstention when structural boundaries are unstable', () => {
+    const unstable = {
+      ...fallbackAnalysis(),
+      fallback_reason_codes: ['section.boundary_unsupported'],
+    };
+
+    const markup = renderToStaticMarkup(
+      createElement(LibrarySectionStatus, { analysis: unstable }),
+    );
+
+    expect(markup).toContain('não permaneceu estável');
+    expect(markup).toContain('única seção neutra e editável');
+  });
 });

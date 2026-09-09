@@ -47,7 +47,6 @@ def prepare(workspace: Path, **overrides: object):
         "payload": PAYLOAD,
         "title": "Come Together",
         "artist": "The Beatles",
-        "segment_count": 7,
         "device": "cuda",
     }
     arguments.update(overrides)
@@ -92,7 +91,7 @@ class TestPrepareJob:
             "chord.chordmini_btc",
             "key.hpcp",
             "quality.beat_input",
-            "section.librosa_segment",
+            "section.mcfee_ellis_laplacian",
         ]
 
     def test_manifest_points_at_the_file_that_was_written(
@@ -136,12 +135,6 @@ class TestPrepareJob:
         with pytest.raises(IntakeError):
             prepare(workspace, filename="song.txt")
         assert not (workspace / "originals").exists()
-
-    def test_rejects_a_segment_count_outside_the_contract(
-        self, workspace: Path
-    ) -> None:
-        with pytest.raises(ValueError, match="segment_count"):
-            prepare(workspace, segment_count=99)
 
     def test_an_upload_cannot_escape_the_originals_directory(
         self, workspace: Path
