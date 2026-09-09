@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Protótipo descartável · Orçamento de áudio do baixo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        color: #edf0f6;
+        background: #0b0e13;
+        --panel: #151a23;
+        --line: #2d3543;
+        --muted: #9aa5b7;
+        --accent: #8ee6ff;
+        --accent-ink: #071218;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 40px 18px 72px;
+      }
+      main {
+        width: min(1040px, 100%);
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(30px, 5vw, 52px);
+        letter-spacing: -0.045em;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      p {
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      code {
+        color: #c5f2ff;
+      }
+      .eyebrow {
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 850;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      .intro {
+        max-width: 790px;
+        font-size: 17px;
+      }
+      .panel,
+      .notice {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+      .panel {
+        padding: 20px;
+      }
+      .notice {
+        margin: 24px 0;
+        padding: 14px 16px;
+        color: #dbe2ec;
+      }
+      .spaced {
+        margin-top: 18px;
+      }
+      .candidates {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .candidate {
+        min-height: 152px;
+        padding: 16px;
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #0f141c;
+        color: inherit;
+        cursor: pointer;
+      }
+      .candidate:hover {
+        border-color: #718094;
+      }
+      .candidate.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .candidate strong {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 16px;
+      }
+      .candidate span {
+        display: block;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .candidate .size {
+        margin-top: 9px;
+        color: var(--accent);
+        font-weight: 800;
+      }
+      .state {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      .field {
+        min-height: 72px;
+        padding: 12px;
+        border-radius: 10px;
+        background: #0d1118;
+      }
+      .field span {
+        display: block;
+        margin-bottom: 6px;
+        color: #748095;
+        font-size: 11px;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .field strong {
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+      .change {
+        margin: 12px 0 0;
+        color: #c5f2ff;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 12px;
+      }
+      button.action,
+      .step button,
+      .tab {
+        padding: 10px 13px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #212936;
+        color: #eef3f8;
+        font: inherit;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      button.action:hover,
+      .step button:hover,
+      .tab:hover {
+        border-color: #7c899e;
+      }
+      button.action.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0;
+      }
+      .tab[aria-selected='true'] {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .scenario {
+        display: none;
+      }
+      .scenario.active {
+        display: block;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: minmax(200px, 280px) 1fr;
+        gap: 12px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .step span {
+        color: var(--muted);
+      }
+      .step.done button {
+        border-color: #58a9bb;
+        color: var(--accent);
+      }
+      .verdicts {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .verdicts label {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: #dbe2ec;
+      }
+      footer {
+        margin-top: 26px;
+        color: #758195;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      footer a {
+        color: #a9e7f5;
+      }
+      @media (max-width: 760px) {
+        body {
+          padding-top: 24px;
+        }
+        .candidates {
+          grid-template-columns: 1fr;
+        }
+        .state {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 460px) {
+        .state {
+          grid-template-columns: 1fr;
+        }
+        .step {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">
+        Protótipo descartável · decisão de transferência
+      </div>
+      <h1>Qual pacote de áudio merece ir para produção?</h1>
+      <p class="intro">
+        Este teste compara qualidade audível, duração útil e transferência dos
+        40 arquivos Growlybass já decididos. A pergunta é qual candidato é o
+        menor que continua limpo no ataque, no grave, na dinâmica e na cauda.
+      </p>
+      <div class="notice">
+        <strong>Regra comum aos três:</strong> mono a 44,1 kHz, ataque intacto,
+        fade apenas no fim do arquivo e níveis relativos originais preservados.
+        Não há normalização por arquivo, porque isso apagaria a diferença entre
+        <code>pp</code>, <code>p</code>, <code>f</code> e <code>ff</code>.
+      </div>
+
+      <section class="panel">
+        <h2>1. Selecione um pacote</h2>
+        <p>Os totais abaixo foram medidos após codificar todos os 40 assets.</p>
+        <div id="candidates" class="candidates"></div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>Estado completo</h2>
+        <div id="state" class="state"></div>
+        <p id="change" class="change" aria-live="polite"></p>
+      </section>
+
+      <section class="panel spaced">
+        <h2>2. Audição livre</h2>
+        <p>
+          Repita os mesmos botões em A, B e C. A cauda completa expõe
+          diretamente o corte escolhido.
+        </p>
+        <div class="actions">
+          <button class="action primary" data-test="tap">
+            Toque curto · E1 p
+          </button>
+          <button class="action" data-test="strong">
+            Ataque forte · A1 ff
+          </button>
+          <button class="action" data-test="dynamic">
+            Quatro intensidades · E1
+          </button>
+          <button class="action" data-test="tail">Cauda completa · E1 p</button>
+        </div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>3. Roteiros guiados</h2>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" data-tab="attack" aria-selected="true">
+            Ataque e grave
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            data-tab="layers"
+            aria-selected="false"
+          >
+            Camadas
+          </button>
+          <button class="tab" role="tab" data-tab="tail" aria-selected="false">
+            Cauda
+          </button>
+        </div>
+        <div id="attack" class="scenario active"></div>
+        <div id="layers" class="scenario"></div>
+        <div id="tail" class="scenario"></div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>4. Seu veredito</h2>
+        <p>
+          Escolha o menor pacote que você aceitaria ouvir repetidamente no
+          braço.
+        </p>
+        <div class="verdicts">
+          <label
+            ><input type="radio" name="verdict" value="A" />
+            <span
+              ><strong>A basta.</strong> O menor pacote preserva qualidade e
+              cauda suficientes.</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="verdict" value="B" />
+            <span
+              ><strong>B é o mínimo.</strong> O MP3 mais folgado e a cauda de 3
+              s valem o custo.</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="verdict" value="C" />
+            <span
+              ><strong>C é o mínimo.</strong> O MP3 de 128 kbps e a cauda de 4 s
+              justificam o peso.</span
+            ></label
+          >
+        </div>
+      </section>
+
+      <footer>
+        Derivados reproduzíveis de Growlybass por Karoryfer Lecolds (2014), CC0
+        1.0, fonte fixada em
+        <a
+          href="https://github.com/sfzinstruments/karoryfer.growlybass/tree/4f483268fc66b5a6d5781d421c0d11b8d08d3fc6"
+          >4f48326</a
+        >. O HTML final incorpora somente os arquivos representativos da
+        audição; os totais vêm da matriz completa de dez anchors × quatro
+        camadas.
+      </footer>
+    </main>
+
+    <script>
+      const PROTOTYPE_DATA = __PROTOTYPE_DATA__;
+
+      // Módulo portátil de decisão: não conhece DOM, áudio ou persistência.
+      const BudgetModel = (() => {
+        const initial = () => ({ candidate: 'A', verdict: 'não escolhido' });
+        const select = (state, candidate) => ({ ...state, candidate });
+        const choose = (state, verdict) => ({ ...state, verdict });
+        const describe = (state, data) =>
+          data.manifest.candidates[state.candidate];
+        return { initial, select, choose, describe };
+      })();
+
+      let model = BudgetModel.initial();
+      let audio;
+      let lastTest = '—';
+      let lastFile = '—';
+      let lastChange =
+        'Selecione um teste. O áudio representativo já está incorporado nesta página.';
+      const decoded = new Map();
+
+      const formatBytes = (bytes) =>
+        bytes >= 1_000_000
+          ? `${(bytes / 1_000_000).toFixed(2)} MB`
+          : `${Math.round(bytes / 1_000)} kB`;
+
+      function context() {
+        audio ??= new AudioContext();
+        if (audio.state === 'suspended') audio.resume();
+        return audio;
+      }
+
+      function supportFor(candidate) {
+        const probe = document.createElement('audio');
+        return probe.canPlayType(candidate.mime) || 'não informado';
+      }
+
+      function renderCandidates() {
+        document.querySelector('#candidates').innerHTML = Object.entries(
+          PROTOTYPE_DATA.manifest.candidates,
+        )
+          .map(
+            ([
+              key,
+              candidate,
+            ]) => `<button class="candidate ${model.candidate === key ? 'active' : ''}" data-candidate="${key}">
+            <strong>${key} · ${candidate.name}</strong>
+            <span>${candidate.codec} · ${candidate.bitrate} kbps · ${candidate.seconds.toFixed(2)} s</span>
+            <span>fade final ${Math.round(candidate.fade * 1000)} ms · 40 arquivos</span>
+            <span class="size">${formatBytes(candidate.totalBytes)} no pacote</span>
+          </button>`,
+          )
+          .join('');
+      }
+
+      function render() {
+        const candidate = BudgetModel.describe(model, PROTOTYPE_DATA);
+        renderCandidates();
+        const fields = [
+          ['Pacote', `${model.candidate} · ${candidate.name}`],
+          ['Formato', `${candidate.codec} · ${candidate.bitrate} kbps`],
+          ['Duração', `${candidate.seconds.toFixed(2)} s`],
+          ['Compatibilidade aqui', supportFor(candidate)],
+          ['Transferência total', formatBytes(candidate.totalBytes)],
+          ['Média por arquivo', formatBytes(candidate.averageBytes)],
+          ['Último teste', lastTest],
+          ['Último arquivo', lastFile],
+          ['Veredito', model.verdict],
+        ];
+        document.querySelector('#state').innerHTML = fields
+          .map(
+            ([label, value]) =>
+              `<div class="field"><span>${label}</span><strong>${value}</strong></div>`,
+          )
+          .join('');
+        document.querySelector('#change').textContent = lastChange;
+      }
+
+      async function getBuffer(candidate, name) {
+        const key = `${candidate}:${name}`;
+        if (decoded.has(key)) return decoded.get(key);
+        const item = PROTOTYPE_DATA.audio[candidate][name];
+        const binary = atob(item.base64);
+        const bytes = Uint8Array.from(binary, (character) =>
+          character.charCodeAt(0),
+        );
+        const buffer = await context().decodeAudioData(bytes.buffer);
+        decoded.set(key, buffer);
+        return buffer;
+      }
+
+      async function play(events, label, fullTail = false) {
+        const candidate = model.candidate;
+        document.querySelectorAll('button').forEach((button) => {
+          button.disabled = true;
+        });
+        try {
+          const prepared = await Promise.all(
+            events.map(async (event) => ({
+              ...event,
+              buffer: await getBuffer(candidate, event.name),
+            })),
+          );
+          const origin = context().currentTime + 0.05;
+          prepared.forEach((event) => {
+            const source = context().createBufferSource();
+            const gain = context().createGain();
+            const start = origin + event.delay;
+            let stopAt = null;
+            source.buffer = event.buffer;
+            gain.gain.setValueAtTime(0.48, start);
+            if (!fullTail) {
+              const hold = event.hold ?? 0.34;
+              gain.gain.setValueAtTime(0.48, start + hold);
+              gain.gain.exponentialRampToValueAtTime(0.001, start + hold + 0.5);
+              stopAt = start + hold + 0.52;
+            }
+            source.connect(gain).connect(context().destination);
+            source.start(start);
+            if (stopAt) source.stop(stopAt);
+          });
+          lastTest = label;
+          lastFile = events.at(-1).name;
+          lastChange = `${label} reproduzido pelo pacote ${candidate}.`;
+        } catch (error) {
+          lastChange = `Este navegador não decodificou o pacote ${candidate}: ${String(error)}.`;
+        } finally {
+          document.querySelectorAll('button').forEach((button) => {
+            button.disabled = false;
+          });
+          render();
+        }
+      }
+
+      const tests = {
+        tap: () =>
+          play(
+            [{ name: 'e2_p_rr1', delay: 0, hold: 0.34 }],
+            'Toque curto · E1 p',
+          ),
+        strong: () =>
+          play(
+            [{ name: 'a2_ff_rr1', delay: 0, hold: 0.38 }],
+            'Ataque forte · A1 ff',
+          ),
+        dynamic: () =>
+          play(
+            [
+              { name: 'e2_pp_rr1', delay: 0.0 },
+              { name: 'e2_p_rr1', delay: 0.62 },
+              { name: 'e2_f_rr1', delay: 1.24 },
+              { name: 'e2_ff_rr1', delay: 1.86 },
+            ],
+            'Quatro intensidades · E1',
+          ),
+        tail: () =>
+          play([{ name: 'e2_p_rr1', delay: 0 }], 'Cauda completa · E1 p', true),
+      };
+
+      const scenarios = {
+        attack: {
+          text: 'Procure granulação, perda de corpo e sujeira no transiente grave.',
+          action: 'strong',
+          label: 'Ataque forte em A1',
+        },
+        layers: {
+          text: 'As quatro gravações devem continuar claramente ordenadas em intensidade.',
+          action: 'dynamic',
+          label: 'Escada pp → ff em E1',
+        },
+        tail: {
+          text: 'A termina em 2,25 s, B em 3 s e C em 4 s. Julgue onde a cauda deixa de ganhar valor.',
+          action: 'tail',
+          label: 'Cauda completa em E1',
+        },
+      };
+
+      function buildScenarios() {
+        Object.entries(scenarios).forEach(([id, scenario]) => {
+          document.querySelector(`#${id}`).innerHTML =
+            `<p>${scenario.text}</p>${['A', 'B', 'C']
+              .map(
+                (candidate, index) =>
+                  `<div class="step"><button data-step="${id}-${index}" data-scenario-candidate="${candidate}" data-scenario-action="${scenario.action}">${index + 1}. ${scenario.label} · ${candidate}</button><span>Pacote ${candidate}</span></div>`,
+              )
+              .join('')}`;
+        });
+      }
+
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.candidate) {
+          model = BudgetModel.select(model, button.dataset.candidate);
+          lastChange = `Pacote ${model.candidate} selecionado.`;
+          render();
+        }
+        if (button.dataset.test) await tests[button.dataset.test]();
+        if (button.dataset.scenarioCandidate) {
+          model = BudgetModel.select(model, button.dataset.scenarioCandidate);
+          await tests[button.dataset.scenarioAction]();
+          button.closest('.step').classList.add('done');
+        }
+        if (button.dataset.tab) {
+          document
+            .querySelectorAll('.tab')
+            .forEach((tab) =>
+              tab.setAttribute('aria-selected', String(tab === button)),
+            );
+          document
+            .querySelectorAll('.scenario')
+            .forEach((panel) =>
+              panel.classList.toggle('active', panel.id === button.dataset.tab),
+            );
+          document
+            .querySelectorAll('.step')
+            .forEach((step) => step.classList.remove('done'));
+          model = BudgetModel.initial();
+          lastTest = '—';
+          lastFile = '—';
+          lastChange = `Roteiro “${button.textContent}” reiniciado em A.`;
+          render();
+        }
+      });
+
+      document.addEventListener('change', (event) => {
+        if (event.target.name !== 'verdict') return;
+        model = BudgetModel.choose(model, event.target.value);
+        lastChange = `Veredito ${event.target.value} marcado somente nesta página.`;
+        render();
+      });
+
+      buildScenarios();
+      render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "source": {
+    "name": "Karoryfer Growlybass",
+    "pin": "4f483268fc66b5a6d5781d421c0d11b8d08d3fc6",
+    "files": 40,
+    "policy": "Preservar níveis relativos; sem normalização por arquivo."
+  },
+  "candidates": {
+    "A": {
+      "name": "Enxuto universal",
+      "codec": "MP3",
+      "mime": "audio/mpeg",
+      "extension": "mp3",
+      "bitrate": 64,
+      "seconds": 2.25,
+      "fade": 0.15,
+      "files": 40,
+      "totalBytes": 743920,
+      "averageBytes": 18598,
+      "minimumBytes": 18598,
+      "maximumBytes": 18598
+    },
+    "B": {
+      "name": "Equilíbrio universal",
+      "codec": "MP3",
+      "mime": "audio/mpeg",
+      "extension": "mp3",
+      "bitrate": 96,
+      "seconds": 3.0,
+      "fade": 0.15,
+      "files": 40,
+      "totalBytes": 1467000,
+      "averageBytes": 36675,
+      "minimumBytes": 36675,
+      "maximumBytes": 36675
+    },
+    "C": {
+      "name": "Conservador universal",
+      "codec": "MP3",
+      "mime": "audio/mpeg",
+      "extension": "mp3",
+      "bitrate": 128,
+      "seconds": 4.0,
+      "fade": 0.2,
+      "files": 40,
+      "totalBytes": 2608000,
+      "averageBytes": 65200,
+      "minimumBytes": 65200,
+      "maximumBytes": 65200
+    }
+  }
+}
