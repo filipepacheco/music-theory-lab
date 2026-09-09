@@ -25,6 +25,14 @@ export function validateLibraryAnnotation(
   const errors: string[] = [];
   let expectedStart = 0;
   for (const section of document.sections) {
+    if (
+      !Number.isInteger(section.startBar) ||
+      !Number.isInteger(section.endBar)
+    ) {
+      errors.push(
+        'Os limites das seções precisam ser índices inteiros de compassos.',
+      );
+    }
     if (section.startBar !== expectedStart) {
       errors.push(
         'As seções precisam cobrir a faixa sem lacunas nem sobreposições.',
@@ -99,8 +107,16 @@ export function createLibraryAnnotation(
   barCount: number,
   acceptedBoundaryBars: number[],
 ): LibraryAnnotationDocument {
+  if (!Number.isInteger(barCount) || barCount < 1) {
+    throw new RangeError(
+      'Uma faixa anotável precisa conter ao menos um compasso.',
+    );
+  }
   const accepted = [...new Set(acceptedBoundaryBars)]
-    .filter((boundary) => boundary > 0 && boundary < barCount)
+    .filter(
+      (boundary) =>
+        Number.isInteger(boundary) && boundary > 0 && boundary < barCount,
+    )
     .sort((left, right) => left - right);
   const boundaries = [0, ...accepted, barCount];
 
