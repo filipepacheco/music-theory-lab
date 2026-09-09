@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Protótipo descartável · Audição Growlybass corrigida</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        background: #0f1219;
+        color: #e8eaf0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 20px 64px;
+      }
+      main {
+        width: min(1040px, 100%);
+        margin: 0 auto;
+      }
+      h1,
+      h2,
+      h3,
+      button,
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(24px, 4vw, 40px);
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 17px;
+      }
+      p {
+        color: #9ca3b4;
+        line-height: 1.55;
+      }
+      a {
+        color: #8ea2ff;
+      }
+      .notice,
+      .panel {
+        border: 1px solid #2d3548;
+        border-radius: 14px;
+        background: #161b28;
+        padding: 18px;
+      }
+      .notice {
+        border-color: #8c6d27;
+        background: #2b2516;
+        margin: 22px 0;
+      }
+      .notice strong {
+        color: #f4ce72;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .state {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .field {
+        padding: 10px;
+        border-radius: 9px;
+        background: #1e2433;
+        border: 1px solid #2d3548;
+        min-width: 0;
+      }
+      .field span {
+        display: block;
+        color: #7b8294;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .field strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
+      button {
+        border: 1px solid #3a435a;
+        background: #252b3b;
+        color: #e8eaf0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #303950;
+        border-color: #6079ef;
+      }
+      button:disabled {
+        cursor: wait;
+        opacity: 0.55;
+      }
+      .primary {
+        background: #4f6ef7;
+        border-color: #7189f8;
+      }
+      .danger {
+        border-color: #a85858;
+        color: #ffc0c0;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .fretboard {
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+      .string {
+        display: grid;
+        grid-template-columns: 42px repeat(13, minmax(48px, 1fr));
+        min-width: 720px;
+        align-items: center;
+      }
+      .string-label {
+        color: #9ca3b4;
+        font-family: ui-monospace, monospace;
+        text-align: center;
+      }
+      .fret {
+        min-height: 52px;
+        border-radius: 0;
+        border-color: #42495c;
+        padding: 5px;
+        font-size: 11px;
+      }
+      .fret small {
+        display: block;
+        color: #7b8294;
+        font-size: 9px;
+        margin-top: 3px;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+      .tab[aria-selected='true'] {
+        background: #4f6ef7;
+        border-color: #7189f8;
+      }
+      .scenario {
+        display: none;
+      }
+      .scenario.active {
+        display: block;
+      }
+      .step {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 0;
+        border-top: 1px solid #2d3548;
+      }
+      .step.done {
+        opacity: 0.48;
+      }
+      .step button {
+        min-width: 170px;
+      }
+      .checks {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      label {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: #c6cad5;
+      }
+      .sample-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid #2d3548;
+        padding: 8px;
+      }
+      th {
+        color: #7b8294;
+        font-size: 10px;
+        text-transform: uppercase;
+      }
+      .ok {
+        color: #75e0ad;
+      }
+      .warn {
+        color: #f4ce72;
+      }
+      .error {
+        color: #ff9696;
+      }
+      .spaced {
+        margin-top: 14px;
+      }
+      footer {
+        margin-top: 28px;
+        font-size: 12px;
+        color: #7b8294;
+      }
+      @media (max-width: 760px) {
+        body {
+          padding: 20px 12px 48px;
+        }
+        .two,
+        .state {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 460px) {
+        .two,
+        .state {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Audição Growlybass corrigida</h1>
+      <p>
+        Este protótipo separa a qualidade da biblioteca da reprodução. Ele usa
+        uma camada suave do patch <code>growlybass_clean.sfz</code>, preserva o
+        ataque inteiro e aplica a nota curta com release natural usada como
+        referência no braço do muted.io.
+      </p>
+      <div class="notice">
+        <strong>Correção aplicada.</strong> A versão anterior cortava os
+        primeiros 40 ms e diminuía o volume desde o primeiro instante. Isso
+        destruía o ataque e o corpo do baixo. Nada é salvo nesta página.
+      </div>
+
+      <section class="panel">
+        <h2>Estado completo da audição</h2>
+        <div id="state" class="state"></div>
+        <p id="change" class="spaced" aria-live="polite"></p>
+      </section>
+
+      <div class="grid two spaced">
+        <section class="panel">
+          <h2>Comparação decisiva de reprodução</h2>
+          <p>
+            Primeiro você ouve a reprodução corrigida. Depois da pausa, o mesmo
+            sample toca com o corte e o fade defeituosos do protótipo anterior.
+          </p>
+          <div class="actions">
+            <button class="primary" data-compare="28">Comparar E1</button>
+            <button class="primary" data-compare="33">Comparar A1</button>
+            <button data-riff>Ouvir riff E1–E2</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Seu veredito</h2>
+          <div class="checks">
+            <label
+              ><input type="radio" name="mapping" value="correto" /> A oitava
+              correta é a primeira</label
+            >
+            <label
+              ><input type="radio" name="mapping" value="incorreto" /> O
+              mapeamento ainda parece incorreto</label
+            >
+            <label
+              ><input type="radio" name="timbre" value="adequado" /> Agora o
+              timbre está adequado</label
+            >
+            <label
+              ><input type="radio" name="timbre" value="caracteristico" /> O
+              Growlybass é bom, mas esta reprodução ainda está errada</label
+            >
+            <label
+              ><input type="radio" name="timbre" value="rejeitado" /> Rejeitar
+              este timbre</label
+            >
+          </div>
+        </section>
+      </div>
+
+      <section class="panel spaced">
+        <h2>Toque livre · braço EADG até a casa 12</h2>
+        <p>
+          Cada botão mostra nota e casa. O estado revela o sample-base e o
+          deslocamento. As notas usam ataque intacto, sustentação curta e
+          release de 500 ms.
+        </p>
+        <div id="fretboard" class="fretboard"></div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>Roteiros guiados</h2>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" data-tab="open" aria-selected="true">
+            Cordas soltas
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            data-tab="octaves"
+            aria-selected="false"
+          >
+            Oitavas
+          </button>
+          <button class="tab" role="tab" data-tab="edges" aria-selected="false">
+            Extremos e deslocamento
+          </button>
+        </div>
+        <div id="open" class="scenario active"></div>
+        <div id="octaves" class="scenario"></div>
+        <div id="edges" class="scenario"></div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>Verificação objetiva dos arquivos</h2>
+        <p>
+          A página mede a autocorrelação perto da frequência esperada. Isso
+          acusa arquivo trocado ou erro grosseiro de oitava; o julgamento do
+          timbre continua humano.
+        </p>
+        <table class="sample-table">
+          <thead>
+            <tr>
+              <th>Arquivo</th>
+              <th>Registro</th>
+              <th>Esperado</th>
+              <th>Medido</th>
+              <th>Desvio</th>
+            </tr>
+          </thead>
+          <tbody id="samples"></tbody>
+        </table>
+      </section>
+
+      <footer>
+        Growlybass por Karoryfer Lecolds (2014), dedicado ao domínio público sob
+        CC0 1.0. Reprodução baseada no patch <code>growlybass_clean.sfz</code>;
+        envelope curto inspirado no comportamento do
+        <a href="https://muted.io/bass-fretboard/">braço do muted.io</a>. Fonte
+        fixada em
+        <a
+          href="https://github.com/sfzinstruments/karoryfer.growlybass/tree/4f483268fc66b5a6d5781d421c0d11b8d08d3fc6"
+          >4f48326</a
+        >.
+      </footer>
+    </main>
+
+    <script>
+      // Portable decision module: no DOM access, no persistence.
+      const GrowlybassMapping = (() => {
+        const pin = '4f483268fc66b5a6d5781d421c0d11b8d08d3fc6';
+        const sourceRoot = `https://raw.githubusercontent.com/sfzinstruments/karoryfer.growlybass/${pin}/sustain/`;
+        const anchors = [
+          ['e2', 28],
+          ['gb2', 30],
+          ['a2', 33],
+          ['c3', 36],
+          ['eb3', 39],
+          ['gb3', 42],
+          ['a3', 45],
+          ['c4', 48],
+          ['eb4', 51],
+          ['gb4', 54],
+        ].map(([written, soundingMidi]) => ({
+          written,
+          soundingMidi,
+          url: `${sourceRoot}${written}_p_rr1.wav`,
+        }));
+
+        const noteName = (midi) => {
+          const names = [
+            'C',
+            'C♯',
+            'D',
+            'E♭',
+            'E',
+            'F',
+            'F♯',
+            'G',
+            'A♭',
+            'A',
+            'B♭',
+            'B',
+          ];
+          return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
+        };
+        const frequency = (midi) => 440 * 2 ** ((midi - 69) / 12);
+        const nearest = (requestedMidi, wrongOctave = false) => {
+          const keyed = anchors.map((anchor) => ({
+            ...anchor,
+            registeredMidi: anchor.soundingMidi + (wrongOctave ? 12 : 0),
+          }));
+          return keyed.reduce((best, anchor) =>
+            Math.abs(anchor.registeredMidi - requestedMidi) <
+            Math.abs(best.registeredMidi - requestedMidi)
+              ? anchor
+              : best,
+          );
+        };
+        const plan = (requestedMidi, wrongOctave = false) => {
+          const anchor = nearest(requestedMidi, wrongOctave);
+          const semitones = requestedMidi - anchor.registeredMidi;
+          return {
+            requestedMidi,
+            requestedName: noteName(requestedMidi),
+            anchor,
+            semitones,
+            playbackRate: 2 ** (semitones / 12),
+            wrongOctave,
+          };
+        };
+        return { anchors, noteName, frequency, plan };
+      })();
+
+      const state = {
+        load: 'carregando 0/10',
+        mapping: 'escrito − 1 oitava = som real',
+        playback: 'ataque inteiro · release 500 ms',
+        lastRequested: '—',
+        lastAnchor: '—',
+        lastShift: '—',
+        mappingVerdict: 'não avaliado',
+        timbreVerdict: 'não avaliado',
+        browser: navigator.userAgent,
+        lastChange: 'Aguardando os samples.',
+      };
+      const buffers = new Map();
+      let context;
+
+      function audioContext() {
+        context ??= new AudioContext();
+        if (context.state === 'suspended') context.resume();
+        return context;
+      }
+
+      function renderState() {
+        const fields = [
+          ['Samples', state.load],
+          ['Mapeamento', state.mapping],
+          ['Reprodução', state.playback],
+          ['Última nota', state.lastRequested],
+          ['Sample-base', state.lastAnchor],
+          ['Deslocamento', state.lastShift],
+          ['Oitava', state.mappingVerdict],
+          ['Timbre', state.timbreVerdict],
+          ['Navegador', state.browser],
+        ];
+        document.querySelector('#state').innerHTML = fields
+          .map(
+            ([label, value]) =>
+              `<div class="field"><span>${label}</span><strong>${value}</strong></div>`,
+          )
+          .join('');
+        document.querySelector('#change').textContent = state.lastChange;
+      }
+
+      async function loadSamples() {
+        const rows = document.querySelector('#samples');
+        rows.innerHTML = GrowlybassMapping.anchors
+          .map(
+            (anchor) =>
+              `<tr id="row-${anchor.written}"><td>${anchor.written}_p_rr1.wav</td><td>${GrowlybassMapping.noteName(anchor.soundingMidi)}</td><td>${GrowlybassMapping.frequency(anchor.soundingMidi).toFixed(2)} Hz</td><td>carregando…</td><td>—</td></tr>`,
+          )
+          .join('');
+        let loaded = 0;
+        await Promise.all(
+          GrowlybassMapping.anchors.map(async (anchor) => {
+            const row = document.querySelector(`#row-${anchor.written}`);
+            try {
+              const response = await fetch(anchor.url);
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              const buffer = await audioContext().decodeAudioData(
+                await response.arrayBuffer(),
+              );
+              buffers.set(anchor.written, buffer);
+              const measured = estimateNear(
+                buffer,
+                GrowlybassMapping.frequency(anchor.soundingMidi),
+              );
+              const cents =
+                1200 *
+                Math.log2(
+                  measured.frequency /
+                    GrowlybassMapping.frequency(anchor.soundingMidi),
+                );
+              const status =
+                Math.abs(cents) <= 35 && measured.confidence >= 0.65
+                  ? 'ok'
+                  : 'warn';
+              row.innerHTML = `<td>${anchor.written}_p_rr1.wav</td><td>${GrowlybassMapping.noteName(anchor.soundingMidi)}</td><td>${GrowlybassMapping.frequency(anchor.soundingMidi).toFixed(2)} Hz</td><td>${measured.frequency.toFixed(2)} Hz</td><td class="${status}">${cents >= 0 ? '+' : ''}${cents.toFixed(1)} cents · ${(measured.confidence * 100).toFixed(0)}%</td>`;
+            } catch (error) {
+              row.lastElementChild.textContent = String(error);
+              row.lastElementChild.className = 'error';
+            } finally {
+              loaded += 1;
+              state.load = `${buffers.size}/10 prontos`;
+              state.lastChange = `Carregamento verificado: ${loaded}/10 arquivos processados.`;
+              renderState();
+              document
+                .querySelectorAll(
+                  'button[data-midi], button[data-compare], button[data-riff]',
+                )
+                .forEach((button) => {
+                  button.disabled = buffers.size === 0;
+                });
+            }
+          }),
+        );
+        state.lastChange =
+          buffers.size === 10
+            ? 'Todos os samples estão prontos. Comece pela comparação de reprodução.'
+            : `Somente ${buffers.size}/10 samples carregaram; verifique a conexão.`;
+        renderState();
+      }
+
+      function estimateNear(buffer, expectedHz) {
+        const source = buffer.getChannelData(0);
+        const stride = 4;
+        const rate = buffer.sampleRate / stride;
+        const start = Math.min(
+          source.length - 1,
+          Math.floor(buffer.sampleRate * 0.28),
+        );
+        const values = [];
+        for (
+          let i = start;
+          i < Math.min(source.length, start + 32768);
+          i += stride
+        )
+          values.push(source[i]);
+        const mean =
+          values.reduce((sum, value) => sum + value, 0) / values.length;
+        for (let i = 0; i < values.length; i += 1) values[i] -= mean;
+        const expectedLag = rate / expectedHz;
+        const minLag = Math.floor(expectedLag * 0.78);
+        const maxLag = Math.ceil(expectedLag * 1.22);
+        let bestLag = minLag;
+        let best = -1;
+        for (let lag = minLag; lag <= maxLag; lag += 1) {
+          let cross = 0,
+            left = 0,
+            right = 0;
+          for (let i = 0; i < values.length - lag; i += 1) {
+            cross += values[i] * values[i + lag];
+            left += values[i] * values[i];
+            right += values[i + lag] * values[i + lag];
+          }
+          const score = cross / Math.sqrt(left * right || 1);
+          if (score > best) {
+            best = score;
+            bestLag = lag;
+          }
+        }
+        return { frequency: rate / bestLag, confidence: Math.max(0, best) };
+      }
+
+      function play(midi, legacy = false, when = 0, duration = 0.5) {
+        const plan = GrowlybassMapping.plan(midi, false);
+        const buffer = buffers.get(plan.anchor.written);
+        if (!buffer) return;
+        const audio = audioContext();
+        const source = audio.createBufferSource();
+        const gain = audio.createGain();
+        source.buffer = buffer;
+        source.playbackRate.value = plan.playbackRate;
+        const startedAt = audio.currentTime + when;
+        if (legacy) {
+          gain.gain.setValueAtTime(0.7, startedAt);
+          gain.gain.exponentialRampToValueAtTime(0.001, startedAt + duration);
+        } else {
+          gain.gain.setValueAtTime(0.48, startedAt);
+          gain.gain.setValueAtTime(0.48, startedAt + duration);
+          gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            startedAt + duration + 0.5,
+          );
+        }
+        source.connect(gain).connect(audio.destination);
+        source.start(
+          startedAt,
+          legacy ? 0.04 : 0,
+          Math.min(duration + (legacy ? 0.15 : 0.55), buffer.duration),
+        );
+        state.lastRequested = `${plan.requestedName}${legacy ? ' · reprodução antiga' : ''}`;
+        state.lastAnchor = `${plan.anchor.written}.wav = ${GrowlybassMapping.noteName(plan.anchor.soundingMidi)}`;
+        state.lastShift = `${plan.semitones >= 0 ? '+' : ''}${plan.semitones} semitons`;
+        state.playback = legacy
+          ? 'BUG: corte 40 ms · fade imediato'
+          : 'ataque inteiro · release 500 ms';
+        state.lastChange = legacy
+          ? `${plan.requestedName} com a reprodução defeituosa anterior.`
+          : `${plan.requestedName} com ataque e release corrigidos.`;
+        renderState();
+      }
+
+      function compare(midi) {
+        play(midi, false, 0, 0.65);
+        play(midi, true, 1.65, 0.65);
+        state.lastChange = `${GrowlybassMapping.noteName(midi)}: primeiro corrigido; após a pausa, reprodução anterior defeituosa.`;
+        renderState();
+      }
+
+      function riff() {
+        [28, 31, 33, 36, 38, 40].forEach((midi, index) =>
+          play(midi, false, index * 0.42, 0.32),
+        );
+        state.lastChange = 'Riff E1–E2 tocado com a reprodução corrigida.';
+        renderState();
+      }
+
+      function buildFretboard() {
+        const strings = [
+          ['G', 43],
+          ['D', 38],
+          ['A', 33],
+          ['E', 28],
+        ];
+        document.querySelector('#fretboard').innerHTML = strings
+          .map(
+            ([label, open]) =>
+              `<div class="string"><div class="string-label">${label}</div>${Array.from(
+                { length: 13 },
+                (_, fret) => {
+                  const midi = open + fret;
+                  return `<button class="fret" data-midi="${midi}">${GrowlybassMapping.noteName(midi)}<small>casa ${fret}</small></button>`;
+                },
+              ).join('')}</div>`,
+          )
+          .join('');
+      }
+
+      const scenarios = {
+        open: {
+          text: 'Confirme que as quatro cordas sobem E1 → A1 → D2 → G2, sem salto inesperado de registro.',
+          steps: [
+            ['Ouvir E1', 28],
+            ['Ouvir A1', 33],
+            ['Ouvir D2', 38],
+            ['Ouvir G2', 43],
+          ],
+        },
+        octaves: {
+          text: 'Cada segunda nota deve soar exatamente uma oitava acima da primeira.',
+          steps: [
+            ['E1', 28],
+            ['E2', 40],
+            ['A1', 33],
+            ['A2', 45],
+            ['D2', 38],
+            ['D3', 50],
+          ],
+        },
+        edges: {
+          text: 'Teste o grave, o agudo e notas entre anchors; o deslocamento deve ficar em até dois semitons.',
+          steps: [
+            ['Extremo E1', 28],
+            ['Entre anchors G1', 31],
+            ['Entre anchors B1', 35],
+            ['Extremo G3', 55],
+          ],
+        },
+      };
+
+      function buildScenarios() {
+        Object.entries(scenarios).forEach(([id, scenario]) => {
+          document.querySelector(`#${id}`).innerHTML =
+            `<p>${scenario.text}</p>${scenario.steps
+              .map(
+                ([label, midi], index) =>
+                  `<div class="step"><button data-step="${id}-${index}" data-midi="${midi}">${index + 1}. ${label}</button><span>${GrowlybassMapping.noteName(midi)}</span></div>`,
+              )
+              .join('')}`;
+        });
+      }
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.midi) {
+          play(Number(button.dataset.midi));
+          if (button.dataset.step)
+            button.closest('.step').classList.add('done');
+        }
+        if (button.dataset.compare) compare(Number(button.dataset.compare));
+        if (button.hasAttribute('data-riff')) riff();
+        if (button.dataset.tab) {
+          document
+            .querySelectorAll('.tab')
+            .forEach((tab) =>
+              tab.setAttribute('aria-selected', String(tab === button)),
+            );
+          document
+            .querySelectorAll('.scenario')
+            .forEach((panel) =>
+              panel.classList.toggle('active', panel.id === button.dataset.tab),
+            );
+          document
+            .querySelectorAll('.step')
+            .forEach((step) => step.classList.remove('done'));
+          state.lastChange = `Roteiro “${button.textContent}” reiniciado.`;
+          renderState();
+        }
+      });
+
+      document.addEventListener('change', (event) => {
+        if (event.target.name === 'mapping')
+          state.mappingVerdict = event.target.value;
+        if (event.target.name === 'timbre')
+          state.timbreVerdict = event.target.value;
+        state.lastChange = 'Veredito humano atualizado somente nesta página.';
+        renderState();
+      });
+
+      buildFretboard();
+      buildScenarios();
+      document
+        .querySelectorAll(
+          'button[data-midi], button[data-compare], button[data-riff]',
+        )
+        .forEach((button) => {
+          button.disabled = true;
+        });
+      renderState();
+      loadSamples();
+    </script>
+  </body>
+</html>
