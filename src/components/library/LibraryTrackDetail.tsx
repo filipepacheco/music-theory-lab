@@ -25,7 +25,7 @@ import {
   type SectionGroup,
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
-import LibrarySectionEditor from './LibrarySectionEditor';
+import LibrarySectionEditor from '@/components/library/LibrarySectionEditor';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
@@ -95,9 +95,14 @@ export default function LibraryTrackDetail({ track }: Props) {
   // render just because `?? []` built a fresh array.
   const sections = data?.section?.sections ?? NO_SECTIONS;
 
-  const sectionGroups = useMemo(
-    () => groupBarsBySection(bars, annotationSections(annotation, bars)),
+  const editableSections = useMemo(
+    () => annotationSections(annotation, bars),
     [annotation, bars],
+  );
+
+  const sectionGroups = useMemo(
+    () => groupBarsBySection(bars, editableSections),
+    [bars, editableSections],
   );
 
   const activeBarIndex = useMemo(
@@ -108,12 +113,9 @@ export default function LibraryTrackDetail({ track }: Props) {
   const activeSectionIndex = useMemo(
     () =>
       audio.playing
-        ? sectionIndexAtSeconds(
-            annotationSections(annotation, bars),
-            audio.currentSeconds,
-          )
+        ? sectionIndexAtSeconds(editableSections, audio.currentSeconds)
         : -1,
-    [annotation, audio.playing, audio.currentSeconds, bars],
+    [audio.playing, audio.currentSeconds, editableSections],
   );
 
   useEffect(() => {
