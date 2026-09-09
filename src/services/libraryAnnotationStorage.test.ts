@@ -111,4 +111,40 @@ describe('Library annotation local storage', () => {
 
     expect(listLibraryAnnotations(database)).toEqual([valid]);
   });
+
+  it('migrates existing v1 edits into the initial synchronization list', async () => {
+    const SQL = await sql();
+    const database = new SQL.Database();
+    initializeLibraryAnnotationStorage(database);
+    database.run(
+      `INSERT INTO library_annotations
+       (source_sha256, schema_version, document, updated_at)
+       VALUES (?, 1, ?, ?)`,
+      [
+        'legacy-sha',
+        JSON.stringify({
+          schemaVersion: 1,
+          sourceSha256: 'legacy-sha',
+          sections: [
+            { id: 'section-1', name: 'Abertura', startBar: 0, endBar: 4 },
+          ],
+        }),
+        '2026-09-09 12:00:00',
+      ],
+    );
+
+    const documents = listLibraryAnnotations(database);
+
+    expect(documents).toEqual([
+      expect.objectContaining({
+        schemaVersion: 2,
+        sourceSha256: 'legacy-sha',
+        barCount: 4,
+        updatedAt: '2026-09-09T12:00:00.000Z',
+      }),
+    ]);
+    expect(loadLibraryAnnotation(database, 'legacy-sha', 4)?.migrated).toBe(
+      false,
+    );
+  });
 });

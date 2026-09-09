@@ -1,4 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import {
+  parseCloudLibraryAnnotation,
+  serializeCloudLibraryAnnotation,
+} from '../src/domain/libraryAnnotation';
 
 interface AnnotationRow {
   source_sha256: string;
@@ -61,75 +65,26 @@ async function readJsonBody(
   return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
 }
 
-function validTimestamp(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    !Number.isNaN(Date.parse(value)) &&
-    new Date(value).toISOString() === value
-  );
-}
-
-function validSections(value: unknown, barCount: number): boolean {
-  if (typeof value !== 'string') return false;
-  let sections: unknown;
-  try {
-    sections = JSON.parse(value) as unknown;
-  } catch {
-    return false;
-  }
-  if (!Array.isArray(sections) || sections.length === 0) return false;
-  let expectedStart = 0;
-  for (const section of sections) {
-    if (!section || typeof section !== 'object') return false;
-    const record = section as Record<string, unknown>;
-    if (
-      typeof record.id !== 'string' ||
-      !record.id ||
-      typeof record.name !== 'string' ||
-      !record.name.trim() ||
-      !Number.isInteger(record.startBar) ||
-      !Number.isInteger(record.endBar) ||
-      record.startBar !== expectedStart ||
-      (record.endBar as number) <= (record.startBar as number) ||
-      (record.origin !== 'automatic' &&
-        record.origin !== 'fallback' &&
-        record.origin !== 'manual')
-    ) {
-      return false;
-    }
-    expectedStart = record.endBar as number;
-  }
-  return expectedStart === barCount;
-}
-
 function parseRecord(value: unknown, deviceId: string): AnnotationRow | null {
   if (!value || typeof value !== 'object') return null;
   const record = value as Record<string, unknown>;
   if (Object.keys(record).some((field) => !RECORD_FIELDS.has(field))) {
     return null;
   }
-  if (
-    typeof record.source_sha256 !== 'string' ||
-    !record.source_sha256 ||
-    record.schema_version !== 2 ||
-    !Number.isInteger(record.bar_count) ||
-    (record.bar_count as number) < 1 ||
-    (record.review_required !== 0 && record.review_required !== 1) ||
-    !validTimestamp(record.created_at) ||
-    !validTimestamp(record.updated_at) ||
-    !validSections(record.sections, record.bar_count as number)
-  ) {
-    return null;
-  }
-  return {
+  const document = parseCloudLibraryAnnotation({
     source_sha256: record.source_sha256,
-    device_id: deviceId,
-    schema_version: 2,
-    bar_count: record.bar_count as number,
+    schema_version: record.schema_version,
+    bar_count: record.bar_count,
     review_required: record.review_required,
-    sections: record.sections as string,
+    sections: record.sections,
     created_at: record.created_at,
     updated_at: record.updated_at,
+  });
+  if (!document) return null;
+  const serialized = serializeCloudLibraryAnnotation(document);
+  return {
+    ...serialized,
+    device_id: deviceId,
   };
 }
 

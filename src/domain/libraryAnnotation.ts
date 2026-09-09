@@ -24,6 +24,38 @@ export interface LibraryAnnotationEditResult {
   error: string | null;
 }
 
+export interface CloudLibraryAnnotation {
+  source_sha256: unknown;
+  schema_version: unknown;
+  bar_count: unknown;
+  review_required: unknown;
+  sections: unknown;
+  created_at: unknown;
+  updated_at: unknown;
+}
+
+export interface SerializedCloudLibraryAnnotation {
+  source_sha256: string;
+  schema_version: number;
+  bar_count: number;
+  review_required: number;
+  sections: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const DOCUMENT_FIELDS = new Set([
+  'schemaVersion',
+  'sourceSha256',
+  'barCount',
+  'reviewRequired',
+  'createdAt',
+  'updatedAt',
+  'sections',
+]);
+
+const SECTION_FIELDS = new Set(['id', 'name', 'startBar', 'endBar', 'origin']);
+
 export function validateLibraryAnnotation(
   document: LibraryAnnotationDocument,
   barCount = document.barCount,
@@ -123,7 +155,13 @@ export function migrateLibraryAnnotation(
 export function parseLibraryAnnotation(
   raw: unknown,
 ): LibraryAnnotationDocument | null {
-  if (!isRecord(raw) || raw.schemaVersion !== 2) return null;
+  if (
+    !isRecord(raw) ||
+    !hasOnlyFields(raw, DOCUMENT_FIELDS) ||
+    raw.schemaVersion !== 2
+  ) {
+    return null;
+  }
   if (
     typeof raw.sourceSha256 !== 'string' ||
     !Number.isInteger(raw.barCount) ||
@@ -139,6 +177,7 @@ export function parseLibraryAnnotation(
     (value): LibraryAnnotationSection[] => {
       if (
         !isRecord(value) ||
+        !hasOnlyFields(value, SECTION_FIELDS) ||
         typeof value.id !== 'string' ||
         !value.id ||
         typeof value.name !== 'string' ||
@@ -175,8 +214,55 @@ export function parseLibraryAnnotation(
   return validateLibraryAnnotation(document).length === 0 ? document : null;
 }
 
+export function parseCloudLibraryAnnotation(
+  row: CloudLibraryAnnotation,
+): LibraryAnnotationDocument | null {
+  if (typeof row.sections !== 'string') return null;
+  let sections: unknown;
+  try {
+    sections = JSON.parse(row.sections) as unknown;
+  } catch {
+    return null;
+  }
+  return parseLibraryAnnotation({
+    schemaVersion: row.schema_version,
+    sourceSha256: row.source_sha256,
+    barCount: row.bar_count,
+    reviewRequired:
+      row.review_required === 1 || row.review_required === true
+        ? true
+        : row.review_required === 0 || row.review_required === false
+          ? false
+          : null,
+    sections,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  });
+}
+
+export function serializeCloudLibraryAnnotation(
+  document: LibraryAnnotationDocument,
+): SerializedCloudLibraryAnnotation {
+  return {
+    source_sha256: document.sourceSha256,
+    schema_version: document.schemaVersion,
+    bar_count: document.barCount,
+    review_required: document.reviewRequired ? 1 : 0,
+    sections: JSON.stringify(document.sections),
+    created_at: document.createdAt,
+    updated_at: document.updatedAt,
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function hasOnlyFields(
+  record: Record<string, unknown>,
+  fields: Set<string>,
+): boolean {
+  return Object.keys(record).every((field) => fields.has(field));
 }
 
 function numberField(

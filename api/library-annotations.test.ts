@@ -100,7 +100,19 @@ describe('Library annotations API', () => {
     const audio = await request('POST', {
       device_id: 'device-1',
       records: [
-        { ...record('2026-09-09T12:00:00.000Z'), audio_bytes: 'forbidden' },
+        {
+          ...record('2026-09-09T12:00:00.000Z'),
+          sections: JSON.stringify([
+            {
+              id: 'section-1',
+              name: 'Parte 1',
+              startBar: 0,
+              endBar: 4,
+              origin: 'manual',
+              audio_bytes: 'forbidden',
+            },
+          ]),
+        },
       ],
     });
 

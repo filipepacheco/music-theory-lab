@@ -1,10 +1,13 @@
 import type { Song, SongStructure } from '@/types';
 import {
-  parseLibraryAnnotation,
+  parseCloudLibraryAnnotation,
+  serializeCloudLibraryAnnotation,
+  type CloudLibraryAnnotation,
   type LibraryAnnotationDocument,
 } from '@/domain/libraryAnnotation';
 import {
   mergeLastWriteWins,
+  mergeLibraryAnnotations,
   mergeProgressions,
   type CloudProgression,
   type CloudSong,
@@ -22,7 +25,7 @@ function deviceQuery(): string {
 
 async function postRecords(
   path: string,
-  records: Record<string, unknown>[],
+  records: object[],
 ): Promise<void> {
   const response = await fetch(`${API_BASE}/${path}`, {
     method: 'POST',
@@ -105,15 +108,7 @@ export async function pushLibraryAnnotation(
   document: LibraryAnnotationDocument,
 ): Promise<void> {
   await postRecords('library-annotations', [
-    {
-      source_sha256: document.sourceSha256,
-      schema_version: document.schemaVersion,
-      bar_count: document.barCount,
-      review_required: document.reviewRequired ? 1 : 0,
-      sections: JSON.stringify(document.sections),
-      created_at: document.createdAt,
-      updated_at: document.updatedAt,
-    },
+    serializeCloudLibraryAnnotation(document),
   ]);
 }
 
@@ -145,42 +140,6 @@ export function pullSongs(): Promise<CloudSong[]> {
 export function pullStructures(): Promise<CloudStructure[]> {
   // Structures are shared globally across devices — no device filter.
   return pullRows<CloudStructure>('structures', false);
-}
-
-interface CloudLibraryAnnotation {
-  source_sha256: unknown;
-  schema_version: unknown;
-  bar_count: unknown;
-  review_required: unknown;
-  sections: unknown;
-  created_at: unknown;
-  updated_at: unknown;
-}
-
-function parseCloudLibraryAnnotation(
-  row: CloudLibraryAnnotation,
-): LibraryAnnotationDocument | null {
-  if (typeof row.sections !== 'string') return null;
-  let sections: unknown;
-  try {
-    sections = JSON.parse(row.sections) as unknown;
-  } catch {
-    return null;
-  }
-  return parseLibraryAnnotation({
-    schemaVersion: row.schema_version,
-    sourceSha256: row.source_sha256,
-    barCount: row.bar_count,
-    reviewRequired:
-      row.review_required === 1 || row.review_required === true
-        ? true
-        : row.review_required === 0 || row.review_required === false
-          ? false
-          : null,
-    sections,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  });
 }
 
 export async function pullLibraryAnnotations(): Promise<
@@ -260,24 +219,15 @@ export async function syncAll(deps: SyncDeps): Promise<void> {
     mergeLastWriteWins(deps.songs.listLocal(), cloudSongs),
   );
 
-  const localAnnotations = deps.annotations.listLocal();
-  const localBySource = new Map(
-    localAnnotations.map((document) => [document.sourceSha256, document]),
+  const annotationMerge = mergeLibraryAnnotations(
+    deps.annotations.listLocal(),
+    cloudAnnotations,
   );
-  const cloudBySource = new Map(
-    cloudAnnotations.map((document) => [document.sourceSha256, document]),
-  );
-  for (const document of cloudAnnotations) {
-    const local = localBySource.get(document.sourceSha256);
-    if (!local || document.updatedAt > local.updatedAt) {
-      deps.annotations.applyCloud(document);
-    }
+  for (const document of annotationMerge.cloudToApply) {
+    deps.annotations.applyCloud(document);
   }
-  for (const document of localAnnotations) {
-    const cloud = cloudBySource.get(document.sourceSha256);
-    if (!cloud || document.updatedAt > cloud.updatedAt) {
-      deps.annotations.push(document).catch(() => {});
-    }
+  for (const document of annotationMerge.localToPush) {
+    deps.annotations.push(document).catch(() => {});
   }
   applyLastWriteWins(
     deps.structures,
