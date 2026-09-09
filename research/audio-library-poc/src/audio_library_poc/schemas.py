@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from audio_library_poc.beat_analysis import BeatAnalysisResult
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
 from audio_library_poc.checkpoints import CheckpointManifest
 from audio_library_poc.chord_analysis import (
     ChordAnalysisResult,
@@ -36,6 +37,7 @@ SCHEMA_MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("separation-result", SeparationResult),
     ("checkpoint-manifest", CheckpointManifest),
     ("beat-analysis-result", BeatAnalysisResult),
+    ("beat-input-quality-decision", BeatInputQualityDecision),
     ("chord-analysis-result", ChordAnalysisResult),
     ("chord-frame-evidence", ChordFrameEvidenceArtifact),
     ("key-analysis-result", KeyAnalysisResult),
