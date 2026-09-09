@@ -99,6 +99,7 @@ class TrackAnalyses:
     beat: BeatAnalysisResult
     key: KeyAnalysisResult
     beat_quality: BeatInputQualityDecision | None = None
+    beat_quality_sha256: str | None = None
     section: SectionAnalysisResult | None = None
 
 
@@ -186,6 +187,9 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
             beat=beat,
             key=key,
             beat_quality=quality,
+            beat_quality_sha256=(
+                versioned["quality.beat_input"][2] if quality is not None else None
+            ),
             section=per_stage.get("section.librosa_segment"),
         )
     return complete
@@ -366,10 +370,13 @@ def sync(
 
 def _section_origin(bundle: TrackAnalyses) -> str:
     quality = bundle.beat_quality
+    section = bundle.section
     if (
         quality is not None
         and quality.publication_allowed
-        and bundle.section is not None
+        and section is not None
+        and section.beat_result_sha256 == quality.beat_result_identity.result_sha256
+        and section.beat_quality_decision_sha256 == bundle.beat_quality_sha256
     ):
         return "automatic"
     return "fallback"

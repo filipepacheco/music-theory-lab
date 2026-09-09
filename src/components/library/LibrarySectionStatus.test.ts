@@ -1,8 +1,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import LibrarySectionStatus from './LibrarySectionStatus';
-import type { SectionAnalysisJson } from './libraryData';
+import LibrarySectionStatus from '@/components/library/LibrarySectionStatus';
+import type { SectionAnalysisJson } from '@/components/library/libraryData';
 
 function fallbackAnalysis(): SectionAnalysisJson {
   return {

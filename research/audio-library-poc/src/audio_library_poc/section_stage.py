@@ -60,6 +60,7 @@ class SectionLibrosaStageConfig(ContractModel):
     sample_rate: int = Field(default=22050, ge=8000, le=96000)
     hop_length: int = Field(default=2048, ge=64, le=8192)
     n_segments: int = Field(default=7, ge=2, le=64)
+    beat_result_sha256: str | None = None
     beat_quality_decision_relative_path: str | None = None
     beat_quality_decision_sha256: str | None = None
 
@@ -103,6 +104,12 @@ class SectionLibrosaStageExecutor:
             source_path=source_path,
             config=config,
             identity=identity,
+        )
+        result = result.model_copy(
+            update={
+                "beat_result_sha256": config.beat_result_sha256,
+                "beat_quality_decision_sha256": config.beat_quality_decision_sha256,
+            }
         )
         _validate_result(result, identity=identity)
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
@@ -199,9 +206,7 @@ def _verify_quality_decision(
 ) -> None:
     path_text = config.beat_quality_decision_relative_path
     digest = config.beat_quality_decision_sha256
-    if path_text is None and digest is None:
-        return
-    if path_text is None or digest is None:
+    if path_text is None or digest is None or config.beat_result_sha256 is None:
         raise ExpectedStageFailure(
             TypedError(
                 code="section.beat_quality_identity_incomplete",
@@ -244,6 +249,14 @@ def _verify_quality_decision(
             TypedError(
                 code="section.beat_input_ineligible",
                 message="section inference requires a calibrated valid beat input",
+                retryable=False,
+            )
+        )
+    if decision.beat_result_identity.result_sha256 != config.beat_result_sha256:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_result_identity_mismatch",
+                message="section beat result hash must match the quality decision",
                 retryable=False,
             )
         )

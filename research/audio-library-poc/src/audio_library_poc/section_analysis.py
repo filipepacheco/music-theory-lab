@@ -103,6 +103,8 @@ class SectionAnalysisResult(FrozenSectionModel):
 
     schema_version: Literal["1.0.0"] = "1.0.0"
     source_sha256: Sha256
+    beat_result_sha256: Sha256 | None = None
+    beat_quality_decision_sha256: Sha256 | None = None
     provenance: SectionAnalyzerProvenance
     settings: EffectiveSectionAnalyzerSettings
     source: SectionSourceFacts
@@ -118,6 +120,10 @@ class SectionAnalysisResult(FrozenSectionModel):
 
     @model_validator(mode="after")
     def validate_result(self) -> Self:
+        if (self.beat_result_sha256 is None) != (
+            self.beat_quality_decision_sha256 is None
+        ):
+            raise ValueError("section dependency hashes must be recorded together")
         tolerance = 1e-3
         for index in range(1, len(self.sections)):
             prev = self.sections[index - 1]

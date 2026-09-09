@@ -106,6 +106,56 @@
       "title": "BeatSourceFacts",
       "type": "object"
     },
+    "BeatWarning": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "fatal"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "severity"
+      ],
+      "title": "BeatWarning",
+      "type": "object"
+    },
     "EffectiveBeatAnalyzerSettings": {
       "additionalProperties": false,
       "description": "Resolved runtime settings that a real analyzer used.",
@@ -186,7 +236,7 @@
     "warnings": {
       "default": [],
       "items": {
-        "type": "string"
+        "$ref": "#/$defs/BeatWarning"
       },
       "title": "Warnings",
       "type": "array"

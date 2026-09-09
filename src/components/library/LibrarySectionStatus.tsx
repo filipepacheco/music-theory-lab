@@ -1,4 +1,4 @@
-import type { SectionAnalysisJson } from './libraryData';
+import type { SectionAnalysisJson } from '@/components/library/libraryData';
 
 interface Props {
   analysis: SectionAnalysisJson | null;

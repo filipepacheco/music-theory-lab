@@ -185,6 +185,11 @@ def build_intake_manifest(
                     # The intake runner resolves this pointer to the immutable
                     # beat artifact before dispatching the quality stage.
                     "beat_result_relative_path": ".pending/beat-analysis-result.json",
+                    "analyzer_candidate": "beat_this",
+                    "analyzer_implementation_version": BEAT_THIS_IMPLEMENTATION_VERSION,
+                    "model_identifier": beat_checkpoint.identifier,
+                    "model_sha256": beat_checkpoint.sha256,
+                    "analyzer_code_revision": "workspace-local",
                     "policy": BeatInputQualityPolicyConfig.provisional_v1().model_dump(
                         mode="json"
                     ),

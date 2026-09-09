@@ -10,6 +10,7 @@ from audio_library_poc.beat_analysis import (
     BeatAnalyzerProvenance,
     BeatEstimate,
     BeatSourceFacts,
+    BeatWarning,
     EffectiveBeatAnalyzerSettings,
 )
 from audio_library_poc.beat_input_quality import (
@@ -34,7 +35,7 @@ def _beat_result(
     count: int = 32,
     downbeats: bool = True,
     tempo_bpm: float = 120.0,
-    warnings: tuple[str, ...] = (),
+    warnings: tuple[BeatWarning, ...] = (),
     source_sha256: str = "a" * 64,
 ) -> BeatAnalysisResult:
     beats = tuple(
@@ -244,7 +245,11 @@ def test_unusual_but_usable_music_and_unknown_warnings_stay_nonfatal() -> None:
     result = _beat_result(
         downbeats=False,
         tempo_bpm=300.0,
-        warnings=("future analyzer warning",),
+        warnings=(
+            BeatWarning(
+                code="beat.future_warning", severity="warning", details={"value": 1}
+            ),
+        ),
     )
     decision = decide_beat_input_quality(
         result=result,
@@ -266,7 +271,7 @@ def test_unusual_but_usable_music_and_unknown_warnings_stay_nonfatal() -> None:
         "beat.irregular_timing",
         "beat.leading_silence",
         "beat.trailing_silence",
-        "beat.analyzer_warning:future analyzer warning",
+        "beat.future_warning",
     }
 
 
@@ -402,3 +407,43 @@ def test_quality_stage_emits_the_versioned_decision_artifact(tmp_path) -> None:
     artifact = tmp_path / "staging" / "beat-input-quality-decision.json"
     decision = artifact.read_text(encoding="utf-8")
     assert '"publication_allowed": false' in decision
+
+
+def test_quality_stage_emits_contract_invalid_decision_for_missing_result(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    source_path = workspace / "originals" / "track.wav"
+    source_path.parent.mkdir(parents=True)
+    sf.write(source_path, np.full((2000, 1), 0.25), 100, subtype="PCM_16")
+    source_sha256 = hash_file(source_path)
+    specification = StageSpecification(
+        stage_kind=BEAT_INPUT_QUALITY_STAGE_KIND,
+        implementation_version="1.0.0",
+        config={
+            "source_relative_path": "originals/track.wav",
+            "beat_result_relative_path": "inputs/missing.json",
+            "policy": BeatInputQualityPolicyConfig.provisional_v1().model_dump(
+                mode="json"
+            ),
+        },
+    )
+    identity = StageIdentity(
+        stage_kind=specification.stage_kind,
+        input_sha256=source_sha256,
+        implementation_version="1.0.0",
+        config_sha256=hash_config(specification.config),
+        output_schema_version="1.0.0",
+        code_revision="test-revision",
+    )
+
+    BeatInputQualityStageExecutor(workspace).execute(
+        specification=specification,
+        identity=identity,
+        cache_key=stage_cache_key(identity),
+        attempt=1,
+        staging_directory=tmp_path / "staging",
+    )
+
+    decision = (tmp_path / "staging" / "beat-input-quality-decision.json").read_text()
+    assert "beat.contract_invalid" in decision
