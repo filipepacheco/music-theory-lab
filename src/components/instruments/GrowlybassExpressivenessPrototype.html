@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Protótipo descartável · Expressividade Growlybass</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        color: #e9edf5;
+        background: #0b0d12;
+        --panel: #151922;
+        --line: #2b3240;
+        --muted: #9da7b8;
+        --accent: #c9ff6b;
+        --accent-ink: #10150a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 40px 18px 72px;
+      }
+      main {
+        width: min(1080px, 100%);
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: clamp(30px, 5vw, 52px);
+        letter-spacing: -0.045em;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      p {
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      code {
+        color: #dceebc;
+      }
+      .eyebrow {
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      .intro {
+        max-width: 780px;
+        font-size: 17px;
+      }
+      .notice,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+      .notice {
+        margin: 24px 0;
+        padding: 14px 16px;
+        color: #d7dde8;
+      }
+      .panel {
+        padding: 20px;
+      }
+      .spaced {
+        margin-top: 18px;
+      }
+      .modes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .mode {
+        width: 100%;
+        min-height: 132px;
+        padding: 16px;
+        text-align: left;
+        color: inherit;
+        background: #10141c;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        cursor: pointer;
+      }
+      .mode:hover {
+        border-color: #667087;
+      }
+      .mode.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .mode strong {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 16px;
+      }
+      .mode span {
+        display: block;
+        color: var(--muted);
+        line-height: 1.42;
+      }
+      .state {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      .field {
+        min-height: 72px;
+        padding: 12px;
+        background: #0e1118;
+        border-radius: 10px;
+      }
+      .field span {
+        display: block;
+        margin-bottom: 6px;
+        color: #798397;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .field strong {
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+      .change {
+        margin: 12px 0 0;
+        color: #dceebc;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 12px;
+      }
+      button.action,
+      .step button,
+      .tab {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #202633;
+        color: #eef2f8;
+        padding: 10px 13px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button.action:hover,
+      .step button:hover,
+      .tab:hover {
+        border-color: #748097;
+      }
+      button.action.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: wait;
+      }
+      .strengths {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .strengths button {
+        min-height: 74px;
+      }
+      .fretboard {
+        display: grid;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+      .string {
+        display: grid;
+        grid-template-columns: 36px repeat(13, minmax(62px, 1fr));
+        min-width: 900px;
+        gap: 5px;
+        align-items: center;
+      }
+      .string-label {
+        color: var(--accent);
+        font-weight: 900;
+        text-align: center;
+      }
+      .fret {
+        min-height: 48px;
+        border: 1px solid #343b49;
+        border-radius: 7px;
+        background: #11151d;
+        color: #dde3ed;
+        cursor: pointer;
+      }
+      .fret:hover {
+        border-color: var(--accent);
+      }
+      .fret small {
+        display: block;
+        color: #778196;
+        font-size: 10px;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0;
+      }
+      .tab[aria-selected='true'] {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .scenario {
+        display: none;
+      }
+      .scenario.active {
+        display: block;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) 1fr;
+        gap: 12px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .step span {
+        color: var(--muted);
+      }
+      .step.done button {
+        border-color: #6d9140;
+        color: var(--accent);
+      }
+      .verdicts {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .verdicts label {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: #d8dee9;
+      }
+      footer {
+        margin-top: 26px;
+        color: #778196;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      footer a {
+        color: #aeca7d;
+      }
+      @media (max-width: 780px) {
+        body {
+          padding-top: 24px;
+        }
+        .modes,
+        .controls {
+          grid-template-columns: 1fr;
+        }
+        .state {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 460px) {
+        .state {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Protótipo descartável · decisão sonora</div>
+      <h1>Quanto de expressividade o braço precisa?</h1>
+      <p class="intro">
+        Este teste compara três contratos de sampler Growlybass. A pergunta é:
+        uma gravação suave por nota já responde bem no estudo, ou camadas de
+        intensidade e variações entre ataques são perceptivelmente necessárias?
+      </p>
+      <div class="notice">
+        <strong>O que não muda:</strong> registro E1–G3 aprovado, ataque desde o
+        início, sustentação curta e release de 500 ms. Nada é salvo. Use fones
+        ou caixas confiáveis e compare os três modos no mesmo volume.
+      </div>
+
+      <section class="panel">
+        <h2>1. Escolha o contrato em audição</h2>
+        <p>
+          Troque livremente. O painel abaixo mostra exatamente qual arquivo
+          tocou.
+        </p>
+        <div class="modes">
+          <button class="mode active" data-mode="A">
+            <strong>A · Essencial</strong>
+            <span
+              ><code>p / rr1</code> sempre. A intensidade altera apenas o
+              ganho.</span
+            >
+          </button>
+          <button class="mode" data-mode="B">
+            <strong>B · Dinâmica</strong>
+            <span
+              ><code>pp / p / f / ff</code> pela intensidade, sempre
+              <code>rr1</code>.</span
+            >
+          </button>
+          <button class="mode" data-mode="C">
+            <strong>C · Completo</strong>
+            <span
+              >Quatro intensidades e alternância circular entre
+              <code>rr1–4</code>.</span
+            >
+          </button>
+        </div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>Estado completo</h2>
+        <div id="state" class="state"></div>
+        <p id="change" class="change" aria-live="polite"></p>
+      </section>
+
+      <div class="controls spaced">
+        <section class="panel">
+          <h2>2. Ataque repetido</h2>
+          <p>
+            O teste mais fácil para ouvir o efeito “metralhadora”. Toque E1 oito
+            vezes com força constante.
+          </p>
+          <div class="button-row">
+            <button class="action primary" data-repeat="28">8 × E1</button>
+            <button class="action" data-repeat="33">8 × A1</button>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>3. Resposta à força</h2>
+          <p>
+            Mesma nota, três gestos. A diferença deve soar musical, não apenas
+            mais alta.
+          </p>
+          <div class="strengths">
+            <button class="action" data-note="28" data-velocity="0.22">
+              E1<br />suave
+            </button>
+            <button class="action" data-note="28" data-velocity="0.56">
+              E1<br />média
+            </button>
+            <button class="action" data-note="28" data-velocity="0.92">
+              E1<br />forte
+            </button>
+            <button class="action" data-note="28" data-velocity="0.98">
+              E1<br />máxima
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel spaced">
+        <h2>4. Toque livre · EADG até a casa 12</h2>
+        <p>
+          Clique mais perto da borda superior para tocar suave e mais perto da
+          borda inferior para tocar forte.
+        </p>
+        <div id="fretboard" class="fretboard"></div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>5. Roteiros guiados</h2>
+        <div class="tabs" role="tablist">
+          <button
+            class="tab"
+            role="tab"
+            data-tab="repetition"
+            aria-selected="true"
+          >
+            Repetição
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            data-tab="dynamics"
+            aria-selected="false"
+          >
+            Dinâmica
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            data-tab="phrase"
+            aria-selected="false"
+          >
+            Frase musical
+          </button>
+        </div>
+        <div id="repetition" class="scenario active"></div>
+        <div id="dynamics" class="scenario"></div>
+        <div id="phrase" class="scenario"></div>
+      </section>
+
+      <section class="panel spaced">
+        <h2>6. Seu veredito</h2>
+        <p>
+          Escolha o contrato mínimo que ainda parece responsivo para aprender no
+          braço.
+        </p>
+        <div class="verdicts">
+          <label
+            ><input type="radio" name="verdict" value="A" />
+            <span
+              ><strong>A basta.</strong> As camadas extras não justificam o
+              peso.</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="verdict" value="B" />
+            <span
+              ><strong>B é o mínimo.</strong> A dinâmica importa; round robin
+              não.</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="verdict" value="C" />
+            <span
+              ><strong>C é necessário.</strong> Ataques alternados fazem
+              diferença real.</span
+            ></label
+          >
+        </div>
+      </section>
+
+      <footer>
+        Growlybass por Karoryfer Lecolds (2014), CC0 1.0. Arquivos carregados
+        diretamente da fonte fixada em
+        <a
+          href="https://github.com/sfzinstruments/karoryfer.growlybass/tree/4f483268fc66b5a6d5781d421c0d11b8d08d3fc6"
+          >4f48326</a
+        >. A decisão anterior substituiu o <code>f</code> originalmente citado
+        no ticket por <code>p</code> como baseline neutra.
+      </footer>
+    </main>
+
+    <script>
+      // Módulo portátil de decisão: sem DOM e sem persistência.
+      const SamplerContract = (() => {
+        const pin = '4f483268fc66b5a6d5781d421c0d11b8d08d3fc6';
+        const root = `https://cdn.jsdelivr.net/gh/sfzinstruments/karoryfer.growlybass@${pin}/sustain/`;
+        const anchors = [
+          ['e2', 28],
+          ['gb2', 30],
+          ['a2', 33],
+          ['c3', 36],
+          ['eb3', 39],
+          ['gb3', 42],
+          ['a3', 45],
+          ['c4', 48],
+          ['eb4', 51],
+          ['gb4', 54],
+        ].map(([written, soundingMidi]) => ({ written, soundingMidi }));
+        const names = [
+          'C',
+          'C♯',
+          'D',
+          'E♭',
+          'E',
+          'F',
+          'F♯',
+          'G',
+          'A♭',
+          'A',
+          'B♭',
+          'B',
+        ];
+        const noteName = (midi) =>
+          `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
+        const layerFor = (mode, velocity) => {
+          if (mode === 'A') return 'p';
+          const midiVelocity = Math.max(
+            1,
+            Math.min(127, Math.round(velocity * 127)),
+          );
+          if (midiVelocity <= 60) return 'pp';
+          if (midiVelocity <= 95) return 'p';
+          if (midiVelocity <= 120) return 'f';
+          return 'ff';
+        };
+        const nearest = (midi) =>
+          anchors.reduce((best, anchor) =>
+            Math.abs(anchor.soundingMidi - midi) <
+            Math.abs(best.soundingMidi - midi)
+              ? anchor
+              : best,
+          );
+        const initial = () => ({
+          mode: 'A',
+          rrCursor: 0,
+          verdict: 'não escolhido',
+        });
+        const plan = (state, midi, velocity) => {
+          const anchor = nearest(midi);
+          const layer = layerFor(state.mode, velocity);
+          const roundRobin = state.mode === 'C' ? (state.rrCursor % 4) + 1 : 1;
+          const next = {
+            ...state,
+            rrCursor: state.mode === 'C' ? state.rrCursor + 1 : state.rrCursor,
+          };
+          const file = `${anchor.written}_${layer}_rr${roundRobin}.wav`;
+          return {
+            next,
+            request: { midi, name: noteName(midi), velocity },
+            sample: {
+              ...anchor,
+              layer,
+              roundRobin,
+              file,
+              url: `${root}${file}`,
+            },
+            semitones: midi - anchor.soundingMidi,
+            playbackRate: 2 ** ((midi - anchor.soundingMidi) / 12),
+          };
+        };
+        const selectMode = (state, mode) => ({ ...state, mode, rrCursor: 0 });
+        const chooseVerdict = (state, verdict) => ({ ...state, verdict });
+        return { initial, plan, selectMode, chooseVerdict, noteName };
+      })();
+
+      let model = SamplerContract.initial();
+      let audio;
+      let lastPlan = null;
+      let lastChange =
+        'Escolha um teste. O primeiro clique carrega somente os arquivos necessários.';
+      const buffers = new Map();
+      const inflight = new Map();
+
+      function context() {
+        audio ??= new AudioContext();
+        if (audio.state === 'suspended') audio.resume();
+        return audio;
+      }
+
+      async function fetchSample(url, attempts = 3) {
+        let response;
+        for (let attempt = 1; attempt <= attempts; attempt += 1) {
+          response = await fetch(url, { cache: 'force-cache' });
+          if (response.ok) return response.arrayBuffer();
+          if (attempt < attempts)
+            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+        }
+        throw new Error(`HTTP ${response?.status ?? 'desconhecido'}`);
+      }
+
+      function render() {
+        const fields = [
+          ['Contrato', model.mode],
+          ['Última nota', lastPlan?.request.name ?? '—'],
+          [
+            'Força',
+            lastPlan ? `${Math.round(lastPlan.request.velocity * 100)}%` : '—',
+          ],
+          ['Camada', lastPlan?.sample.layer ?? '—'],
+          ['Round robin', lastPlan ? `rr${lastPlan.sample.roundRobin}` : '—'],
+          ['Arquivo', lastPlan?.sample.file ?? '—'],
+          [
+            'Deslocamento',
+            lastPlan
+              ? `${lastPlan.semitones >= 0 ? '+' : ''}${lastPlan.semitones} semitons`
+              : '—',
+          ],
+          ['Carregados', `${buffers.size} arquivos nesta sessão`],
+          ['Veredito', model.verdict],
+        ];
+        document.querySelector('#state').innerHTML = fields
+          .map(
+            ([label, value]) =>
+              `<div class="field"><span>${label}</span><strong>${value}</strong></div>`,
+          )
+          .join('');
+        document.querySelector('#change').textContent = lastChange;
+        document
+          .querySelectorAll('.mode')
+          .forEach((button) =>
+            button.classList.toggle(
+              'active',
+              button.dataset.mode === model.mode,
+            ),
+          );
+      }
+
+      async function getBuffer(plan) {
+        const key = plan.sample.file;
+        if (buffers.has(key)) return buffers.get(key);
+        if (!inflight.has(key)) {
+          inflight.set(
+            key,
+            fetchSample(plan.sample.url)
+              .then((bytes) => context().decodeAudioData(bytes))
+              .then((buffer) => {
+                buffers.set(key, buffer);
+                inflight.delete(key);
+                return buffer;
+              })
+              .catch((error) => {
+                inflight.delete(key);
+                throw error;
+              }),
+          );
+        }
+        return inflight.get(key);
+      }
+
+      async function prepare(events) {
+        const preview = { ...model };
+        const plans = [];
+        for (const event of events) {
+          const result = SamplerContract.plan(
+            preview,
+            event.midi,
+            event.velocity,
+          );
+          Object.assign(preview, result.next);
+          plans.push({
+            ...result,
+            delay: event.delay,
+            duration: event.duration ?? 0.34,
+          });
+        }
+        lastChange = `Carregando ${new Set(plans.map((plan) => plan.sample.file)).size} arquivo(s)…`;
+        render();
+        try {
+          await Promise.all(plans.map(getBuffer));
+          model = preview;
+          return plans;
+        } catch (error) {
+          lastChange = `Não foi possível carregar a fonte: ${String(error)}.`;
+          render();
+          return [];
+        }
+      }
+
+      function schedule(plan, origin) {
+        const buffer = buffers.get(plan.sample.file);
+        const source = context().createBufferSource();
+        const gain = context().createGain();
+        const start = context().currentTime + origin + plan.delay;
+        const level =
+          model.mode === 'A' ? 0.28 + plan.request.velocity * 0.28 : 0.48;
+        source.buffer = buffer;
+        source.playbackRate.value = plan.playbackRate;
+        gain.gain.setValueAtTime(level, start);
+        gain.gain.setValueAtTime(level, start + plan.duration);
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          start + plan.duration + 0.5,
+        );
+        source.connect(gain).connect(context().destination);
+        source.start(start, 0, Math.min(plan.duration + 0.55, buffer.duration));
+      }
+
+      async function playEvents(events, description) {
+        const plans = await prepare(events);
+        if (!plans.length) return;
+        plans.forEach((plan) => schedule(plan, 0.05));
+        lastPlan = plans.at(-1);
+        lastChange = `${description} · contrato ${model.mode}.`;
+        render();
+      }
+
+      const repeated = (midi) =>
+        Array.from({ length: 8 }, (_, index) => ({
+          midi,
+          velocity: 0.58,
+          delay: index * 0.34,
+          duration: 0.2,
+        }));
+      const dynamic = (midi) =>
+        [0.22, 0.56, 0.82, 0.98].map((velocity, index) => ({
+          midi,
+          velocity,
+          delay: index * 0.72,
+          duration: 0.34,
+        }));
+      const phrase = () =>
+        [
+          [28, 0.88],
+          [31, 0.45],
+          [33, 0.62],
+          [36, 0.38],
+          [38, 0.86],
+          [36, 0.42],
+          [33, 0.65],
+          [31, 0.34],
+        ].map(([midi, velocity], index) => ({
+          midi,
+          velocity,
+          delay: index * 0.38,
+          duration: 0.24,
+        }));
+
+      function buildFretboard() {
+        const strings = [
+          ['G', 43],
+          ['D', 38],
+          ['A', 33],
+          ['E', 28],
+        ];
+        document.querySelector('#fretboard').innerHTML = strings
+          .map(
+            ([label, open]) =>
+              `<div class="string"><div class="string-label">${label}</div>${Array.from(
+                { length: 13 },
+                (_, fret) => {
+                  const midi = open + fret;
+                  return `<button class="fret" data-fret-note="${midi}">${SamplerContract.noteName(midi)}<small>casa ${fret}</small></button>`;
+                },
+              ).join('')}</div>`,
+          )
+          .join('');
+      }
+
+      const scenarios = {
+        repetition: {
+          text: 'Compare A, B e C nesta ordem. Se A soar mecânico e C resolver, round robin tem valor audível.',
+          steps: [
+            ['1. Selecionar A e tocar 8 × E1', 'A', 'repeat'],
+            ['2. Selecionar B e tocar 8 × E1', 'B', 'repeat'],
+            ['3. Selecionar C e tocar 8 × E1', 'C', 'repeat'],
+          ],
+        },
+        dynamics: {
+          text: 'Ouça suave, média e forte. Em A só o volume muda; B e C trocam a gravação.',
+          steps: [
+            ['1. Dinâmica em A', 'A', 'dynamic'],
+            ['2. Dinâmica em B', 'B', 'dynamic'],
+            ['3. Dinâmica em C', 'C', 'dynamic'],
+          ],
+        },
+        phrase: {
+          text: 'Use a frase completa como desempate: escolha o contrato mais simples que ainda pareça instrumento.',
+          steps: [
+            ['1. Frase em A', 'A', 'phrase'],
+            ['2. Frase em B', 'B', 'phrase'],
+            ['3. Frase em C', 'C', 'phrase'],
+          ],
+        },
+      };
+
+      function runScenario(action) {
+        if (action === 'repeat')
+          return playEvents(repeated(28), 'Oito ataques constantes em E1');
+        if (action === 'dynamic')
+          return playEvents(dynamic(28), 'Três forças em E1');
+        return playEvents(phrase(), 'Frase acentuada E1–D2');
+      }
+
+      function buildScenarios() {
+        Object.entries(scenarios).forEach(([id, scenario]) => {
+          document.querySelector(`#${id}`).innerHTML =
+            `<p>${scenario.text}</p>${scenario.steps
+              .map(
+                ([label, mode, action], index) =>
+                  `<div class="step"><button data-step="${id}-${index}" data-scenario-mode="${mode}" data-scenario-action="${action}">${label}</button><span>Contrato ${mode}</span></div>`,
+              )
+              .join('')}`;
+        });
+      }
+
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.mode) {
+          model = SamplerContract.selectMode(model, button.dataset.mode);
+          lastChange = `Contrato ${model.mode} selecionado; round robin reiniciado.`;
+          render();
+        }
+        if (button.dataset.repeat)
+          await playEvents(
+            repeated(Number(button.dataset.repeat)),
+            `Oito ataques constantes em ${SamplerContract.noteName(Number(button.dataset.repeat))}`,
+          );
+        if (button.dataset.note)
+          await playEvents(
+            [
+              {
+                midi: Number(button.dataset.note),
+                velocity: Number(button.dataset.velocity),
+                delay: 0,
+                duration: 0.42,
+              },
+            ],
+            `${SamplerContract.noteName(Number(button.dataset.note))} tocada`,
+          );
+        if (button.dataset.fretNote) {
+          const rect = button.getBoundingClientRect();
+          const velocity = Math.max(
+            0.12,
+            Math.min(0.98, (event.clientY - rect.top) / rect.height),
+          );
+          await playEvents(
+            [
+              {
+                midi: Number(button.dataset.fretNote),
+                velocity,
+                delay: 0,
+                duration: 0.38,
+              },
+            ],
+            `${SamplerContract.noteName(Number(button.dataset.fretNote))} no braço`,
+          );
+        }
+        if (button.dataset.scenarioMode) {
+          model = SamplerContract.selectMode(
+            model,
+            button.dataset.scenarioMode,
+          );
+          await runScenario(button.dataset.scenarioAction);
+          button.closest('.step').classList.add('done');
+        }
+        if (button.dataset.tab) {
+          document
+            .querySelectorAll('.tab')
+            .forEach((tab) =>
+              tab.setAttribute('aria-selected', String(tab === button)),
+            );
+          document
+            .querySelectorAll('.scenario')
+            .forEach((panel) =>
+              panel.classList.toggle('active', panel.id === button.dataset.tab),
+            );
+          document
+            .querySelectorAll('.step')
+            .forEach((step) => step.classList.remove('done'));
+          model = SamplerContract.initial();
+          lastPlan = null;
+          lastChange = `Roteiro “${button.textContent}” reiniciado em A.`;
+          render();
+        }
+      });
+
+      document.addEventListener('change', (event) => {
+        if (event.target.name !== 'verdict') return;
+        model = SamplerContract.chooseVerdict(model, event.target.value);
+        lastChange = `Veredito ${event.target.value} marcado somente nesta página.`;
+        render();
+      });
+
+      buildFretboard();
+      buildScenarios();
+      render();
+    </script>
+  </body>
+</html>
