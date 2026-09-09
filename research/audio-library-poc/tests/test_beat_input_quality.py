@@ -357,6 +357,20 @@ def test_threshold_change_requires_a_new_major_gate_version_and_digest() -> None
     assert changed.sha256() != baseline.sha256()
 
 
+def test_fatal_classification_change_requires_a_new_major_gate_version() -> None:
+    with pytest.raises(ValidationError, match="major gate version"):
+        BeatInputQualityPolicyConfig(
+            gate_version="1.1.0",
+            fatal_analyzer_warning_codes=("beat.future_failure",),
+        )
+
+    changed = BeatInputQualityPolicyConfig(
+        gate_version="2.0.0",
+        fatal_analyzer_warning_codes=("beat.future_failure",),
+    )
+    assert changed.gate_version == "2.0.0"
+
+
 def test_waveform_measurement_uses_rms_channel_fold_and_ignores_edge_silence() -> None:
     # Opposite-polarity stereo would cancel under signed summation. The required
     # RMS fold still marks the middle 16 seconds active.

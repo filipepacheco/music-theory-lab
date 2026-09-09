@@ -92,15 +92,16 @@ class BeatThisStageExecutor:
         if attempt < 1:
             raise ValueError("attempt must be positive")
 
-        config = _validate_config(specification)
-        _require_model_identity(specification)
-        source_path = _resolve_source(self.workspace, config.source_relative_path)
-        _verify_source_hash(source_path, identity.input_sha256)
-
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
 
+        config: BeatThisStageConfig | None = None
+        source_path: Path | None = None
         try:
+            config = _validate_config(specification)
+            _require_model_identity(specification)
+            source_path = _resolve_source(self.workspace, config.source_relative_path)
+            _verify_source_hash(source_path, identity.input_sha256)
             # Resolve before the lazy import so a missing checkpoint keeps its
             # specific typed diagnostic on machines without inference extras.
             _resolve_checkpoint(self.workspace, config.checkpoint_relative_path)
@@ -112,6 +113,7 @@ class BeatThisStageExecutor:
                 config=config,
                 identity=identity,
             )
+            _validate_result(result, identity=identity)
         except ExpectedStageFailure as exc:
             result, metrics = _failed_analysis_result(
                 source_path=source_path,
@@ -131,7 +133,6 @@ class BeatThisStageExecutor:
                     details={"exception_type": type(exc).__name__},
                 ),
             )
-        _validate_result(result, identity=identity)
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
 
         return StageOutput(
@@ -149,12 +150,14 @@ class BeatThisStageExecutor:
 
 def _failed_analysis_result(
     *,
-    source_path: Path,
-    config: BeatThisStageConfig,
+    source_path: Path | None,
+    config: BeatThisStageConfig | None,
     identity: StageIdentity,
     error: TypedError,
 ) -> tuple[BeatAnalysisResult, Metrics]:
     try:
+        if source_path is None:
+            raise OSError("source unavailable")
         audio, sample_rate = sf.read(str(source_path), dtype="float32", always_2d=True)
         source = BeatSourceFacts(
             sample_rate=int(sample_rate),
@@ -176,14 +179,16 @@ def _failed_analysis_result(
         provenance=BeatAnalyzerProvenance(
             candidate=BEAT_THIS_CANDIDATE_ID,
             implementation_version=identity.implementation_version,
-            model_identifier=identity.model_identifier,
-            model_sha256=identity.model_sha256,
+            model_identifier=identity.model_identifier or "unknown-model",
+            model_sha256=identity.model_sha256 or "0" * 64,
             code_revision=identity.code_revision,
         ),
         settings=EffectiveBeatAnalyzerSettings(
-            device=config.device,
-            precision=config.precision,
-            use_dbn=config.use_dbn,
+            device=config.device if config is not None else "unknown",
+            precision=(
+                config.precision if config is not None else SeparatorPrecision.FLOAT32
+            ),
+            use_dbn=config.use_dbn if config is not None else False,
         ),
         source=source,
         downbeat_count=0,
