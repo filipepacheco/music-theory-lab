@@ -62,6 +62,18 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
     minimum_support_radius_seconds: float = Field(default=0.35, ge=0)
     support_radius_inter_beat_ratio: float = Field(default=0.75, ge=0)
     maximum_support_radius_seconds: float = Field(default=1.5, ge=0)
+    fatal_reason_codes: tuple[str, ...] = tuple(
+        reason.value for reason in BeatInputFatalReason
+    )
+    nonfatal_diagnostic_codes: tuple[str, ...] = tuple(
+        diagnostic.value for diagnostic in BeatInputDiagnostic
+    )
+    threshold_comparisons: tuple[str, ...] = (
+        "beat_count < minimum_beats",
+        "supported_seconds < minimum_supported_seconds",
+        "coverage_ratio < minimum_coverage_ratio",
+        "gap_seconds > maximum_seconds AND gap_beats > maximum_beats",
+    )
 
     @field_validator("gate_version")
     @classmethod
@@ -193,6 +205,7 @@ def decide_beat_input_quality(
     expected_source_sha256: str | None = None,
     expected_analyzer_candidate: str | None = None,
     implementation_revision: str = "workspace-local",
+    contract_invalid: bool = False,
 ) -> BeatInputQualityDecision:
     """Apply only the fatal classifications owned by gate version 1."""
 
@@ -209,9 +222,15 @@ def decide_beat_input_quality(
         and measurements.beat_count == len(result.beats)
         and measurements.downbeat_count == result.downbeat_count
     )
-    if not provenance_matches:
+    if not provenance_matches or contract_invalid:
         fatal.append(BeatInputFatalReason.CONTRACT_INVALID)
-    if analyzer_fatal_codes:
+    typed_fatal_codes = (
+        tuple(
+            warning.code for warning in result.warnings if warning.severity == "fatal"
+        )
+        + analyzer_fatal_codes
+    )
+    if typed_fatal_codes:
         fatal.append(BeatInputFatalReason.ANALYZER_FAILED)
     if measurements.beat_count == 0:
         fatal.append(BeatInputFatalReason.NO_BEATS_DETECTED)
@@ -244,8 +263,8 @@ def decide_beat_input_quality(
     if passing_calibration is None:
         diagnostics.append(BeatInputDiagnostic.UNCALIBRATED.value)
     for warning in result.warnings:
-        diagnostics.append(f"beat.analyzer_warning:{warning}")
-    diagnostics.extend(f"beat.analyzer_fatal:{code}" for code in analyzer_fatal_codes)
+        diagnostics.append(warning.code)
+    diagnostics.extend(typed_fatal_codes)
 
     policy = BeatInputQualityPolicy(
         gate_id=policy_config.gate_id,

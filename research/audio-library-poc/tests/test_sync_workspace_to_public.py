@@ -630,20 +630,32 @@ def _section_result(source_sha: str, duration: float = 8.0) -> SectionAnalysisRe
     )
 
 
-def _seed_section(workspace: Path, source_sha: str) -> None:
+def _seed_section(
+    workspace: Path,
+    source_sha: str,
+    *,
+    beat_result_sha256: str | None = None,
+    quality_sha256: str | None = None,
+) -> None:
+    result = _section_result(source_sha).model_copy(
+        update={
+            "beat_result_sha256": beat_result_sha256,
+            "beat_quality_decision_sha256": quality_sha256,
+        }
+    )
     _write_stage_result(
         workspace,
         f"run-{source_sha[:6]}-sec",
         "section.librosa_segment",
         f"section-{source_sha[:6]}",
         "section-analysis-result.json",
-        _section_result(source_sha).model_dump_json(),
+        result.model_dump_json(),
     )
 
 
 def _seed_quality(
     workspace: Path, source_sha: str, *, calibrated: bool = False
-) -> None:
+) -> tuple[str, str]:
     policy = (
         BeatInputQualityPolicyConfig(
             gate_version="2.0.0",
@@ -688,13 +700,18 @@ def _seed_quality(
             else None
         ),
     )
+    payload = decision.model_dump_json()
     _write_stage_result(
         workspace,
         f"run-{source_sha[:6]}-quality",
         "quality.beat_input",
         f"quality-{source_sha[:6]}",
         "beat-input-quality-decision.json",
-        decision.model_dump_json(),
+        payload,
+    )
+    return (
+        hashlib.sha256(result.model_dump_json().encode()).hexdigest(),
+        hashlib.sha256(payload.encode()).hexdigest(),
     )
 
 
@@ -703,8 +720,13 @@ def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
     workspace.mkdir()
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
-    _seed_section(workspace, SOURCE_SHA_A)
-    _seed_quality(workspace, SOURCE_SHA_A, calibrated=True)
+    beat_sha, quality_sha = _seed_quality(workspace, SOURCE_SHA_A, calibrated=True)
+    _seed_section(
+        workspace,
+        SOURCE_SHA_A,
+        beat_result_sha256=beat_sha,
+        quality_sha256=quality_sha,
+    )
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
 

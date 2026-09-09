@@ -188,6 +188,7 @@ class JobRunner:
         )
         by_kind = {stage.kind: stage for stage in job.stages}
         beat_result_path: str | None = None
+        beat_result_sha256: str | None = None
         quality_allows_publication: bool | None = None
         quality_result_path: str | None = None
         quality_result_sha256: str | None = None
@@ -221,6 +222,7 @@ class JobRunner:
                             **specification.config,
                             "beat_quality_decision_relative_path": quality_result_path,
                             "beat_quality_decision_sha256": quality_result_sha256,
+                            "beat_result_sha256": beat_result_sha256,
                         }
                     }
                 )
@@ -239,6 +241,7 @@ class JobRunner:
                         for artifact in result.artifacts
                         if artifact.artifact_kind == "beat.analysis_result"
                     )
+                    beat_result_sha256 = hash_file(self.workspace / beat_result_path)
                 if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
                     quality_path = next(
                         artifact.path

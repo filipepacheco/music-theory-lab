@@ -89,6 +89,12 @@ class EffectiveBeatAnalyzerSettings(FrozenBeatModel):
         return value
 
 
+class BeatWarning(FrozenBeatModel):
+    code: Identifier
+    severity: Literal["info", "warning", "fatal"]
+    details: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+
+
 class BeatAnalysisResult(FrozenBeatModel):
     """Portable, versioned description of one accepted beat analysis.
 
@@ -107,14 +113,7 @@ class BeatAnalysisResult(FrozenBeatModel):
     beats: tuple[BeatEstimate, ...] = ()
     downbeat_count: int = Field(ge=0)
     tempo_median_bpm: float = Field(ge=0)
-    warnings: tuple[str, ...] = ()
-
-    @field_validator("warnings")
-    @classmethod
-    def validate_warnings(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not warning.strip() for warning in value):
-            raise ValueError("warnings must not contain blank values")
-        return value
+    warnings: tuple[BeatWarning, ...] = ()
 
     @model_validator(mode="after")
     def validate_result(self) -> Self:

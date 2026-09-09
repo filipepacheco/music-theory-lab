@@ -11,9 +11,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import soundfile as sf
 from pydantic import Field, ValidationError, field_validator
 
 from audio_library_poc.asset_resolution import resolve_workspace_asset
+from audio_library_poc.beat_analysis import (
+    BeatAnalysisResult,
+    BeatAnalyzerProvenance,
+    BeatSourceFacts,
+    BeatWarning,
+    EffectiveBeatAnalyzerSettings,
+)
 from audio_library_poc.execution import (
     ExpectedStageFailure,
     StagedArtifact,
@@ -100,12 +108,54 @@ class BeatThisStageExecutor:
 
         from audio_library_poc._beat_this_runtime import run_beat_this_inference
 
-        result, metrics = run_beat_this_inference(
-            workspace=self.workspace,
-            source_path=source_path,
-            config=config,
-            identity=identity,
-        )
+        try:
+            result, metrics = run_beat_this_inference(
+                workspace=self.workspace,
+                source_path=source_path,
+                config=config,
+                identity=identity,
+            )
+        except ExpectedStageFailure as exc:
+            audio, sample_rate = sf.read(
+                str(source_path), dtype="float32", always_2d=True
+            )
+            result = BeatAnalysisResult(
+                source_sha256=identity.input_sha256,
+                provenance=BeatAnalyzerProvenance(
+                    candidate=BEAT_THIS_CANDIDATE_ID,
+                    implementation_version=identity.implementation_version,
+                    model_identifier=identity.model_identifier,
+                    model_sha256=identity.model_sha256,
+                    code_revision=identity.code_revision,
+                ),
+                settings=EffectiveBeatAnalyzerSettings(
+                    device=config.device,
+                    precision=config.precision,
+                    use_dbn=config.use_dbn,
+                ),
+                source=BeatSourceFacts(
+                    sample_rate=int(sample_rate),
+                    channels=int(audio.shape[1]),
+                    frame_count=int(audio.shape[0]),
+                    duration_seconds=float(audio.shape[0] / sample_rate),
+                    peak_absolute_sample=float(abs(audio).max()) if audio.size else 0,
+                ),
+                downbeat_count=0,
+                tempo_median_bpm=0,
+                warnings=(
+                    BeatWarning(
+                        code=exc.error.code,
+                        severity="fatal",
+                        details=exc.error.details,
+                    ),
+                ),
+            )
+            metrics = build_beat_this_metrics(
+                wall_seconds=0,
+                beat_count=0,
+                downbeat_count=0,
+                tempo_bpm=0,
+            )
         _validate_result(result, identity=identity)
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
 

@@ -26,7 +26,7 @@ import {
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
 import LibrarySectionEditor from '@/components/library/LibrarySectionEditor';
-import LibrarySectionStatus from './LibrarySectionStatus';
+import LibrarySectionStatus from '@/components/library/LibrarySectionStatus';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {

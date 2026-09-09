@@ -7,7 +7,12 @@ from pathlib import Path
 import soundfile as sf
 from pydantic import Field, ValidationError, field_validator
 
-from audio_library_poc.beat_analysis import BeatAnalysisResult
+from audio_library_poc.beat_analysis import (
+    BeatAnalysisResult,
+    BeatAnalyzerProvenance,
+    BeatSourceFacts,
+    EffectiveBeatAnalyzerSettings,
+)
 from audio_library_poc.beat_input_quality import (
     BeatInputQualityPolicyConfig,
     CalibrationEvidence,
@@ -29,6 +34,7 @@ from audio_library_poc.models import (
     TypedError,
 )
 from audio_library_poc.paths import validate_workspace_relative_path
+from audio_library_poc.separation import SeparatorPrecision
 
 BEAT_INPUT_QUALITY_STAGE_KIND = "quality.beat_input"
 BEAT_INPUT_QUALITY_IMPLEMENTATION_VERSION = "1.0.0"
@@ -37,14 +43,21 @@ _RESULT_ARTIFACT_FILENAME = "beat-input-quality-decision.json"
 
 class BeatInputQualityStageConfig(ContractModel):
     source_relative_path: str = Field(min_length=1)
-    beat_result_relative_path: str = Field(min_length=1)
+    beat_result_relative_path: str | None = None
+    analyzer_candidate: str = "beat_this"
+    analyzer_implementation_version: str = "1.0.0"
+    model_identifier: str = "unknown-model"
+    model_sha256: str = "0" * 64
+    analyzer_code_revision: str = "unknown-revision"
     policy: BeatInputQualityPolicyConfig
     calibration: CalibrationEvidence | None = None
     analyzer_fatal_codes: tuple[str, ...] = ()
 
     @field_validator("source_relative_path", "beat_result_relative_path")
     @classmethod
-    def validate_workspace_path(cls, value: str) -> str:
+    def validate_workspace_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return validate_workspace_relative_path(value)
 
 
@@ -66,20 +79,43 @@ class BeatInputQualityStageExecutor:
             raise ValueError("attempt must be positive")
         config = self._config(specification)
         source_path = self._file(config.source_relative_path, "source")
-        beat_path = self._file(config.beat_result_relative_path, "beat result")
         if hash_file(source_path) != identity.input_sha256:
             self._fail("beat.contract_invalid", "quality source hash mismatch")
+        audio, sample_rate = sf.read(str(source_path), dtype="float32", always_2d=True)
+        beat_path = self._optional_file(config.beat_result_relative_path)
+        contract_invalid = beat_path is None
         try:
+            if beat_path is None:
+                raise OSError("beat result missing")
             result = BeatAnalysisResult.model_validate_json(
                 beat_path.read_text(encoding="utf-8")
             )
-        except (OSError, UnicodeError, ValidationError) as exc:
-            self._fail(
-                "beat.contract_invalid",
-                "beat analysis artifact does not satisfy its committed contract",
-                exception_type=type(exc).__name__,
+        except (OSError, UnicodeError, ValidationError):
+            contract_invalid = True
+            result = BeatAnalysisResult(
+                source_sha256=identity.input_sha256,
+                provenance=BeatAnalyzerProvenance(
+                    candidate=config.analyzer_candidate,
+                    implementation_version=config.analyzer_implementation_version,
+                    model_identifier=config.model_identifier,
+                    model_sha256=config.model_sha256,
+                    code_revision=config.analyzer_code_revision,
+                ),
+                settings=EffectiveBeatAnalyzerSettings(
+                    device="unknown",
+                    precision=SeparatorPrecision.FLOAT32,
+                    use_dbn=False,
+                ),
+                source=BeatSourceFacts(
+                    sample_rate=int(sample_rate),
+                    channels=int(audio.shape[1]),
+                    frame_count=int(audio.shape[0]),
+                    duration_seconds=float(audio.shape[0] / sample_rate),
+                    peak_absolute_sample=float(abs(audio).max()) if audio.size else 0,
+                ),
+                downbeat_count=0,
+                tempo_median_bpm=0,
             )
-        audio, sample_rate = sf.read(str(source_path), dtype="float32", always_2d=True)
         measurements = measure_beat_input_quality(
             result=result,
             audio=audio,
@@ -88,13 +124,14 @@ class BeatInputQualityStageExecutor:
         )
         decision = decide_beat_input_quality(
             result=result,
-            result_sha256=hash_file(beat_path),
+            result_sha256=hash_file(beat_path) if beat_path is not None else "0" * 64,
             measurements=measurements,
             policy_config=config.policy,
             calibration=config.calibration,
             analyzer_fatal_codes=config.analyzer_fatal_codes,
             expected_source_sha256=identity.input_sha256,
             implementation_revision=identity.code_revision,
+            contract_invalid=contract_invalid,
         )
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
@@ -138,6 +175,12 @@ class BeatInputQualityStageExecutor:
                 relative_path=relative_path,
             )
         return path
+
+    def _optional_file(self, relative_path: str | None) -> Path | None:
+        if relative_path is None:
+            return None
+        path = (self.workspace / relative_path).resolve()
+        return path if path.is_relative_to(self.workspace) and path.is_file() else None
 
     @staticmethod
     def _fail(code: str, message: str, **details: object):
