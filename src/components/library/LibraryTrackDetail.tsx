@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { probeAudioUrl } from './audioSource';
+import {
+  useLibraryAudioSource,
+  type AudioAttachmentStatus,
+} from '@/hooks/useLibraryAudioSource';
 import {
   barIndexAtSeconds,
   buildChordChartBars,
@@ -32,15 +35,13 @@ interface DetailData {
   section: SectionAnalysisJson | null;
 }
 
-/** `undefined` while the probe is still running, `null` once it found nothing. */
-type AudioProbe = string | null | undefined;
-
 const NO_SECTIONS: never[] = [];
 
 export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<AudioProbe>(undefined);
+  const { audioSource, attachmentStatus, attachAudio } =
+    useLibraryAudioSource(track);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,20 +57,9 @@ export default function LibraryTrackDetail({ track }: Props) {
     return () => controller.abort();
   }, [track]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setAudioUrl(undefined);
-    probeAudioUrl(track, controller.signal)
-      .then((url) => {
-        if (!controller.signal.aborted) setAudioUrl(url);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setAudioUrl(null);
-      });
-    return () => controller.abort();
-  }, [track]);
+  const audioUrl = audioSource.status === 'ready' ? audioSource.url : null;
 
-  const audio = useLibraryAudio(audioUrl ?? null);
+  const audio = useLibraryAudio(audioUrl);
 
   const bars = useMemo(() => {
     if (!data) return [];
@@ -97,7 +87,9 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const activeSectionIndex = useMemo(
     () =>
-      audio.playing ? sectionIndexAtSeconds(sections, audio.currentSeconds) : -1,
+      audio.playing
+        ? sectionIndexAtSeconds(sections, audio.currentSeconds)
+        : -1,
     [audio.playing, audio.currentSeconds, sections],
   );
 
@@ -106,7 +98,9 @@ export default function LibraryTrackDetail({ track }: Props) {
   return (
     <section className="flex flex-col gap-4">
       <header>
-        <h3 className="font-heading text-base text-text-primary">{track.title}</h3>
+        <h3 className="font-heading text-base text-text-primary">
+          {track.title}
+        </h3>
         <p className="text-sm text-text-secondary">{track.artist}</p>
       </header>
 
@@ -127,16 +121,13 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {audioUrl && <LibraryPlayer audio={audio} />}
 
-      {audioUrl === null && (
-        <p className="text-[11px] text-text-muted rounded-button border border-border-default bg-bg-card px-3 py-2">
-          Sem áudio para esta faixa — só a análise foi publicada. Rode{' '}
-          <code className="font-mono text-[10px]">
-            sync_workspace_to_public.py --copy-audio
-          </code>{' '}
-          para copiar o arquivo original e habilitar a reprodução e o salto por
-          compasso.
-        </p>
-      )}
+      <LocalAudioAttachment
+        fileName={
+          audioSource.status === 'ready' ? audioSource.localFileName : null
+        }
+        status={attachmentStatus}
+        onSelect={attachAudio}
+      />
 
       {error && (
         <p className="text-sm text-red-400">
@@ -198,12 +189,85 @@ export default function LibraryTrackDetail({ track }: Props) {
             <p className="text-[11px] text-text-muted">
               Um bloco = um compasso, agrupado a partir do down-beat detectado.
               Compassos seguidos sem acorde detectado viram um bloco só.
-              {seek ? ' Clique num bloco para saltar a reprodução até ele.' : ''}
+              {seek
+                ? ' Clique num bloco para saltar a reprodução até ele.'
+                : ''}
             </p>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+function LocalAudioAttachment({
+  fileName,
+  status,
+  onSelect,
+}: {
+  fileName: string | null;
+  status: AudioAttachmentStatus;
+  onSelect: (file: File) => Promise<void>;
+}) {
+  const inputId = 'library-local-audio';
+  const message = {
+    idle: null,
+    checking: 'Verificando o arquivo pelo SHA-256…',
+    attached: 'Áudio local vinculado com sucesso.',
+    mismatch:
+      'Este arquivo não corresponde à análise. Escolha a gravação original desta faixa.',
+    unreadable:
+      'Não foi possível ler este arquivo. Confira o arquivo e tente novamente.',
+    'storage-error':
+      'Não foi possível salvar o áudio neste navegador. Verifique o espaço disponível e tente novamente.',
+  }[status];
+  const isError =
+    status === 'mismatch' ||
+    status === 'unreadable' ||
+    status === 'storage-error';
+
+  return (
+    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
+      <div>
+        <p className="text-xs text-text-secondary">
+          {fileName
+            ? `Áudio local: ${fileName}`
+            : 'O áudio original ainda não está vinculado a esta análise.'}
+        </p>
+        <p className="text-[11px] text-text-muted">
+          O arquivo permanece somente neste navegador e não é enviado para a
+          nuvem.
+        </p>
+      </div>
+      <label
+        htmlFor={inputId}
+        className="font-heading text-xs px-3 py-1.5 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+      >
+        {fileName ? 'Trocar arquivo local' : 'Vincular áudio original'}
+      </label>
+      <input
+        id={inputId}
+        type="file"
+        accept="audio/*"
+        disabled={status === 'checking'}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file) void onSelect(file);
+        }}
+      />
+      {message && (
+        <p
+          role={isError ? 'alert' : 'status'}
+          className={`text-[11px] ${
+            isError ? 'text-red-400' : 'text-text-muted'
+          }`}
+        >
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -288,7 +352,9 @@ function ChordCells({
           isActive
             ? 'border-text-primary bg-bg-hover'
             : 'border-border-default bg-bg-card',
-          onSeek ? 'hover:border-text-primary cursor-pointer' : 'cursor-default',
+          onSeek
+            ? 'hover:border-text-primary cursor-pointer'
+            : 'cursor-default',
         ].join(' ');
         return (
           <button
