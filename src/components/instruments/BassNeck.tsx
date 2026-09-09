@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
-import { useAppStore } from "@/store/useAppStore";
-import { useSynth } from "@/hooks/useSynth";
-import { getNoteName, computeVoicingOctaveMap } from "@/utils/noteHelpers";
-import BassFret from "./BassFret";
+import { useMemo, useState } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import { getNoteName, computeVoicingOctaveMap } from '@/utils/noteHelpers';
+import { toBassMidi } from '@/utils/growlybass';
+import { GROWLYBASS_SOURCE_COMMIT } from '@/constants/growlybass.generated';
+import { useBassSynth } from '@/hooks/useBassSynth';
+import BassFret from '@/components/instruments/BassFret';
 
 // Standard bass tuning: E1, A1, D2, G2 (note indices)
 const TUNING = [4, 9, 2, 7]; // E, A, D, G
 const TUNING_OCTAVES = [1, 1, 2, 2]; // E1, A1, D2, G2
 // Display order: G (highest) to E (lowest), top to bottom
 const DISPLAY_ORDER = [3, 2, 1, 0]; // G, D, A, E
-const STRING_LABELS = ["G", "D", "A", "E"];
+const STRING_LABELS = ['G', 'D', 'A', 'E'];
 const FRET_COUNT = 12;
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12]);
 
@@ -18,8 +20,8 @@ export default function BassNeck() {
   const highlightRootName = useAppStore((s) => s.highlightRootName);
   const highlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
   const rootNote = useAppStore((s) => s.rootNote);
-  const { playNote } = useSynth();
   const [showAllNotes, setShowAllNotes] = useState(false);
+  const { playBassNote, samplerStatus } = useBassSynth();
 
   const rootNoteName = highlightRootName ?? getNoteName(rootNote);
   const hasAnyHighlights = highlightedNotes.length > 0;
@@ -46,9 +48,7 @@ export default function BassNeck() {
           const open = TUNING[si];
           for (let f = 0; f <= FRET_COUNT; f++) {
             if ((open + f) % 12 !== noteIdx) continue;
-            const oct = Math.floor(
-              (TUNING_OCTAVES[si] * 12 + open + f) / 12,
-            );
+            const oct = Math.floor((TUNING_OCTAVES[si] * 12 + open + f) / 12);
             if (oct === tryOctave && f < bestFret) {
               bestFret = f;
               bestString = si;
@@ -68,7 +68,7 @@ export default function BassNeck() {
   }, [highlightOctaveMap, highlightedNotes]);
 
   const handleNoteClick = (noteIndex: number, octave: number) => {
-    playNote(noteIndex, octave);
+    playBassNote(toBassMidi(noteIndex, octave));
   };
 
   return (
@@ -81,11 +81,11 @@ export default function BassNeck() {
           onClick={() => setShowAllNotes(!showAllNotes)}
           className={`text-xs font-medium px-2.5 py-1 rounded-control border transition-colors cursor-pointer ${
             showAllNotes
-              ? "border-accent bg-accent/15 text-accent"
-              : "border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary"
+              ? 'border-accent bg-accent/15 text-accent'
+              : 'border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary'
           }`}
         >
-          {showAllNotes ? "Todas as notas" : "Apenas acordes"}
+          {showAllNotes ? 'Todas as notas' : 'Apenas acordes'}
         </button>
       </div>
       <div className="overflow-x-auto min-w-0">
@@ -102,7 +102,7 @@ export default function BassNeck() {
               key={fret}
               className="text-center text-xs text-text-muted font-mono"
             >
-              {fret === 0 ? "" : fret}
+              {fret === 0 ? '' : fret}
             </div>
           ))}
         </div>
@@ -130,9 +130,13 @@ export default function BassNeck() {
                 const octave = Math.floor(
                   (TUNING_OCTAVES[stringIdx] * 12 + openNote + fret) / 12,
                 );
-                const prevOctave = fret > 0
-                  ? Math.floor((TUNING_OCTAVES[stringIdx] * 12 + openNote + fret - 1) / 12)
-                  : octave;
+                const prevOctave =
+                  fret > 0
+                    ? Math.floor(
+                        (TUNING_OCTAVES[stringIdx] * 12 + openNote + fret - 1) /
+                          12,
+                      )
+                    : octave;
                 const isOctaveStart = fret > 0 && octave !== prevOctave;
                 const isHighlighted =
                   bassHighlightPositions !== null
@@ -149,7 +153,8 @@ export default function BassNeck() {
                     showAllNotes={showAllNotes}
                     isOpenString={fret === 0}
                     hasFretMarker={
-                      FRET_MARKERS.has(fret) && rowIdx === DISPLAY_ORDER.length - 1
+                      FRET_MARKERS.has(fret) &&
+                      rowIdx === DISPLAY_ORDER.length - 1
                     }
                     isOctaveStart={isOctaveStart}
                     octave={octave}
@@ -160,6 +165,36 @@ export default function BassNeck() {
             </div>
           );
         })}
+      </div>
+      <div className="mt-3 text-[11px] leading-relaxed text-text-muted">
+        {samplerStatus === 'loading' && (
+          <span role="status">Carregando o timbre do baixo… </span>
+        )}
+        {samplerStatus === 'error' && (
+          <span role="alert" className="text-red-400">
+            Não foi possível carregar o timbre do baixo. Toque novamente para
+            tentar de novo.{' '}
+          </span>
+        )}
+        Samples derivados de{' '}
+        <a
+          className="underline hover:text-text-secondary"
+          href={`https://github.com/sfzinstruments/karoryfer.growlybass/tree/${GROWLYBASS_SOURCE_COMMIT}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Growlybass por Karoryfer Lecolds (2014)
+        </a>
+        , dedicados ao domínio público sob{' '}
+        <a
+          className="underline hover:text-text-secondary"
+          href="https://creativecommons.org/publicdomain/zero/1.0/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          CC0 1.0
+        </a>
+        . Selecionados e convertidos para o Music Theory Lab.
       </div>
     </div>
   );
