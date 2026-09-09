@@ -10,7 +10,7 @@ import {
   moveLibraryBoundary,
   splitLibrarySection,
   validateLibraryAnnotation,
-} from './libraryAnnotation';
+} from '@/domain/libraryAnnotation';
 
 describe('Library annotation document', () => {
   it('starts a track without accepted boundaries as one neutral full-track section', () => {
@@ -146,6 +146,24 @@ describe('Library annotation document', () => {
       'Toda seção precisa conter ao menos um compasso.',
       'As seções precisam cobrir a faixa sem lacunas nem sobreposições.',
     ]);
+  });
+
+  it('requires a positive bar count and integer bar indexes', () => {
+    expect(() => createLibraryAnnotation('source-sha', 0, [])).toThrow(
+      'Uma faixa anotável precisa conter ao menos um compasso.',
+    );
+    const fractional = {
+      schemaVersion: 1 as const,
+      sourceSha256: 'source-sha',
+      sections: [
+        { id: 'a', name: 'Parte 1', startBar: 0, endBar: 1.5 },
+        { id: 'b', name: 'Parte 2', startBar: 1.5, endBar: 3 },
+      ],
+    };
+
+    expect(validateLibraryAnnotation(fractional, 3)).toContain(
+      'Os limites das seções precisam ser índices inteiros de compassos.',
+    );
   });
 
   it('migrates the legacy snake-case persistence shape on reload', () => {

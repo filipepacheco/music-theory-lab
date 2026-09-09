@@ -9,7 +9,7 @@ import {
   type LibraryAnnotationDocument,
   type LibraryAnnotationEditResult,
 } from '@/domain/libraryAnnotation';
-import type { ChordChartBar } from './libraryData';
+import type { ChordChartBar } from '@/components/library/libraryData';
 
 interface Props {
   document: LibraryAnnotationDocument;
@@ -151,14 +151,20 @@ function BoundaryControls({
   const rightError = getBoundaryMoveError(document, boundaryIndex, 1);
   const left = document.sections[boundaryIndex];
   const right = document.sections[boundaryIndex + 1];
+  const limitDescriptionId = `library-boundary-${boundaryIndex}-limits`;
+  const limitMessages = [
+    leftError ? `À esquerda: ${leftError}` : null,
+    rightError ? `À direita: ${rightError}` : null,
+  ].filter((message): message is string => message !== null);
 
   return (
-    <div className="mx-1 flex w-16 flex-col items-center justify-center gap-1 rounded-control border border-dashed border-accent/60 bg-accent/10 px-1">
+    <div className="mx-1 flex w-24 flex-col items-center justify-center gap-1 rounded-control border border-dashed border-accent/60 bg-accent/10 px-1">
       <span className="text-[9px] uppercase text-text-muted">fronteira</span>
       <div className="flex gap-1">
         <BoundaryButton
           label="Mover fronteira um compasso à esquerda"
           error={leftError}
+          descriptionId={limitDescriptionId}
           onClick={() =>
             onEdit(moveLibraryBoundary(document, boundaryIndex, -1))
           }
@@ -168,6 +174,7 @@ function BoundaryControls({
         <BoundaryButton
           label="Mover fronteira um compasso à direita"
           error={rightError}
+          descriptionId={limitDescriptionId}
           onClick={() =>
             onEdit(moveLibraryBoundary(document, boundaryIndex, 1))
           }
@@ -182,6 +189,14 @@ function BoundaryControls({
       >
         unir
       </BoundaryButton>
+      {limitMessages.length > 0 && (
+        <p
+          id={limitDescriptionId}
+          className="text-center text-[8px] leading-tight text-text-muted"
+        >
+          {limitMessages.join(' ')}
+        </p>
+      )}
     </div>
   );
 }
@@ -189,11 +204,13 @@ function BoundaryControls({
 function BoundaryButton({
   label,
   error,
+  descriptionId,
   onClick,
   children,
 }: {
   label: string;
   error: string | null;
+  descriptionId?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -201,6 +218,7 @@ function BoundaryButton({
     <button
       type="button"
       aria-label={label}
+      aria-describedby={error ? descriptionId : undefined}
       disabled={error !== null}
       title={error ?? label}
       onClick={onClick}
