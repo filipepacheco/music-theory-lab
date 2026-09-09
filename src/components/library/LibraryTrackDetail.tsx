@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  createLibraryAnnotation,
+  type LibraryAnnotationDocument,
+  type LibraryAnnotationEditResult,
+} from '@/domain/libraryAnnotation';
+import { savedLibrary } from '@/services/savedLibrary';
 import { probeAudioUrl } from './audioSource';
 import {
   barIndexAtSeconds,
@@ -8,6 +14,7 @@ import {
   formatDuration,
   groupBarsBySection,
   sectionColorVar,
+  sectionBoundaryBars,
   sectionIndexAtSeconds,
   type BeatAnalysisJson,
   type ChordAnalysisJson,
@@ -18,7 +25,7 @@ import {
   type SectionGroup,
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
-import LibrarySectionTimeline from './LibrarySectionTimeline';
+import LibrarySectionEditor from './LibrarySectionEditor';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
@@ -41,6 +48,9 @@ export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<AudioProbe>(undefined);
+  const [annotation, setAnnotation] =
+    useState<LibraryAnnotationDocument | null>(null);
+  const [annotationError, setAnnotationError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,8 +96,8 @@ export default function LibraryTrackDetail({ track }: Props) {
   const sections = data?.section?.sections ?? NO_SECTIONS;
 
   const sectionGroups = useMemo(
-    () => groupBarsBySection(bars, sections),
-    [bars, sections],
+    () => groupBarsBySection(bars, annotationSections(annotation, bars)),
+    [annotation, bars],
   );
 
   const activeBarIndex = useMemo(
@@ -97,16 +107,64 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const activeSectionIndex = useMemo(
     () =>
-      audio.playing ? sectionIndexAtSeconds(sections, audio.currentSeconds) : -1,
-    [audio.playing, audio.currentSeconds, sections],
+      audio.playing
+        ? sectionIndexAtSeconds(
+            annotationSections(annotation, bars),
+            audio.currentSeconds,
+          )
+        : -1,
+    [annotation, audio.playing, audio.currentSeconds, bars],
   );
+
+  useEffect(() => {
+    if (!data || bars.length === 0) return;
+    let cancelled = false;
+    setAnnotation(null);
+    setAnnotationError(null);
+    savedLibrary.libraryAnnotations
+      .get(track.source_sha256, bars.length)
+      .then(async (saved) => {
+        if (cancelled) return;
+        const initial =
+          saved ??
+          createLibraryAnnotation(
+            track.source_sha256,
+            bars.length,
+            sectionBoundaryBars(bars, sections),
+          );
+        setAnnotation(initial);
+        if (!saved) await savedLibrary.libraryAnnotations.save(initial);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAnnotationError('Falha ao carregar as seções salvas desta faixa.');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bars, data, sections, track.source_sha256]);
+
+  const editAnnotation = (result: LibraryAnnotationEditResult) => {
+    if (result.error) {
+      setAnnotationError(result.error);
+      return;
+    }
+    setAnnotation(result.document);
+    setAnnotationError(null);
+    savedLibrary.libraryAnnotations.save(result.document).catch(() => {
+      setAnnotationError('Falha ao salvar esta edição localmente.');
+    });
+  };
 
   const seek = audioUrl && audio.ready ? audio.seek : null;
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex min-w-0 flex-col gap-4">
       <header>
-        <h3 className="font-heading text-base text-text-primary">{track.title}</h3>
+        <h3 className="font-heading text-base text-text-primary">
+          {track.title}
+        </h3>
         <p className="text-sm text-text-secondary">{track.artist}</p>
       </header>
 
@@ -150,24 +208,30 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {data && (
         <div className="flex flex-col gap-5">
-          {sections.length > 0 && (
+          {annotation && (
             <div className="flex flex-col gap-2">
               <h4 className="font-heading text-sm text-text-secondary">
-                Forma detectada
+                Seções da faixa
               </h4>
-              <LibrarySectionTimeline
-                sections={sections}
-                durationSeconds={track.duration_seconds}
-                activeIndex={activeSectionIndex}
-                progressSeconds={audioUrl ? audio.currentSeconds : null}
-                onSeek={seek}
+              <LibrarySectionEditor
+                document={annotation}
+                bars={bars}
+                activeSectionIndex={activeSectionIndex}
+                onEdit={editAnnotation}
               />
               <p className="text-[11px] text-text-muted">
-                As letras agrupam trechos que soam parecidos entre si — são
-                marcações automáticas, não intro, verso ou refrão.
-                {seek ? ' Clique num trecho para saltar até ele.' : ''}
+                Renomeie no cabeçalho, clique em um compasso para dividir ou use
+                a fronteira para mover um compasso e unir seções. A ordem
+                original da gravação não muda.
               </p>
+              {annotationError && (
+                <p className="text-[11px] text-red-400">{annotationError}</p>
+              )}
             </div>
+          )}
+
+          {annotationError && !annotation && (
+            <p className="text-[11px] text-red-400">{annotationError}</p>
           )}
 
           <div className="flex flex-col gap-2">
@@ -198,7 +262,9 @@ export default function LibraryTrackDetail({ track }: Props) {
             <p className="text-[11px] text-text-muted">
               Um bloco = um compasso, agrupado a partir do down-beat detectado.
               Compassos seguidos sem acorde detectado viram um bloco só.
-              {seek ? ' Clique num bloco para saltar a reprodução até ele.' : ''}
+              {seek
+                ? ' Clique num bloco para saltar a reprodução até ele.'
+                : ''}
             </p>
           </div>
         </div>
@@ -288,7 +354,9 @@ function ChordCells({
           isActive
             ? 'border-text-primary bg-bg-hover'
             : 'border-border-default bg-bg-card',
-          onSeek ? 'hover:border-text-primary cursor-pointer' : 'cursor-default',
+          onSeek
+            ? 'hover:border-text-primary cursor-pointer'
+            : 'cursor-default',
         ].join(' ');
         return (
           <button
@@ -340,4 +408,19 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dd className="font-heading text-sm text-text-primary mt-0.5">{value}</dd>
     </div>
   );
+}
+
+function annotationSections(
+  annotation: LibraryAnnotationDocument | null,
+  bars: ChordChartBar[],
+): SectionAnalysisJson['sections'] {
+  if (!annotation) return [];
+  return annotation.sections.map((section) => ({
+    start_seconds: bars[section.startBar]?.startSeconds ?? 0,
+    end_seconds:
+      bars[section.endBar - 1]?.endSeconds ??
+      bars[bars.length - 1]?.endSeconds ??
+      0,
+    label: section.name,
+  }));
 }
