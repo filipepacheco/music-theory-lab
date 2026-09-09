@@ -13,7 +13,9 @@ export default function LibraryModule() {
     fetchLibraryIndex(controller.signal)
       .then((index) => {
         setTracks(index.tracks);
-        setSelectedSha((current) => current ?? index.tracks[0]?.source_sha256 ?? null);
+        setSelectedSha(
+          (current) => current ?? index.tracks[0]?.source_sha256 ?? null,
+        );
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
@@ -23,8 +25,7 @@ export default function LibraryModule() {
     return () => controller.abort();
   }, []);
 
-  const selected =
-    tracks?.find((t) => t.source_sha256 === selectedSha) ?? null;
+  const selected = tracks?.find((t) => t.source_sha256 === selectedSha) ?? null;
 
   return (
     <section className="section-panel flex flex-col gap-4">
@@ -47,7 +48,7 @@ export default function LibraryModule() {
       )}
 
       {tracks && (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
           <LibraryTrackList
             tracks={tracks}
             selectedSha={selectedSha}
