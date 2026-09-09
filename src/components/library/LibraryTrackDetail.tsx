@@ -9,6 +9,7 @@ import {
   type LibraryIndexEntry,
 } from './libraryData';
 import LibrarySectionControlsPrototype from './LibrarySectionControlsPrototype';
+import RejectedBoundarySuggestionsPrototype from './RejectedBoundarySuggestionsPrototype';
 
 interface Props {
   track: LibraryIndexEntry;
@@ -53,9 +54,11 @@ export default function LibraryTrackDetail({ track }: Props) {
     return grouped;
   }, [bars]);
 
-  const showSectionPrototype =
-    import.meta.env.DEV &&
-    new URLSearchParams(window.location.search).get('prototype') === 'sections';
+  const prototype = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get('prototype')
+    : null;
+  const showSectionPrototype = prototype === 'sections';
+  const showRejectedBoundariesPrototype = prototype === 'rejected-boundaries';
 
   return (
     <section className="flex flex-col gap-4">
@@ -94,9 +97,13 @@ export default function LibraryTrackDetail({ track }: Props) {
       {data && (
         <div className="flex flex-col gap-2">
           <h4 className="font-heading text-sm text-text-secondary">
-            {showSectionPrototype ? 'Edição de seções' : 'Cifra por compasso'}
+            {showSectionPrototype || showRejectedBoundariesPrototype
+              ? 'Edição de seções'
+              : 'Cifra por compasso'}
           </h4>
-          {showSectionPrototype ? (
+          {showRejectedBoundariesPrototype ? (
+            <RejectedBoundarySuggestionsPrototype bars={bars} />
+          ) : showSectionPrototype ? (
             <LibrarySectionControlsPrototype bars={bars} />
           ) : (
             <>
