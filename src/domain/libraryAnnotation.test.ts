@@ -17,14 +17,19 @@ describe('Library annotation document', () => {
     const document = createLibraryAnnotation('source-sha', 12, []);
 
     expect(document).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceSha256: 'source-sha',
+      barCount: 12,
+      reviewRequired: true,
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
       sections: [
         {
           id: 'section-1',
           name: 'Parte 1',
           startBar: 0,
           endBar: 12,
+          origin: 'fallback',
         },
       ],
     });
@@ -44,6 +49,12 @@ describe('Library annotation document', () => {
       { name: 'Parte 2', startBar: 4, endBar: 8 },
       { name: 'Parte 3', startBar: 8, endBar: 12 },
     ]);
+    expect(document.reviewRequired).toBe(false);
+    expect(document.sections.map((section) => section.origin)).toEqual([
+      'automatic',
+      'automatic',
+      'automatic',
+    ]);
   });
 
   it('renames one section without changing its bars', () => {
@@ -57,6 +68,7 @@ describe('Library annotation document', () => {
       name: 'Interlúdio',
       startBar: 4,
       endBar: 12,
+      origin: 'automatic',
     });
     expect(original.sections[1].name).toBe('Parte 2');
   });
@@ -68,8 +80,20 @@ describe('Library annotation document', () => {
 
     expect(result.error).toBeNull();
     expect(result.document.sections).toEqual([
-      { id: 'section-1', name: 'Parte 1', startBar: 0, endBar: 3 },
-      { id: 'section-2', name: 'Parte 2', startBar: 3, endBar: 8 },
+      {
+        id: 'section-1',
+        name: 'Parte 1',
+        startBar: 0,
+        endBar: 3,
+        origin: 'fallback',
+      },
+      {
+        id: 'section-2',
+        name: 'Parte 2',
+        startBar: 3,
+        endBar: 8,
+        origin: 'manual',
+      },
     ]);
   });
 
@@ -107,8 +131,20 @@ describe('Library annotation document', () => {
 
     expect(result.error).toBeNull();
     expect(result.document.sections).toEqual([
-      { id: 'section-1', name: 'Abertura', startBar: 0, endBar: 6 },
-      { id: 'section-3', name: 'Parte 3', startBar: 6, endBar: 8 },
+      {
+        id: 'section-1',
+        name: 'Abertura',
+        startBar: 0,
+        endBar: 6,
+        origin: 'automatic',
+      },
+      {
+        id: 'section-3',
+        name: 'Parte 3',
+        startBar: 6,
+        endBar: 8,
+        origin: 'automatic',
+      },
     ]);
   });
 
@@ -132,12 +168,34 @@ describe('Library annotation document', () => {
 
   it('detects gaps, overlaps, reordering, and empty sections', () => {
     const invalid = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       sourceSha256: 'source-sha',
+      barCount: 8,
+      reviewRequired: false,
+      createdAt: '2026-09-09T12:00:00.000Z',
+      updatedAt: '2026-09-09T12:00:00.000Z',
       sections: [
-        { id: 'a', name: 'Parte 1', startBar: 0, endBar: 3 },
-        { id: 'b', name: 'Parte 2', startBar: 4, endBar: 4 },
-        { id: 'c', name: 'Parte 3', startBar: 2, endBar: 8 },
+        {
+          id: 'a',
+          name: 'Parte 1',
+          startBar: 0,
+          endBar: 3,
+          origin: 'automatic' as const,
+        },
+        {
+          id: 'b',
+          name: 'Parte 2',
+          startBar: 4,
+          endBar: 4,
+          origin: 'automatic' as const,
+        },
+        {
+          id: 'c',
+          name: 'Parte 3',
+          startBar: 2,
+          endBar: 8,
+          origin: 'automatic' as const,
+        },
       ],
     };
 
@@ -153,11 +211,27 @@ describe('Library annotation document', () => {
       'Uma faixa anotável precisa conter ao menos um compasso.',
     );
     const fractional = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       sourceSha256: 'source-sha',
+      barCount: 3,
+      reviewRequired: false,
+      createdAt: '2026-09-09T12:00:00.000Z',
+      updatedAt: '2026-09-09T12:00:00.000Z',
       sections: [
-        { id: 'a', name: 'Parte 1', startBar: 0, endBar: 1.5 },
-        { id: 'b', name: 'Parte 2', startBar: 1.5, endBar: 3 },
+        {
+          id: 'a',
+          name: 'Parte 1',
+          startBar: 0,
+          endBar: 1.5,
+          origin: 'automatic' as const,
+        },
+        {
+          id: 'b',
+          name: 'Parte 2',
+          startBar: 1.5,
+          endBar: 3,
+          origin: 'automatic' as const,
+        },
       ],
     };
 
@@ -180,11 +254,27 @@ describe('Library annotation document', () => {
     );
 
     expect(migrated).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceSha256: 'source-sha',
+      barCount: 8,
+      reviewRequired: false,
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
       sections: [
-        { id: 'old-a', name: 'Primeira', startBar: 0, endBar: 3 },
-        { id: 'old-b', name: 'Segunda', startBar: 3, endBar: 8 },
+        {
+          id: 'old-a',
+          name: 'Primeira',
+          startBar: 0,
+          endBar: 3,
+          origin: 'automatic',
+        },
+        {
+          id: 'old-b',
+          name: 'Segunda',
+          startBar: 3,
+          endBar: 8,
+          origin: 'automatic',
+        },
       ],
     });
   });

@@ -76,13 +76,16 @@ export function mergeLastWriteWins<
   Cloud extends { id: string; updated_at: string },
 >(local: Local[], cloud: Cloud[]): LastWriteWinsMerge<Local, Cloud> {
   const localById = new Map(local.map((record) => [record.id, record]));
-  const cloudIds = new Set(cloud.map((record) => record.id));
+  const cloudById = new Map(cloud.map((record) => [record.id, record]));
   return {
     cloudToApply: cloud.filter((record) => {
       const localRecord = localById.get(record.id);
       return !localRecord || record.updated_at > localRecord.updatedAt;
     }),
-    localToPush: local.filter((record) => !cloudIds.has(record.id)),
+    localToPush: local.filter((record) => {
+      const cloudRecord = cloudById.get(record.id);
+      return !cloudRecord || record.updatedAt > cloudRecord.updated_at;
+    }),
   };
 }
 

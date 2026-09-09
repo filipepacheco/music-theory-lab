@@ -1,12 +1,38 @@
 import type { Database } from 'sql.js';
 import {
   migrateLibraryAnnotation,
+  parseLibraryAnnotation,
   type LibraryAnnotationDocument,
 } from '@/domain/libraryAnnotation';
 
 export interface LoadedLibraryAnnotation {
   document: LibraryAnnotationDocument;
   migrated: boolean;
+}
+
+export function listLibraryAnnotations(
+  database: Database,
+): LibraryAnnotationDocument[] {
+  const statement = database.prepare(
+    `SELECT document FROM library_annotations ORDER BY source_sha256`,
+  );
+  const documents: LibraryAnnotationDocument[] = [];
+  try {
+    while (statement.step()) {
+      const row = statement.getAsObject();
+      try {
+        const document = parseLibraryAnnotation(
+          JSON.parse(row.document as string) as unknown,
+        );
+        if (document) documents.push(document);
+      } catch {
+        // Malformed local rows are never candidates for cloud replacement.
+      }
+    }
+  } finally {
+    statement.free();
+  }
+  return documents;
 }
 
 export function initializeLibraryAnnotationStorage(database: Database): void {

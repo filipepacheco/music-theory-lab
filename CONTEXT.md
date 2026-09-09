@@ -39,10 +39,13 @@ its bytes are never rewritten by a correction in the app.
 _Avoid_: editable analysis, Library state
 
 **Library annotation document**:
-The single locally persisted, user-owned correction layer for one Biblioteca
-track, keyed by the same stable `source_sha256` as its analysis artifacts. It
-contains only the editable chronological sections; loading, migration, and
-saving go through the saved-library façade.
+The single locally persisted and cloud-synchronized, user-owned correction
+layer for one Biblioteca track, keyed by the same stable `source_sha256` as
+its analysis artifacts. It contains only the editable chronological sections,
+their automatic, fallback, or manual boundary origins, review state, schema
+version, bar count, and timestamps; loading, migration, saving, and
+single-user last-write-wins synchronization go through the saved-library
+façade. Malformed cloud documents never replace valid local annotations.
 _Avoid_: section analysis, arrangement
 
 **Library section**:

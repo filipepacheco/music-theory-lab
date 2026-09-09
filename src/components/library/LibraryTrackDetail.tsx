@@ -123,9 +123,13 @@ export default function LibraryTrackDetail({ track }: Props) {
     let cancelled = false;
     setAnnotation(null);
     setAnnotationError(null);
-    savedLibrary.libraryAnnotations
-      .get(track.source_sha256, bars.length)
-      .then(async (saved) => {
+    const loadAnnotation = async () => {
+      try {
+        await savedLibrary.synchronize();
+        const saved = await savedLibrary.libraryAnnotations.get(
+          track.source_sha256,
+          bars.length,
+        );
         if (cancelled) return;
         const initial =
           saved ??
@@ -136,14 +140,17 @@ export default function LibraryTrackDetail({ track }: Props) {
           );
         setAnnotation(initial);
         if (!saved) await savedLibrary.libraryAnnotations.save(initial);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setAnnotationError('Falha ao carregar as seções salvas desta faixa.');
         }
-      });
+      }
+    };
+    void loadAnnotation();
+    window.addEventListener('focus', loadAnnotation);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', loadAnnotation);
     };
   }, [bars, data, sections, track.source_sha256]);
 

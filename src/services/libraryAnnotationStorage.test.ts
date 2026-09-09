@@ -6,6 +6,7 @@ import {
 } from '@/domain/libraryAnnotation';
 import {
   initializeLibraryAnnotationStorage,
+  listLibraryAnnotations,
   loadLibraryAnnotation,
   storeLibraryAnnotation,
 } from '@/services/libraryAnnotationStorage';
@@ -91,7 +92,23 @@ describe('Library annotation local storage', () => {
       name: 'Primeira',
       startBar: 0,
       endBar: 2,
+      origin: 'automatic',
     });
     expect(current?.migrated).toBe(false);
+  });
+
+  it('lists only valid current documents for cloud synchronization', async () => {
+    const SQL = await sql();
+    const database = new SQL.Database();
+    initializeLibraryAnnotationStorage(database);
+    const valid = createLibraryAnnotation('valid-sha', 4, [2]);
+    storeLibraryAnnotation(database, valid);
+    database.run(
+      `INSERT INTO library_annotations
+       (source_sha256, schema_version, document)
+       VALUES ('broken-sha', 2, '{"schemaVersion":2}')`,
+    );
+
+    expect(listLibraryAnnotations(database)).toEqual([valid]);
   });
 });

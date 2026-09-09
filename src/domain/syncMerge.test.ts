@@ -48,20 +48,26 @@ describe('saved library merge policy', () => {
     expect(result.cloudOnly.map((record) => record.id)).toEqual(['cloud']);
   });
 
-  it('applies newer cloud records and pushes local-only records', () => {
+  it('applies newer cloud records and pushes local-only or newer records', () => {
     const result = mergeLastWriteWins(
       [
         { id: 'old', updatedAt: '2026-01-01T00:00:00.000Z' },
         { id: 'same', updatedAt: '2026-01-03T00:00:00.000Z' },
+        { id: 'newer-local', updatedAt: '2026-01-04T00:00:00.000Z' },
         { id: 'local', updatedAt: '2026-01-04T00:00:00.000Z' },
       ],
       [
         { id: 'old', updated_at: '2026-01-02T00:00:00.000Z' },
         { id: 'same', updated_at: '2026-01-02T00:00:00.000Z' },
+        { id: 'newer-local', updated_at: '2026-01-03T00:00:00.000Z' },
       ],
     );
 
     expect(result.cloudToApply.map((record) => record.id)).toEqual(['old']);
-    expect(result.localToPush.map((record) => record.id)).toEqual(['local']);
+    expect(result.localToPush.map((record) => record.id)).toEqual([
+      'same',
+      'newer-local',
+      'local',
+    ]);
   });
 });
