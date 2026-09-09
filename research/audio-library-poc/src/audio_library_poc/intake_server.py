@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from pydantic import ValidationError
 
 from audio_library_poc.beat_input_quality import BeatInputQualityDecision
 from audio_library_poc.beat_quality_stage import BEAT_INPUT_QUALITY_STAGE_KIND
@@ -43,9 +44,11 @@ from audio_library_poc.structural_segmentation_stage import (
     STRUCTURAL_SEGMENTATION_STAGE_KIND,
 )
 from audio_library_poc.track_intake import (
+    INTAKE_CALIBRATION_MANIFEST,
     INTAKE_STAGE_KINDS,
     INTAKE_TRACKS_MANIFEST,
     CheckpointRef,
+    IntakeQualityGates,
     build_intake_manifest,
     intake_source_relative_path,
     slugify,
@@ -73,6 +76,14 @@ class StageProgress:
 
     def as_json(self) -> dict[str, Any]:
         return {"kind": self.kind, "status": self.status, "detail": self.detail}
+
+
+@dataclass(frozen=True)
+class ArtifactPointer:
+    """One immutable workspace artifact used by a dependent stage."""
+
+    relative_path: str
+    sha256: str
 
 
 @dataclass
@@ -190,21 +201,19 @@ class JobRunner:
             self.workspace, dispatcher=build_stage_dispatcher(self.workspace)
         )
         by_kind = {stage.kind: stage for stage in job.stages}
-        beat_result_path: str | None = None
-        beat_result_sha256: str | None = None
+        beat_artifact: ArtifactPointer | None = None
         quality_allows_publication: bool | None = None
-        quality_result_path: str | None = None
-        quality_result_sha256: str | None = None
+        quality_artifact: ArtifactPointer | None = None
 
         for specification in manifest.stages:
             if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
-                if beat_result_path is None:
+                if beat_artifact is None:
                     raise RuntimeError("beat quality stage requires a beat artifact")
                 specification = specification.model_copy(
                     update={
                         "config": {
                             **specification.config,
-                            "beat_result_relative_path": beat_result_path,
+                            "beat_result_relative_path": beat_artifact.relative_path,
                         }
                     }
                 )
@@ -217,16 +226,18 @@ class JobRunner:
                 progress.detail = "fallback: beat input inválido ou não calibrado"
                 continue
             if specification.stage_kind == STRUCTURAL_SEGMENTATION_STAGE_KIND:
-                if quality_result_path is None or quality_result_sha256 is None:
+                if beat_artifact is None or quality_artifact is None:
                     raise RuntimeError("section stage requires a quality decision")
                 specification = specification.model_copy(
                     update={
                         "config": {
                             **specification.config,
-                            "beat_result_relative_path": beat_result_path,
-                            "beat_result_sha256": beat_result_sha256,
-                            "beat_quality_decision_relative_path": quality_result_path,
-                            "beat_quality_decision_sha256": quality_result_sha256,
+                            "beat_result_relative_path": beat_artifact.relative_path,
+                            "beat_result_sha256": beat_artifact.sha256,
+                            "beat_quality_decision_relative_path": (
+                                quality_artifact.relative_path
+                            ),
+                            "beat_quality_decision_sha256": quality_artifact.sha256,
                         }
                     }
                 )
@@ -240,12 +251,15 @@ class JobRunner:
             if result.status is StageStatus.SUCCEEDED:
                 progress.status = "succeeded"
                 if specification.stage_kind == "beat.beat_this":
-                    beat_result_path = next(
+                    beat_path = next(
                         artifact.path
                         for artifact in result.artifacts
                         if artifact.artifact_kind == "beat.analysis_result"
                     )
-                    beat_result_sha256 = hash_file(self.workspace / beat_result_path)
+                    beat_artifact = ArtifactPointer(
+                        relative_path=beat_path,
+                        sha256=hash_file(self.workspace / beat_path),
+                    )
                 if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
                     quality_path = next(
                         artifact.path
@@ -256,8 +270,10 @@ class JobRunner:
                         (self.workspace / quality_path).read_text(encoding="utf-8")
                     )
                     quality_allows_publication = quality.publication_allowed
-                    quality_result_path = quality_path
-                    quality_result_sha256 = hash_file(self.workspace / quality_path)
+                    quality_artifact = ArtifactPointer(
+                        relative_path=quality_path,
+                        sha256=hash_file(self.workspace / quality_path),
+                    )
                 continue
             progress.status = "failed"
             progress.detail = _describe_failure(result)
@@ -361,6 +377,7 @@ def prepare_job(
         beat_checkpoint=checkpoint_ref(workspace, BEAT_CHECKPOINT_PATH),
         chord_checkpoint=checkpoint_ref(workspace, CHORD_CHECKPOINT_PATH),
         device=device,
+        quality_gates=_load_quality_gates(workspace),
     )
     # Validate before writing: a manifest that cannot load is a bug here, not
     # something the operator should discover mid-run.
@@ -389,6 +406,21 @@ def prepare_job(
         filename=filename,
         source_sha256=source_sha256,
     )
+
+
+def _load_quality_gates(workspace: Path) -> IntakeQualityGates:
+    """Load held-out calibration evidence, or stay explicitly provisional."""
+
+    path = workspace / INTAKE_CALIBRATION_MANIFEST
+    if not path.is_file():
+        return IntakeQualityGates.provisional()
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return IntakeQualityGates.model_validate(payload)
+    except (OSError, UnicodeError, ValidationError, yaml.YAMLError) as exc:
+        raise IntakeError(
+            f"calibração de entrada inválida em {INTAKE_CALIBRATION_MANIFEST}"
+        ) from exc
 
 
 def _register_track(

@@ -375,48 +375,56 @@ def sync(
 
 
 def _section_origin(bundle: TrackAnalyses) -> str:
-    quality = bundle.beat_quality
-    structural = bundle.structural_segmentation
-    if structural is not None:
-        if (
-            quality is not None
-            and quality.publication_allowed
-            and structural.beat_result_sha256
-            == quality.beat_result_identity.result_sha256
-            and structural.beat_quality_decision_sha256 == bundle.beat_quality_sha256
-        ):
-            return (
-                "automatic"
-                if structural.decision is SectionDecision.ACCEPTED
-                else "fallback"
-            )
+    if bundle.structural_segmentation is not None:
+        structural = _eligible_structural_result(bundle)
+        if structural is not None and structural.decision is SectionDecision.ACCEPTED:
+            return "automatic"
         return "fallback"
-    section = bundle.section
+    return "automatic" if _eligible_legacy_result(bundle) is not None else "fallback"
+
+
+def _eligible_structural_result(
+    bundle: TrackAnalyses,
+) -> StructuralSegmentationResult | None:
+    structural = bundle.structural_segmentation
+    quality = bundle.beat_quality
     if (
-        quality is not None
-        and quality.publication_allowed
-        and section is not None
-        and section.beat_result_sha256 == quality.beat_result_identity.result_sha256
-        and section.beat_quality_decision_sha256 == bundle.beat_quality_sha256
+        structural is None
+        or quality is None
+        or not quality.publication_allowed
+        or structural.beat_result_sha256 != quality.beat_result_identity.result_sha256
+        or structural.beat_quality_decision_sha256 != bundle.beat_quality_sha256
     ):
-        return "automatic"
-    return "fallback"
+        return None
+    return structural
+
+
+def _eligible_legacy_result(bundle: TrackAnalyses) -> SectionAnalysisResult | None:
+    section = bundle.section
+    quality = bundle.beat_quality
+    if (
+        section is None
+        or quality is None
+        or not quality.publication_allowed
+        or section.beat_result_sha256 != quality.beat_result_identity.result_sha256
+        or section.beat_quality_decision_sha256 != bundle.beat_quality_sha256
+    ):
+        return None
+    return section
 
 
 def _section_export(bundle: TrackAnalyses) -> dict[str, Any]:
-    structural = bundle.structural_segmentation
+    structural = _eligible_structural_result(bundle)
     quality = bundle.beat_quality
-    if (
-        structural is not None
-        and quality is not None
-        and quality.publication_allowed
-        and structural.beat_result_sha256 == quality.beat_result_identity.result_sha256
-        and structural.beat_quality_decision_sha256 == bundle.beat_quality_sha256
-    ):
+    if structural is not None:
         payload = structural.model_dump(mode="json")
         payload.update(
             {
-                "origin": _section_origin(bundle),
+                "origin": (
+                    "automatic"
+                    if structural.decision is SectionDecision.ACCEPTED
+                    else "fallback"
+                ),
                 "review_required": structural.decision is SectionDecision.FALLBACK,
                 "fallback_reason_codes": [
                     str(reason) for reason in structural.reason_codes
@@ -425,9 +433,9 @@ def _section_export(bundle: TrackAnalyses) -> dict[str, Any]:
             }
         )
         return payload
-    if _section_origin(bundle) == "automatic":
-        assert bundle.section is not None
-        payload = bundle.section.model_dump(mode="json")
+    legacy = _eligible_legacy_result(bundle)
+    if bundle.structural_segmentation is None and legacy is not None:
+        payload = legacy.model_dump(mode="json")
         payload.update(
             {
                 "origin": "automatic",

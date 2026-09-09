@@ -271,6 +271,19 @@ restart forgets it -- but not the work, since completed stages stay in the
 workspace cache and re-uploading the same file under the same title replays as
 cache hits.
 
+Both publication gates stay provisional unless
+`workspace/intake-calibration.local.yaml` supplies matching held-out evidence.
+The file is private and ignored with the rest of `workspace/`; its
+`beat_policy`, `beat_calibration`, `section_gate_version`, and
+`section_calibration` fields are validated before a job is created. Automatic
+sections are reachable only when the beat evidence passes its false-accept and
+retention targets, the section evidence passes precision, exact-count, and
+coverage targets, both configurations use production gate versions, and the
+section evidence's `config_sha256` matches the active features, dependencies,
+perturbations, and thresholds.
+Without that evidence the service still publishes one editable `Parte 1`
+fallback rather than presenting an uncalibrated proposal as automatic.
+
 The "Analisar" module is hidden from production builds and nothing proxies
 `/intake` there. That is deliberate: the deployed site is public, and a working
 upload box on it would let anyone push audio into a public static export.

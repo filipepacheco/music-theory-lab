@@ -90,6 +90,28 @@ class SectionStabilityThresholds:
         return hashlib.sha256(payload).hexdigest()
 
 
+class SectionCalibrationEvidence(FrozenStructuralModel):
+    """Held-out product evidence required before automatic publication."""
+
+    calibration_id: Identifier
+    config_sha256: Sha256
+    held_out: StrictBool
+    accepted_boundary_precision_3s: float = Field(ge=0, le=1)
+    exact_count_accuracy: float = Field(ge=0, le=1)
+    coverage: float = Field(ge=0, le=1)
+    invalid_fallback_partitions: int = Field(ge=0)
+
+    @property
+    def passes(self) -> bool:
+        return (
+            self.held_out
+            and self.accepted_boundary_precision_3s >= 0.80
+            and self.exact_count_accuracy >= 0.70
+            and self.coverage >= 0.60
+            and self.invalid_fallback_partitions == 0
+        )
+
+
 class SectionFallbackReason(StrEnum):
     UNCALIBRATED = "section.gate_uncalibrated"
     NO_ELIGIBLE_LEVEL = "section.no_eligible_level"
@@ -176,6 +198,7 @@ class ResolvedStructuralParameters(FrozenStructuralModel):
 
 
 class StructuralSegmentationMeasurements(FrozenStructuralModel):
+    beat_input_valid: StrictBool
     count_agreement: float = Field(ge=0, le=1)
     median_boundary_stability_f1: float = Field(ge=0, le=1)
     boundary_support: tuple[float, ...]
@@ -739,24 +762,34 @@ def match_boundary_f1(
     *,
     tolerance_seconds: float,
 ) -> tuple[float, tuple[bool, ...]]:
-    """Greedy one-to-one matching for ordered internal boundaries."""
+    """Maximum-cardinality one-to-one matching for ordered boundaries.
 
-    matched_estimates: set[int] = set()
-    matched_reference: list[bool] = []
-    for boundary in reference:
-        choices = [
-            (abs(boundary - candidate), index)
-            for index, candidate in enumerate(estimated)
-            if index not in matched_estimates
-            and abs(boundary - candidate) <= tolerance_seconds
-        ]
-        if not choices:
-            matched_reference.append(False)
-            continue
-        _, match_index = min(choices)
-        matched_estimates.add(match_index)
-        matched_reference.append(True)
-    matches = len(matched_estimates)
+    Boundary matching is an ordered interval problem: advancing the earlier
+    unmatched boundary whenever a pair lies outside the tolerance produces a
+    maximum-cardinality assignment. This avoids nearest-first choices that can
+    consume the only valid match for the next boundary.
+    """
+
+    reference_order = sorted(enumerate(reference), key=lambda item: item[1])
+    estimated_order = sorted(enumerate(estimated), key=lambda item: item[1])
+    matched_reference = [False] * len(reference)
+    reference_index = 0
+    estimated_index = 0
+    matches = 0
+    while reference_index < len(reference_order) and estimated_index < len(
+        estimated_order
+    ):
+        original_reference_index, boundary = reference_order[reference_index]
+        _, candidate = estimated_order[estimated_index]
+        if abs(boundary - candidate) <= tolerance_seconds:
+            matched_reference[original_reference_index] = True
+            matches += 1
+            reference_index += 1
+            estimated_index += 1
+        elif boundary < candidate:
+            reference_index += 1
+        else:
+            estimated_index += 1
     precision = matches / len(estimated) if estimated else float(not reference)
     recall = matches / len(reference) if reference else float(not estimated)
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
@@ -18,16 +21,70 @@ from audio_library_poc.io import atomic_write_json
 from audio_library_poc.metadata import hash_file
 from audio_library_poc.models import (
     ContractModel,
-    Identifier,
     StageIdentity,
     StageSpecification,
     TypedError,
 )
 from audio_library_poc.paths import validate_workspace_relative_path
+from audio_library_poc.structural_segmentation import (
+    ResolvedStructuralParameters,
+    SectionCalibrationEvidence,
+    SectionStabilityThresholds,
+    perturbation_configurations,
+)
 
 STRUCTURAL_SEGMENTATION_STAGE_KIND = "section.mcfee_ellis_laplacian"
 STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION = "1.0.0"
 STRUCTURAL_SEGMENTATION_ARTIFACT = "structural-segmentation-result.json"
+
+
+def structural_calibration_config_sha256(
+    *,
+    gate_version: str,
+    sample_rate: int = 22050,
+    fft_window: int = 2048,
+    hop_length: int = 512,
+    librosa_version: str = "0.10.2.post1",
+    numpy_version: str = "2.5.2",
+    scipy_version: str = "1.18.1",
+    scikit_learn_version: str = "1.9.0",
+) -> str:
+    """Digest every fixed choice that held-out section calibration evaluates."""
+
+    parameters = ResolvedStructuralParameters(
+        sample_rate=sample_rate,
+        fft_window=fft_window,
+        hop_length=hop_length,
+    ).model_dump(mode="json", exclude={"boundary_tolerance_seconds"})
+    thresholds = asdict(
+        SectionStabilityThresholds(
+            gate_version=gate_version,
+            calibration_id=None,
+        )
+    )
+    thresholds.pop("calibration_id")
+    payload = {
+        "stage_kind": STRUCTURAL_SEGMENTATION_STAGE_KIND,
+        "implementation_version": STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION,
+        "features_and_algorithm": parameters,
+        "boundary_tolerance_rule": "max(3.0s, median_inter_beat_seconds)",
+        "dependencies": {
+            "librosa": librosa_version,
+            "numpy": numpy_version,
+            "scipy": scipy_version,
+            "scikit-learn": scikit_learn_version,
+        },
+        "perturbations": [
+            item.model_dump(mode="json") for item in perturbation_configurations()
+        ],
+        "gate": thresholds,
+    }
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 class StructuralSegmentationStageConfig(ContractModel):
@@ -44,7 +101,7 @@ class StructuralSegmentationStageConfig(ContractModel):
     scipy_version: Literal["1.18.1"] = "1.18.1"
     scikit_learn_version: Literal["1.9.0"] = "1.9.0"
     section_gate_version: Literal["1.0.0-provisional", "1.0.0"] = "1.0.0-provisional"
-    section_calibration_id: Identifier | None = None
+    section_calibration: SectionCalibrationEvidence | None = None
 
     @field_validator(
         "source_relative_path",
@@ -57,12 +114,27 @@ class StructuralSegmentationStageConfig(ContractModel):
 
     @model_validator(mode="after")
     def validate_calibration_pin(self) -> StructuralSegmentationStageConfig:
-        calibrated = self.section_calibration_id is not None
+        calibrated = self.section_calibration is not None
         if calibrated == self.section_gate_version.endswith("-provisional"):
             raise ValueError(
-                "production section gate requires a calibration id; "
+                "production section gate requires calibration evidence; "
                 "provisional gate forbids one"
             )
+        if self.section_calibration is not None and not self.section_calibration.passes:
+            raise ValueError("section calibration must pass every held-out target")
+        if self.section_calibration is not None:
+            expected_digest = structural_calibration_config_sha256(
+                gate_version=self.section_gate_version,
+                sample_rate=self.sample_rate,
+                fft_window=self.fft_window,
+                hop_length=self.hop_length,
+                librosa_version=self.librosa_version,
+                numpy_version=self.numpy_version,
+                scipy_version=self.scipy_version,
+                scikit_learn_version=self.scikit_learn_version,
+            )
+            if self.section_calibration.config_sha256 != expected_digest:
+                raise ValueError("section calibration does not match stage config")
         return self
 
 
@@ -125,6 +197,13 @@ class StructuralSegmentationStageExecutor:
             beat_result=beat,
             config=config,
             identity=identity,
+            beat_input_valid=quality.beat_input_valid,
+            upstream_warnings=tuple(
+                dict.fromkeys(
+                    [warning.code for warning in beat.warnings]
+                    + list(quality.diagnostic_codes)
+                )
+            ),
         )
         if result.source_sha256 != identity.input_sha256:
             raise _failure("section.result_source_mismatch")

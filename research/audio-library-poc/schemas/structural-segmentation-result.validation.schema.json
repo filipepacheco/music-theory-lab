@@ -335,6 +335,10 @@
     "StructuralSegmentationMeasurements": {
       "additionalProperties": false,
       "properties": {
+        "beat_input_valid": {
+          "title": "Beat Input Valid",
+          "type": "boolean"
+        },
         "boundary_support": {
           "items": {
             "type": "number"
@@ -387,6 +391,7 @@
         }
       },
       "required": [
+        "beat_input_valid",
         "count_agreement",
         "median_boundary_stability_f1",
         "boundary_support",

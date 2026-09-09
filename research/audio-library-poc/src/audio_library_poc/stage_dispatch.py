@@ -40,10 +40,6 @@ from audio_library_poc.section_stage import (
     SECTION_LIBROSA_STAGE_KIND,
     SectionLibrosaStageExecutor,
 )
-from audio_library_poc.structural_segmentation_stage import (
-    STRUCTURAL_SEGMENTATION_STAGE_KIND,
-    StructuralSegmentationStageExecutor,
-)
 from audio_library_poc.separator_stage import SeparatorStageExecutor
 from audio_library_poc.separators.bs_roformer import (
     BS_ROFORMER_STAGE_KIND,
@@ -52,6 +48,10 @@ from audio_library_poc.separators.bs_roformer import (
 from audio_library_poc.separators.demucs import (
     DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     DemucsSeparator,
+)
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageExecutor,
 )
 
 FAKE_STAGE_KIND = "fake.deterministic"

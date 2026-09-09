@@ -47,6 +47,8 @@ def run_structural_segmentation(
     beat_result: BeatAnalysisResult,
     config: StructuralSegmentationStageConfig,
     identity: StageIdentity,
+    beat_input_valid: bool,
+    upstream_warnings: tuple[str, ...] = (),
 ) -> tuple[StructuralSegmentationResult, Metrics]:
     actual_versions = _verify_dependency_versions(config)
     audio, native_sample_rate = sf.read(
@@ -137,7 +139,11 @@ def run_structural_segmentation(
     selection_margin = _selection_margin(baseline_candidates, selected)
     thresholds = SectionStabilityThresholds(
         gate_version=config.section_gate_version,
-        calibration_id=config.section_calibration_id,
+        calibration_id=(
+            config.section_calibration.calibration_id
+            if config.section_calibration is not None
+            else None
+        ),
     )
     gate = evaluate_stability_gate(
         thresholds=thresholds,
@@ -183,6 +189,7 @@ def run_structural_segmentation(
         ),
         baseline_selected_m=selected.m if selected else None,
         measurements=StructuralSegmentationMeasurements(
+            beat_input_valid=beat_input_valid,
             count_agreement=count_agreement,
             median_boundary_stability_f1=stability_f1,
             boundary_support=support,
@@ -200,6 +207,7 @@ def run_structural_segmentation(
         beat_times_seconds=tuple(
             float(beat.time_seconds) for beat in beat_result.beats
         ),
+        warnings=tuple(dict.fromkeys(upstream_warnings)),
     )
     elapsed = time.monotonic() - started
     return result, Metrics(

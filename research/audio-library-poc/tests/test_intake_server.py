@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from audio_library_poc.beat_input_quality import BeatInputQualityPolicyConfig
 from audio_library_poc.intake_server import (
     BEAT_CHECKPOINT_PATH,
     CHORD_CHECKPOINT_PATH,
@@ -26,9 +27,45 @@ from audio_library_poc.intake_server import (
     prepare_job,
 )
 from audio_library_poc.models import PipelineManifest
-from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
+from audio_library_poc.structural_segmentation_stage import (
+    structural_calibration_config_sha256,
+)
+from audio_library_poc.track_intake import (
+    INTAKE_CALIBRATION_MANIFEST,
+    INTAKE_TRACKS_MANIFEST,
+    IntakeQualityGates,
+)
 
 PAYLOAD = b"not really audio, but the intake never decodes it"
+
+
+def calibrated_quality_gates() -> IntakeQualityGates:
+    beat_policy = BeatInputQualityPolicyConfig.production_v1()
+    return IntakeQualityGates.model_validate(
+        {
+            "beat_policy": beat_policy.model_dump(mode="json"),
+            "beat_calibration": {
+                "calibration_id": "beat-held-out-v1",
+                "config_sha256": beat_policy.sha256(),
+                "held_out": True,
+                "confidence_level": 0.95,
+                "invalid_accepted_upper_bound": 0.05,
+                "valid_retained_lower_bound": 0.85,
+            },
+            "section_gate_version": "1.0.0",
+            "section_calibration": {
+                "calibration_id": "section-held-out-v1",
+                "config_sha256": structural_calibration_config_sha256(
+                    gate_version="1.0.0"
+                ),
+                "held_out": True,
+                "accepted_boundary_precision_3s": 0.8,
+                "exact_count_accuracy": 0.7,
+                "coverage": 0.6,
+                "invalid_fallback_partitions": 0,
+            },
+        }
+    )
 
 
 @pytest.fixture
@@ -93,6 +130,31 @@ class TestPrepareJob:
             "quality.beat_input",
             "section.mcfee_ellis_laplacian",
         ]
+
+    def test_loads_pinned_held_out_calibration_for_automatic_path(
+        self, workspace: Path
+    ) -> None:
+        calibration = calibrated_quality_gates()
+        (workspace / INTAKE_CALIBRATION_MANIFEST).write_text(
+            yaml.safe_dump(calibration.model_dump(mode="json"), sort_keys=False),
+            encoding="utf-8",
+        )
+
+        prepare(workspace)
+
+        manifest_path = workspace / "intake-come-together.local.yaml"
+        payload = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        by_kind = {stage["stage_kind"]: stage for stage in payload["stages"]}
+        assert (
+            by_kind["quality.beat_input"]["config"]["calibration"]["calibration_id"]
+            == "beat-held-out-v1"
+        )
+        assert (
+            by_kind["section.mcfee_ellis_laplacian"]["config"]["section_calibration"][
+                "calibration_id"
+            ]
+            == "section-held-out-v1"
+        )
 
     def test_manifest_points_at_the_file_that_was_written(
         self, workspace: Path

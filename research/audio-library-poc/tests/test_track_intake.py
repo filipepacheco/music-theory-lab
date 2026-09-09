@@ -7,10 +7,18 @@ nothing: the operator finds out it is wrong halfway through a GPU run.
 
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
+
+from audio_library_poc.beat_input_quality import BeatInputQualityPolicyConfig
 from audio_library_poc.models import PipelineManifest
+from audio_library_poc.structural_segmentation_stage import (
+    structural_calibration_config_sha256,
+)
 from audio_library_poc.track_intake import (
     INTAKE_STAGE_KINDS,
     CheckpointRef,
+    IntakeQualityGates,
     build_intake_manifest,
     intake_source_relative_path,
     slugify,
@@ -21,6 +29,35 @@ BEAT = CheckpointRef(relative_path="models/beat_this-final0.ckpt", sha256="a" * 
 CHORD = CheckpointRef(
     relative_path="models/chordmini-btc-model-best.pth", sha256="b" * 64
 )
+
+
+def calibrated_quality_gates() -> IntakeQualityGates:
+    beat_policy = BeatInputQualityPolicyConfig.production_v1()
+    return IntakeQualityGates.model_validate(
+        {
+            "beat_policy": beat_policy.model_dump(mode="json"),
+            "beat_calibration": {
+                "calibration_id": "beat-held-out-v1",
+                "config_sha256": beat_policy.sha256(),
+                "held_out": True,
+                "confidence_level": 0.95,
+                "invalid_accepted_upper_bound": 0.05,
+                "valid_retained_lower_bound": 0.85,
+            },
+            "section_gate_version": "1.0.0",
+            "section_calibration": {
+                "calibration_id": "section-held-out-v1",
+                "config_sha256": structural_calibration_config_sha256(
+                    gate_version="1.0.0"
+                ),
+                "held_out": True,
+                "accepted_boundary_precision_3s": 0.8,
+                "exact_count_accuracy": 0.7,
+                "coverage": 0.6,
+                "invalid_fallback_partitions": 0,
+            },
+        }
+    )
 
 
 def build(**overrides: object) -> dict:
@@ -132,6 +169,19 @@ class TestManifest:
         assert "n_segments" not in section.config
         assert section.config["hop_length"] == 512
 
+    def test_held_out_calibration_activates_both_publication_gates(self) -> None:
+        manifest = PipelineManifest.model_validate(
+            build(quality_gates=calibrated_quality_gates())
+        )
+        by_kind = {stage.stage_kind: stage for stage in manifest.stages}
+
+        quality = by_kind["quality.beat_input"].config
+        section = by_kind["section.mcfee_ellis_laplacian"].config
+        assert quality["policy"]["gate_version"] == "1.0.0"
+        assert quality["calibration"]["calibration_id"] == "beat-held-out-v1"
+        assert section["section_gate_version"] == "1.0.0"
+        assert section["section_calibration"]["calibration_id"] == "section-held-out-v1"
+
     def test_stage_kinds_are_unique(self) -> None:
         # PipelineManifest enforces this; the assertion documents that the
         # single-run design depends on it.
@@ -146,6 +196,12 @@ class TestManifest:
         assert kinds.index("chord.chordmini_btc") < kinds.index(
             "section.mcfee_ellis_laplacian"
         )
+
+    def test_section_calibration_for_another_feature_config_fails_closed(self) -> None:
+        gates = calibrated_quality_gates()
+
+        with pytest.raises(ValidationError, match="match stage config"):
+            build(sample_rate=44100, quality_gates=gates)
 
 
 class TestUpsertIntakeTrack:

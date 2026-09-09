@@ -42,8 +42,10 @@ _Avoid_: editable analysis, Library state
 The single locally persisted, user-owned correction layer for one Biblioteca
 track, keyed by the same stable `source_sha256` as its analysis artifacts. It
 contains only the editable chronological sections; loading, migration, and
-saving go through the saved-library façade.
-_Avoid_: section analysis, arrangement
+saving go through the saved-library façade. An accepted
+[[structural-segmentation-result]] may seed a new document, but regenerating
+analysis never replaces existing manual corrections.
+_Avoid_: section analysis, inferred structure, arrangement
 
 **Library section**:
 A neutral-named, non-empty half-open range of bar indexes in a
@@ -99,12 +101,6 @@ and all 36 perturbation runs, plus stability measurements and the accepted or
 fallback partition. It may seed a [[library-annotation-document]], but user
 edits never rewrite it.
 _Avoid_: annotation, verse/chorus detection, semantic sections
-
-**Library annotation document**:
-The locally persisted, editable section partition for one immutable source
-hash. A newly analyzed track can seed it from an accepted [[structural-segmentation-result]];
-once it exists, regenerating analysis never replaces its manual corrections.
-_Avoid_: analysis result, inferred structure
 
 **Drum piece**:
 One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`

@@ -27,9 +27,14 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, Final
+from typing import Any, Final, Literal, Self
 
-from audio_library_poc.beat_input_quality import BeatInputQualityPolicyConfig
+from pydantic import model_validator
+
+from audio_library_poc.beat_input_quality import (
+    BeatInputQualityPolicyConfig,
+    CalibrationEvidence,
+)
 from audio_library_poc.beat_quality_stage import (
     BEAT_INPUT_QUALITY_IMPLEMENTATION_VERSION,
 )
@@ -38,9 +43,12 @@ from audio_library_poc.chordmini_btc_stage import (
     CHORDMINI_BTC_IMPLEMENTATION_VERSION,
 )
 from audio_library_poc.hpcp_key_stage import HPCP_KEY_IMPLEMENTATION_VERSION
+from audio_library_poc.models import ContractModel
+from audio_library_poc.structural_segmentation import SectionCalibrationEvidence
 from audio_library_poc.structural_segmentation_stage import (
     STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION,
     STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageConfig,
 )
 
 DEFAULT_DEVICE: Final = "cuda"
@@ -66,6 +74,46 @@ _SLUG_FALLBACK: Final = "faixa"
 #: set whose ``trusted_key`` annotations evaluation runs score against, and an
 #: upload has no ground truth to contribute to it.
 INTAKE_TRACKS_MANIFEST: Final = "intake-tracks.local.yaml"
+INTAKE_CALIBRATION_MANIFEST: Final = "intake-calibration.local.yaml"
+
+
+class IntakeQualityGates(ContractModel):
+    """Pinned publication gates supplied by a local held-out calibration."""
+
+    beat_policy: BeatInputQualityPolicyConfig
+    beat_calibration: CalibrationEvidence | None = None
+    section_gate_version: Literal["1.0.0-provisional", "1.0.0"]
+    section_calibration: SectionCalibrationEvidence | None = None
+
+    @classmethod
+    def provisional(cls) -> Self:
+        return cls(
+            beat_policy=BeatInputQualityPolicyConfig.provisional_v1(),
+            section_gate_version="1.0.0-provisional",
+        )
+
+    @model_validator(mode="after")
+    def validate_calibrations(self) -> Self:
+        beat_is_provisional = "provisional" in self.beat_policy.gate_version
+        if beat_is_provisional == (self.beat_calibration is not None):
+            raise ValueError(
+                "production beat policy requires calibration evidence; "
+                "provisional policy forbids it"
+            )
+        if self.beat_calibration is not None and (
+            not self.beat_calibration.passes
+            or self.beat_calibration.config_sha256 != self.beat_policy.sha256()
+        ):
+            raise ValueError("beat calibration does not pass or match its policy")
+        section_is_provisional = self.section_gate_version.endswith("-provisional")
+        if section_is_provisional == (self.section_calibration is not None):
+            raise ValueError(
+                "production section policy requires calibration evidence; "
+                "provisional policy forbids it"
+            )
+        if self.section_calibration is not None and not self.section_calibration.passes:
+            raise ValueError("section calibration does not pass held-out targets")
+        return self
 
 
 @dataclass(frozen=True)
@@ -110,6 +158,7 @@ def build_intake_manifest(
     precision: str = DEFAULT_PRECISION,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     hop_length: int = DEFAULT_HOP_LENGTH,
+    quality_gates: IntakeQualityGates | None = None,
 ) -> dict[str, Any]:
     """Assemble the intake manifest for one source file.
 
@@ -120,7 +169,8 @@ def build_intake_manifest(
     whatever run directories it finds. One run is simply less to name.
     """
 
-    return {
+    gates = quality_gates or IntakeQualityGates.provisional()
+    manifest = {
         "schema_version": "1.0.0",
         "pipeline_id": f"intake-{slug}"[:_IDENTIFIER_MAX_LENGTH].rstrip("-"),
         "code_revision": "workspace-local",
@@ -178,8 +228,11 @@ def build_intake_manifest(
                     "model_identifier": beat_checkpoint.identifier,
                     "model_sha256": beat_checkpoint.sha256,
                     "analyzer_code_revision": "workspace-local",
-                    "policy": BeatInputQualityPolicyConfig.provisional_v1().model_dump(
-                        mode="json"
+                    "policy": gates.beat_policy.model_dump(mode="json"),
+                    "calibration": (
+                        gates.beat_calibration.model_dump(mode="json")
+                        if gates.beat_calibration is not None
+                        else None
                     ),
                 },
             },
@@ -204,12 +257,18 @@ def build_intake_manifest(
                     "numpy_version": "2.5.2",
                     "scipy_version": "1.18.1",
                     "scikit_learn_version": "1.9.0",
-                    "section_gate_version": "1.0.0-provisional",
-                    "section_calibration_id": None,
+                    "section_gate_version": gates.section_gate_version,
+                    "section_calibration": (
+                        gates.section_calibration.model_dump(mode="json")
+                        if gates.section_calibration is not None
+                        else None
+                    ),
                 },
             },
         ],
     }
+    StructuralSegmentationStageConfig.model_validate(manifest["stages"][-1]["config"])
+    return manifest
 
 
 def upsert_intake_track(

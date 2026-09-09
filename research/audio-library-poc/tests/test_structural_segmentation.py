@@ -24,6 +24,7 @@ from audio_library_poc.structural_segmentation import (
     build_published_sections,
     contiguous_run_count,
     evaluate_stability_gate,
+    match_boundary_f1,
     perturbation_configurations,
     select_candidate_level,
     snap_boundaries_to_beats,
@@ -75,6 +76,17 @@ def test_boundary_snapping_uses_detected_beats_and_earlier_tie() -> None:
     )
 
     assert snapped == (0.0, 1.0, 3.0, 8.0)
+
+
+def test_boundary_matching_maximizes_one_to_one_matches() -> None:
+    score, support = match_boundary_f1(
+        (1.0, 2.0),
+        (0.0, 1.5),
+        tolerance_seconds=1.0,
+    )
+
+    assert score == 1.0
+    assert support == (True, True)
 
 
 @pytest.mark.parametrize(
@@ -161,6 +173,7 @@ def test_result_keeps_all_36_candidates_as_immutable_provenance() -> None:
         baseline_candidate_levels=levels,
         baseline_selected_m=None,
         measurements=StructuralSegmentationMeasurements(
+            beat_input_valid=True,
             count_agreement=0.0,
             median_boundary_stability_f1=0.0,
             boundary_support=(),

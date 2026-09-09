@@ -24,8 +24,8 @@ from audio_library_poc.models import (
 )
 from audio_library_poc.product_evaluation_report import ProductEvaluationReport
 from audio_library_poc.section_analysis import SectionAnalysisResult
-from audio_library_poc.structural_segmentation import StructuralSegmentationResult
 from audio_library_poc.separation import SeparationResult
+from audio_library_poc.structural_segmentation import StructuralSegmentationResult
 
 SchemaMode = Literal["validation", "serialization"]
 

@@ -75,38 +75,62 @@ export interface KeyAnalysisJson {
   top_estimate: KeyEstimate;
 }
 
-/**
- * One contiguous stretch of the track. `label` is a letter tag the detector
- * uses to group parts it considers similar (two segments labelled "A" are
- * its guess at the same repeated part). The labels carry no semantic
- * meaning — they are never "verse" or "chorus", only opaque cluster ids.
- */
-export interface SectionSegment {
+interface SectionInterval {
   start_seconds: number;
   end_seconds: number;
-  label: string;
-  cluster_id?: number | null;
-  origin?: 'automatic' | 'fallback';
-  review_required?: boolean;
 }
 
-export interface SectionAnalysisJson {
+/** One neutral chronological section emitted by the structural analysis. */
+export interface StructuralSectionSegment extends SectionInterval {
+  label: `Parte ${number}`;
+  cluster_id: number | null;
+  origin: 'automatic' | 'fallback';
+  review_required: boolean;
+}
+
+/** A section emitted by the retired repeated-letter baseline. */
+export interface LegacySectionSegment extends SectionInterval {
+  label: string;
+}
+
+export type SectionSegment = StructuralSectionSegment | LegacySectionSegment;
+
+interface SectionAnalysisBase<TSection extends SectionSegment> {
   schema_version: string;
   source_sha256: string;
   origin: 'automatic' | 'fallback';
   review_required: boolean;
   fallback_reason_codes: string[];
-  sections: SectionSegment[];
+  sections: TSection[];
+  warnings: string[];
+}
+
+export interface StructuralSectionAnalysisJson
+  extends SectionAnalysisBase<StructuralSectionSegment> {
+  stage_kind: 'section.mcfee_ellis_laplacian';
+  decision: 'accepted' | 'fallback';
   settings: {
     sample_rate: number;
     hop_length: number;
-    feature?: string;
-    n_segments?: number;
-    candidate_m_min?: number;
-    candidate_m_max?: number;
-  } | null;
-  warnings: string[];
+    candidate_m_min: number;
+    candidate_m_max: number;
+  };
 }
+
+export interface LegacySectionAnalysisJson
+  extends SectionAnalysisBase<LegacySectionSegment> {
+  stage_kind?: never;
+  settings: {
+    sample_rate: number;
+    hop_length: number;
+    feature: string;
+    n_segments: number;
+  } | null;
+}
+
+export type SectionAnalysisJson =
+  | StructuralSectionAnalysisJson
+  | LegacySectionAnalysisJson;
 
 export async function fetchLibraryIndex(
   signal?: AbortSignal,
