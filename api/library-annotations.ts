@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   parseCloudLibraryAnnotation,
   serializeCloudLibraryAnnotation,
-} from '../src/domain/libraryAnnotation';
+} from '@/domain/libraryAnnotation';
 
 interface AnnotationRow {
   source_sha256: string;
