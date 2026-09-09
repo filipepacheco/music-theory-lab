@@ -178,6 +178,7 @@ def build_intake_manifest(
             {
                 "stage_kind": "beat.beat_this",
                 "implementation_version": BEAT_THIS_IMPLEMENTATION_VERSION,
+                "output_schema_version": "2.0.0",
                 "model_identifier": beat_checkpoint.identifier,
                 "model_sha256": beat_checkpoint.sha256,
                 "max_attempts": 1,
@@ -241,6 +242,7 @@ def build_intake_manifest(
                 "implementation_version": (
                     STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION
                 ),
+                "output_schema_version": "1.0.0",
                 "max_attempts": 1,
                 "config": {
                     "source_relative_path": source_relative_path,

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -60,6 +62,7 @@ def _specification(
     return StageSpecification(
         stage_kind=BEAT_THIS_STAGE_KIND,
         implementation_version="1.0.0",
+        output_schema_version="2.0.0",
         config=config,
         model_identifier=model_identifier,
         model_sha256=model_sha256,
@@ -198,25 +201,59 @@ def test_source_hash_mismatch_yields_typed_failure(tmp_path: Path) -> None:
     assert captured.value.error.code == "beat.source_hash_mismatch"
 
 
-def test_checkpoint_missing_yields_typed_failure(tmp_path: Path) -> None:
+def test_checkpoint_missing_yields_fatal_result(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     source_relative, source_sha256 = _build_source(workspace)
     executor = BeatThisStageExecutor(workspace)
     specification = _specification(source_relative_path=source_relative)
 
-    with pytest.raises(ExpectedStageFailure) as captured:
-        _execute(
-            executor,
-            specification=specification,
-            input_sha256=source_sha256,
-            tmp_path=tmp_path,
-        )
-
-    assert captured.value.error.code == "beat.checkpoint_missing"
-    assert captured.value.error.details["relative_path"] == (
-        "models/beat_this-final0.ckpt"
+    _execute(
+        executor,
+        specification=specification,
+        input_sha256=source_sha256,
+        tmp_path=tmp_path,
     )
+
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.schema_version == "2.0.0"
+    assert result.warnings[0].code == "beat.checkpoint_missing"
+    assert result.warnings[0].severity == "fatal"
+
+
+def test_unexpected_analyzer_exception_yields_fatal_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source_relative, source_sha256 = _build_source(workspace)
+    checkpoint = workspace / "models" / "beat_this-final0.ckpt"
+    checkpoint.parent.mkdir()
+    checkpoint.write_bytes(b"checkpoint")
+
+    def fail_inference(**_kwargs):
+        raise RuntimeError("model exploded")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "audio_library_poc._beat_this_runtime",
+        SimpleNamespace(run_beat_this_inference=fail_inference),
+    )
+    _execute(
+        BeatThisStageExecutor(workspace),
+        specification=_specification(source_relative_path=source_relative),
+        input_sha256=source_sha256,
+        tmp_path=tmp_path,
+    )
+
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.warnings[0].code == "beat.analyzer_exception"
+    assert result.warnings[0].details == {"exception_type": "RuntimeError"}
 
 
 def test_beat_analysis_result_rejects_non_monotonic_beats() -> None:

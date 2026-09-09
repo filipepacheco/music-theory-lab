@@ -171,8 +171,8 @@
       "$ref": "#/$defs/SectionAnalyzerProvenance"
     },
     "schema_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "2.0.0",
+      "default": "2.0.0",
       "title": "Schema Version",
       "type": "string"
     },

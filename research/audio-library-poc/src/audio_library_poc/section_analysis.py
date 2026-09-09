@@ -101,7 +101,7 @@ class SectionAnalysisResult(FrozenSectionModel):
     ``"A"`` spanning the whole track.
     """
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    schema_version: Literal["2.0.0"] = "2.0.0"
     source_sha256: Sha256
     beat_result_sha256: Sha256 | None = None
     beat_quality_decision_sha256: Sha256 | None = None

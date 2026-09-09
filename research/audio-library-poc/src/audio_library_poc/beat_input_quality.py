@@ -68,6 +68,16 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
     nonfatal_diagnostic_codes: tuple[str, ...] = tuple(
         diagnostic.value for diagnostic in BeatInputDiagnostic
     )
+    fatal_analyzer_warning_codes: tuple[str, ...] = (
+        "beat.analyzer_exception",
+        "beat.checkpoint_missing",
+        "beat.checkpoint_outside_workspace",
+        "beat.cuda_unavailable",
+        "beat.decode_failed",
+        "beat.model_failed",
+        "beat.no_beats_detected",
+        "beat.postprocessing_failed",
+    )
     threshold_comparisons: tuple[str, ...] = (
         "beat_count < minimum_beats",
         "supported_seconds < minimum_supported_seconds",
@@ -201,9 +211,12 @@ def decide_beat_input_quality(
     measurements: BeatInputQualityMeasurements,
     policy_config: BeatInputQualityPolicyConfig,
     calibration: CalibrationEvidence | None = None,
-    analyzer_fatal_codes: tuple[str, ...] = (),
     expected_source_sha256: str | None = None,
     expected_analyzer_candidate: str | None = None,
+    expected_analyzer_implementation_version: str | None = None,
+    expected_model_identifier: str | None = None,
+    expected_model_sha256: str | None = None,
+    expected_code_revision: str | None = None,
     implementation_revision: str = "workspace-local",
     contract_invalid: bool = False,
 ) -> BeatInputQualityDecision:
@@ -219,16 +232,32 @@ def decide_beat_input_quality(
             expected_analyzer_candidate is None
             or result.provenance.candidate == expected_analyzer_candidate
         )
+        and (
+            expected_analyzer_implementation_version is None
+            or result.provenance.implementation_version
+            == expected_analyzer_implementation_version
+        )
+        and (
+            expected_model_identifier is None
+            or result.provenance.model_identifier == expected_model_identifier
+        )
+        and (
+            expected_model_sha256 is None
+            or result.provenance.model_sha256 == expected_model_sha256
+        )
+        and (
+            expected_code_revision is None
+            or result.provenance.code_revision == expected_code_revision
+        )
         and measurements.beat_count == len(result.beats)
         and measurements.downbeat_count == result.downbeat_count
     )
     if not provenance_matches or contract_invalid:
         fatal.append(BeatInputFatalReason.CONTRACT_INVALID)
-    typed_fatal_codes = (
-        tuple(
-            warning.code for warning in result.warnings if warning.severity == "fatal"
-        )
-        + analyzer_fatal_codes
+    typed_fatal_codes = tuple(
+        warning.code
+        for warning in result.warnings
+        if warning.code in policy_config.fatal_analyzer_warning_codes
     )
     if typed_fatal_codes:
         fatal.append(BeatInputFatalReason.ANALYZER_FAILED)
