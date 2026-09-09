@@ -4,15 +4,29 @@ import {
   type LibraryAnimationClock,
   type LibraryMediaElement,
 } from '@/services/libraryAudioSession';
+import {
+  resolveLibraryChordAt,
+  type ChordSegment,
+  type LibraryChordVisualState,
+} from '@/domain/libraryChordSync';
 
 class FakeMediaElement implements LibraryMediaElement {
-  currentTime = 0;
+  private mediaCurrentTime = 0;
+  normalizeSeek: (seconds: number) => number = (seconds) => seconds;
   duration = 120;
   preload = '';
   src = 'blob:track';
   readonly pause = vi.fn();
   readonly play = vi.fn(async () => {});
   private readonly listeners = new Map<string, Set<() => void>>();
+
+  get currentTime(): number {
+    return this.mediaCurrentTime;
+  }
+
+  set currentTime(seconds: number) {
+    this.mediaCurrentTime = this.normalizeSeek(seconds);
+  }
 
   addEventListener(type: string, listener: () => void): void {
     const listeners = this.listeners.get(type) ?? new Set();
@@ -98,6 +112,69 @@ describe('createLibraryAudioSession', () => {
     ]);
   });
 
+  it('drives exact chord states from a controllable media clock', () => {
+    const rapidSegments: ChordSegment[] = [
+      {
+        start_seconds: 1,
+        end_seconds: 1.04,
+        label: 'minor',
+        root_pc: 2,
+        candidate_label: 'Dm',
+        confidence: 0.8,
+      },
+      {
+        start_seconds: 1.04,
+        end_seconds: 2,
+        label: 'no_chord',
+        root_pc: null,
+        candidate_label: 'N',
+        confidence: null,
+      },
+      {
+        start_seconds: 3,
+        end_seconds: 4,
+        label: 'unknown',
+        root_pc: null,
+        candidate_label: 'X',
+        confidence: null,
+      },
+    ];
+    const media = new FakeMediaElement();
+    const clock = new FakeAnimationClock();
+    const chordStates: LibraryChordVisualState[] = [];
+    createLibraryAudioSession(
+      media,
+      (state) =>
+        chordStates.push(
+          resolveLibraryChordAt(rapidSegments, state.currentSeconds),
+        ),
+      clock,
+    );
+
+    media.currentTime = 1;
+    media.emit('play');
+    media.currentTime = 1.02;
+    media.emit('pause');
+    media.currentTime = 1.04;
+    clock.frame();
+    media.emit('play');
+    media.currentTime = 2.5;
+    clock.frame();
+    media.currentTime = 3;
+    clock.frame();
+    media.currentTime = 4;
+    clock.frame();
+
+    expect(chordStates).toEqual([
+      { text: 'Dm', rootPitchClass: 2, pitchClasses: [2, 5, 9] },
+      { text: 'Dm', rootPitchClass: 2, pitchClasses: [2, 5, 9] },
+      { text: 'N.C.', rootPitchClass: null, pitchClasses: [] },
+      { text: null, rootPitchClass: null, pitchClasses: [] },
+      { text: '?', rootPitchClass: null, pitchClasses: [] },
+      { text: null, rootPitchClass: null, pitchClasses: [] },
+    ]);
+  });
+
   it('freezes at the pause time and resumes from the media clock', () => {
     const media = new FakeMediaElement();
     const clock = new FakeAnimationClock();
@@ -140,11 +217,12 @@ describe('createLibraryAudioSession', () => {
     const session = createLibraryAudioSession(media, (state) =>
       states.push(state),
     );
+    media.normalizeSeek = (seconds) => Math.floor(seconds);
 
-    session.seek(150);
+    session.seek(17.8);
 
-    expect(media.currentTime).toBe(120);
-    expect(states[states.length - 1]?.currentSeconds).toBe(120);
+    expect(media.currentTime).toBe(17);
+    expect(states[states.length - 1]?.currentSeconds).toBe(17);
   });
 
   it('stops replaced media and ignores its stale events', () => {

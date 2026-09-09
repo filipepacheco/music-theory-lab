@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  libraryFretHighlightKind,
   resolveLibraryChordAt,
+  type ChordSegment,
   type LibraryChordVisualState,
 } from '@/domain/libraryChordSync';
-import type { ChordSegment } from '@/components/library/libraryData';
 
 const segments: ChordSegment[] = [
   {
@@ -114,5 +115,31 @@ describe('resolveLibraryChordAt', () => {
       rootPitchClass: 5,
       pitchClasses: [5, 8, 0],
     });
+  });
+
+  it('marks every visible chord occurrence and distinguishes each root', () => {
+    const visiblePitchClasses = [
+      7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+      0, 1, 2, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 5, 6, 7, 8, 9, 10,
+      11, 0, 1, 2, 3, 4,
+    ];
+    const chord = resolveLibraryChordAt(segments, 0.5);
+    const highlights = visiblePitchClasses.map((pitchClass) =>
+      libraryFretHighlightKind(pitchClass, chord),
+    );
+
+    expect(highlights.filter((kind) => kind !== null)).toHaveLength(14);
+    expect(highlights.filter((kind) => kind === 'root')).toHaveLength(4);
+    expect(highlights.filter((kind) => kind === 'tone')).toHaveLength(10);
+  });
+
+  it('clears every visible fret atomically for a non-pitched state', () => {
+    const noChord = resolveLibraryChordAt(segments, 1.04);
+
+    expect(
+      Array.from({ length: 12 }, (_, pitchClass) =>
+        libraryFretHighlightKind(pitchClass, noChord),
+      ),
+    ).toEqual(Array.from({ length: 12 }, () => null));
   });
 });

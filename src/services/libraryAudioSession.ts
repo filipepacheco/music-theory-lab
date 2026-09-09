@@ -111,7 +111,7 @@ export function createLibraryAudioSession(
           : seconds;
       const clamped = Math.max(0, Math.min(seconds, end));
       media.currentTime = clamped;
-      update({ currentSeconds: clamped });
+      update({ currentSeconds: media.currentTime });
     },
     dispose: () => {
       if (disposed) return;

@@ -1,10 +1,37 @@
-import type { ChordSegment } from '@/components/library/libraryData';
-import { chordDisplayName } from '@/components/library/libraryData';
+import { getPreferredRootName } from '@/utils/noteHelpers';
+
+export interface ChordSegment {
+  start_seconds: number;
+  end_seconds: number;
+  label: 'major' | 'minor' | 'unknown' | 'no_chord';
+  root_pc: number | null;
+  candidate_label: string;
+  confidence: number | null;
+}
+
+/** Display name for a detected chord or its explicit terminal state. */
+export function chordDisplayName(segment: ChordSegment): string {
+  if (segment.label === 'no_chord') return 'N.C.';
+  if (segment.label === 'unknown' || segment.root_pc === null) return '?';
+  const rootName = getPreferredRootName(segment.root_pc);
+  return segment.label === 'minor' ? `${rootName}m` : rootName;
+}
 
 export interface LibraryChordVisualState {
   text: string | null;
   rootPitchClass: number | null;
   pitchClasses: number[];
+}
+
+export type LibraryFretHighlightKind = 'root' | 'tone' | null;
+
+/** Classify one visible bass fret against the atomically resolved chord. */
+export function libraryFretHighlightKind(
+  pitchClass: number,
+  chord: Pick<LibraryChordVisualState, 'pitchClasses' | 'rootPitchClass'>,
+): LibraryFretHighlightKind {
+  if (!chord.pitchClasses.includes(pitchClass)) return null;
+  return pitchClass === chord.rootPitchClass ? 'root' : 'tone';
 }
 
 const NO_ACTIVE_CHORD: LibraryChordVisualState = {

@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useSynth } from '@/hooks/useSynth';
 import { getNoteName, computeVoicingOctaveMap } from '@/utils/noteHelpers';
-import BassFret from './BassFret';
+import BassFret from '@/components/instruments/BassFret';
+import { libraryFretHighlightKind } from '@/domain/libraryChordSync';
 
 export interface BassNeckHighlight {
   pitchClasses: number[];
@@ -150,8 +151,12 @@ export default function BassNeck({ highlight }: Props = {}) {
                       )
                     : octave;
                 const isOctaveStart = fret > 0 && octave !== prevOctave;
-                const isHighlighted =
-                  bassHighlightPositions !== null
+                const libraryHighlightKind = highlight
+                  ? libraryFretHighlightKind(noteIndex, highlight)
+                  : null;
+                const isHighlighted = highlight
+                  ? libraryHighlightKind !== null
+                  : bassHighlightPositions !== null
                     ? bassHighlightPositions.has(`${stringIdx}-${fret}`)
                     : highlightedNotes.includes(noteIndex);
 
@@ -161,9 +166,7 @@ export default function BassNeck({ highlight }: Props = {}) {
                     noteIndex={noteIndex}
                     noteName={noteName}
                     isHighlighted={isHighlighted}
-                    isRootHighlighted={
-                      isHighlighted && noteIndex === rootPitchClass
-                    }
+                    isRootHighlighted={libraryHighlightKind === 'root'}
                     hasAnyHighlights={hasAnyHighlights}
                     showAllNotes={showAllNotes}
                     isOpenString={fret === 0}

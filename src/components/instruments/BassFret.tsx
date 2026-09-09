@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import NoteIndicator from './NoteIndicator';
+import NoteIndicator from '@/components/instruments/NoteIndicator';
 
 interface BassFretProps {
   noteIndex: number;
