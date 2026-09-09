@@ -74,9 +74,16 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
         "beat.checkpoint_outside_workspace",
         "beat.cuda_unavailable",
         "beat.decode_failed",
+        "beat.invalid_config",
+        "beat.missing_model_identity",
         "beat.model_failed",
         "beat.no_beats_detected",
         "beat.postprocessing_failed",
+        "beat.provenance_mismatch",
+        "beat.result_source_mismatch",
+        "beat.source_hash_mismatch",
+        "beat.source_missing",
+        "beat.source_outside_workspace",
     )
     threshold_comparisons: tuple[str, ...] = (
         "beat_count < minimum_beats",
@@ -121,13 +128,30 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
             "minimum_support_radius_seconds": 0.35,
             "support_radius_inter_beat_ratio": 0.75,
             "maximum_support_radius_seconds": 1.5,
+            "fatal_analyzer_warning_codes": (
+                "beat.analyzer_exception",
+                "beat.checkpoint_missing",
+                "beat.checkpoint_outside_workspace",
+                "beat.cuda_unavailable",
+                "beat.decode_failed",
+                "beat.invalid_config",
+                "beat.missing_model_identity",
+                "beat.model_failed",
+                "beat.no_beats_detected",
+                "beat.postprocessing_failed",
+                "beat.provenance_mismatch",
+                "beat.result_source_mismatch",
+                "beat.source_hash_mismatch",
+                "beat.source_missing",
+                "beat.source_outside_workspace",
+            ),
         }
         changed = any(getattr(self, key) != value for key, value in baseline.items())
         major_text = self.gate_version.split(".", maxsplit=1)[0]
         major = int(major_text) if major_text.isdigit() else 0
         if changed and major <= 1:
             raise ValueError(
-                "behavioural threshold changes require a new major gate version"
+                "behavioural gate changes require a new major gate version"
             )
         return self
 
