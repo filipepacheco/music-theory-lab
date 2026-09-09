@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import BassNeck from '@/components/instruments/BassNeck';
+import { resolveLibraryChordAt } from '@/domain/libraryChordSync';
 import {
   useLibraryAudioSource,
   type AudioAttachmentStatus,
@@ -95,6 +97,15 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const seek = audioUrl && audio.ready ? audio.seek : null;
 
+  const activeChord = useMemo(
+    () =>
+      resolveLibraryChordAt(
+        data?.chord.segments ?? [],
+        audioUrl && audio.ready ? audio.currentSeconds : Number.NaN,
+      ),
+    [audio.currentSeconds, audio.ready, audioUrl, data?.chord.segments],
+  );
+
   return (
     <section className="flex flex-col gap-4">
       <header>
@@ -141,6 +152,29 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {data && (
         <div className="flex flex-col gap-5">
+          <div className="rounded-card border border-border-default bg-bg-card p-3 sm:p-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h4 className="font-heading text-sm text-text-secondary">
+                Braço sincronizado
+              </h4>
+              <p className="font-heading text-sm text-text-primary tabular-nums">
+                {activeChord.text
+                  ? `Acorde atual: ${activeChord.text}`
+                  : 'Nenhum acorde ativo'}
+              </p>
+            </div>
+            <BassNeck
+              highlight={{
+                pitchClasses: activeChord.pitchClasses,
+                rootPitchClass: activeChord.rootPitchClass,
+              }}
+            />
+            <p className="mt-2 text-[11px] text-text-muted">
+              A fundamental aparece em âmbar; as demais notas do acorde, em
+              verde.
+            </p>
+          </div>
+
           {sections.length > 0 && (
             <div className="flex flex-col gap-2">
               <h4 className="font-heading text-sm text-text-secondary">

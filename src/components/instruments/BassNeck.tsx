@@ -1,27 +1,41 @@
-import { useMemo, useState } from "react";
-import { useAppStore } from "@/store/useAppStore";
-import { useSynth } from "@/hooks/useSynth";
-import { getNoteName, computeVoicingOctaveMap } from "@/utils/noteHelpers";
-import BassFret from "./BassFret";
+import { useMemo, useState } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import { useSynth } from '@/hooks/useSynth';
+import { getNoteName, computeVoicingOctaveMap } from '@/utils/noteHelpers';
+import BassFret from './BassFret';
+
+export interface BassNeckHighlight {
+  pitchClasses: number[];
+  rootPitchClass: number | null;
+}
+
+interface Props {
+  highlight?: BassNeckHighlight;
+}
 
 // Standard bass tuning: E1, A1, D2, G2 (note indices)
 const TUNING = [4, 9, 2, 7]; // E, A, D, G
 const TUNING_OCTAVES = [1, 1, 2, 2]; // E1, A1, D2, G2
 // Display order: G (highest) to E (lowest), top to bottom
 const DISPLAY_ORDER = [3, 2, 1, 0]; // G, D, A, E
-const STRING_LABELS = ["G", "D", "A", "E"];
+const STRING_LABELS = ['G', 'D', 'A', 'E'];
 const FRET_COUNT = 12;
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12]);
 
-export default function BassNeck() {
-  const highlightedNotes = useAppStore((s) => s.highlightedNotes);
-  const highlightRootName = useAppStore((s) => s.highlightRootName);
-  const highlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
+export default function BassNeck({ highlight }: Props = {}) {
+  const storedHighlightedNotes = useAppStore((s) => s.highlightedNotes);
+  const storedHighlightRootName = useAppStore((s) => s.highlightRootName);
+  const storedHighlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
   const rootNote = useAppStore((s) => s.rootNote);
   const { playNote } = useSynth();
   const [showAllNotes, setShowAllNotes] = useState(false);
 
-  const rootNoteName = highlightRootName ?? getNoteName(rootNote);
+  const highlightedNotes = highlight?.pitchClasses ?? storedHighlightedNotes;
+  const highlightOctaveMap = highlight ? null : storedHighlightOctaveMap;
+  const rootPitchClass = highlight?.rootPitchClass ?? null;
+  const rootNoteName = highlight
+    ? getNoteName(rootPitchClass ?? rootNote)
+    : (storedHighlightRootName ?? getNoteName(rootNote));
   const hasAnyHighlights = highlightedNotes.length > 0;
 
   // When a chord voicing is active, compute exact (string, fret) positions
@@ -46,9 +60,7 @@ export default function BassNeck() {
           const open = TUNING[si];
           for (let f = 0; f <= FRET_COUNT; f++) {
             if ((open + f) % 12 !== noteIdx) continue;
-            const oct = Math.floor(
-              (TUNING_OCTAVES[si] * 12 + open + f) / 12,
-            );
+            const oct = Math.floor((TUNING_OCTAVES[si] * 12 + open + f) / 12);
             if (oct === tryOctave && f < bestFret) {
               bestFret = f;
               bestString = si;
@@ -81,11 +93,11 @@ export default function BassNeck() {
           onClick={() => setShowAllNotes(!showAllNotes)}
           className={`text-xs font-medium px-2.5 py-1 rounded-control border transition-colors cursor-pointer ${
             showAllNotes
-              ? "border-accent bg-accent/15 text-accent"
-              : "border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary"
+              ? 'border-accent bg-accent/15 text-accent'
+              : 'border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary'
           }`}
         >
-          {showAllNotes ? "Todas as notas" : "Apenas acordes"}
+          {showAllNotes ? 'Todas as notas' : 'Apenas acordes'}
         </button>
       </div>
       <div className="overflow-x-auto min-w-0">
@@ -102,7 +114,7 @@ export default function BassNeck() {
               key={fret}
               className="text-center text-xs text-text-muted font-mono"
             >
-              {fret === 0 ? "" : fret}
+              {fret === 0 ? '' : fret}
             </div>
           ))}
         </div>
@@ -130,9 +142,13 @@ export default function BassNeck() {
                 const octave = Math.floor(
                   (TUNING_OCTAVES[stringIdx] * 12 + openNote + fret) / 12,
                 );
-                const prevOctave = fret > 0
-                  ? Math.floor((TUNING_OCTAVES[stringIdx] * 12 + openNote + fret - 1) / 12)
-                  : octave;
+                const prevOctave =
+                  fret > 0
+                    ? Math.floor(
+                        (TUNING_OCTAVES[stringIdx] * 12 + openNote + fret - 1) /
+                          12,
+                      )
+                    : octave;
                 const isOctaveStart = fret > 0 && octave !== prevOctave;
                 const isHighlighted =
                   bassHighlightPositions !== null
@@ -145,11 +161,15 @@ export default function BassNeck() {
                     noteIndex={noteIndex}
                     noteName={noteName}
                     isHighlighted={isHighlighted}
+                    isRootHighlighted={
+                      isHighlighted && noteIndex === rootPitchClass
+                    }
                     hasAnyHighlights={hasAnyHighlights}
                     showAllNotes={showAllNotes}
                     isOpenString={fret === 0}
                     hasFretMarker={
-                      FRET_MARKERS.has(fret) && rowIdx === DISPLAY_ORDER.length - 1
+                      FRET_MARKERS.has(fret) &&
+                      rowIdx === DISPLAY_ORDER.length - 1
                     }
                     isOctaveStart={isOctaveStart}
                     octave={octave}
