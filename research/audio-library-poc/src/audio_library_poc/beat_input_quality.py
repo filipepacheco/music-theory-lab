@@ -45,6 +45,25 @@ class BeatInputDiagnostic(StrEnum):
     UNCALIBRATED = "beat.gate_uncalibrated"
 
 
+_V1_FATAL_ANALYZER_WARNING_CODES = (
+    "beat.analyzer_exception",
+    "beat.checkpoint_missing",
+    "beat.checkpoint_outside_workspace",
+    "beat.cuda_unavailable",
+    "beat.decode_failed",
+    "beat.invalid_config",
+    "beat.missing_model_identity",
+    "beat.model_failed",
+    "beat.no_beats_detected",
+    "beat.postprocessing_failed",
+    "beat.provenance_mismatch",
+    "beat.result_source_mismatch",
+    "beat.source_hash_mismatch",
+    "beat.source_missing",
+    "beat.source_outside_workspace",
+)
+
+
 class BeatInputQualityPolicyConfig(FrozenQualityModel):
     """Every behaviour-affecting value covered by the policy digest."""
 
@@ -68,23 +87,7 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
     nonfatal_diagnostic_codes: tuple[str, ...] = tuple(
         diagnostic.value for diagnostic in BeatInputDiagnostic
     )
-    fatal_analyzer_warning_codes: tuple[str, ...] = (
-        "beat.analyzer_exception",
-        "beat.checkpoint_missing",
-        "beat.checkpoint_outside_workspace",
-        "beat.cuda_unavailable",
-        "beat.decode_failed",
-        "beat.invalid_config",
-        "beat.missing_model_identity",
-        "beat.model_failed",
-        "beat.no_beats_detected",
-        "beat.postprocessing_failed",
-        "beat.provenance_mismatch",
-        "beat.result_source_mismatch",
-        "beat.source_hash_mismatch",
-        "beat.source_missing",
-        "beat.source_outside_workspace",
-    )
+    fatal_analyzer_warning_codes: tuple[str, ...] = _V1_FATAL_ANALYZER_WARNING_CODES
     threshold_comparisons: tuple[str, ...] = (
         "beat_count < minimum_beats",
         "supported_seconds < minimum_supported_seconds",
@@ -114,7 +117,7 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
         return cls(gate_version="1.0.0")
 
     @model_validator(mode="after")
-    def require_major_bump_for_threshold_changes(self) -> Self:
+    def require_major_bump_for_behavior_changes(self) -> Self:
         baseline = {
             "minimum_beats": 16,
             "minimum_supported_active_seconds": 12.0,
@@ -128,23 +131,7 @@ class BeatInputQualityPolicyConfig(FrozenQualityModel):
             "minimum_support_radius_seconds": 0.35,
             "support_radius_inter_beat_ratio": 0.75,
             "maximum_support_radius_seconds": 1.5,
-            "fatal_analyzer_warning_codes": (
-                "beat.analyzer_exception",
-                "beat.checkpoint_missing",
-                "beat.checkpoint_outside_workspace",
-                "beat.cuda_unavailable",
-                "beat.decode_failed",
-                "beat.invalid_config",
-                "beat.missing_model_identity",
-                "beat.model_failed",
-                "beat.no_beats_detected",
-                "beat.postprocessing_failed",
-                "beat.provenance_mismatch",
-                "beat.result_source_mismatch",
-                "beat.source_hash_mismatch",
-                "beat.source_missing",
-                "beat.source_outside_workspace",
-            ),
+            "fatal_analyzer_warning_codes": _V1_FATAL_ANALYZER_WARNING_CODES,
         }
         changed = any(getattr(self, key) != value for key, value in baseline.items())
         major_text = self.gate_version.split(".", maxsplit=1)[0]
