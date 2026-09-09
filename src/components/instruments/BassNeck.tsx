@@ -171,7 +171,7 @@ export default function BassNeck() {
           <span role="status">Carregando o timbre do baixo… </span>
         )}
         {samplerStatus === 'error' && (
-          <span role="alert" className="text-red-400">
+          <span role="alert" className="text-text-error">
             Não foi possível carregar o timbre do baixo. Toque novamente para
             tentar de novo.{' '}
           </span>
