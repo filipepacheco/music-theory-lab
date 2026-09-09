@@ -18,6 +18,10 @@ import type {
 } from '@/domain/syncMerge';
 export type { SavedProgression } from '@/domain/syncMerge';
 import { migrateStructureData, type LegacySection } from '@/domain/migrations';
+import {
+  migrateLibraryAnnotation,
+  type LibraryAnnotationDocument,
+} from '@/domain/libraryAnnotation';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,14 +78,14 @@ let db: Database | null = null;
 let initPromise: Promise<void> | null = null;
 
 /** Export the database to IndexedDB (exposed for the sync merge's single flush). */
-export function persistDB() {
-  if (!db) return;
+export function persistDB(): Promise<void> {
+  if (!db) return Promise.resolve();
   const data = db.export();
-  saveToIDB(data);
+  return saveToIDB(data);
 }
 
 function persist() {
-  persistDB();
+  void persistDB();
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +142,15 @@ export async function initDB(): Promise<void> {
         bars TEXT NOT NULL DEFAULT '[]',
         sections TEXT NOT NULL DEFAULT '[]',
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS library_annotations (
+        source_sha256 TEXT PRIMARY KEY,
+        schema_version INTEGER NOT NULL DEFAULT 1,
+        document TEXT NOT NULL,
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
@@ -519,6 +532,63 @@ export function deleteStructure(id: string): void {
     stmt.free();
   }
   persist();
+}
+
+// ---------------------------------------------------------------------------
+// Library annotation documents (local-only, keyed by immutable source hash)
+// ---------------------------------------------------------------------------
+
+export function getLibraryAnnotation(
+  sourceSha256: string,
+  barCount: number,
+): LibraryAnnotationDocument | null {
+  if (!db) return null;
+  const stmt = db.prepare(
+    `SELECT document FROM library_annotations WHERE source_sha256 = ?`,
+  );
+  stmt.bind([sourceSha256]);
+  if (!stmt.step()) {
+    stmt.free();
+    return null;
+  }
+  const row = stmt.getAsObject();
+  stmt.free();
+  let raw: unknown;
+  try {
+    raw = JSON.parse(row.document as string) as unknown;
+  } catch {
+    raw = null;
+  }
+  const migrated = migrateLibraryAnnotation(raw, sourceSha256, barCount);
+  if (JSON.stringify(raw) !== JSON.stringify(migrated)) {
+    void saveLibraryAnnotation(migrated);
+  }
+  return migrated;
+}
+
+export function saveLibraryAnnotation(
+  document: LibraryAnnotationDocument,
+): Promise<void> {
+  if (!db) return Promise.resolve();
+  const stmt = db.prepare(
+    `INSERT INTO library_annotations
+       (source_sha256, schema_version, document, updated_at)
+     VALUES (?, ?, ?, datetime('now'))
+     ON CONFLICT(source_sha256) DO UPDATE SET
+       schema_version = excluded.schema_version,
+       document = excluded.document,
+       updated_at = excluded.updated_at`,
+  );
+  try {
+    stmt.run([
+      document.sourceSha256,
+      document.schemaVersion,
+      JSON.stringify(document),
+    ]);
+  } finally {
+    stmt.free();
+  }
+  return persistDB();
 }
 
 // ---------------------------------------------------------------------------
