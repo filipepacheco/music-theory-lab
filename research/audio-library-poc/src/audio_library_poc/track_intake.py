@@ -140,6 +140,7 @@ def build_intake_manifest(
             {
                 "stage_kind": "beat.beat_this",
                 "implementation_version": BEAT_THIS_IMPLEMENTATION_VERSION,
+                "output_schema_version": "2.0.0",
                 "model_identifier": beat_checkpoint.identifier,
                 "model_sha256": beat_checkpoint.sha256,
                 "max_attempts": 1,
@@ -198,6 +199,7 @@ def build_intake_manifest(
             {
                 "stage_kind": "section.librosa_segment",
                 "implementation_version": SECTION_LIBROSA_IMPLEMENTATION_VERSION,
+                "output_schema_version": "2.0.0",
                 "model_identifier": "librosa_segment",
                 "max_attempts": 1,
                 "config": {

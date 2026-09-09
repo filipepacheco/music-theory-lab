@@ -14,6 +14,7 @@ from typing import Literal, Self
 from pydantic import (
     ConfigDict,
     Field,
+    JsonValue,
     StrictBool,
     field_validator,
     model_validator,
@@ -92,7 +93,7 @@ class EffectiveBeatAnalyzerSettings(FrozenBeatModel):
 class BeatWarning(FrozenBeatModel):
     code: Identifier
     severity: Literal["info", "warning", "fatal"]
-    details: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    details: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class BeatAnalysisResult(FrozenBeatModel):
@@ -105,7 +106,7 @@ class BeatAnalysisResult(FrozenBeatModel):
     adjacent beat pairs; 0.0 when fewer than two beats are present.
     """
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    schema_version: Literal["2.0.0"] = "2.0.0"
     source_sha256: Sha256
     provenance: BeatAnalyzerProvenance
     settings: EffectiveBeatAnalyzerSettings

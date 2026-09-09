@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import soundfile as sf
 from pydantic import Field, ValidationError, field_validator
 
@@ -51,7 +52,6 @@ class BeatInputQualityStageConfig(ContractModel):
     analyzer_code_revision: str = "unknown-revision"
     policy: BeatInputQualityPolicyConfig
     calibration: CalibrationEvidence | None = None
-    analyzer_fatal_codes: tuple[str, ...] = ()
 
     @field_validator("source_relative_path", "beat_result_relative_path")
     @classmethod
@@ -79,11 +79,17 @@ class BeatInputQualityStageExecutor:
             raise ValueError("attempt must be positive")
         config = self._config(specification)
         source_path = self._file(config.source_relative_path, "source")
-        if hash_file(source_path) != identity.input_sha256:
-            self._fail("beat.contract_invalid", "quality source hash mismatch")
-        audio, sample_rate = sf.read(str(source_path), dtype="float32", always_2d=True)
+        contract_invalid = hash_file(source_path) != identity.input_sha256
+        try:
+            audio, sample_rate = sf.read(
+                str(source_path), dtype="float32", always_2d=True
+            )
+        except (OSError, RuntimeError, ValueError):
+            contract_invalid = True
+            audio = np.empty((0, 1), dtype=np.float32)
+            sample_rate = 1
         beat_path = self._optional_file(config.beat_result_relative_path)
-        contract_invalid = beat_path is None
+        contract_invalid = contract_invalid or beat_path is None
         try:
             if beat_path is None:
                 raise OSError("beat result missing")
@@ -128,8 +134,14 @@ class BeatInputQualityStageExecutor:
             measurements=measurements,
             policy_config=config.policy,
             calibration=config.calibration,
-            analyzer_fatal_codes=config.analyzer_fatal_codes,
             expected_source_sha256=identity.input_sha256,
+            expected_analyzer_candidate=config.analyzer_candidate,
+            expected_analyzer_implementation_version=(
+                config.analyzer_implementation_version
+            ),
+            expected_model_identifier=config.model_identifier,
+            expected_model_sha256=config.model_sha256,
+            expected_code_revision=config.analyzer_code_revision,
             implementation_revision=identity.code_revision,
             contract_invalid=contract_invalid,
         )

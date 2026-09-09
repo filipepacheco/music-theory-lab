@@ -118,23 +118,7 @@
         },
         "details": {
           "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/$defs/JsonValue"
           },
           "title": "Details",
           "type": "object"
@@ -182,6 +166,7 @@
       "title": "EffectiveBeatAnalyzerSettings",
       "type": "object"
     },
+    "JsonValue": {},
     "SeparatorPrecision": {
       "enum": [
         "float32",
@@ -212,8 +197,8 @@
       "$ref": "#/$defs/BeatAnalyzerProvenance"
     },
     "schema_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "2.0.0",
+      "default": "2.0.0",
       "title": "Schema Version",
       "type": "string"
     },

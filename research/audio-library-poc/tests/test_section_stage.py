@@ -53,6 +53,7 @@ def _specification(
     return StageSpecification(
         stage_kind=SECTION_LIBROSA_STAGE_KIND,
         implementation_version="1.0.0",
+        output_schema_version="2.0.0",
         config=config,
     )
 
