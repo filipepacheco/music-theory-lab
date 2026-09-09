@@ -92,8 +92,8 @@ class EffectiveBeatAnalyzerSettings(FrozenBeatModel):
 class BeatAnalysisResult(FrozenBeatModel):
     """Portable, versioned description of one accepted beat analysis.
 
-    ``beats`` must be non-empty and sorted strictly increasing by
-    ``time_seconds``. ``downbeat_count`` is a redundant convenience derived
+    ``beats`` is sorted strictly increasing by ``time_seconds`` and may be
+    empty when the analyzer found no grid. ``downbeat_count`` is derived
     from the flag on each beat; the model validator enforces the invariant.
     ``tempo_median_bpm`` is the median of 60/interbeat_seconds across all
     adjacent beat pairs; 0.0 when fewer than two beats are present.
@@ -104,7 +104,7 @@ class BeatAnalysisResult(FrozenBeatModel):
     provenance: BeatAnalyzerProvenance
     settings: EffectiveBeatAnalyzerSettings
     source: BeatSourceFacts
-    beats: tuple[BeatEstimate, ...] = Field(min_length=1)
+    beats: tuple[BeatEstimate, ...] = ()
     downbeat_count: int = Field(ge=0)
     tempo_median_bpm: float = Field(ge=0)
     warnings: tuple[str, ...] = ()
@@ -128,7 +128,7 @@ class BeatAnalysisResult(FrozenBeatModel):
             raise ValueError(
                 "downbeat_count must equal the number of beats flagged as downbeats"
             )
-        if self.source.duration_seconds > 0:
+        if self.source.duration_seconds > 0 and self.beats:
             last_beat = self.beats[-1].time_seconds
             if last_beat > self.source.duration_seconds + 1e-3:
                 raise ValueError("beats must fall within the source duration")

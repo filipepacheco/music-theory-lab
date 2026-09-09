@@ -72,6 +72,16 @@ the `transcriptionDocument` module. Step lists also share the cap-and-clamp
 rules of the progression builder.
 _Avoid_: song state, transcription screen
 
+**Beat-input quality decision**:
+The immutable, versioned offline artifact that decides whether a detected beat
+grid is eligible for automatic Biblioteca section inference. It binds the
+exact beat result and analyzer identity to a semantic gate version, hashed
+configuration, calibration ID, measurements, diagnostics, and typed fatal
+reasons. A valid grid still cannot publish sections until its held-out
+calibration passes the confidence-bound targets; invalid or uncalibrated input
+exports one neutral, editable full-track section marked for review.
+_Avoid_: beat confidence, successful detection
+
 **Groove**:
 The main drum pattern of a structure section: a configurable subdivision grid
 over three drum pieces, drawn on the section as a memory aid for what the

@@ -87,7 +87,13 @@ class TestPrepareJob:
         manifest = PipelineManifest.model_validate(
             yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
         )
-        assert len(manifest.stages) == 4
+        assert [stage.stage_kind for stage in manifest.stages] == [
+            "beat.beat_this",
+            "chord.chordmini_btc",
+            "key.hpcp",
+            "quality.beat_input",
+            "section.librosa_segment",
+        ]
 
     def test_manifest_points_at_the_file_that_was_written(
         self, workspace: Path

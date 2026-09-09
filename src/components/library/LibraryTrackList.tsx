@@ -7,7 +7,11 @@ interface Props {
   onSelect: (track: LibraryIndexEntry) => void;
 }
 
-export default function LibraryTrackList({ tracks, selectedSha, onSelect }: Props) {
+export default function LibraryTrackList({
+  tracks,
+  selectedSha,
+  onSelect,
+}: Props) {
   if (tracks.length === 0) {
     return (
       <p className="text-sm text-text-muted">
@@ -55,6 +59,7 @@ export default function LibraryTrackList({ tracks, selectedSha, onSelect }: Prop
                     {track.section_count} trechos
                   </>
                 ) : null}
+                {track.review_required ? ' · revisar seções' : null}
               </div>
             </button>
           </li>

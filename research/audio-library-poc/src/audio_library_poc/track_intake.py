@@ -11,7 +11,7 @@ and returns the manifest as a plain dict, ready for
 ``PipelineManifest.model_validate``. Hashing files, writing YAML, running
 stages and publishing results all live in the caller.
 
-The four stages are exactly the ones ``sync_workspace_to_public.py``
+The intake stages are exactly the ones ``sync_workspace_to_public.py``
 consumes. ``key.chord_root_profile`` is deliberately absent: it is an
 evaluation baseline the public export never reads.
 
@@ -29,6 +29,10 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any, Final
 
+from audio_library_poc.beat_input_quality import BeatInputQualityPolicyConfig
+from audio_library_poc.beat_quality_stage import (
+    BEAT_INPUT_QUALITY_IMPLEMENTATION_VERSION,
+)
 from audio_library_poc.beat_this_stage import BEAT_THIS_IMPLEMENTATION_VERSION
 from audio_library_poc.chordmini_btc_stage import (
     CHORDMINI_BTC_IMPLEMENTATION_VERSION,
@@ -50,11 +54,12 @@ MIN_SEGMENT_COUNT: Final = 1
 MAX_SEGMENT_COUNT: Final = 64
 
 #: Stages the public export needs, in the order they run. Beat and chord are
-#: the GPU stages; key and section are CPU-only and comparatively cheap.
+#: the GPU stages; key, quality, and section are CPU-only and comparatively cheap.
 INTAKE_STAGE_KINDS: Final = (
     "beat.beat_this",
     "chord.chordmini_btc",
     "key.hpcp",
+    "quality.beat_input",
     "section.librosa_segment",
 )
 
@@ -113,9 +118,9 @@ def build_intake_manifest(
     hop_length: int = DEFAULT_HOP_LENGTH,
     segment_count: int = DEFAULT_SEGMENT_COUNT,
 ) -> dict[str, Any]:
-    """Assemble the four-stage manifest for one source file.
+    """Assemble the intake manifest for one source file.
 
-    All four stages go in a single manifest under a single run id rather than
+    All stages go in a single manifest under a single run id rather than
     one run each: ``PipelineManifest`` already requires distinct stage kinds,
     the orchestrator runs a manifest's stages in order and stops at the first
     failure, and ``collect_analyses`` groups by ``source_sha256`` across
@@ -169,6 +174,20 @@ def build_intake_manifest(
                     "source_relative_path": source_relative_path,
                     "sample_rate": sample_rate,
                     "hop_length": hop_length,
+                },
+            },
+            {
+                "stage_kind": "quality.beat_input",
+                "implementation_version": BEAT_INPUT_QUALITY_IMPLEMENTATION_VERSION,
+                "max_attempts": 1,
+                "config": {
+                    "source_relative_path": source_relative_path,
+                    # The intake runner resolves this pointer to the immutable
+                    # beat artifact before dispatching the quality stage.
+                    "beat_result_relative_path": ".pending/beat-analysis-result.json",
+                    "policy": BeatInputQualityPolicyConfig.provisional_v1().model_dump(
+                        mode="json"
+                    ),
                 },
             },
             {

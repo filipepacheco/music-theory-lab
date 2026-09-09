@@ -23,6 +23,8 @@ export interface LibraryIndexEntry {
   has_sections?: boolean;
   /** Only written when `has_sections` is true. */
   section_count?: number;
+  section_origin?: 'automatic' | 'fallback';
+  review_required?: boolean;
 }
 
 export interface LibraryIndex {
@@ -88,13 +90,16 @@ export interface SectionSegment {
 export interface SectionAnalysisJson {
   schema_version: string;
   source_sha256: string;
+  origin: 'automatic' | 'fallback';
+  review_required: boolean;
+  fallback_reason_codes: string[];
   sections: SectionSegment[];
   settings: {
     sample_rate: number;
     hop_length: number;
     feature: string;
     n_segments: number;
-  };
+  } | null;
   warnings: string[];
 }
 
