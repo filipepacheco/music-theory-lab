@@ -8,6 +8,7 @@ import {
   type KeyAnalysisJson,
   type LibraryIndexEntry,
 } from './libraryData';
+import LibrarySectionControlsPrototype from './LibrarySectionControlsPrototype';
 
 interface Props {
   track: LibraryIndexEntry;
@@ -52,10 +53,16 @@ export default function LibraryTrackDetail({ track }: Props) {
     return grouped;
   }, [bars]);
 
+  const showSectionPrototype =
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('prototype') === 'sections';
+
   return (
     <section className="flex flex-col gap-4">
       <header>
-        <h3 className="font-heading text-base text-text-primary">{track.title}</h3>
+        <h3 className="font-heading text-base text-text-primary">
+          {track.title}
+        </h3>
         <p className="text-sm text-text-secondary">{track.artist}</p>
       </header>
 
@@ -87,42 +94,48 @@ export default function LibraryTrackDetail({ track }: Props) {
       {data && (
         <div className="flex flex-col gap-2">
           <h4 className="font-heading text-sm text-text-secondary">
-            Cifra por compasso
+            {showSectionPrototype ? 'Edição de seções' : 'Cifra por compasso'}
           </h4>
-          <div className="flex flex-col gap-1.5">
-            {rows.map((row, rowIndex) => (
-              <div
-                key={rowIndex}
-                className="grid gap-1.5"
-                style={{
-                  gridTemplateColumns: `repeat(${BARS_PER_ROW}, minmax(0, 1fr))`,
-                }}
-              >
-                {row.map((bar) => (
+          {showSectionPrototype ? (
+            <LibrarySectionControlsPrototype bars={bars} />
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                {rows.map((row, rowIndex) => (
                   <div
-                    key={bar.index}
-                    className="rounded-button border border-border-default bg-bg-card px-2 py-2 flex flex-col gap-0.5"
+                    key={rowIndex}
+                    className="grid gap-1.5"
+                    style={{
+                      gridTemplateColumns: `repeat(${BARS_PER_ROW}, minmax(0, 1fr))`,
+                    }}
                   >
-                    <span className="font-heading text-sm text-text-primary">
-                      {bar.chords[0].chord}
-                    </span>
-                    <span className="text-[10px] text-text-muted">
-                      {formatDuration(bar.startSeconds)}
-                    </span>
+                    {row.map((bar) => (
+                      <div
+                        key={bar.index}
+                        className="rounded-button border border-border-default bg-bg-card px-2 py-2 flex flex-col gap-0.5"
+                      >
+                        <span className="font-heading text-sm text-text-primary">
+                          {bar.chords[0].chord}
+                        </span>
+                        <span className="text-[10px] text-text-muted">
+                          {formatDuration(bar.startSeconds)}
+                        </span>
+                      </div>
+                    ))}
+                    {row.length < BARS_PER_ROW &&
+                      Array.from({ length: BARS_PER_ROW - row.length }).map(
+                        (_, gap) => <div key={`gap-${gap}`} />,
+                      )}
                   </div>
                 ))}
-                {row.length < BARS_PER_ROW &&
-                  Array.from({ length: BARS_PER_ROW - row.length }).map(
-                    (_, gap) => <div key={`gap-${gap}`} />,
-                  )}
               </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-text-muted">
-            Um bloco = um compasso, agrupado a partir do down-beat detectado.
-            Quando duas cifras compartilham o compasso, mostramos a de maior
-            duração.
-          </p>
+              <p className="text-[11px] text-text-muted">
+                Um bloco = um compasso, agrupado a partir do down-beat
+                detectado. Quando duas cifras compartilham o compasso, mostramos
+                a de maior duração.
+              </p>
+            </>
+          )}
         </div>
       )}
     </section>
