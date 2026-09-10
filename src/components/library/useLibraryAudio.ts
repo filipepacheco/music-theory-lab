@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  createLibraryAudioSession,
+  type LibraryAudioSession,
+  type LibraryAudioState,
+} from '@/services/libraryAudioSession';
 
 export interface LibraryAudio {
   ready: boolean;
@@ -17,73 +22,43 @@ export interface LibraryAudio {
  * leak the underlying media element or its ticker.
  */
 export function useLibraryAudio(url: string | null): LibraryAudio {
-  const [ready, setReady] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentSeconds, setCurrentSeconds] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [state, setState] = useState<LibraryAudioState>({
+    ready: false,
+    playing: false,
+    duration: 0,
+    currentSeconds: 0,
+  });
+  const sessionRef = useRef<LibraryAudioSession | null>(null);
 
   useEffect(() => {
+    setState({
+      ready: false,
+      playing: false,
+      duration: 0,
+      currentSeconds: 0,
+    });
     if (!url) {
-      audioRef.current = null;
-      setReady(false);
-      setPlaying(false);
-      setDuration(0);
-      setCurrentSeconds(0);
+      sessionRef.current = null;
       return;
     }
-    const audio = new Audio(url);
+    const audio = new Audio();
     audio.preload = 'metadata';
-    audioRef.current = audio;
-    setReady(false);
-    setPlaying(false);
-    setDuration(0);
-    setCurrentSeconds(0);
-
-    const onLoaded = () => {
-      setReady(true);
-      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
-    };
-    const onTime = () => setCurrentSeconds(audio.currentTime);
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onEnded = () => setPlaying(false);
-
-    audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('ended', onEnded);
+    const session = createLibraryAudioSession(audio, setState);
+    sessionRef.current = session;
+    audio.src = url;
 
     return () => {
-      audio.pause();
-      audio.removeEventListener('loadedmetadata', onLoaded);
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('ended', onEnded);
-      audio.src = '';
-      audioRef.current = null;
+      session.dispose();
+      if (sessionRef.current === session) sessionRef.current = null;
     };
   }, [url]);
 
   return {
-    ready,
-    playing,
-    currentSeconds,
-    duration,
+    ...state,
     play: async () => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      await audio.play().catch(() => {});
+      await sessionRef.current?.play().catch(() => {});
     },
-    pause: () => audioRef.current?.pause(),
-    seek: (seconds) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      const clamped = Math.max(0, Math.min(seconds, audio.duration || seconds));
-      audio.currentTime = clamped;
-      setCurrentSeconds(clamped);
-    },
+    pause: () => sessionRef.current?.pause(),
+    seek: (seconds) => sessionRef.current?.seek(seconds),
   };
 }

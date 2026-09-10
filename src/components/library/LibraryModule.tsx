@@ -13,7 +13,9 @@ export default function LibraryModule() {
     fetchLibraryIndex(controller.signal)
       .then((index) => {
         setTracks(index.tracks);
-        setSelectedSha((current) => current ?? index.tracks[0]?.source_sha256 ?? null);
+        setSelectedSha(
+          (current) => current ?? index.tracks[0]?.source_sha256 ?? null,
+        );
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
@@ -23,8 +25,7 @@ export default function LibraryModule() {
     return () => controller.abort();
   }, []);
 
-  const selected =
-    tracks?.find((t) => t.source_sha256 === selectedSha) ?? null;
+  const selected = tracks?.find((t) => t.source_sha256 === selectedSha) ?? null;
 
   return (
     <section className="section-panel flex flex-col gap-4">
@@ -54,7 +55,7 @@ export default function LibraryModule() {
             onSelect={(t) => setSelectedSha(t.source_sha256)}
           />
           {selected ? (
-            <LibraryTrackDetail track={selected} />
+            <LibraryTrackDetail key={selected.source_sha256} track={selected} />
           ) : (
             <p className="text-sm text-text-muted">
               Selecione uma faixa para ver a cifra detectada.
