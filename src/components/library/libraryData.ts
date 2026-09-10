@@ -452,6 +452,32 @@ export function sectionIndexAtSeconds(
   return -1;
 }
 
+/**
+ * Convert accepted analysis boundaries into editable bar boundaries. Detector
+ * labels are intentionally ignored: annotations begin with neutral names.
+ */
+export function sectionBoundaryBars(
+  bars: ChordChartBar[],
+  sections: SectionSegment[],
+): number[] {
+  if (bars.length < 2 || sections.length < 2) return [];
+  const boundaries = sections.slice(1).map((section) => {
+    let nearest = 1;
+    let distance = Math.abs(bars[1].startSeconds - section.start_seconds);
+    for (let index = 2; index < bars.length; index += 1) {
+      const candidateDistance = Math.abs(
+        bars[index].startSeconds - section.start_seconds,
+      );
+      if (candidateDistance < distance) {
+        nearest = index;
+        distance = candidateDistance;
+      }
+    }
+    return nearest;
+  });
+  return [...new Set(boundaries)].sort((left, right) => left - right);
+}
+
 export interface SectionGroup {
   section: SectionSegment;
   /** Position in the track, 0-based. */

@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { useSynth } from '@/hooks/useSynth';
 import { getNoteName, computeVoicingOctaveMap } from '@/utils/noteHelpers';
+import { toBassMidi } from '@/utils/growlybass';
+import { GROWLYBASS_SOURCE_COMMIT } from '@/constants/growlybass.generated';
+import { useBassSynth } from '@/hooks/useBassSynth';
 import BassFret from '@/components/instruments/BassFret';
 import { libraryFretHighlightKind } from '@/domain/libraryChordSync';
 
@@ -28,8 +30,8 @@ export default function BassNeck({ highlight }: Props = {}) {
   const storedHighlightRootName = useAppStore((s) => s.highlightRootName);
   const storedHighlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
   const rootNote = useAppStore((s) => s.rootNote);
-  const { playNote } = useSynth();
   const [showAllNotes, setShowAllNotes] = useState(false);
+  const { playBassNote, samplerStatus } = useBassSynth();
 
   const highlightedNotes = highlight?.pitchClasses ?? storedHighlightedNotes;
   const highlightOctaveMap = highlight ? null : storedHighlightOctaveMap;
@@ -81,7 +83,7 @@ export default function BassNeck({ highlight }: Props = {}) {
   }, [highlightOctaveMap, highlightedNotes]);
 
   const handleNoteClick = (noteIndex: number, octave: number) => {
-    playNote(noteIndex, octave);
+    playBassNote(toBassMidi(noteIndex, octave));
   };
 
   return (
@@ -183,6 +185,36 @@ export default function BassNeck({ highlight }: Props = {}) {
             </div>
           );
         })}
+      </div>
+      <div className="mt-3 text-[11px] leading-relaxed text-text-muted">
+        {samplerStatus === 'loading' && (
+          <span role="status">Carregando o timbre do baixo… </span>
+        )}
+        {samplerStatus === 'error' && (
+          <span role="alert" className="text-text-error">
+            Não foi possível carregar o timbre do baixo. Toque novamente para
+            tentar de novo.{' '}
+          </span>
+        )}
+        Samples derivados de{' '}
+        <a
+          className="underline hover:text-text-secondary"
+          href={`https://github.com/sfzinstruments/karoryfer.growlybass/tree/${GROWLYBASS_SOURCE_COMMIT}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Growlybass por Karoryfer Lecolds (2014)
+        </a>
+        , dedicados ao domínio público sob{' '}
+        <a
+          className="underline hover:text-text-secondary"
+          href="https://creativecommons.org/publicdomain/zero/1.0/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          CC0 1.0
+        </a>
+        . Selecionados e convertidos para o Music Theory Lab.
       </div>
     </div>
   );

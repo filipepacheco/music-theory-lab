@@ -48,7 +48,7 @@ export default function LibraryModule() {
       )}
 
       {tracks && (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
           <LibraryTrackList
             tracks={tracks}
             selectedSha={selectedSha}

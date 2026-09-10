@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "generate:bass-assets": "python3 scripts/generate_growlybass_assets.py",
+    "check:bass-assets": "python3 scripts/generate_growlybass_assets.py --check",
     "preview": "vite preview",
     "postinstall": "node -e \"require('fs').copyFileSync('node_modules/sql.js/dist/sql-wasm.wasm','public/sql-wasm.wasm')\""
   },
