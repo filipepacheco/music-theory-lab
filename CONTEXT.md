@@ -32,6 +32,34 @@ The browser transcription flow accepts GP7 `.gp` files, lets the user choose the
 
 ## Application concepts
 
+**Library analysis artifact**:
+An immutable offline-analysis JSON file for one Biblioteca track, identified by
+the track's stable `source_sha256`. It may suggest structural boundaries, but
+its bytes are never rewritten by a correction in the app.
+_Avoid_: editable analysis, Library state
+
+**Library annotation document**:
+The single locally persisted, user-owned correction layer for one Biblioteca
+track, keyed by the same stable `source_sha256` as its analysis artifacts. It
+contains only the editable chronological sections; loading, migration, and
+saving go through the saved-library façade.
+_Avoid_: section analysis, arrangement
+
+**Library section**:
+A neutral-named, non-empty half-open range of bar indexes in a
+[[library-annotation-document]]. Its start is inclusive and its end is
+exclusive. The ordered section list must cover every bar exactly once, without
+gaps, overlaps, or reordering. A track without accepted automatic boundaries
+starts with one full-track section named `Parte 1`.
+_Avoid_: verse, chorus, inferred form
+
+**Library boundary**:
+The shared bar edge between two adjacent [[library-section]] ranges. Moving it
+left or right transfers exactly one bar to the neighboring section; splitting
+adds one at the selected bar and merging removes one. Edits at a track edge or
+ones that would leave an empty section are invalid.
+_Avoid_: drag handle for reordering, timestamp boundary
+
 **Structure document**:
 The editable song arrangement made of ordered sections and their bars. Use this term for the arrangement being recorded, reorganized, or exported.
 _Avoid_: structure state, arrangement data

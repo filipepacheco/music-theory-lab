@@ -18,6 +18,12 @@ import type {
 } from '@/domain/syncMerge';
 export type { SavedProgression } from '@/domain/syncMerge';
 import { migrateStructureData, type LegacySection } from '@/domain/migrations';
+import type { LibraryAnnotationDocument } from '@/domain/libraryAnnotation';
+import {
+  initializeLibraryAnnotationStorage,
+  loadLibraryAnnotation,
+  storeLibraryAnnotation,
+} from '@/services/libraryAnnotationStorage';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,14 +80,14 @@ let db: Database | null = null;
 let initPromise: Promise<void> | null = null;
 
 /** Export the database to IndexedDB (exposed for the sync merge's single flush). */
-export function persistDB() {
-  if (!db) return;
+export function persistDB(): Promise<void> {
+  if (!db) return Promise.resolve();
   const data = db.export();
-  saveToIDB(data);
+  return saveToIDB(data);
 }
 
 function persist() {
-  persistDB();
+  void persistDB();
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +147,8 @@ export async function initDB(): Promise<void> {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
+
+    initializeLibraryAnnotationStorage(db);
 
     // Migration: add bpm column to existing structures table
     try {
@@ -519,6 +527,28 @@ export function deleteStructure(id: string): void {
     stmt.free();
   }
   persist();
+}
+
+// ---------------------------------------------------------------------------
+// Library annotation documents (local-only, keyed by immutable source hash)
+// ---------------------------------------------------------------------------
+
+export function getLibraryAnnotation(
+  sourceSha256: string,
+  barCount: number,
+): LibraryAnnotationDocument | null {
+  if (!db) return null;
+  const loaded = loadLibraryAnnotation(db, sourceSha256, barCount);
+  if (loaded?.migrated) void persistDB();
+  return loaded?.document ?? null;
+}
+
+export function saveLibraryAnnotation(
+  document: LibraryAnnotationDocument,
+): Promise<void> {
+  if (!db) return Promise.resolve();
+  storeLibraryAnnotation(db, document);
+  return persistDB();
 }
 
 // ---------------------------------------------------------------------------

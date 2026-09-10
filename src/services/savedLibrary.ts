@@ -5,11 +5,13 @@ import {
   getAllProgressions,
   getAllSongs,
   getAllStructures,
+  getLibraryAnnotation,
   initDB,
   persistDB,
   saveProgression,
   saveSong,
   saveStructure,
+  saveLibraryAnnotation,
   updateSong,
   updateStructure,
   upsertProgressionLocal,
@@ -110,8 +112,7 @@ export const savedLibrary = {
   waitUntilSynchronized: () => syncPromise ?? Promise.resolve(),
 
   progressions: {
-    list: (mode?: 'major' | 'minor') =>
-      withDb(() => getAllProgressions(mode)),
+    list: (mode?: 'major' | 'minor') => withDb(() => getAllProgressions(mode)),
     save: async (prog: Parameters<typeof saveProgression>[0]) => {
       const saved = await withDb(() => saveProgression(prog));
       pushAfter(saved, pushProgression);
@@ -129,10 +130,7 @@ export const savedLibrary = {
       pushAfter(saved, pushSong);
       return saved?.id;
     },
-    update: async (
-      id: string,
-      updates: Parameters<typeof updateSong>[1],
-    ) => {
+    update: async (id: string, updates: Parameters<typeof updateSong>[1]) => {
       const saved = await withDb(() => updateSong(id, updates));
       pushAfter(saved, pushSong);
     },
@@ -160,5 +158,12 @@ export const savedLibrary = {
       await withDb(() => deleteStructure(id));
       pushDeleteStructure(id).catch(() => {});
     },
+  },
+
+  libraryAnnotations: {
+    get: (sourceSha256: string, barCount: number) =>
+      withDb(() => getLibraryAnnotation(sourceSha256, barCount)),
+    save: (document: Parameters<typeof saveLibraryAnnotation>[0]) =>
+      withDb(() => saveLibraryAnnotation(document)),
   },
 };
