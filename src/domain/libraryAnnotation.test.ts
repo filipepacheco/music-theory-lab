@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adoptRejectedBoundarySuggestion,
   createLibraryAnnotation,
   mergeLibrarySections,
   migrateLibraryAnnotation,
@@ -11,6 +12,7 @@ import {
   splitLibrarySection,
   validateLibraryAnnotation,
 } from '@/domain/libraryAnnotation';
+import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 
 describe('Library annotation document', () => {
   it('starts a track without accepted boundaries as one neutral full-track section', () => {
@@ -95,6 +97,47 @@ describe('Library annotation document', () => {
         origin: 'manual',
       },
     ]);
+  });
+
+  it('adopts an available rejected suggestion as a manual boundary', () => {
+    const original = createLibraryAnnotation('source-sha', 8, []);
+    const suggestion: RejectedBoundarySuggestion = {
+      id: 'source-sha:4',
+      boundarySeconds: 16,
+      support: 0.61,
+      reasonCodes: ['section.boundary_unsupported'],
+      barIndex: 4,
+      unavailableReason: null,
+    };
+
+    const result = adoptRejectedBoundarySuggestion(original, suggestion);
+
+    expect(result.error).toBeNull();
+    expect(result.document.sections[1]).toEqual({
+      id: 'section-2',
+      name: 'Parte 2',
+      startBar: 4,
+      endBar: 8,
+      origin: 'manual',
+    });
+  });
+
+  it('does not apply a suggestion that no longer maps to the bar grid', () => {
+    const original = createLibraryAnnotation('source-sha', 8, []);
+    const stale: RejectedBoundarySuggestion = {
+      id: 'source-sha:stale',
+      boundarySeconds: 99,
+      support: 0.61,
+      reasonCodes: ['section.boundary_unsupported'],
+      barIndex: null,
+      unavailableReason:
+        'Esta sugestão não corresponde mais à grade atual de compassos.',
+    };
+
+    const result = adoptRejectedBoundarySuggestion(original, stale);
+
+    expect(result.error).toBe(stale.unavailableReason);
+    expect(result.document).toBe(original);
   });
 
   it('moves a shared boundary exactly one bar in either direction', () => {

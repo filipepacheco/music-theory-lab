@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { LibraryAnnotationDocument } from '@/domain/libraryAnnotation';
+import {
+  createLibraryAnnotation,
+  type LibraryAnnotationDocument,
+} from '@/domain/libraryAnnotation';
 
 const dbState = vi.hoisted(() => ({ annotation: null as unknown }));
 
@@ -40,6 +43,7 @@ vi.mock('@/services/sync', () => ({
 }));
 
 import { savedLibrary } from '@/services/savedLibrary';
+import { saveLibraryAnnotation } from '@/services/db';
 import { syncAll } from '@/services/sync';
 import { pushLibraryAnnotation } from '@/services/sync';
 
@@ -59,6 +63,38 @@ describe('savedLibrary sync trigger', () => {
         }),
       }),
     );
+  });
+
+  it('adopts and persists a rejected boundary through the facade', async () => {
+    const document = createLibraryAnnotation('source-sha', 8, []);
+
+    const result = await savedLibrary.libraryAnnotations.adoptRejectedBoundary(
+      document,
+      { barIndex: 4, unavailableReason: null },
+    );
+
+    expect(result.error).toBeNull();
+    expect(result.document.sections[1].origin).toBe('manual');
+    expect(dbState.annotation).toEqual(result.document);
+    expect(pushLibraryAnnotation).toHaveBeenCalledWith(result.document);
+  });
+
+  it('keeps the candidate actionable when adoption cannot persist', async () => {
+    const document = createLibraryAnnotation('source-sha', 8, []);
+    vi.mocked(saveLibraryAnnotation).mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+
+    const result = await savedLibrary.libraryAnnotations.adoptRejectedBoundary(
+      document,
+      { barIndex: 4, unavailableReason: null },
+    );
+
+    expect(result).toEqual({
+      document,
+      error: 'Falha ao salvar esta divisão manual localmente.',
+    });
+    expect(document.sections).toHaveLength(1);
   });
 
   it('restores a locally saved Library annotation after reload', async () => {

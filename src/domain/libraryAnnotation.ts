@@ -24,6 +24,11 @@ export interface LibraryAnnotationEditResult {
   error: string | null;
 }
 
+export interface AdoptableLibraryBoundarySuggestion {
+  barIndex: number | null;
+  unavailableReason: string | null;
+}
+
 export interface CloudLibraryAnnotation {
   source_sha256: unknown;
   schema_version: unknown;
@@ -379,6 +384,45 @@ export function splitLibrarySection(
   const sections = [...document.sections];
   sections.splice(index, 1, { ...section, endBar: startBar }, created);
   return success(document, sections);
+}
+
+export function adoptRejectedBoundarySuggestion(
+  document: LibraryAnnotationDocument,
+  suggestion: AdoptableLibraryBoundarySuggestion,
+): LibraryAnnotationEditResult {
+  const error = getRejectedBoundaryAdoptionError(document, suggestion);
+  if (error) return failure(document, error);
+  const barIndex = suggestion.barIndex;
+  if (barIndex === null) return failure(document, 'Sugestão indisponível.');
+  const section = findSuggestionSection(document, barIndex);
+  if (!section) return failure(document, 'Sugestão indisponível.');
+  return splitLibrarySection(document, section.id, barIndex);
+}
+
+export function getRejectedBoundaryAdoptionError(
+  document: LibraryAnnotationDocument,
+  suggestion: AdoptableLibraryBoundarySuggestion,
+): string | null {
+  if (suggestion.barIndex === null) {
+    return (
+      suggestion.unavailableReason ??
+      'Esta sugestão não corresponde mais à grade atual de compassos.'
+    );
+  }
+  const section = findSuggestionSection(document, suggestion.barIndex);
+  if (!section) {
+    return 'Esta divisão já existe ou não está disponível na anotação atual.';
+  }
+  return null;
+}
+
+function findSuggestionSection(
+  document: LibraryAnnotationDocument,
+  barIndex: number,
+): LibraryAnnotationSection | undefined {
+  return document.sections.find(
+    (section) => section.startBar < barIndex && barIndex < section.endBar,
+  );
 }
 
 export type BoundaryDirection = -1 | 1;

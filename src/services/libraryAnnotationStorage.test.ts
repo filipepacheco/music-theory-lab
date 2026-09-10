@@ -1,9 +1,11 @@
 import initSqlJs from 'sql.js';
 import { describe, expect, it } from 'vitest';
 import {
+  adoptRejectedBoundarySuggestion,
   createLibraryAnnotation,
   renameLibrarySection,
 } from '@/domain/libraryAnnotation';
+import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 import {
   initializeLibraryAnnotationStorage,
   listLibraryAnnotations,
@@ -163,5 +165,34 @@ describe('Library annotation local storage', () => {
 
     expect(loaded?.document).toEqual(edited.document);
     expect(loaded?.document).not.toEqual(regeneratedProposal);
+  });
+
+  it('persists an adopted rejected boundary without mutating analysis provenance', async () => {
+    const SQL = await sql();
+    const database = new SQL.Database();
+    initializeLibraryAnnotationStorage(database);
+    const analysis = {
+      decision: 'fallback',
+      boundary_support: [0.61],
+      reason_codes: ['section.boundary_unsupported'],
+    };
+    const analysisBytes = JSON.stringify(analysis);
+    const initial = createLibraryAnnotation('source-sha', 6, []);
+    const suggestion: RejectedBoundarySuggestion = {
+      id: 'candidate-1',
+      boundarySeconds: 8,
+      support: 0.61,
+      reasonCodes: ['section.boundary_unsupported'],
+      barIndex: 2,
+      unavailableReason: null,
+    };
+
+    const adopted = adoptRejectedBoundarySuggestion(initial, suggestion);
+    storeLibraryAnnotation(database, adopted.document);
+    const restored = loadLibraryAnnotation(database, 'source-sha', 6);
+
+    expect(restored?.document).toEqual(adopted.document);
+    expect(restored?.document.sections[1].origin).toBe('manual');
+    expect(JSON.stringify(analysis)).toBe(analysisBytes);
   });
 });
