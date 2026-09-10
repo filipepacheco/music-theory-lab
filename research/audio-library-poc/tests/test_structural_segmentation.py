@@ -205,6 +205,9 @@ def test_result_keeps_all_36_candidates_as_immutable_provenance() -> None:
 
 
 def test_candidate_hierarchy_is_repeatable_and_covers_m_2_through_10() -> None:
+    pytest.importorskip(
+        "sklearn", reason="requires the optional inference dependency set"
+    )
     beat_boundaries = tuple(float(index * 5) for index in range(25))
     block = np.repeat(np.eye(3), 8, axis=1)
     harmonic = np.vstack((block, block))

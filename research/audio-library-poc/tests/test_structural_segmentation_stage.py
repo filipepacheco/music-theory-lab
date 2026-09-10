@@ -166,6 +166,12 @@ def test_stage_fails_closed_when_a_dependency_artifact_is_missing(
     reason="byte identity is certified on the pinned Windows inference runtime",
 )
 def test_repeated_windows_stage_identity_is_byte_identical(tmp_path: Path) -> None:
+    pytest.importorskip(
+        "librosa", reason="requires the optional inference dependency set"
+    )
+    pytest.importorskip(
+        "sklearn", reason="requires the optional inference dependency set"
+    )
     from audio_library_poc._structural_segmentation_runtime import (
         run_structural_segmentation,
     )
