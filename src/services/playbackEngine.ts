@@ -11,6 +11,11 @@ import type {
   SamplerPreset,
 } from '@/constants/tonePresets';
 import type { DrumPiece } from '@/types';
+import {
+  createGrowlybassSampler,
+  type GrowlybassSamplerStatus,
+} from '@/services/growlybass';
+import type { GrowlybassSamplePlan } from '@/utils/growlybass';
 
 export interface PlaybackEngine {
   playNote(
@@ -27,6 +32,15 @@ export interface PlaybackEngine {
     time?: number,
   ): void;
   playScale(noteIndices: number[], octave: number, presetId?: string): void;
+  playBassNote(
+    midiNote: number,
+    velocity?: number,
+    duration?: string,
+  ): Promise<void>;
+  getBassSamplerStatus(): GrowlybassSamplerStatus;
+  subscribeBassSampler(
+    listener: (status: GrowlybassSamplerStatus) => void,
+  ): () => void;
   playGrooveHit(piece: DrumPiece, time: number): void;
   stopGroove(): void;
   stopAll(presetId?: string): void;
@@ -64,6 +78,43 @@ interface SamplerEntry {
 }
 
 const samplerCache = new Map<string, SamplerEntry>();
+
+function loadGrowlybassBuffer(url: string): Promise<Tone.ToneAudioBuffer> {
+  return new Promise((resolve, reject) => {
+    new Tone.ToneAudioBuffer(url, resolve, reject);
+  });
+}
+
+const activeGrowlybassPlayers = new Set<Tone.Player>();
+
+function playGrowlybassBuffer(
+  buffer: Tone.ToneAudioBuffer,
+  plan: GrowlybassSamplePlan,
+  duration: string,
+  releaseSeconds: number,
+) {
+  let player: Tone.Player;
+  player = new Tone.Player({
+    url: buffer,
+    playbackRate: plan.playbackRate,
+    fadeIn: 0,
+    fadeOut: releaseSeconds,
+    volume: -6,
+    onstop: () => {
+      activeGrowlybassPlayers.delete(player);
+      player.dispose();
+    },
+  }).connect(reverb);
+  activeGrowlybassPlayers.add(player);
+  const startedAt = Tone.now();
+  player.start(startedAt, 0);
+  player.stop(startedAt + Tone.Time(duration).toSeconds());
+}
+
+const growlybassSampler = createGrowlybassSampler({
+  load: loadGrowlybassBuffer,
+  play: playGrowlybassBuffer,
+});
 
 function loadSampler(preset: SamplerPreset): SamplerEntry {
   const existing = samplerCache.get(preset.id);
@@ -307,6 +358,15 @@ export function createPlaybackEngine(): PlaybackEngine {
       });
     },
 
+    playBassNote: (midiNote, velocity = 0.6, duration = '8n') => {
+      void ensureAudio();
+      return growlybassSampler.trigger(midiNote, velocity, duration);
+    },
+
+    getBassSamplerStatus: () => growlybassSampler.getStatus(),
+
+    subscribeBassSampler: (listener) => growlybassSampler.subscribe(listener),
+
     playGrooveHit: (piece, time) => {
       void ensureAudio();
 
@@ -335,6 +395,7 @@ export function createPlaybackEngine(): PlaybackEngine {
       getReadySampler(preset)?.releaseAll();
       noteSynth?.releaseAll();
       for (const synth of chordSynths) synth.releaseAll();
+      for (const player of activeGrowlybassPlayers) player.stop();
       stopGrooveSources();
     },
   };
