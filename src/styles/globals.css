@@ -27,6 +27,7 @@
   --color-text-primary: #e8eaf0;
   --color-text-secondary: #9ca3b4;
   --color-text-muted: #7b8294;
+  --color-text-error: #f87171;
 
   --color-border-default: #2d3548;
   --color-border-focus: #4f6ef7;
@@ -120,6 +121,7 @@
   --color-text-primary: #1a1f2e;
   --color-text-secondary: #4a5068;
   --color-text-muted: #6b7280;
+  --color-text-error: #b91c1c;
 
   --color-border-default: #d1d5e0;
   --color-border-focus: #4f6ef7;
