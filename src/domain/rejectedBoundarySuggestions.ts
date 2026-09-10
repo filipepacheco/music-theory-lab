@@ -29,7 +29,7 @@ interface LibraryBarGridCell {
 
 const STALE_CANDIDATE_MESSAGE =
   'Esta sugestão não corresponde mais à grade atual de compassos.';
-const BAR_BOUNDARY_TOLERANCE_SECONDS = 0.05;
+const BEAT_TIMESTAMP_TOLERANCE_SECONDS = 0.05;
 
 const REASON_LABELS: Record<string, string> = {
   'section.gate_uncalibrated': 'limites de estabilidade ainda não calibrados',
@@ -49,6 +49,7 @@ export function rejectedBoundaryReasonLabel(reasonCode: string): string {
 export function rejectedBoundarySuggestions(
   analysis: StructuralSuggestionAnalysis | null,
   bars: LibraryBarGridCell[],
+  currentBeatTimesSeconds: number[],
 ): RejectedBoundarySuggestion[] {
   if (
     !analysis ||
@@ -63,7 +64,7 @@ export function rejectedBoundarySuggestions(
   if (!selected) return [];
 
   return selected.boundaries_seconds.slice(1, -1).map((seconds, index) => {
-    const barIndex = candidateBarIndex(seconds, bars);
+    const barIndex = candidateBarIndex(seconds, bars, currentBeatTimesSeconds);
     return {
       id: `${analysis.source_sha256}:${selected.m}:${index + 1}`,
       boundarySeconds: seconds,
@@ -78,12 +79,18 @@ export function rejectedBoundarySuggestions(
 function candidateBarIndex(
   boundarySeconds: number,
   bars: LibraryBarGridCell[],
+  currentBeatTimesSeconds: number[],
 ): number | null {
   if (
     !Number.isFinite(boundarySeconds) ||
     bars.length < 2 ||
     boundarySeconds <= bars[0].startSeconds ||
-    boundarySeconds >= bars[bars.length - 1].endSeconds
+    boundarySeconds >= bars[bars.length - 1].endSeconds ||
+    !currentBeatTimesSeconds.some(
+      (beatSeconds) =>
+        Math.abs(beatSeconds - boundarySeconds) <=
+        BEAT_TIMESTAMP_TOLERANCE_SECONDS,
+    )
   ) {
     return null;
   }
@@ -97,7 +104,5 @@ function candidateBarIndex(
       nearestDistance = distance;
     }
   }
-  return nearestDistance <= BAR_BOUNDARY_TOLERANCE_SECONDS
-    ? nearestIndex
-    : null;
+  return nearestIndex;
 }

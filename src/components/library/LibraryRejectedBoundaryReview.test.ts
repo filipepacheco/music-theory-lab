@@ -1,8 +1,14 @@
-import { createElement } from 'react';
+// @vitest-environment happy-dom
+import { createElement, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render as renderDom, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import LibraryRejectedBoundaryReview from '@/components/library/LibraryRejectedBoundaryReview';
-import { createLibraryAnnotation } from '@/domain/libraryAnnotation';
+import {
+  adoptRejectedBoundarySuggestion,
+  createLibraryAnnotation,
+} from '@/domain/libraryAnnotation';
 import type { ChordChartBar } from '@/components/library/libraryData';
 import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 
@@ -32,6 +38,8 @@ const suggestions: RejectedBoundarySuggestion[] = [
       'Esta sugestão não corresponde mais à grade atual de compassos.',
   },
 ];
+
+afterEach(cleanup);
 
 function render(visible: boolean): string {
   return renderToStaticMarkup(
@@ -80,5 +88,52 @@ describe('rejected boundary review', () => {
       'Esta sugestão não corresponde mais à grade atual de compassos.',
     );
     expect(markup).toContain('disabled=""');
+  });
+
+  it('reveals and adopts a suggestion with keyboard controls', async () => {
+    const user = userEvent.setup();
+
+    function KeyboardHarness() {
+      const [document, setDocument] = useState(() =>
+        createLibraryAnnotation('source-sha', bars.length, []),
+      );
+      const [visible, setVisible] = useState(false);
+      return createElement(LibraryRejectedBoundaryReview, {
+        document,
+        bars,
+        activeSectionIndex: -1,
+        suggestions,
+        visible,
+        onVisibleChange: setVisible,
+        onEdit: (result) => setDocument(result.document),
+        onAdopt: (suggestion) => {
+          const result = adoptRejectedBoundarySuggestion(document, suggestion);
+          if (!result.error) {
+            setDocument(result.document);
+            setVisible(false);
+          }
+        },
+      });
+    }
+
+    renderDom(createElement(KeyboardHarness));
+    await user.tab();
+    const reveal = screen.getByRole('button', {
+      name: 'Ver sugestões rejeitadas',
+    });
+    expect(document.activeElement).toBe(reveal);
+    await user.keyboard('{Enter}');
+    const candidate = screen.getByRole('button', {
+      name: /Sugestão rejeitada antes do compasso 3/,
+    });
+    candidate.focus();
+    await user.keyboard('{Enter}');
+
+    expect(
+      screen
+        .getByRole('button', { name: 'Ver sugestões rejeitadas' })
+        .getAttribute('aria-expanded'),
+    ).toBe('false');
+    expect(screen.getByLabelText('Nome da seção 2')).toBeTruthy();
   });
 });

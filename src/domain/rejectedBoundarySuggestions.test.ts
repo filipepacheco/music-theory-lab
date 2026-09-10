@@ -48,9 +48,12 @@ describe('rejected Library boundary suggestions', () => {
     bar(4, 16, 20),
     bar(5, 20, 24),
   ];
+  const beatTimes = Array.from({ length: 13 }, (_, index) => index * 2);
 
   it('derives chronological candidates with recorded support and reasons', () => {
-    expect(rejectedBoundarySuggestions(rejectedAnalysis(), bars)).toEqual([
+    expect(
+      rejectedBoundarySuggestions(rejectedAnalysis(), bars, beatTimes),
+    ).toEqual([
       {
         id: 'source-sha:3:1',
         boundarySeconds: 8,
@@ -75,7 +78,9 @@ describe('rejected Library boundary suggestions', () => {
     analysis.baseline_candidate_levels[0].boundaries_seconds = [0, 99, 120];
     analysis.measurements.boundary_support = [0.54];
 
-    expect(rejectedBoundarySuggestions(analysis, bars)[0]).toMatchObject({
+    expect(
+      rejectedBoundarySuggestions(analysis, bars, beatTimes)[0],
+    ).toMatchObject({
       boundarySeconds: 99,
       barIndex: null,
       unavailableReason:
@@ -85,14 +90,30 @@ describe('rejected Library boundary suggestions', () => {
 
   it('does not remap an in-range candidate to a distant bar boundary', () => {
     const analysis = rejectedAnalysis();
-    analysis.baseline_candidate_levels[0].boundaries_seconds = [0, 10, 24];
+    analysis.baseline_candidate_levels[0].boundaries_seconds = [0, 9.8, 24];
     analysis.measurements.boundary_support = [0.54];
 
-    expect(rejectedBoundarySuggestions(analysis, bars)[0]).toMatchObject({
-      boundarySeconds: 10,
+    expect(
+      rejectedBoundarySuggestions(analysis, bars, beatTimes)[0],
+    ).toMatchObject({
+      boundarySeconds: 9.8,
       barIndex: null,
       unavailableReason:
         'Esta sugestão não corresponde mais à grade atual de compassos.',
+    });
+  });
+
+  it('maps a current non-downbeat candidate to the nearest editable bar edge', () => {
+    const analysis = rejectedAnalysis();
+    analysis.baseline_candidate_levels[0].boundaries_seconds = [0, 10, 24];
+    analysis.measurements.boundary_support = [0.54];
+
+    expect(
+      rejectedBoundarySuggestions(analysis, bars, beatTimes)[0],
+    ).toMatchObject({
+      boundarySeconds: 10,
+      barIndex: 2,
+      unavailableReason: null,
     });
   });
 
@@ -101,9 +122,10 @@ describe('rejected Library boundary suggestions', () => {
       rejectedBoundarySuggestions(
         { ...rejectedAnalysis(), decision: 'accepted' },
         bars,
+        beatTimes,
       ),
     ).toEqual([]);
-    expect(rejectedBoundarySuggestions(null, bars)).toEqual([]);
+    expect(rejectedBoundarySuggestions(null, bars, beatTimes)).toEqual([]);
   });
 
   it('translates recorded reason codes without discarding unknown provenance', () => {

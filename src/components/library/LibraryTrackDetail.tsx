@@ -120,8 +120,9 @@ export default function LibraryTrackDetail({ track }: Props) {
           ? data.section
           : null,
         bars,
+        data?.beat.beats.map((beat) => beat.time_seconds) ?? [],
       ),
-    [bars, data?.section],
+    [bars, data?.beat.beats, data?.section],
   );
 
   const activeBarIndex = useMemo(
