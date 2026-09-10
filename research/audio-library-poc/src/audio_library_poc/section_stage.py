@@ -21,6 +21,7 @@ from pathlib import Path
 
 from pydantic import Field, ValidationError, field_validator
 
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
 from audio_library_poc.execution import (
     ExpectedStageFailure,
     StagedArtifact,
@@ -59,10 +60,15 @@ class SectionLibrosaStageConfig(ContractModel):
     sample_rate: int = Field(default=22050, ge=8000, le=96000)
     hop_length: int = Field(default=2048, ge=64, le=8192)
     n_segments: int = Field(default=7, ge=2, le=64)
+    beat_result_sha256: str | None = None
+    beat_quality_decision_relative_path: str | None = None
+    beat_quality_decision_sha256: str | None = None
 
-    @field_validator("source_relative_path")
+    @field_validator("source_relative_path", "beat_quality_decision_relative_path")
     @classmethod
-    def validate_source_path(cls, value: str) -> str:
+    def validate_source_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return validate_workspace_relative_path(value)
 
 
@@ -87,6 +93,7 @@ class SectionLibrosaStageExecutor:
         config = _validate_config(specification)
         source_path = _resolve_source(self.workspace, config.source_relative_path)
         _verify_source_hash(source_path, identity.input_sha256)
+        _verify_quality_decision(self.workspace, config, identity.input_sha256)
 
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
@@ -97,6 +104,12 @@ class SectionLibrosaStageExecutor:
             source_path=source_path,
             config=config,
             identity=identity,
+        )
+        result = result.model_copy(
+            update={
+                "beat_result_sha256": config.beat_result_sha256,
+                "beat_quality_decision_sha256": config.beat_quality_decision_sha256,
+            }
         )
         _validate_result(result, identity=identity)
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
@@ -182,6 +195,69 @@ def _verify_source_hash(source_path: Path, declared_sha256: str) -> None:
                 message="section source audio hash does not match input_sha256",
                 retryable=False,
                 details={"declared": declared_sha256, "actual": actual},
+            )
+        )
+
+
+def _verify_quality_decision(
+    workspace: Path,
+    config: SectionLibrosaStageConfig,
+    source_sha256: str,
+) -> None:
+    path_text = config.beat_quality_decision_relative_path
+    digest = config.beat_quality_decision_sha256
+    if path_text is None or digest is None or config.beat_result_sha256 is None:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_quality_identity_incomplete",
+                message=(
+                    "section quality decision path and hash must be supplied together"
+                ),
+                retryable=False,
+            )
+        )
+    path = (workspace / path_text).resolve()
+    if (
+        not path.is_relative_to(workspace)
+        or not path.is_file()
+        or hash_file(path) != digest
+    ):
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_quality_identity_mismatch",
+                message=(
+                    "section quality decision must match its committed artifact hash"
+                ),
+                retryable=False,
+            )
+        )
+    try:
+        decision = BeatInputQualityDecision.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, ValidationError) as exc:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_quality_invalid",
+                message="section quality decision is not a valid committed artifact",
+                retryable=False,
+                details={"exception_type": type(exc).__name__},
+            )
+        ) from exc
+    if decision.source_sha256 != source_sha256 or not decision.publication_allowed:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_input_ineligible",
+                message="section inference requires a calibrated valid beat input",
+                retryable=False,
+            )
+        )
+    if decision.beat_result_identity.result_sha256 != config.beat_result_sha256:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_result_identity_mismatch",
+                message="section beat result hash must match the quality decision",
+                retryable=False,
             )
         )
 

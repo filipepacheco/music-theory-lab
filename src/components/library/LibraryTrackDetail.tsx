@@ -31,6 +31,7 @@ import {
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
 import LibrarySectionEditor from '@/components/library/LibrarySectionEditor';
+import LibrarySectionStatus from '@/components/library/LibrarySectionStatus';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
@@ -243,6 +244,7 @@ export default function LibraryTrackDetail({ track }: Props) {
               <h4 className="font-heading text-sm text-text-secondary">
                 Seções da faixa
               </h4>
+              <LibrarySectionStatus analysis={data.section} />
               <LibrarySectionEditor
                 document={annotation}
                 bars={bars}

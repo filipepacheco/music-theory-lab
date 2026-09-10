@@ -1,6 +1,7 @@
 """Publish analysis results from workspace/runs/ into the React app's public/library/.
 
-Walks workspace/runs/ for succeeded chord + key + beat + BS-RoFormer stages,
+Walks workspace/runs/ for succeeded chord + key + beat stages and optional
+beat-quality + section stages,
 groups them by ``source_sha256`` (i.e. per source track), and writes:
 
 - ``public/library/index.json``: the top-level track list the app reads on
@@ -8,9 +9,9 @@ groups them by ``source_sha256`` (i.e. per source track), and writes:
   Title, artist and the audio to copy come from ``corpus.local.yaml`` and
   ``intake-tracks.local.yaml`` in the workspace; a track described by neither
   still publishes, as "Untitled" by "Unknown" with no player.
-- ``public/library/tracks/<sha256_prefix>/chord-analysis-result.json``,
-  ``beat-analysis-result.json``, ``key-analysis-result.json``: per-track
-  analysis JSONs the app fetches on demand when a track is selected.
+- Per-track analysis JSONs the app fetches on demand. Section export always
+  exists: without a calibrated passing quality decision it is one neutral,
+  editable fallback section marked for review.
 
 Design constraints for the app's benefit:
 
@@ -47,6 +48,7 @@ from typing import Any
 import yaml
 
 from audio_library_poc.beat_analysis import BeatAnalysisResult
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
 from audio_library_poc.chord_analysis import ChordAnalysisResult
 from audio_library_poc.key_analysis import KeyAnalysisResult
 from audio_library_poc.manifest import resolve_source_path
@@ -72,6 +74,10 @@ _PITCH_CLASS_NAMES = (
 _STAGE_TO_ARTIFACT = {
     "chord.chordmini_btc": ("chord-analysis-result.json", ChordAnalysisResult),
     "beat.beat_this": ("beat-analysis-result.json", BeatAnalysisResult),
+    "quality.beat_input": (
+        "beat-input-quality-decision.json",
+        BeatInputQualityDecision,
+    ),
     "key.hpcp": ("key-analysis-result.json", KeyAnalysisResult),
     "section.librosa_segment": (
         "section-analysis-result.json",
@@ -92,6 +98,8 @@ class TrackAnalyses:
     chord: ChordAnalysisResult
     beat: BeatAnalysisResult
     key: KeyAnalysisResult
+    beat_quality: BeatInputQualityDecision | None = None
+    beat_quality_sha256: str | None = None
     section: SectionAnalysisResult | None = None
 
 
@@ -119,7 +127,9 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
     corrected stage can re-run successfully and change nothing.
     """
 
-    per_source: dict[str, dict[str, tuple[tuple[int, ...], Any]]] = defaultdict(dict)
+    per_source: dict[str, dict[str, tuple[tuple[int, ...], Any, str]]] = defaultdict(
+        dict
+    )
     runs_root = workspace / "runs"
     if not runs_root.is_dir():
         return {}
@@ -156,23 +166,52 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
                     per_source[result.source_sha256][stage_dir.name] = (
                         version,
                         result,
+                        hash_file(artifact_path),
                     )
     complete: dict[str, TrackAnalyses] = {}
     for source_sha256, versioned in per_source.items():
-        per_stage = {kind: result for kind, (_, result) in versioned.items()}
+        per_stage = {kind: result for kind, (_, result, _) in versioned.items()}
         chord = per_stage.get("chord.chordmini_btc")
         beat = per_stage.get("beat.beat_this")
         key = per_stage.get("key.hpcp")
         if chord is None or beat is None or key is None:
             continue
+        quality = per_stage.get("quality.beat_input")
+        if quality is not None and not _quality_matches_beat(
+            quality, beat, versioned["beat.beat_this"][2]
+        ):
+            quality = None
         complete[source_sha256] = TrackAnalyses(
             source_sha256=source_sha256,
             chord=chord,
             beat=beat,
             key=key,
+            beat_quality=quality,
+            beat_quality_sha256=(
+                versioned["quality.beat_input"][2] if quality is not None else None
+            ),
             section=per_stage.get("section.librosa_segment"),
         )
     return complete
+
+
+def _quality_matches_beat(
+    quality: BeatInputQualityDecision,
+    beat: BeatAnalysisResult,
+    beat_artifact_sha256: str,
+) -> bool:
+    identity = quality.beat_result_identity
+    provenance = beat.provenance
+    return (
+        quality.source_sha256 == beat.source_sha256
+        and identity.result_sha256 == beat_artifact_sha256
+        and identity.analyzer_candidate == provenance.candidate
+        and identity.analyzer_implementation_version
+        == provenance.implementation_version
+        and identity.model_identifier == provenance.model_identifier
+        and identity.model_sha256 == provenance.model_sha256
+        and identity.code_revision == provenance.code_revision
+    )
 
 
 #: Manifests carrying display metadata, in increasing priority. The corpus is
@@ -243,11 +282,16 @@ def build_index(
             "beat_count": len(bundle.beat.beats),
             "downbeat_count": bundle.beat.downbeat_count,
             "chord_segment_count": len(bundle.chord.segments),
-            "has_sections": bundle.section is not None,
+            "has_sections": True,
+            "section_origin": _section_origin(bundle),
+            "review_required": _section_origin(bundle) == "fallback",
             "detail_directory": f"tracks/{sha256[:12]}",
         }
-        if bundle.section is not None:
-            entry["section_count"] = len(bundle.section.sections)
+        entry["section_count"] = (
+            len(bundle.section.sections)
+            if _section_origin(bundle) == "automatic" and bundle.section is not None
+            else 1
+        )
         tracks.append(entry)
     return {
         "schema_version": "1.0.0",
@@ -303,19 +347,77 @@ def sync(
                 bundle.key.model_dump(mode="json"),
             )
         )
-        if bundle.section is not None:
+        if bundle.beat_quality is not None:
             detail_files.append(
                 _atomic_write_json(
-                    track_dir / "section-analysis-result.json",
-                    bundle.section.model_dump(mode="json"),
+                    track_dir / "beat-input-quality-decision.json",
+                    bundle.beat_quality.model_dump(mode="json"),
                 )
             )
+        detail_files.append(
+            _atomic_write_json(
+                track_dir / "section-analysis-result.json",
+                _section_export(bundle),
+            )
+        )
         if copy_audio:
             audio_path = _copy_audio_source(track_meta.get(sha256, {}), track_dir)
             if audio_path is not None:
                 audio_files.append(audio_path)
     index_path = _atomic_write_json(library_root / "index.json", index_payload)
     return index_path, detail_files, audio_files
+
+
+def _section_origin(bundle: TrackAnalyses) -> str:
+    quality = bundle.beat_quality
+    section = bundle.section
+    if (
+        quality is not None
+        and quality.publication_allowed
+        and section is not None
+        and section.beat_result_sha256 == quality.beat_result_identity.result_sha256
+        and section.beat_quality_decision_sha256 == bundle.beat_quality_sha256
+    ):
+        return "automatic"
+    return "fallback"
+
+
+def _section_export(bundle: TrackAnalyses) -> dict[str, Any]:
+    if _section_origin(bundle) == "automatic":
+        assert bundle.section is not None
+        payload = bundle.section.model_dump(mode="json")
+        payload.update(
+            {
+                "origin": "automatic",
+                "review_required": False,
+                "fallback_reason_codes": [],
+            }
+        )
+        return payload
+
+    quality = bundle.beat_quality
+    reasons = (
+        [str(reason) for reason in quality.fatal_reason_codes]
+        if quality is not None and quality.fatal_reason_codes
+        else ["beat.gate_uncalibrated"]
+    )
+    duration = bundle.chord.source.duration_seconds
+    return {
+        "schema_version": "1.0.0",
+        "source_sha256": bundle.source_sha256,
+        "origin": "fallback",
+        "review_required": True,
+        "fallback_reason_codes": reasons,
+        "sections": [
+            {
+                "start_seconds": 0.0,
+                "end_seconds": duration,
+                "label": "Parte 1",
+            }
+        ],
+        "settings": None,
+        "warnings": [],
+    }
 
 
 def _copy_audio_source(

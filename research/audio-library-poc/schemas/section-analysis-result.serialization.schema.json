@@ -141,12 +141,38 @@
   "additionalProperties": false,
   "description": "Portable, versioned description of one accepted section analysis.\n\n``sections`` must be non-empty and strictly ordered by ``start_seconds``\nwith no gaps or overlaps: consecutive segments must satisfy\n``prev.end_seconds == curr.start_seconds`` (within 1 ms). The full\n``[0, source.duration_seconds]`` span is covered; when the analyzer\ndetected no interior boundaries it emits a single segment labelled\n``\"A\"`` spanning the whole track.",
   "properties": {
+    "beat_quality_decision_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Beat Quality Decision Sha256"
+    },
+    "beat_result_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Beat Result Sha256"
+    },
     "provenance": {
       "$ref": "#/$defs/SectionAnalyzerProvenance"
     },
     "schema_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "2.0.0",
+      "default": "2.0.0",
       "title": "Schema Version",
       "type": "string"
     },

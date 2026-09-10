@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from audio_library_poc.beat_quality_stage import (
+    BEAT_INPUT_QUALITY_STAGE_KIND,
+    BeatInputQualityStageExecutor,
+)
 from audio_library_poc.beat_this_stage import (
     BEAT_THIS_STAGE_KIND,
     BeatThisStageExecutor,
@@ -61,6 +65,9 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
         workspace,
     ),
     BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
+    BEAT_INPUT_QUALITY_STAGE_KIND: lambda workspace: BeatInputQualityStageExecutor(
+        workspace
+    ),
     CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
     CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND: lambda workspace: (
         BaselineEvidenceChordMiniBtcStageExecutor(workspace)

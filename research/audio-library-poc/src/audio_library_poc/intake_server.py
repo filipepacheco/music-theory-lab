@@ -9,7 +9,7 @@ through ``fetch_checkpoints.py``; this ships as its own console script so
 that promise keeps holding.
 
 What it automates is the manual part: hash the upload, write the manifest,
-run beat/chord/key/section, then publish into ``public/library`` with
+run beat/chord/key/beat-quality/section, then publish into ``public/library`` with
 ``--copy-audio`` so the viewer gets a player. Uploaded audio lands in the
 ignored workspace and the copied source is covered by
 ``public/library/tracks/*/source.*`` in .gitignore, so originals stay local.
@@ -33,6 +33,8 @@ from typing import Any, Literal
 
 import yaml
 
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
+from audio_library_poc.beat_quality_stage import BEAT_INPUT_QUALITY_STAGE_KIND
 from audio_library_poc.metadata import hash_file
 from audio_library_poc.models import PipelineManifest, StageStatus
 from audio_library_poc.orchestrator import StageOrchestrator
@@ -72,7 +74,7 @@ class StageProgress:
 
 @dataclass
 class Job:
-    """One uploaded file working its way through the four stages."""
+    """One uploaded file working its way through the intake stages."""
 
     id: str
     slug: str
@@ -185,9 +187,45 @@ class JobRunner:
             self.workspace, dispatcher=build_stage_dispatcher(self.workspace)
         )
         by_kind = {stage.kind: stage for stage in job.stages}
+        beat_result_path: str | None = None
+        beat_result_sha256: str | None = None
+        quality_allows_publication: bool | None = None
+        quality_result_path: str | None = None
+        quality_result_sha256: str | None = None
 
         for specification in manifest.stages:
+            if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
+                if beat_result_path is None:
+                    raise RuntimeError("beat quality stage requires a beat artifact")
+                specification = specification.model_copy(
+                    update={
+                        "config": {
+                            **specification.config,
+                            "beat_result_relative_path": beat_result_path,
+                        }
+                    }
+                )
             progress = by_kind[specification.stage_kind]
+            if (
+                specification.stage_kind == "section.librosa_segment"
+                and quality_allows_publication is False
+            ):
+                progress.status = "succeeded"
+                progress.detail = "fallback: beat input inválido ou não calibrado"
+                continue
+            if specification.stage_kind == "section.librosa_segment":
+                if quality_result_path is None or quality_result_sha256 is None:
+                    raise RuntimeError("section stage requires a quality decision")
+                specification = specification.model_copy(
+                    update={
+                        "config": {
+                            **specification.config,
+                            "beat_quality_decision_relative_path": quality_result_path,
+                            "beat_quality_decision_sha256": quality_result_sha256,
+                            "beat_result_sha256": beat_result_sha256,
+                        }
+                    }
+                )
             progress.status = "running"
             result = orchestrator.run_stage(
                 run_id=job.slug,
@@ -197,6 +235,25 @@ class JobRunner:
             )
             if result.status is StageStatus.SUCCEEDED:
                 progress.status = "succeeded"
+                if specification.stage_kind == "beat.beat_this":
+                    beat_result_path = next(
+                        artifact.path
+                        for artifact in result.artifacts
+                        if artifact.artifact_kind == "beat.analysis_result"
+                    )
+                    beat_result_sha256 = hash_file(self.workspace / beat_result_path)
+                if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
+                    quality_path = next(
+                        artifact.path
+                        for artifact in result.artifacts
+                        if artifact.artifact_kind == "beat.input_quality_decision"
+                    )
+                    quality = BeatInputQualityDecision.model_validate_json(
+                        (self.workspace / quality_path).read_text(encoding="utf-8")
+                    )
+                    quality_allows_publication = quality.publication_allowed
+                    quality_result_path = quality_path
+                    quality_result_sha256 = hash_file(self.workspace / quality_path)
                 continue
             progress.status = "failed"
             progress.detail = _describe_failure(result)

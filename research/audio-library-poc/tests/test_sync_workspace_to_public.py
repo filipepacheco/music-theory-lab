@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -17,6 +18,12 @@ from audio_library_poc.beat_analysis import (
     BeatEstimate,
     BeatSourceFacts,
     EffectiveBeatAnalyzerSettings,
+)
+from audio_library_poc.beat_input_quality import (
+    BeatInputQualityMeasurements,
+    BeatInputQualityPolicyConfig,
+    CalibrationEvidence,
+    decide_beat_input_quality,
 )
 from audio_library_poc.chord_analysis import (
     ChordAnalysisResult,
@@ -416,7 +423,8 @@ def test_sync_writes_index_and_per_track_details(tmp_path: Path) -> None:
     assert (track_dir / "chord-analysis-result.json").is_file()
     assert (track_dir / "beat-analysis-result.json").is_file()
     assert (track_dir / "key-analysis-result.json").is_file()
-    assert len(detail_files) == 3
+    assert (track_dir / "section-analysis-result.json").is_file()
+    assert len(detail_files) == 4
 
     # Per-track JSONs must round-trip through the frozen Pydantic contracts.
     ChordAnalysisResult.model_validate_json(
@@ -622,14 +630,88 @@ def _section_result(source_sha: str, duration: float = 8.0) -> SectionAnalysisRe
     )
 
 
-def _seed_section(workspace: Path, source_sha: str) -> None:
+def _seed_section(
+    workspace: Path,
+    source_sha: str,
+    *,
+    beat_result_sha256: str | None = None,
+    quality_sha256: str | None = None,
+) -> None:
+    result = _section_result(source_sha).model_copy(
+        update={
+            "beat_result_sha256": beat_result_sha256,
+            "beat_quality_decision_sha256": quality_sha256,
+        }
+    )
     _write_stage_result(
         workspace,
         f"run-{source_sha[:6]}-sec",
         "section.librosa_segment",
         f"section-{source_sha[:6]}",
         "section-analysis-result.json",
-        _section_result(source_sha).model_dump_json(),
+        result.model_dump_json(),
+    )
+
+
+def _seed_quality(
+    workspace: Path, source_sha: str, *, calibrated: bool = False
+) -> tuple[str, str]:
+    policy = (
+        BeatInputQualityPolicyConfig(
+            gate_version="2.0.0",
+            minimum_beats=1,
+            minimum_supported_active_seconds=0,
+        )
+        if calibrated
+        else BeatInputQualityPolicyConfig.provisional_v1()
+    )
+    result = _beat_result(source_sha)
+    decision = decide_beat_input_quality(
+        result=result,
+        result_sha256=hashlib.sha256(result.model_dump_json().encode()).hexdigest(),
+        measurements=BeatInputQualityMeasurements(
+            beat_count=8,
+            downbeat_count=2,
+            median_inter_beat_seconds=0.5,
+            inter_beat_mad_seconds=0,
+            inter_beat_p05_seconds=0.5,
+            inter_beat_p95_seconds=0.5,
+            max_to_median_inter_beat_ratio=1,
+            active_duration_seconds=8,
+            beat_supported_active_seconds=8,
+            active_coverage_ratio=1,
+            longest_unsupported_active_run_seconds=0,
+            longest_unsupported_active_run_beats=0,
+            first_beat_seconds=0.5,
+            last_beat_seconds=4,
+            detected_span_ratio=0.4375,
+        ),
+        policy_config=policy,
+        calibration=(
+            CalibrationEvidence(
+                calibration_id="held-out-v2",
+                config_sha256=policy.sha256(),
+                held_out=True,
+                confidence_level=0.95,
+                invalid_accepted_upper_bound=0.05,
+                valid_retained_lower_bound=0.85,
+            )
+            if calibrated
+            else None
+        ),
+    )
+    payload = decision.model_dump_json()
+    _write_stage_result(
+        workspace,
+        f"run-{source_sha[:6]}-quality",
+        "quality.beat_input",
+        f"quality-{source_sha[:6]}",
+        "beat-input-quality-decision.json",
+        payload,
+    )
+    return (
+        hashlib.sha256(result.model_dump_json().encode()).hexdigest(),
+        hashlib.sha256(payload.encode()).hexdigest(),
     )
 
 
@@ -638,7 +720,13 @@ def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
     workspace.mkdir()
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
-    _seed_section(workspace, SOURCE_SHA_A)
+    beat_sha, quality_sha = _seed_quality(workspace, SOURCE_SHA_A, calibrated=True)
+    _seed_section(
+        workspace,
+        SOURCE_SHA_A,
+        beat_result_sha256=beat_sha,
+        quality_sha256=quality_sha,
+    )
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
 
@@ -647,19 +735,24 @@ def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
         public / "library" / "tracks" / prefix / "section-analysis-result.json"
     )
     assert section_path.is_file()
-    # Round-trip through the frozen Pydantic contract.
-    SectionAnalysisResult.model_validate_json(section_path.read_text(encoding="utf-8"))
-    # The section file joins the existing three detail files.
+    section = json.loads(section_path.read_text(encoding="utf-8"))
+    assert section["origin"] == "automatic"
+    assert section["review_required"] is False
+    # Section plus quality join the existing three detail files.
     assert section_path in detail_files
-    assert len(detail_files) == 4
+    assert len(detail_files) == 5
 
     index = json.loads(index_path.read_text(encoding="utf-8"))
     (track,) = index["tracks"]
     assert track["has_sections"] is True
     assert track["section_count"] == 3
+    assert track["section_origin"] == "automatic"
+    assert track["review_required"] is False
 
 
-def test_sync_omits_section_json_when_absent(tmp_path: Path) -> None:
+def test_sync_exports_one_reviewable_fallback_when_quality_is_missing(
+    tmp_path: Path,
+) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
@@ -672,13 +765,41 @@ def test_sync_omits_section_json_when_absent(tmp_path: Path) -> None:
     section_path = (
         public / "library" / "tracks" / prefix / "section-analysis-result.json"
     )
-    assert not section_path.exists()
-    assert len(detail_files) == 3
+    section = json.loads(section_path.read_text(encoding="utf-8"))
+    assert section["origin"] == "fallback"
+    assert section["review_required"] is True
+    assert section["sections"] == [
+        {"start_seconds": 0.0, "end_seconds": 8.0, "label": "Parte 1"}
+    ]
+    assert len(detail_files) == 4
 
     index = json.loads(index_path.read_text(encoding="utf-8"))
     (track,) = index["tracks"]
-    assert track["has_sections"] is False
-    assert "section_count" not in track
+    assert track["has_sections"] is True
+    assert track["section_count"] == 1
+    assert track["section_origin"] == "fallback"
+    assert track["review_required"] is True
+
+
+def test_uncalibrated_quality_suppresses_a_stale_automatic_section(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _seed_section(workspace, SOURCE_SHA_A)
+    _seed_quality(workspace, SOURCE_SHA_A)
+
+    _, detail_files, _ = sync_module.sync(workspace, public)
+
+    track_dir = public / "library" / "tracks" / SOURCE_SHA_A[:12]
+    section = json.loads(
+        (track_dir / "section-analysis-result.json").read_text(encoding="utf-8")
+    )
+    assert section["origin"] == "fallback"
+    assert len(section["sections"]) == 1
+    assert (track_dir / "beat-input-quality-decision.json") in detail_files
 
 
 def test_sync_skips_orphan_section_without_required_triple(tmp_path: Path) -> None:

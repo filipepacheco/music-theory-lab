@@ -11,9 +11,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import soundfile as sf
 from pydantic import Field, ValidationError, field_validator
 
 from audio_library_poc.asset_resolution import resolve_workspace_asset
+from audio_library_poc.beat_analysis import (
+    BeatAnalysisResult,
+    BeatAnalyzerProvenance,
+    BeatSourceFacts,
+    BeatWarning,
+    EffectiveBeatAnalyzerSettings,
+)
 from audio_library_poc.execution import (
     ExpectedStageFailure,
     StagedArtifact,
@@ -84,29 +92,47 @@ class BeatThisStageExecutor:
         if attempt < 1:
             raise ValueError("attempt must be positive")
 
-        config = _validate_config(specification)
-        _require_model_identity(specification)
-        source_path = _resolve_source(self.workspace, config.source_relative_path)
-        _verify_source_hash(source_path, identity.input_sha256)
-
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
 
-        # Resolve the checkpoint BEFORE the lazy import below: a missing
-        # checkpoint must surface as a typed failure, not as the
-        # ModuleNotFoundError the torch import would raise first on a
-        # machine without the inference extras.
-        _resolve_checkpoint(self.workspace, config.checkpoint_relative_path)
+        config: BeatThisStageConfig | None = None
+        source_path: Path | None = None
+        try:
+            config = _validate_config(specification)
+            _require_model_identity(specification)
+            source_path = _resolve_source(self.workspace, config.source_relative_path)
+            _verify_source_hash(source_path, identity.input_sha256)
+            # Resolve before the lazy import so a missing checkpoint keeps its
+            # specific typed diagnostic on machines without inference extras.
+            _resolve_checkpoint(self.workspace, config.checkpoint_relative_path)
+            from audio_library_poc._beat_this_runtime import run_beat_this_inference
 
-        from audio_library_poc._beat_this_runtime import run_beat_this_inference
-
-        result, metrics = run_beat_this_inference(
-            workspace=self.workspace,
-            source_path=source_path,
-            config=config,
-            identity=identity,
-        )
-        _validate_result(result, identity=identity)
+            result, metrics = run_beat_this_inference(
+                workspace=self.workspace,
+                source_path=source_path,
+                config=config,
+                identity=identity,
+            )
+            _validate_result(result, identity=identity)
+        except ExpectedStageFailure as exc:
+            result, metrics = _failed_analysis_result(
+                source_path=source_path,
+                config=config,
+                identity=identity,
+                error=exc.error,
+            )
+        except Exception as exc:  # noqa: BLE001 - analyzer boundary is fail-closed
+            result, metrics = _failed_analysis_result(
+                source_path=source_path,
+                config=config,
+                identity=identity,
+                error=TypedError(
+                    code="beat.analyzer_exception",
+                    message="Beat This! failed before producing a valid result",
+                    retryable=False,
+                    details={"exception_type": type(exc).__name__},
+                ),
+            )
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
 
         return StageOutput(
@@ -120,6 +146,63 @@ class BeatThisStageExecutor:
             ),
             metrics=metrics,
         )
+
+
+def _failed_analysis_result(
+    *,
+    source_path: Path | None,
+    config: BeatThisStageConfig | None,
+    identity: StageIdentity,
+    error: TypedError,
+) -> tuple[BeatAnalysisResult, Metrics]:
+    try:
+        if source_path is None:
+            raise OSError("source unavailable")
+        audio, sample_rate = sf.read(str(source_path), dtype="float32", always_2d=True)
+        source = BeatSourceFacts(
+            sample_rate=int(sample_rate),
+            channels=int(audio.shape[1]),
+            frame_count=int(audio.shape[0]),
+            duration_seconds=float(audio.shape[0] / sample_rate),
+            peak_absolute_sample=float(abs(audio).max()) if audio.size else 0,
+        )
+    except (OSError, RuntimeError, ValueError):
+        source = BeatSourceFacts(
+            sample_rate=1,
+            channels=1,
+            frame_count=0,
+            duration_seconds=0,
+            peak_absolute_sample=0,
+        )
+    result = BeatAnalysisResult(
+        source_sha256=identity.input_sha256,
+        provenance=BeatAnalyzerProvenance(
+            candidate=BEAT_THIS_CANDIDATE_ID,
+            implementation_version=identity.implementation_version,
+            model_identifier=identity.model_identifier or "unknown-model",
+            model_sha256=identity.model_sha256 or "0" * 64,
+            code_revision=identity.code_revision,
+        ),
+        settings=EffectiveBeatAnalyzerSettings(
+            device=config.device if config is not None else "unknown",
+            precision=(
+                config.precision if config is not None else SeparatorPrecision.FLOAT32
+            ),
+            use_dbn=config.use_dbn if config is not None else False,
+        ),
+        source=source,
+        downbeat_count=0,
+        tempo_median_bpm=0,
+        warnings=(
+            BeatWarning(code=error.code, severity="fatal", details=error.details),
+        ),
+    )
+    return result, build_beat_this_metrics(
+        wall_seconds=0,
+        beat_count=0,
+        downbeat_count=0,
+        tempo_bpm=0,
+    )
 
 
 def _validate_config(specification: StageSpecification) -> BeatThisStageConfig:

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -24,7 +26,6 @@ from audio_library_poc.beat_this_stage import (
     build_beat_this_metrics,
 )
 from audio_library_poc.cache import hash_config, stage_cache_key
-from audio_library_poc.execution import ExpectedStageFailure
 from audio_library_poc.models import StageIdentity, StageSpecification
 from audio_library_poc.separation import SeparatorPrecision
 
@@ -60,6 +61,7 @@ def _specification(
     return StageSpecification(
         stage_kind=BEAT_THIS_STAGE_KIND,
         implementation_version="1.0.0",
+        output_schema_version="2.0.0",
         config=config,
         model_identifier=model_identifier,
         model_sha256=model_sha256,
@@ -120,7 +122,7 @@ def test_stage_kind_and_identity_constants() -> None:
     assert BEAT_THIS_IMPLEMENTATION_VERSION == "1.0.0"
 
 
-def test_invalid_config_yields_typed_failure(tmp_path: Path) -> None:
+def test_invalid_config_yields_fatal_result(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     source_relative, source_sha256 = _build_source(workspace)
@@ -130,18 +132,19 @@ def test_invalid_config_yields_typed_failure(tmp_path: Path) -> None:
         extra_config={"device": ""},
     )
 
-    with pytest.raises(ExpectedStageFailure) as captured:
-        _execute(
-            executor,
-            specification=specification,
-            input_sha256=source_sha256,
-            tmp_path=tmp_path,
-        )
+    _execute(
+        executor,
+        specification=specification,
+        input_sha256=source_sha256,
+        tmp_path=tmp_path,
+    )
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.warnings[0].code == "beat.invalid_config"
 
-    assert captured.value.error.code == "beat.invalid_config"
 
-
-def test_missing_model_identity_yields_typed_failure(tmp_path: Path) -> None:
+def test_missing_model_identity_yields_fatal_result(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     source_relative, source_sha256 = _build_source(workspace)
@@ -152,71 +155,108 @@ def test_missing_model_identity_yields_typed_failure(tmp_path: Path) -> None:
         model_sha256=None,
     )
 
-    with pytest.raises(ExpectedStageFailure) as captured:
-        _execute(
-            executor,
-            specification=specification,
-            input_sha256=source_sha256,
-            tmp_path=tmp_path,
-        )
+    _execute(
+        executor,
+        specification=specification,
+        input_sha256=source_sha256,
+        tmp_path=tmp_path,
+    )
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.warnings[0].code == "beat.missing_model_identity"
 
-    assert captured.value.error.code == "beat.missing_model_identity"
 
-
-def test_source_missing_yields_typed_failure(tmp_path: Path) -> None:
+def test_source_missing_yields_fatal_result(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     executor = BeatThisStageExecutor(workspace)
     specification = _specification()
 
-    with pytest.raises(ExpectedStageFailure) as captured:
-        _execute(
-            executor,
-            specification=specification,
-            input_sha256="a" * 64,
-            tmp_path=tmp_path,
-        )
+    _execute(
+        executor,
+        specification=specification,
+        input_sha256="a" * 64,
+        tmp_path=tmp_path,
+    )
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.warnings[0].code == "beat.source_missing"
 
-    assert captured.value.error.code == "beat.source_missing"
 
-
-def test_source_hash_mismatch_yields_typed_failure(tmp_path: Path) -> None:
+def test_source_hash_mismatch_yields_fatal_result(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    source_relative, real_sha256 = _build_source(workspace, contents=b"REAL AUDIO")
+    source_relative, _ = _build_source(workspace, contents=b"REAL AUDIO")
     executor = BeatThisStageExecutor(workspace)
     specification = _specification(source_relative_path=source_relative)
 
-    with pytest.raises(ExpectedStageFailure) as captured:
-        _execute(
-            executor,
-            specification=specification,
-            input_sha256="0" * 64,
-            tmp_path=tmp_path,
-        )
+    _execute(
+        executor,
+        specification=specification,
+        input_sha256="0" * 64,
+        tmp_path=tmp_path,
+    )
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.warnings[0].code == "beat.source_hash_mismatch"
 
-    assert captured.value.error.code == "beat.source_hash_mismatch"
 
-
-def test_checkpoint_missing_yields_typed_failure(tmp_path: Path) -> None:
+def test_checkpoint_missing_yields_fatal_result(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     source_relative, source_sha256 = _build_source(workspace)
     executor = BeatThisStageExecutor(workspace)
     specification = _specification(source_relative_path=source_relative)
 
-    with pytest.raises(ExpectedStageFailure) as captured:
-        _execute(
-            executor,
-            specification=specification,
-            input_sha256=source_sha256,
-            tmp_path=tmp_path,
-        )
-
-    assert captured.value.error.code == "beat.checkpoint_missing"
-    assert captured.value.error.details["relative_path"] == (
-        "models/beat_this-final0.ckpt"
+    _execute(
+        executor,
+        specification=specification,
+        input_sha256=source_sha256,
+        tmp_path=tmp_path,
     )
+
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.schema_version == "2.0.0"
+    assert result.warnings[0].code == "beat.checkpoint_missing"
+    assert result.warnings[0].severity == "fatal"
+
+
+def test_unexpected_analyzer_exception_yields_fatal_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source_relative, source_sha256 = _build_source(workspace)
+    checkpoint = workspace / "models" / "beat_this-final0.ckpt"
+    checkpoint.parent.mkdir()
+    checkpoint.write_bytes(b"checkpoint")
+
+    def fail_inference(**_kwargs):
+        raise RuntimeError("model exploded")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "audio_library_poc._beat_this_runtime",
+        SimpleNamespace(run_beat_this_inference=fail_inference),
+    )
+    _execute(
+        BeatThisStageExecutor(workspace),
+        specification=_specification(source_relative_path=source_relative),
+        input_sha256=source_sha256,
+        tmp_path=tmp_path,
+    )
+
+    result = BeatAnalysisResult.model_validate_json(
+        (tmp_path / "staging" / "beat-analysis-result.json").read_text()
+    )
+    assert result.warnings[0].code == "beat.analyzer_exception"
+    assert result.warnings[0].details == {"exception_type": "RuntimeError"}
 
 
 def test_beat_analysis_result_rejects_non_monotonic_beats() -> None:

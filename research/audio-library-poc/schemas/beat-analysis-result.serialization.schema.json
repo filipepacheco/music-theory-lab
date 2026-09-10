@@ -106,6 +106,40 @@
       "title": "BeatSourceFacts",
       "type": "object"
     },
+    "BeatWarning": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "fatal"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "severity"
+      ],
+      "title": "BeatWarning",
+      "type": "object"
+    },
     "EffectiveBeatAnalyzerSettings": {
       "additionalProperties": false,
       "description": "Resolved runtime settings that a real analyzer used.",
@@ -132,6 +166,7 @@
       "title": "EffectiveBeatAnalyzerSettings",
       "type": "object"
     },
+    "JsonValue": {},
     "SeparatorPrecision": {
       "enum": [
         "float32",
@@ -143,13 +178,13 @@
     }
   },
   "additionalProperties": false,
-  "description": "Portable, versioned description of one accepted beat analysis.\n\n``beats`` must be non-empty and sorted strictly increasing by\n``time_seconds``. ``downbeat_count`` is a redundant convenience derived\nfrom the flag on each beat; the model validator enforces the invariant.\n``tempo_median_bpm`` is the median of 60/interbeat_seconds across all\nadjacent beat pairs; 0.0 when fewer than two beats are present.",
+  "description": "Portable, versioned description of one accepted beat analysis.\n\n``beats`` is sorted strictly increasing by ``time_seconds`` and may be\nempty when the analyzer found no grid. ``downbeat_count`` is derived\nfrom the flag on each beat; the model validator enforces the invariant.\n``tempo_median_bpm`` is the median of 60/interbeat_seconds across all\nadjacent beat pairs; 0.0 when fewer than two beats are present.",
   "properties": {
     "beats": {
+      "default": [],
       "items": {
         "$ref": "#/$defs/BeatEstimate"
       },
-      "minItems": 1,
       "title": "Beats",
       "type": "array"
     },
@@ -162,8 +197,8 @@
       "$ref": "#/$defs/BeatAnalyzerProvenance"
     },
     "schema_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "2.0.0",
+      "default": "2.0.0",
       "title": "Schema Version",
       "type": "string"
     },
@@ -186,7 +221,7 @@
     "warnings": {
       "default": [],
       "items": {
-        "type": "string"
+        "$ref": "#/$defs/BeatWarning"
       },
       "title": "Warnings",
       "type": "array"
@@ -197,7 +232,6 @@
     "provenance",
     "settings",
     "source",
-    "beats",
     "downbeat_count",
     "tempo_median_bpm"
   ],
