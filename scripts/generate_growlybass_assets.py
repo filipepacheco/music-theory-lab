@@ -26,6 +26,8 @@ EXPECTED_DURATION = 4.0
 FADE_SECONDS = 0.2
 BITRATE_KBPS = 128
 SAMPLE_RATE = 44_100
+MP3_FRAME_SAMPLES = 1_152
+MAX_DURATION_PADDING = 2 * MP3_FRAME_SAMPLES / SAMPLE_RATE
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "public/audio/growlybass"
@@ -279,7 +281,8 @@ def generate() -> None:
         media = ffprobe(ffprobe_path, output_path)
         if sha256(output_path) != entry["sha256"]:
             raise ValueError(f"hash gerado incorreto: {output_name}")
-        if float(media["format"]["duration"]) != entry["durationSeconds"]:
+        duration = float(media["format"]["duration"])
+        if abs(duration - entry["durationSeconds"]) > MAX_DURATION_PADDING:
             raise ValueError(f"duração gerada incorreta: {output_name}")
 
     download(
@@ -336,7 +339,7 @@ def validate() -> None:
             raise ValueError(f"mídia fora do contrato: {entry['name']}")
         duration = float(media["format"]["duration"])
         if (
-            duration != EXPECTED_DURATION
+            abs(duration - EXPECTED_DURATION) > MAX_DURATION_PADDING
             or entry["durationSeconds"] != EXPECTED_DURATION
         ):
             raise ValueError(f"duração incorreta: {entry['name']} ({duration})")
