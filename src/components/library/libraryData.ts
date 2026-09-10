@@ -1,6 +1,4 @@
-import { chordDisplayName, type ChordSegment } from '@/domain/libraryChordSync';
-
-export { chordDisplayName, type ChordSegment } from '@/domain/libraryChordSync';
+import { getPreferredRootName } from '@/utils/noteHelpers';
 
 const LIBRARY_ROOT = '/library';
 
@@ -36,6 +34,15 @@ export interface LibraryIndex {
   tracks: LibraryIndexEntry[];
 }
 
+export interface ChordSegment {
+  start_seconds: number;
+  end_seconds: number;
+  label: 'major' | 'minor' | 'unknown' | 'no_chord';
+  root_pc: number | null;
+  candidate_label: string;
+  confidence: number | null;
+}
+
 export interface ChordAnalysisJson {
   schema_version: string;
   source_sha256: string;
@@ -68,33 +75,62 @@ export interface KeyAnalysisJson {
   top_estimate: KeyEstimate;
 }
 
-/**
- * One contiguous stretch of the track. `label` is a letter tag the detector
- * uses to group parts it considers similar (two segments labelled "A" are
- * its guess at the same repeated part). The labels carry no semantic
- * meaning — they are never "verse" or "chorus", only opaque cluster ids.
- */
-export interface SectionSegment {
+interface SectionInterval {
   start_seconds: number;
   end_seconds: number;
+}
+
+/** One neutral chronological section emitted by the structural analysis. */
+export interface StructuralSectionSegment extends SectionInterval {
+  label: `Parte ${number}`;
+  cluster_id: number | null;
+  origin: 'automatic' | 'fallback';
+  review_required: boolean;
+}
+
+/** A section emitted by the retired repeated-letter baseline. */
+export interface LegacySectionSegment extends SectionInterval {
   label: string;
 }
 
-export interface SectionAnalysisJson {
+export type SectionSegment = StructuralSectionSegment | LegacySectionSegment;
+
+interface SectionAnalysisBase<TSection extends SectionSegment> {
   schema_version: string;
   source_sha256: string;
   origin: 'automatic' | 'fallback';
   review_required: boolean;
   fallback_reason_codes: string[];
-  sections: SectionSegment[];
+  sections: TSection[];
+  warnings: string[];
+}
+
+export interface StructuralSectionAnalysisJson
+  extends SectionAnalysisBase<StructuralSectionSegment> {
+  stage_kind: 'section.mcfee_ellis_laplacian';
+  decision: 'accepted' | 'fallback';
+  settings: {
+    sample_rate: number;
+    hop_length: number;
+    candidate_m_min: number;
+    candidate_m_max: number;
+  };
+}
+
+export interface LegacySectionAnalysisJson
+  extends SectionAnalysisBase<LegacySectionSegment> {
+  stage_kind?: never;
   settings: {
     sample_rate: number;
     hop_length: number;
     feature: string;
     n_segments: number;
   } | null;
-  warnings: string[];
 }
+
+export type SectionAnalysisJson =
+  | StructuralSectionAnalysisJson
+  | LegacySectionAnalysisJson;
 
 export async function fetchLibraryIndex(
   signal?: AbortSignal,
@@ -152,6 +188,18 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
     throw new Error(`Fetch failed: HTTP ${response.status} ${url}`);
   }
   return (await response.json()) as T;
+}
+
+/**
+ * Display name for one chord segment. Returns 'N.C.' for no_chord and '?'
+ * for unknown; a root_pc + label mapping otherwise (e.g. root_pc=9,
+ * label=minor → "Am"; root_pc=1, label=major → "C#").
+ */
+export function chordDisplayName(segment: ChordSegment): string {
+  if (segment.label === 'no_chord') return 'N.C.';
+  if (segment.label === 'unknown' || segment.root_pc === null) return '?';
+  const rootName = getPreferredRootName(segment.root_pc);
+  return segment.label === 'minor' ? `${rootName}m` : rootName;
 }
 
 type DegreeEntry = readonly [number, '' | 'b' | '#'];

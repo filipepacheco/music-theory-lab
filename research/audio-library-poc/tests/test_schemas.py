@@ -30,6 +30,8 @@ EXPECTED_SCHEMA_NAMES = (
     "key-analysis-result.serialization.schema.json",
     "section-analysis-result.validation.schema.json",
     "section-analysis-result.serialization.schema.json",
+    "structural-segmentation-result.validation.schema.json",
+    "structural-segmentation-result.serialization.schema.json",
     "evaluation-manifest.validation.schema.json",
     "evaluation-manifest.serialization.schema.json",
     "product-evaluation-report.validation.schema.json",
@@ -61,6 +63,7 @@ def test_export_json_schemas_writes_both_modes_for_each_contract(
             "ChordFrameEvidenceArtifact",
             "KeyAnalysisResult",
             "SectionAnalysisResult",
+            "StructuralSegmentationResult",
             "EvaluationManifest",
             "ProductEvaluationReport",
         }
@@ -82,5 +85,5 @@ def test_committed_schemas_are_byte_reproducible_on_rerun(
 
     assert second_bytes == first_bytes
     assert committed_bytes == first_bytes
-    assert len(committed_bytes) == 30
+    assert len(committed_bytes) == 32
     assert list(tmp_path.glob(".*.tmp")) == []

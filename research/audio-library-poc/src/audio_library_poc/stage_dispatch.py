@@ -49,6 +49,10 @@ from audio_library_poc.separators.demucs import (
     DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     DemucsSeparator,
 )
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageExecutor,
+)
 
 FAKE_STAGE_KIND = "fake.deterministic"
 
@@ -80,6 +84,9 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
     CHORD_ROOT_KEY_STAGE_KIND: lambda workspace: ChordRootKeyStageExecutor(workspace),
     SECTION_LIBROSA_STAGE_KIND: lambda workspace: SectionLibrosaStageExecutor(
         workspace
+    ),
+    STRUCTURAL_SEGMENTATION_STAGE_KIND: lambda workspace: (
+        StructuralSegmentationStageExecutor(workspace)
     ),
 }
 

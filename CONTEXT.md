@@ -45,8 +45,10 @@ its analysis artifacts. It contains only the editable chronological sections,
 their automatic, fallback, or manual boundary origins, review state, schema
 version, bar count, and timestamps; loading, migration, saving, and
 single-user last-write-wins synchronization go through the saved-library
-façade. Malformed cloud documents never replace valid local annotations.
-_Avoid_: section analysis, arrangement
+façade. An accepted [[structural-segmentation-result]] may seed a new document,
+but regenerating analysis never replaces existing manual corrections.
+Malformed cloud documents never replace valid local annotations.
+_Avoid_: section analysis, inferred structure, arrangement
 
 **Library section**:
 A neutral-named, non-empty half-open range of bar indexes in a
@@ -84,6 +86,14 @@ reasons. A valid grid still cannot publish sections until its held-out
 calibration passes the confidence-bound targets; invalid or uncalibrated input
 exports one neutral, editable full-track section marked for review.
 _Avoid_: beat confidence, successful detection
+
+**Structural segmentation result**:
+The immutable offline evidence for a Library track's neutral chronological
+sections. It contains every `m = 2…10` hierarchy candidate from the baseline
+and all 36 perturbation runs, plus stability measurements and the accepted or
+fallback partition. It may seed a [[library-annotation-document]], but user
+edits never rewrite it.
+_Avoid_: annotation, verse/chorus detection, semantic sections
 
 **Groove**:
 The main drum pattern of a structure section: a configurable subdivision grid

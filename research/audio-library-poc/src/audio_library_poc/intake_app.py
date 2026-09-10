@@ -83,7 +83,6 @@ def create_app(workspace: Path, public: Path, *, device: str = "cuda") -> FastAP
         file: UploadFile = File(...),
         title: str = Form(""),
         artist: str = Form(""),
-        segment_count: int = Form(7),
     ) -> dict[str, Any]:
         payload = await file.read()
         try:
@@ -93,7 +92,6 @@ def create_app(workspace: Path, public: Path, *, device: str = "cuda") -> FastAP
                 payload=payload,
                 title=title.strip(),
                 artist=artist.strip(),
-                segment_count=segment_count,
                 device=device,
             )
         except (IntakeError, ValueError) as exc:

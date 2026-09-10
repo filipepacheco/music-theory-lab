@@ -8,11 +8,17 @@ nothing: the operator finds out it is wrong halfway through a GPU run.
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
+from audio_library_poc.beat_input_quality import BeatInputQualityPolicyConfig
 from audio_library_poc.models import PipelineManifest
+from audio_library_poc.structural_segmentation_stage import (
+    structural_calibration_config_sha256,
+)
 from audio_library_poc.track_intake import (
     INTAKE_STAGE_KINDS,
     CheckpointRef,
+    IntakeQualityGates,
     build_intake_manifest,
     intake_source_relative_path,
     slugify,
@@ -23,6 +29,35 @@ BEAT = CheckpointRef(relative_path="models/beat_this-final0.ckpt", sha256="a" * 
 CHORD = CheckpointRef(
     relative_path="models/chordmini-btc-model-best.pth", sha256="b" * 64
 )
+
+
+def calibrated_quality_gates() -> IntakeQualityGates:
+    beat_policy = BeatInputQualityPolicyConfig.production_v1()
+    return IntakeQualityGates.model_validate(
+        {
+            "beat_policy": beat_policy.model_dump(mode="json"),
+            "beat_calibration": {
+                "calibration_id": "beat-held-out-v1",
+                "config_sha256": beat_policy.sha256(),
+                "held_out": True,
+                "confidence_level": 0.95,
+                "invalid_accepted_upper_bound": 0.05,
+                "valid_retained_lower_bound": 0.85,
+            },
+            "section_gate_version": "1.0.0",
+            "section_calibration": {
+                "calibration_id": "section-held-out-v1",
+                "config_sha256": structural_calibration_config_sha256(
+                    gate_version="1.0.0"
+                ),
+                "held_out": True,
+                "accepted_boundary_precision_3s": 0.8,
+                "exact_count_accuracy": 0.7,
+                "coverage": 0.6,
+                "invalid_fallback_partitions": 0,
+            },
+        }
+    )
 
 
 def build(**overrides: object) -> dict:
@@ -117,7 +152,7 @@ class TestManifest:
         manifest = PipelineManifest.model_validate(build())
         by_kind = {stage.stage_kind: stage for stage in manifest.stages}
         assert by_kind["key.hpcp"].model_sha256 is None
-        assert by_kind["section.librosa_segment"].model_sha256 is None
+        assert by_kind["section.mcfee_ellis_laplacian"].model_sha256 is None
 
     def test_device_reaches_only_the_gpu_stages(self) -> None:
         manifest = PipelineManifest.model_validate(build(device="cpu"))
@@ -125,24 +160,27 @@ class TestManifest:
         assert by_kind["beat.beat_this"].config["device"] == "cpu"
         assert by_kind["chord.chordmini_btc"].config["device"] == "cpu"
         assert "device" not in by_kind["key.hpcp"].config
-        assert "device" not in by_kind["section.librosa_segment"].config
+        assert "device" not in by_kind["section.mcfee_ellis_laplacian"].config
 
-    def test_segment_count_reaches_the_section_stage(self) -> None:
-        manifest = PipelineManifest.model_validate(build(segment_count=12))
+    def test_section_count_is_selected_by_the_hierarchy(self) -> None:
+        manifest = PipelineManifest.model_validate(build())
         by_kind = {stage.stage_kind: stage for stage in manifest.stages}
-        assert by_kind["section.librosa_segment"].config["n_segments"] == 12
+        section = by_kind["section.mcfee_ellis_laplacian"]
+        assert "n_segments" not in section.config
+        assert section.config["hop_length"] == 512
 
-    @pytest.mark.parametrize("count", [0, -1, 65, 1000])
-    def test_rejects_a_segment_count_outside_the_contract(self, count: int) -> None:
-        # A stage config is a free-form dict at manifest load, so nothing
-        # downstream of here would reject the value until the section runtime
-        # built its settings -- minutes in, with the GPU stages already spent.
-        with pytest.raises(ValueError, match="segment_count"):
-            build(segment_count=count)
+    def test_held_out_calibration_activates_both_publication_gates(self) -> None:
+        manifest = PipelineManifest.model_validate(
+            build(quality_gates=calibrated_quality_gates())
+        )
+        by_kind = {stage.stage_kind: stage for stage in manifest.stages}
 
-    @pytest.mark.parametrize("count", [1, 7, 64])
-    def test_accepts_the_whole_contract_range(self, count: int) -> None:
-        PipelineManifest.model_validate(build(segment_count=count))
+        quality = by_kind["quality.beat_input"].config
+        section = by_kind["section.mcfee_ellis_laplacian"].config
+        assert quality["policy"]["gate_version"] == "1.0.0"
+        assert quality["calibration"]["calibration_id"] == "beat-held-out-v1"
+        assert section["section_gate_version"] == "1.0.0"
+        assert section["section_calibration"]["calibration_id"] == "section-held-out-v1"
 
     def test_stage_kinds_are_unique(self) -> None:
         # PipelineManifest enforces this; the assertion documents that the
@@ -156,8 +194,14 @@ class TestManifest:
         kinds = [stage["stage_kind"] for stage in build()["stages"]]
         assert kinds.index("beat.beat_this") < kinds.index("key.hpcp")
         assert kinds.index("chord.chordmini_btc") < kinds.index(
-            "section.librosa_segment"
+            "section.mcfee_ellis_laplacian"
         )
+
+    def test_section_calibration_for_another_feature_config_fails_closed(self) -> None:
+        gates = calibrated_quality_gates()
+
+        with pytest.raises(ValidationError, match="match stage config"):
+            build(sample_rate=44100, quality_gates=gates)
 
 
 class TestUpsertIntakeTrack:

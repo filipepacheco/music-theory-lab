@@ -147,4 +147,21 @@ describe('Library annotation local storage', () => {
       false,
     );
   });
+
+  it('keeps manual corrections when automatic analysis is regenerated', async () => {
+    const SQL = await sql();
+    const database = new SQL.Database();
+    initializeLibraryAnnotationStorage(database);
+    const original = createLibraryAnnotation('source-sha', 4, [1, 3]);
+    const edited = renameLibrarySection(original, 'section-1', 'Introdução');
+    storeLibraryAnnotation(database, edited.document);
+
+    // A regenerated immutable result proposes a different partition. The UI
+    // asks storage first, so this proposal may seed only without a document.
+    const regeneratedProposal = createLibraryAnnotation('source-sha', 4, [2]);
+    const loaded = loadLibraryAnnotation(database, 'source-sha', 4);
+
+    expect(loaded?.document).toEqual(edited.document);
+    expect(loaded?.document).not.toEqual(regeneratedProposal);
+  });
 });

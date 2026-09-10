@@ -211,7 +211,9 @@ The registered kinds are:
 - `chord.chordmini_btc_verified` — parity-fixed BTC candidate.
 - `chord.chordmini_chordnet` — pinned-source ChordNet candidate.
 - `key.hpcp` and `key.chord_root_profile` — independent key baselines.
-- `section.librosa_segment` — experimental repeated-section clustering.
+- `section.librosa_segment` — legacy experimental fixed-count clustering.
+- `section.mcfee_ellis_laplacian` — beat-synchronous McFee–Ellis hierarchy
+  with deterministic 36-run stability gating and neutral section export.
 
 Both separator kinds validate their configuration and workspace-contained model
 assets before lazy-loading their inference runtime. A checkpoint must be pinned
@@ -243,28 +245,44 @@ in an `.mp3`, `.m4a`, `.wav`, `.flac` or `.ogg`, and the service:
 
 1. validates the upload and writes it to `workspace/originals/<slug><ext>`,
 2. writes `workspace/intake-<slug>.local.yaml` -- one manifest carrying all
-   four publishable stages under one run id,
-3. runs `beat.beat_this`, `chord.chordmini_btc`, `key.hpcp` and
-   `section.librosa_segment` in order, stopping at the first failure that
-   matters (a `section` failure is survivable; the other three are not),
+   five publishable stages under one run id,
+3. runs beat, chord, key, beat-input quality, and stable structural
+   segmentation in order, stopping at the first failure that matters (a
+   section failure is survivable; the other stages are not),
 4. runs `sync_workspace_to_public.py --copy-audio`, so the viewer gets a
    player as well as a chord chart.
 
 The copied source lands at `public/library/tracks/<prefix>/source<ext>`, which
 `.gitignore` covers -- originals stay on the machine. A measured run of a
-3'06" track on the RTX 2060 took about 17 seconds for all four stages.
+3'06" track on the RTX 2060 took about 17 seconds before stable structural
+segmentation was added; remeasure the five-stage pipeline before quoting a new
+end-to-end figure.
 
 Endpoints, all under `/intake` (the Vite dev server proxies that prefix to
 port 8756; `/api` already belongs to the deployed sync endpoints):
 
 - `GET /intake/health` -- checkpoint presence, device, resolved library root.
-- `POST /intake/tracks` -- multipart `file`, `title`, `artist`, `segment_count`.
+- `POST /intake/tracks` -- multipart `file`, `title`, and `artist`; section
+  count is inferred rather than supplied by the caller.
 - `GET /intake/jobs` and `GET /intake/jobs/{id}` -- queue and per-stage status.
 
 One job runs at a time; there is one GPU. The job list is in memory, so a
 restart forgets it -- but not the work, since completed stages stay in the
 workspace cache and re-uploading the same file under the same title replays as
 cache hits.
+
+Both publication gates stay provisional unless
+`workspace/intake-calibration.local.yaml` supplies matching held-out evidence.
+The file is private and ignored with the rest of `workspace/`; its
+`beat_policy`, `beat_calibration`, `section_gate_version`, and
+`section_calibration` fields are validated before a job is created. Automatic
+sections are reachable only when the beat evidence passes its false-accept and
+retention targets, the section evidence passes precision, exact-count, and
+coverage targets, both configurations use production gate versions, and the
+section evidence's `config_sha256` matches the active features, dependencies,
+perturbations, and thresholds.
+Without that evidence the service still publishes one editable `Parte 1`
+fallback rather than presenting an uncalibrated proposal as automatic.
 
 The "Analisar" module is hidden from production builds and nothing proxies
 `/intake` there. That is deliberate: the deployed site is public, and a working
@@ -285,6 +303,7 @@ manifests stay local to the workspace.
   Replace the vendor URLs with the ones you actually intend to pin. Leave
   `expected_sha256` set to `null` on the very first fetch — the script prints
   the observed digest so you can paste it back and enforce it afterwards.
+
 - `scripts/fetch_checkpoints.py` downloads pinned checkpoints into
   `workspace/models/` (ignored by Git). Downloads stream through a `.part`
   staging file and are only renamed into place after the digest matches:
@@ -296,6 +315,7 @@ manifests stay local to the workspace.
   The script skips checkpoints that are already present with the expected
   hash, refuses to overwrite an existing file with a mismatching hash, and
   emits typed JSON errors on standard error with exit status 1.
+
 - Pipeline manifests reference the pinned checkpoint through
   `model_identifier` and `model_sha256` on the stage specification so the
   cache invalidates the moment either changes. The bridge rejects any

@@ -65,6 +65,7 @@ export function stageLabel(kind: string): string {
     case 'key.hpcp':
       return 'Tom';
     case 'section.librosa_segment':
+    case 'section.mcfee_ellis_laplacian':
       return 'Trechos';
     default:
       return kind;
@@ -143,18 +144,16 @@ export interface UploadRequest {
   file: File;
   title: string;
   artist: string;
-  segmentCount: number;
 }
 
 export function uploadTrack(
-  { file, title, artist, segmentCount }: UploadRequest,
+  { file, title, artist }: UploadRequest,
   signal?: AbortSignal,
 ): Promise<IntakeJob> {
   const form = new FormData();
   form.append('file', file);
   form.append('title', title);
   form.append('artist', artist);
-  form.append('segment_count', String(segmentCount));
   return request<IntakeJob>('/tracks', {
     method: 'POST',
     body: form,

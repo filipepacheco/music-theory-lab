@@ -1,0 +1,600 @@
+{
+  "$defs": {
+    "LibraryVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "LibraryVersion",
+      "type": "object"
+    },
+    "PerturbationConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "kmeans_seed": {
+          "minimum": 0,
+          "title": "Kmeans Seed",
+          "type": "integer"
+        },
+        "neighbor_offset": {
+          "maximum": 1,
+          "minimum": -1,
+          "title": "Neighbor Offset",
+          "type": "integer"
+        },
+        "smoothing_beats": {
+          "minimum": 1,
+          "title": "Smoothing Beats",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "neighbor_offset",
+        "smoothing_beats",
+        "kmeans_seed"
+      ],
+      "title": "PerturbationConfiguration",
+      "type": "object"
+    },
+    "ResolvedStructuralParameters": {
+      "additionalProperties": false,
+      "properties": {
+        "boundary_tolerance_seconds": {
+          "default": 3.0,
+          "exclusiveMinimum": 0,
+          "title": "Boundary Tolerance Seconds",
+          "type": "number"
+        },
+        "candidate_m_max": {
+          "default": 10,
+          "maximum": 10,
+          "title": "Candidate M Max",
+          "type": "integer"
+        },
+        "candidate_m_min": {
+          "default": 2,
+          "minimum": 2,
+          "title": "Candidate M Min",
+          "type": "integer"
+        },
+        "cqt_bins": {
+          "default": 72,
+          "minimum": 1,
+          "title": "Cqt Bins",
+          "type": "integer"
+        },
+        "cqt_bins_per_octave": {
+          "default": 12,
+          "minimum": 1,
+          "title": "Cqt Bins Per Octave",
+          "type": "integer"
+        },
+        "fft_window": {
+          "exclusiveMinimum": 0,
+          "title": "Fft Window",
+          "type": "integer"
+        },
+        "hop_length": {
+          "exclusiveMinimum": 0,
+          "title": "Hop Length",
+          "type": "integer"
+        },
+        "kmeans_algorithm": {
+          "default": "lloyd",
+          "pattern": "^lloyd$",
+          "title": "Kmeans Algorithm",
+          "type": "string"
+        },
+        "kmeans_max_iter": {
+          "default": 300,
+          "minimum": 1,
+          "title": "Kmeans Max Iter",
+          "type": "integer"
+        },
+        "kmeans_n_init": {
+          "default": 20,
+          "minimum": 1,
+          "title": "Kmeans N Init",
+          "type": "integer"
+        },
+        "kmeans_tolerance": {
+          "default": 0.0001,
+          "exclusiveMinimum": 0,
+          "title": "Kmeans Tolerance",
+          "type": "number"
+        },
+        "mfcc_count": {
+          "default": 13,
+          "minimum": 1,
+          "title": "Mfcc Count",
+          "type": "integer"
+        },
+        "minimum_mean_run_seconds": {
+          "default": 10.0,
+          "minimum": 0,
+          "title": "Minimum Mean Run Seconds",
+          "type": "number"
+        },
+        "minimum_run_beats": {
+          "default": 4,
+          "minimum": 1,
+          "title": "Minimum Run Beats",
+          "type": "integer"
+        },
+        "recurrence_exclusion_beats": {
+          "default": 3,
+          "minimum": 0,
+          "title": "Recurrence Exclusion Beats",
+          "type": "integer"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate",
+        "fft_window",
+        "hop_length"
+      ],
+      "title": "ResolvedStructuralParameters",
+      "type": "object"
+    },
+    "SectionDecision": {
+      "enum": [
+        "accepted",
+        "fallback"
+      ],
+      "title": "SectionDecision",
+      "type": "string"
+    },
+    "SectionFallbackReason": {
+      "enum": [
+        "section.gate_uncalibrated",
+        "section.no_eligible_level",
+        "section.count_unstable",
+        "section.boundaries_unstable",
+        "section.boundary_unsupported",
+        "section.insufficient_eligible_levels"
+      ],
+      "title": "SectionFallbackReason",
+      "type": "string"
+    },
+    "StructuralCandidateLevel": {
+      "additionalProperties": false,
+      "properties": {
+        "boundaries_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "title": "Boundaries Seconds",
+          "type": "array"
+        },
+        "eligible": {
+          "title": "Eligible",
+          "type": "boolean"
+        },
+        "label_entropy": {
+          "minimum": 0,
+          "title": "Label Entropy",
+          "type": "number"
+        },
+        "labels": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Labels",
+          "type": "array"
+        },
+        "m": {
+          "maximum": 10,
+          "minimum": 2,
+          "title": "M",
+          "type": "integer"
+        },
+        "mean_run_duration_seconds": {
+          "minimum": 0,
+          "title": "Mean Run Duration Seconds",
+          "type": "number"
+        },
+        "section_count": {
+          "minimum": 1,
+          "title": "Section Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "m",
+        "labels",
+        "boundaries_seconds",
+        "section_count",
+        "mean_run_duration_seconds",
+        "label_entropy",
+        "eligible"
+      ],
+      "title": "StructuralCandidateLevel",
+      "type": "object"
+    },
+    "StructuralPerturbationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_levels": {
+          "items": {
+            "$ref": "#/$defs/StructuralCandidateLevel"
+          },
+          "title": "Candidate Levels",
+          "type": "array"
+        },
+        "configuration": {
+          "$ref": "#/$defs/PerturbationConfiguration"
+        },
+        "selected_boundaries_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Selected Boundaries Seconds",
+          "type": "array"
+        },
+        "selected_m": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected M"
+        },
+        "selected_section_count": {
+          "minimum": 0,
+          "title": "Selected Section Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "configuration",
+        "candidate_levels",
+        "selected_boundaries_seconds",
+        "selected_section_count"
+      ],
+      "title": "StructuralPerturbationResult",
+      "type": "object"
+    },
+    "StructuralSection": {
+      "additionalProperties": false,
+      "properties": {
+        "cluster_id": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cluster Id"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "label": {
+          "pattern": "^Parte [1-9][0-9]*$",
+          "title": "Label",
+          "type": "string"
+        },
+        "origin": {
+          "pattern": "^(automatic|fallback)$",
+          "title": "Origin",
+          "type": "string"
+        },
+        "review_required": {
+          "title": "Review Required",
+          "type": "boolean"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "label",
+        "start_seconds",
+        "end_seconds",
+        "origin",
+        "review_required"
+      ],
+      "title": "StructuralSection",
+      "type": "object"
+    },
+    "StructuralSegmentationMeasurements": {
+      "additionalProperties": false,
+      "properties": {
+        "beat_input_valid": {
+          "title": "Beat Input Valid",
+          "type": "boolean"
+        },
+        "boundary_support": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Boundary Support",
+          "type": "array"
+        },
+        "count_agreement": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Count Agreement",
+          "type": "number"
+        },
+        "eligible_level_count": {
+          "minimum": 0,
+          "title": "Eligible Level Count",
+          "type": "integer"
+        },
+        "median_boundary_stability_f1": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Median Boundary Stability F1",
+          "type": "number"
+        },
+        "perturbation_run_count": {
+          "minimum": 0,
+          "title": "Perturbation Run Count",
+          "type": "integer"
+        },
+        "selection_margin": {
+          "minimum": 0,
+          "title": "Selection Margin",
+          "type": "number"
+        },
+        "zero_variance_harmonic_dimensions": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Zero Variance Harmonic Dimensions",
+          "type": "array"
+        },
+        "zero_variance_timbre_dimensions": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Zero Variance Timbre Dimensions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "beat_input_valid",
+        "count_agreement",
+        "median_boundary_stability_f1",
+        "boundary_support",
+        "eligible_level_count",
+        "selection_margin",
+        "perturbation_run_count"
+      ],
+      "title": "StructuralSegmentationMeasurements",
+      "type": "object"
+    },
+    "StructuralSegmentationPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "calibration_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Calibration Id"
+        },
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Sha256",
+          "type": "string"
+        },
+        "gate_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Gate Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_version",
+        "calibration_id",
+        "config_sha256"
+      ],
+      "title": "StructuralSegmentationPolicy",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable evidence plus the accepted or abstaining partition.",
+  "properties": {
+    "baseline_candidate_levels": {
+      "items": {
+        "$ref": "#/$defs/StructuralCandidateLevel"
+      },
+      "title": "Baseline Candidate Levels",
+      "type": "array"
+    },
+    "baseline_selected_m": {
+      "anyOf": [
+        {
+          "maximum": 10,
+          "minimum": 2,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Baseline Selected M"
+    },
+    "beat_quality_decision_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Beat Quality Decision Sha256",
+      "type": "string"
+    },
+    "beat_result_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Beat Result Sha256",
+      "type": "string"
+    },
+    "beat_times_seconds": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Beat Times Seconds",
+      "type": "array"
+    },
+    "code_revision": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Code Revision",
+      "type": "string"
+    },
+    "config_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Config Sha256",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/SectionDecision"
+    },
+    "duration_seconds": {
+      "exclusiveMinimum": 0,
+      "title": "Duration Seconds",
+      "type": "number"
+    },
+    "implementation_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Implementation Version",
+      "type": "string"
+    },
+    "library_versions": {
+      "items": {
+        "$ref": "#/$defs/LibraryVersion"
+      },
+      "title": "Library Versions",
+      "type": "array"
+    },
+    "measurements": {
+      "$ref": "#/$defs/StructuralSegmentationMeasurements"
+    },
+    "perturbations": {
+      "items": {
+        "$ref": "#/$defs/StructuralPerturbationResult"
+      },
+      "title": "Perturbations",
+      "type": "array"
+    },
+    "policy": {
+      "$ref": "#/$defs/StructuralSegmentationPolicy"
+    },
+    "reason_codes": {
+      "items": {
+        "$ref": "#/$defs/SectionFallbackReason"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "resolved_parameters": {
+      "$ref": "#/$defs/ResolvedStructuralParameters"
+    },
+    "runtime_platform": {
+      "minLength": 1,
+      "title": "Runtime Platform",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^1\\.0\\.0$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/StructuralSection"
+      },
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "stage_kind": {
+      "pattern": "^section\\.mcfee_ellis_laplacian$",
+      "title": "Stage Kind",
+      "type": "string"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "beat_result_sha256",
+    "beat_quality_decision_sha256",
+    "stage_kind",
+    "implementation_version",
+    "code_revision",
+    "config_sha256",
+    "library_versions",
+    "runtime_platform",
+    "resolved_parameters",
+    "policy",
+    "baseline_candidate_levels",
+    "measurements",
+    "perturbations",
+    "decision",
+    "reason_codes",
+    "sections",
+    "duration_seconds",
+    "beat_times_seconds"
+  ],
+  "title": "StructuralSegmentationResult",
+  "type": "object"
+}

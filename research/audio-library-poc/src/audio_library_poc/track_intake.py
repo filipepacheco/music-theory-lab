@@ -27,9 +27,14 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, Final
+from typing import Any, Final, Literal, Self
 
-from audio_library_poc.beat_input_quality import BeatInputQualityPolicyConfig
+from pydantic import model_validator
+
+from audio_library_poc.beat_input_quality import (
+    BeatInputQualityPolicyConfig,
+    CalibrationEvidence,
+)
 from audio_library_poc.beat_quality_stage import (
     BEAT_INPUT_QUALITY_IMPLEMENTATION_VERSION,
 )
@@ -38,21 +43,18 @@ from audio_library_poc.chordmini_btc_stage import (
     CHORDMINI_BTC_IMPLEMENTATION_VERSION,
 )
 from audio_library_poc.hpcp_key_stage import HPCP_KEY_IMPLEMENTATION_VERSION
-from audio_library_poc.section_stage import SECTION_LIBROSA_IMPLEMENTATION_VERSION
+from audio_library_poc.models import ContractModel
+from audio_library_poc.structural_segmentation import SectionCalibrationEvidence
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION,
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageConfig,
+)
 
 DEFAULT_DEVICE: Final = "cuda"
 DEFAULT_PRECISION: Final = "float16"
 DEFAULT_SAMPLE_RATE: Final = 22050
 DEFAULT_HOP_LENGTH: Final = 2048
-DEFAULT_SEGMENT_COUNT: Final = 7
-
-#: ``EffectiveSectionAnalyzerSettings.n_segments`` is ``gt=0, le=64``. A stage
-#: ``config`` is a free-form dict at manifest load, so nothing between an
-#: upload form and the section runtime would catch a bad value -- it would
-#: surface minutes in, after the GPU stages had already run.
-MIN_SEGMENT_COUNT: Final = 1
-MAX_SEGMENT_COUNT: Final = 64
-
 #: Stages the public export needs, in the order they run. Beat and chord are
 #: the GPU stages; key, quality, and section are CPU-only and comparatively cheap.
 INTAKE_STAGE_KINDS: Final = (
@@ -60,7 +62,7 @@ INTAKE_STAGE_KINDS: Final = (
     "chord.chordmini_btc",
     "key.hpcp",
     "quality.beat_input",
-    "section.librosa_segment",
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
 )
 
 #: ``Identifier`` in models.py, which run_id and pipeline_id both use.
@@ -72,6 +74,46 @@ _SLUG_FALLBACK: Final = "faixa"
 #: set whose ``trusted_key`` annotations evaluation runs score against, and an
 #: upload has no ground truth to contribute to it.
 INTAKE_TRACKS_MANIFEST: Final = "intake-tracks.local.yaml"
+INTAKE_CALIBRATION_MANIFEST: Final = "intake-calibration.local.yaml"
+
+
+class IntakeQualityGates(ContractModel):
+    """Pinned publication gates supplied by a local held-out calibration."""
+
+    beat_policy: BeatInputQualityPolicyConfig
+    beat_calibration: CalibrationEvidence | None = None
+    section_gate_version: Literal["1.0.0-provisional", "1.0.0"]
+    section_calibration: SectionCalibrationEvidence | None = None
+
+    @classmethod
+    def provisional(cls) -> Self:
+        return cls(
+            beat_policy=BeatInputQualityPolicyConfig.provisional_v1(),
+            section_gate_version="1.0.0-provisional",
+        )
+
+    @model_validator(mode="after")
+    def validate_calibrations(self) -> Self:
+        beat_is_provisional = "provisional" in self.beat_policy.gate_version
+        if beat_is_provisional == (self.beat_calibration is not None):
+            raise ValueError(
+                "production beat policy requires calibration evidence; "
+                "provisional policy forbids it"
+            )
+        if self.beat_calibration is not None and (
+            not self.beat_calibration.passes
+            or self.beat_calibration.config_sha256 != self.beat_policy.sha256()
+        ):
+            raise ValueError("beat calibration does not pass or match its policy")
+        section_is_provisional = self.section_gate_version.endswith("-provisional")
+        if section_is_provisional == (self.section_calibration is not None):
+            raise ValueError(
+                "production section policy requires calibration evidence; "
+                "provisional policy forbids it"
+            )
+        if self.section_calibration is not None and not self.section_calibration.passes:
+            raise ValueError("section calibration does not pass held-out targets")
+        return self
 
 
 @dataclass(frozen=True)
@@ -116,7 +158,7 @@ def build_intake_manifest(
     precision: str = DEFAULT_PRECISION,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     hop_length: int = DEFAULT_HOP_LENGTH,
-    segment_count: int = DEFAULT_SEGMENT_COUNT,
+    quality_gates: IntakeQualityGates | None = None,
 ) -> dict[str, Any]:
     """Assemble the intake manifest for one source file.
 
@@ -127,12 +169,8 @@ def build_intake_manifest(
     whatever run directories it finds. One run is simply less to name.
     """
 
-    if not MIN_SEGMENT_COUNT <= segment_count <= MAX_SEGMENT_COUNT:
-        raise ValueError(
-            f"segment_count must be between {MIN_SEGMENT_COUNT} and "
-            f"{MAX_SEGMENT_COUNT}, got {segment_count}"
-        )
-    return {
+    gates = quality_gates or IntakeQualityGates.provisional()
+    manifest = {
         "schema_version": "1.0.0",
         "pipeline_id": f"intake-{slug}"[:_IDENTIFIER_MAX_LENGTH].rstrip("-"),
         "code_revision": "workspace-local",
@@ -191,26 +229,48 @@ def build_intake_manifest(
                     "model_identifier": beat_checkpoint.identifier,
                     "model_sha256": beat_checkpoint.sha256,
                     "analyzer_code_revision": "workspace-local",
-                    "policy": BeatInputQualityPolicyConfig.provisional_v1().model_dump(
-                        mode="json"
+                    "policy": gates.beat_policy.model_dump(mode="json"),
+                    "calibration": (
+                        gates.beat_calibration.model_dump(mode="json")
+                        if gates.beat_calibration is not None
+                        else None
                     ),
                 },
             },
             {
-                "stage_kind": "section.librosa_segment",
-                "implementation_version": SECTION_LIBROSA_IMPLEMENTATION_VERSION,
-                "output_schema_version": "2.0.0",
-                "model_identifier": "librosa_segment",
+                "stage_kind": STRUCTURAL_SEGMENTATION_STAGE_KIND,
+                "implementation_version": (
+                    STRUCTURAL_SEGMENTATION_IMPLEMENTATION_VERSION
+                ),
+                "output_schema_version": "1.0.0",
                 "max_attempts": 1,
                 "config": {
                     "source_relative_path": source_relative_path,
+                    "beat_result_relative_path": ".pending/beat-analysis-result.json",
+                    "beat_result_sha256": "0" * 64,
+                    "beat_quality_decision_relative_path": (
+                        ".pending/beat-input-quality-decision.json"
+                    ),
+                    "beat_quality_decision_sha256": "0" * 64,
                     "sample_rate": sample_rate,
-                    "hop_length": hop_length,
-                    "n_segments": segment_count,
+                    "fft_window": 2048,
+                    "hop_length": 512,
+                    "librosa_version": "0.10.2.post1",
+                    "numpy_version": "2.5.2",
+                    "scipy_version": "1.18.1",
+                    "scikit_learn_version": "1.9.0",
+                    "section_gate_version": gates.section_gate_version,
+                    "section_calibration": (
+                        gates.section_calibration.model_dump(mode="json")
+                        if gates.section_calibration is not None
+                        else None
+                    ),
                 },
             },
         ],
     }
+    StructuralSegmentationStageConfig.model_validate(manifest["stages"][-1]["config"])
+    return manifest
 
 
 def upsert_intake_track(
