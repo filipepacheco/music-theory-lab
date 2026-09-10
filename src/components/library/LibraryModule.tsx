@@ -55,7 +55,7 @@ export default function LibraryModule() {
             onSelect={(t) => setSelectedSha(t.source_sha256)}
           />
           {selected ? (
-            <LibraryTrackDetail track={selected} />
+            <LibraryTrackDetail key={selected.source_sha256} track={selected} />
           ) : (
             <p className="text-sm text-text-muted">
               Selecione uma faixa para ver a cifra detectada.

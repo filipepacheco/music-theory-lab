@@ -1,10 +1,11 @@
-import { memo } from "react";
-import NoteIndicator from "./NoteIndicator";
+import { memo } from 'react';
+import NoteIndicator from '@/components/instruments/NoteIndicator';
 
 interface BassFretProps {
   noteIndex: number;
   noteName: string;
   isHighlighted: boolean;
+  isRootHighlighted?: boolean;
   hasAnyHighlights: boolean;
   showAllNotes: boolean;
   isOpenString: boolean;
@@ -15,23 +16,25 @@ interface BassFretProps {
 }
 
 const OCTAVE_COLORS: Record<number, string> = {
-  1: "var(--color-octave-1)", // amber
-  2: "var(--color-octave-2)", // teal
-  3: "var(--color-octave-3)", // blue
+  1: 'var(--color-octave-1)', // amber
+  2: 'var(--color-octave-2)', // teal
+  3: 'var(--color-octave-3)', // blue
 };
 
 const DIMMED_OCTAVE_COLORS: Record<number, string> = {
-  1: "var(--color-octave-1-dim)",
-  2: "var(--color-octave-2-dim)",
-  3: "var(--color-octave-3-dim)",
+  1: 'var(--color-octave-1-dim)',
+  2: 'var(--color-octave-2-dim)',
+  3: 'var(--color-octave-3-dim)',
 };
 
-const BASS_HIGHLIGHT_COLOR = "var(--color-bass-highlight)"; // bright emerald green
+const BASS_HIGHLIGHT_COLOR = 'var(--color-bass-highlight)'; // bright emerald green
+const BASS_ROOT_HIGHLIGHT_COLOR = 'var(--color-bass-root-highlight)';
 
 const BassFret = memo(function BassFret({
   noteIndex,
   noteName,
   isHighlighted,
+  isRootHighlighted = false,
   hasAnyHighlights,
   showAllNotes,
   isOpenString,
@@ -45,11 +48,13 @@ const BassFret = memo(function BassFret({
   return (
     <button
       onPointerDown={() => onClick(noteIndex, octave)}
-      aria-label={`${noteName}${isOpenString ? " (corda solta)" : ""}`}
+      aria-label={`${noteName}${isOpenString ? ' (corda solta)' : ''}${
+        isRootHighlighted ? ' (fundamental)' : ''
+      }`}
       className={`
         h-14 flex items-center justify-center relative cursor-pointer transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:z-20
-        ${isOpenString ? "bg-bg-tertiary border-r-2 border-r-text-muted" : "border-r border-r-fret-border bg-fret-bg hover:bg-bg-hover"}
-        ${isOctaveStart ? "border-l-[3px] border-l-accent/60 bg-white/[0.03]" : ""}
+        ${isOpenString ? 'bg-bg-tertiary border-r-2 border-r-text-muted' : 'border-r border-r-fret-border bg-fret-bg hover:bg-bg-hover'}
+        ${isOctaveStart ? 'border-l-[3px] border-l-accent/60 bg-white/[0.03]' : ''}
       `}
     >
       {/* String line */}
@@ -64,15 +69,23 @@ const BassFret = memo(function BassFret({
       <div className="relative z-10">
         {shouldShowNote ? (
           isHighlighted ? (
-            <NoteIndicator noteName={noteName} color={BASS_HIGHLIGHT_COLOR} size="lg" />
+            <NoteIndicator
+              noteName={noteName}
+              color={
+                isRootHighlighted
+                  ? BASS_ROOT_HIGHLIGHT_COLOR
+                  : BASS_HIGHLIGHT_COLOR
+              }
+              size="lg"
+            />
           ) : (
             <span
-              className={`w-7 h-7 rounded-full flex items-center justify-center font-mono font-bold text-xs shrink-0 ${hasAnyHighlights ? "text-bg-primary/50" : "text-bg-primary"}`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center font-mono font-bold text-xs shrink-0 ${hasAnyHighlights ? 'text-bg-primary/50' : 'text-bg-primary'}`}
               style={{
                 backgroundColor:
                   (hasAnyHighlights ? DIMMED_OCTAVE_COLORS : OCTAVE_COLORS)[
                     octave
-                  ] ?? "var(--color-octave-fallback)",
+                  ] ?? 'var(--color-octave-fallback)',
               }}
             >
               {noteName}

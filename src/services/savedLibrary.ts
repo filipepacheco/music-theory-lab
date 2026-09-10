@@ -5,6 +5,7 @@ import {
   getAllProgressions,
   getAllSongs,
   getAllStructures,
+  getAllLibraryAnnotations,
   getLibraryAnnotation,
   initDB,
   persistDB,
@@ -17,6 +18,7 @@ import {
   upsertProgressionLocal,
   upsertSongLocal,
   upsertStructureLocal,
+  upsertLibraryAnnotationLocal,
 } from '@/services/db';
 import {
   pushDeleteProgression,
@@ -25,6 +27,7 @@ import {
   pushProgression,
   pushSong,
   pushStructure,
+  pushLibraryAnnotation,
   syncAll,
 } from '@/services/sync';
 import {
@@ -73,6 +76,11 @@ const SYNC_DEPS = {
     applyCloud: upsertStructureLocal,
     push: pushStructure,
   },
+  annotations: {
+    listLocal: getAllLibraryAnnotations,
+    applyCloud: upsertLibraryAnnotationLocal,
+    push: pushLibraryAnnotation,
+  },
   persist: persistDB,
 };
 
@@ -81,20 +89,22 @@ const SYNC_DEPS = {
  * all `INSERT OR REPLACE`, so re-running is safe. Failed pushes from one
  * run are retried by the next run.
  */
-function runSync(): void {
+function runSync(): Promise<void> {
   const now = Date.now();
-  if (syncPromise || now - lastSyncStart < SYNC_COOLDOWN_MS) return;
+  if (syncPromise) return syncPromise;
+  if (now - lastSyncStart < SYNC_COOLDOWN_MS) return Promise.resolve();
   lastSyncStart = now;
   syncPromise = syncAll(SYNC_DEPS)
     .catch(() => {})
     .finally(() => {
       syncPromise = null;
     });
+  return syncPromise;
 }
 
 async function initialize(): Promise<void> {
   await initDB();
-  runSync();
+  void runSync();
 }
 
 // Self-heal: re-sync whenever the tab regains focus, so data saved on other
@@ -104,7 +114,7 @@ async function initialize(): Promise<void> {
 // make sure the database is open before merging.
 async function syncOnFocus(): Promise<void> {
   await initDB();
-  runSync();
+  await runSync();
 }
 
 if (typeof window !== 'undefined') {
@@ -115,6 +125,7 @@ if (typeof window !== 'undefined') {
 
 export const savedLibrary = {
   initialize,
+  synchronize: syncOnFocus,
   waitUntilSynchronized: () => syncPromise ?? Promise.resolve(),
 
   progressions: {
@@ -169,8 +180,10 @@ export const savedLibrary = {
   libraryAnnotations: {
     get: (sourceSha256: string, barCount: number) =>
       withDb(() => getLibraryAnnotation(sourceSha256, barCount)),
-    save: (document: Parameters<typeof saveLibraryAnnotation>[0]) =>
-      withDb(() => saveLibraryAnnotation(document)),
+    save: async (document: Parameters<typeof saveLibraryAnnotation>[0]) => {
+      await withDb(() => saveLibraryAnnotation(document));
+      pushAfter(document, pushLibraryAnnotation);
+    },
     adoptRejectedBoundary: async (
       document: LibraryAnnotationDocument,
       suggestion: AdoptableLibraryBoundarySuggestion,
@@ -179,6 +192,7 @@ export const savedLibrary = {
       if (result.error) return result;
       try {
         await withDb(() => saveLibraryAnnotation(result.document));
+        pushAfter(result.document, pushLibraryAnnotation);
         return result;
       } catch {
         return {
