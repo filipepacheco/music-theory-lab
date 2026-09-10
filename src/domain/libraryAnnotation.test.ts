@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adoptRejectedBoundarySuggestion,
   createLibraryAnnotation,
   mergeLibrarySections,
   migrateLibraryAnnotation,
@@ -11,6 +12,7 @@ import {
   splitLibrarySection,
   validateLibraryAnnotation,
 } from '@/domain/libraryAnnotation';
+import type { RejectedBoundarySuggestion } from '@/components/library/rejectedBoundarySuggestions';
 
 describe('Library annotation document', () => {
   it('starts a track without accepted boundaries as one neutral full-track section', () => {
@@ -57,6 +59,7 @@ describe('Library annotation document', () => {
       name: 'Interlúdio',
       startBar: 4,
       endBar: 12,
+      startBoundaryOrigin: 'automatic',
     });
     expect(original.sections[1].name).toBe('Parte 2');
   });
@@ -69,8 +72,55 @@ describe('Library annotation document', () => {
     expect(result.error).toBeNull();
     expect(result.document.sections).toEqual([
       { id: 'section-1', name: 'Parte 1', startBar: 0, endBar: 3 },
-      { id: 'section-2', name: 'Parte 2', startBar: 3, endBar: 8 },
+      {
+        id: 'section-2',
+        name: 'Parte 2',
+        startBar: 3,
+        endBar: 8,
+        startBoundaryOrigin: 'manual',
+      },
     ]);
+  });
+
+  it('adopts an available rejected suggestion as a manual boundary', () => {
+    const original = createLibraryAnnotation('source-sha', 8, []);
+    const suggestion: RejectedBoundarySuggestion = {
+      id: 'source-sha:4',
+      boundarySeconds: 16,
+      support: 0.61,
+      reasonCodes: ['section.boundary_unsupported'],
+      barIndex: 4,
+      unavailableReason: null,
+    };
+
+    const result = adoptRejectedBoundarySuggestion(original, suggestion);
+
+    expect(result.error).toBeNull();
+    expect(result.document.sections[1]).toEqual({
+      id: 'section-2',
+      name: 'Parte 2',
+      startBar: 4,
+      endBar: 8,
+      startBoundaryOrigin: 'manual',
+    });
+  });
+
+  it('does not apply a rejected suggestion that no longer maps to the bar grid', () => {
+    const original = createLibraryAnnotation('source-sha', 8, []);
+    const stale: RejectedBoundarySuggestion = {
+      id: 'source-sha:stale',
+      boundarySeconds: 99,
+      support: 0.61,
+      reasonCodes: ['section.boundary_unsupported'],
+      barIndex: null,
+      unavailableReason:
+        'Esta sugestão não corresponde mais à grade atual de compassos.',
+    };
+
+    const result = adoptRejectedBoundarySuggestion(original, stale);
+
+    expect(result.error).toBe(stale.unavailableReason);
+    expect(result.document).toBe(original);
   });
 
   it('moves a shared boundary exactly one bar in either direction', () => {
@@ -97,6 +147,7 @@ describe('Library annotation document', () => {
       [0, 4],
       [4, 8],
     ]);
+    expect(right.document.sections[1].startBoundaryOrigin).toBe('manual');
   });
 
   it('merges adjacent sections by removing their shared boundary', () => {
@@ -108,7 +159,13 @@ describe('Library annotation document', () => {
     expect(result.error).toBeNull();
     expect(result.document.sections).toEqual([
       { id: 'section-1', name: 'Abertura', startBar: 0, endBar: 6 },
-      { id: 'section-3', name: 'Parte 3', startBar: 6, endBar: 8 },
+      {
+        id: 'section-3',
+        name: 'Parte 3',
+        startBar: 6,
+        endBar: 8,
+        startBoundaryOrigin: 'automatic',
+      },
     ]);
   });
 

@@ -5,6 +5,8 @@ export interface LibraryAnnotationSection {
   startBar: number;
   /** Exclusive, zero-based index after the final bar. */
   endBar: number;
+  /** Provenance of this section's leading boundary; absent at the track edge. */
+  startBoundaryOrigin?: 'automatic' | 'manual';
 }
 
 export interface LibraryAnnotationDocument {
@@ -16,6 +18,11 @@ export interface LibraryAnnotationDocument {
 export interface LibraryAnnotationEditResult {
   document: LibraryAnnotationDocument;
   error: string | null;
+}
+
+export interface AdoptableLibraryBoundarySuggestion {
+  barIndex: number | null;
+  unavailableReason: string | null;
 }
 
 export function validateLibraryAnnotation(
@@ -70,12 +77,18 @@ export function migrateLibraryAnnotation(
         : typeof value.label === 'string'
           ? value.label
           : `Parte ${index + 1}`;
+    const rawOrigin = value.startBoundaryOrigin;
+    const startBoundaryOrigin: LibraryAnnotationSection['startBoundaryOrigin'] =
+      index > 0 && (rawOrigin === 'automatic' || rawOrigin === 'manual')
+        ? rawOrigin
+        : undefined;
     return [
       {
         id,
         name: candidateName.trim() || `Parte ${index + 1}`,
         startBar,
         endBar,
+        ...(startBoundaryOrigin ? { startBoundaryOrigin } : {}),
       },
     ];
   });
@@ -128,6 +141,7 @@ export function createLibraryAnnotation(
       name: `Parte ${index + 1}`,
       startBar,
       endBar: boundaries[index + 1],
+      ...(index > 0 ? { startBoundaryOrigin: 'automatic' as const } : {}),
     })),
   };
 }
@@ -172,10 +186,48 @@ export function splitLibrarySection(
     name: `Parte ${nextNumber}`,
     startBar,
     endBar: section.endBar,
+    startBoundaryOrigin: 'manual',
   };
   const sections = [...document.sections];
   sections.splice(index, 1, { ...section, endBar: startBar }, created);
   return success(document, sections);
+}
+
+export function adoptRejectedBoundarySuggestion(
+  document: LibraryAnnotationDocument,
+  suggestion: AdoptableLibraryBoundarySuggestion,
+): LibraryAnnotationEditResult {
+  const error = getRejectedBoundaryAdoptionError(document, suggestion);
+  if (error) return failure(document, error);
+  const barIndex = suggestion.barIndex;
+  if (barIndex === null) return failure(document, 'Sugestão indisponível.');
+  const section = document.sections.find(
+    (item) => item.startBar < barIndex && barIndex < item.endBar,
+  );
+  if (!section) return failure(document, 'Sugestão indisponível.');
+  return splitLibrarySection(document, section.id, barIndex);
+}
+
+export function getRejectedBoundaryAdoptionError(
+  document: LibraryAnnotationDocument,
+  suggestion: AdoptableLibraryBoundarySuggestion,
+): string | null {
+  if (suggestion.barIndex === null) {
+    return (
+      suggestion.unavailableReason ??
+      'Esta sugestão não corresponde mais à grade atual de compassos.'
+    );
+  }
+  const section = document.sections.find(
+    (item) =>
+      suggestion.barIndex !== null &&
+      item.startBar < suggestion.barIndex &&
+      suggestion.barIndex < item.endBar,
+  );
+  if (!section) {
+    return 'Esta divisão já existe ou não está disponível na anotação atual.';
+  }
+  return null;
 }
 
 export type BoundaryDirection = -1 | 1;
@@ -224,7 +276,13 @@ export function moveLibraryBoundary(
   const boundary = left.endBar + direction;
   const sections = document.sections.map((section, index) => {
     if (index === boundaryIndex) return { ...section, endBar: boundary };
-    if (index === boundaryIndex + 1) return { ...section, startBar: boundary };
+    if (index === boundaryIndex + 1) {
+      return {
+        ...section,
+        startBar: boundary,
+        startBoundaryOrigin: 'manual' as const,
+      };
+    }
     return section;
   });
   return success(document, sections);

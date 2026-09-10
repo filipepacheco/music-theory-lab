@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  adoptRejectedBoundarySuggestion,
   createLibraryAnnotation,
   type LibraryAnnotationDocument,
   type LibraryAnnotationEditResult,
@@ -26,7 +27,12 @@ import {
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
 import LibrarySectionEditor from '@/components/library/LibrarySectionEditor';
+import LibraryRejectedBoundaryReview from '@/components/library/LibraryRejectedBoundaryReview';
 import LibrarySectionStatus from '@/components/library/LibrarySectionStatus';
+import {
+  rejectedBoundarySuggestions,
+  type RejectedBoundarySuggestion,
+} from '@/components/library/rejectedBoundarySuggestions';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
@@ -52,11 +58,13 @@ export default function LibraryTrackDetail({ track }: Props) {
   const [annotation, setAnnotation] =
     useState<LibraryAnnotationDocument | null>(null);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
+  const [showRejectedSuggestions, setShowRejectedSuggestions] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     setData(null);
     setError(null);
+    setShowRejectedSuggestions(false);
     fetchTrackAnalyses(track, controller.signal)
       .then(setData)
       .catch((err: unknown) => {
@@ -104,6 +112,17 @@ export default function LibraryTrackDetail({ track }: Props) {
   const sectionGroups = useMemo(
     () => groupBarsBySection(bars, editableSections),
     [bars, editableSections],
+  );
+
+  const rejectedSuggestions = useMemo(
+    () =>
+      rejectedBoundarySuggestions(
+        data?.section?.stage_kind === 'section.mcfee_ellis_laplacian'
+          ? data.section
+          : null,
+        bars,
+      ),
+    [bars, data?.section],
   );
 
   const activeBarIndex = useMemo(
@@ -158,6 +177,13 @@ export default function LibraryTrackDetail({ track }: Props) {
     savedLibrary.libraryAnnotations.save(result.document).catch(() => {
       setAnnotationError('Falha ao salvar esta edição localmente.');
     });
+  };
+
+  const adoptSuggestion = (suggestion: RejectedBoundarySuggestion) => {
+    if (!annotation) return;
+    const result = adoptRejectedBoundarySuggestion(annotation, suggestion);
+    editAnnotation(result);
+    if (!result.error) setShowRejectedSuggestions(false);
   };
 
   const seek = audioUrl && audio.ready ? audio.seek : null;
@@ -217,12 +243,25 @@ export default function LibraryTrackDetail({ track }: Props) {
                 Seções da faixa
               </h4>
               <LibrarySectionStatus analysis={data.section} />
-              <LibrarySectionEditor
-                document={annotation}
-                bars={bars}
-                activeSectionIndex={activeSectionIndex}
-                onEdit={editAnnotation}
-              />
+              {rejectedSuggestions.length > 0 ? (
+                <LibraryRejectedBoundaryReview
+                  document={annotation}
+                  bars={bars}
+                  activeSectionIndex={activeSectionIndex}
+                  suggestions={rejectedSuggestions}
+                  visible={showRejectedSuggestions}
+                  onVisibleChange={setShowRejectedSuggestions}
+                  onEdit={editAnnotation}
+                  onAdopt={adoptSuggestion}
+                />
+              ) : (
+                <LibrarySectionEditor
+                  document={annotation}
+                  bars={bars}
+                  activeSectionIndex={activeSectionIndex}
+                  onEdit={editAnnotation}
+                />
+              )}
               <p className="text-[11px] text-text-muted">
                 Renomeie no cabeçalho, clique em um compasso para dividir ou use
                 a fronteira para mover um compasso e unir seções. A ordem

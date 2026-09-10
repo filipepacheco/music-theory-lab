@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
   getBoundaryMoveError,
   getSplitError,
@@ -10,12 +10,18 @@ import {
   type LibraryAnnotationEditResult,
 } from '@/domain/libraryAnnotation';
 import type { ChordChartBar } from '@/components/library/libraryData';
+import {
+  rejectedBoundaryReasonLabel,
+  type RejectedBoundarySuggestion,
+} from '@/components/library/rejectedBoundarySuggestions';
 
 interface Props {
   document: LibraryAnnotationDocument;
   bars: ChordChartBar[];
   activeSectionIndex: number;
   onEdit: (result: LibraryAnnotationEditResult) => void;
+  rejectedSuggestions?: RejectedBoundarySuggestion[];
+  onAdoptRejectedSuggestion?: (suggestion: RejectedBoundarySuggestion) => void;
 }
 
 export default function LibrarySectionEditor({
@@ -23,6 +29,8 @@ export default function LibrarySectionEditor({
   bars,
   activeSectionIndex,
   onEdit,
+  rejectedSuggestions = [],
+  onAdoptRejectedSuggestion,
 }: Props) {
   return (
     <div className="overflow-x-auto pb-2">
@@ -48,40 +56,52 @@ export default function LibrarySectionEditor({
                   .slice(section.startBar, section.endBar)
                   .map((bar, index) => {
                     const boundaryBar = section.startBar + index;
+                    const suggestions = rejectedSuggestions.filter(
+                      (suggestion) => suggestion.barIndex === boundaryBar,
+                    );
                     const error = getSplitError(
                       document,
                       section.id,
                       boundaryBar,
                     );
                     return (
-                      <button
-                        key={bar.index}
-                        type="button"
-                        disabled={error !== null}
-                        title={
-                          error ?? `Dividir antes do compasso ${bar.index + 1}`
-                        }
-                        onClick={() =>
-                          onEdit(
-                            splitLibrarySection(
-                              document,
-                              section.id,
-                              boundaryBar,
-                            ),
-                          )
-                        }
-                        className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-55"
-                      >
-                        <span className="block min-w-8 rounded-control border border-border-default bg-bg-primary px-1.5 py-1 text-center font-heading text-[10px] text-text-primary">
-                          <span className="block text-[8px] text-text-muted">
-                            {bar.index + 1}
+                      <Fragment key={bar.index}>
+                        {suggestions.map((suggestion) => (
+                          <RejectedBoundaryMarker
+                            key={suggestion.id}
+                            suggestion={suggestion}
+                            onAdopt={onAdoptRejectedSuggestion}
+                          />
+                        ))}
+                        <button
+                          type="button"
+                          disabled={error !== null}
+                          title={
+                            error ??
+                            `Dividir antes do compasso ${bar.index + 1}`
+                          }
+                          onClick={() =>
+                            onEdit(
+                              splitLibrarySection(
+                                document,
+                                section.id,
+                                boundaryBar,
+                              ),
+                            )
+                          }
+                          className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-55"
+                        >
+                          <span className="block min-w-8 rounded-control border border-border-default bg-bg-primary px-1.5 py-1 text-center font-heading text-[10px] text-text-primary">
+                            <span className="block text-[8px] text-text-muted">
+                              {bar.index + 1}
+                            </span>
+                            {bar.chords[0]?.chord ?? '—'}
                           </span>
-                          {bar.chords[0]?.chord ?? '—'}
-                        </span>
-                        <span className="mt-0.5 block text-[8px] text-text-muted">
-                          {index === 0 ? 'início' : 'dividir'}
-                        </span>
-                      </button>
+                          <span className="mt-0.5 block text-[8px] text-text-muted">
+                            {index === 0 ? 'início' : 'dividir'}
+                          </span>
+                        </button>
+                      </Fragment>
                     );
                   })}
               </div>
@@ -97,6 +117,40 @@ export default function LibrarySectionEditor({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function RejectedBoundaryMarker({
+  suggestion,
+  onAdopt,
+}: {
+  suggestion: RejectedBoundarySuggestion;
+  onAdopt: Props['onAdoptRejectedSuggestion'];
+}) {
+  const support = Math.round(suggestion.support * 100);
+  const reason = suggestion.reasonCodes
+    .map(rejectedBoundaryReasonLabel)
+    .join('; ');
+  const barNumber = (suggestion.barIndex ?? 0) + 1;
+
+  return (
+    <div className="flex w-24 shrink-0 flex-col items-center justify-center border-x border-dashed border-amber-400/45 bg-amber-400/5 px-1 py-1 text-center text-amber-200/75">
+      <span aria-hidden="true" className="text-[8px] uppercase tracking-wide">
+        rejeitada
+      </span>
+      <span aria-hidden="true" className="text-[9px] tabular-nums">
+        {support}% de apoio
+      </span>
+      <button
+        type="button"
+        aria-label={`Sugestão rejeitada antes do compasso ${barNumber}, ${support}% de apoio. Motivo: ${reason}. Usar como divisão manual`}
+        title={`${support}% de apoio · ${reason}`}
+        onClick={() => onAdopt?.(suggestion)}
+        className="mt-1 cursor-pointer rounded-control border border-dashed border-amber-300/40 bg-bg-primary px-1.5 py-1 text-[8px] text-amber-100/80 hover:border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-300"
+      >
+        usar divisão
+      </button>
     </div>
   );
 }

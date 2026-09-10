@@ -105,10 +105,18 @@ interface SectionAnalysisBase<TSection extends SectionSegment> {
   warnings: string[];
 }
 
-export interface StructuralSectionAnalysisJson
-  extends SectionAnalysisBase<StructuralSectionSegment> {
+export interface StructuralSectionAnalysisJson extends SectionAnalysisBase<StructuralSectionSegment> {
   stage_kind: 'section.mcfee_ellis_laplacian';
   decision: 'accepted' | 'fallback';
+  reason_codes: string[];
+  baseline_selected_m: number | null;
+  baseline_candidate_levels: Array<{
+    m: number;
+    boundaries_seconds: number[];
+  }>;
+  measurements: {
+    boundary_support: number[];
+  };
   settings: {
     sample_rate: number;
     hop_length: number;
@@ -117,8 +125,7 @@ export interface StructuralSectionAnalysisJson
   };
 }
 
-export interface LegacySectionAnalysisJson
-  extends SectionAnalysisBase<LegacySectionSegment> {
+export interface LegacySectionAnalysisJson extends SectionAnalysisBase<LegacySectionSegment> {
   stage_kind?: never;
   settings: {
     sample_rate: number;
