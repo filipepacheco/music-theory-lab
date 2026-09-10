@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { LibraryAnnotationDocument } from '@/domain/libraryAnnotation';
+import {
+  createLibraryAnnotation,
+  type LibraryAnnotationDocument,
+} from '@/domain/libraryAnnotation';
+import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 
 const dbState = vi.hoisted(() => ({ annotation: null as unknown }));
 
@@ -38,6 +42,7 @@ vi.mock('@/services/sync', () => ({
 
 import { savedLibrary } from '@/services/savedLibrary';
 import { syncAll } from '@/services/sync';
+import { saveLibraryAnnotation } from '@/services/db';
 
 describe('savedLibrary sync trigger', () => {
   it('kicks the background sync on first use and not again within the cooldown', async () => {
@@ -46,6 +51,48 @@ describe('savedLibrary sync trigger', () => {
     await savedLibrary.progressions.list();
 
     expect(syncAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('adopts and persists a rejected boundary through the saved-library facade', async () => {
+    const document = createLibraryAnnotation('source-sha', 8, []);
+    const suggestion: RejectedBoundarySuggestion = {
+      id: 'candidate-1',
+      boundarySeconds: 16,
+      support: 0.61,
+      reasonCodes: ['section.boundary_unsupported'],
+      barIndex: 4,
+      unavailableReason: null,
+    };
+
+    const result = await savedLibrary.libraryAnnotations.adoptRejectedBoundary(
+      document,
+      suggestion,
+    );
+
+    expect(result.error).toBeNull();
+    expect(result.document.sections[1].startBoundaryOrigin).toBe('manual');
+    expect(dbState.annotation).toEqual(result.document);
+  });
+
+  it('keeps the candidate view actionable when adoption cannot be persisted', async () => {
+    const document = createLibraryAnnotation('source-sha', 8, []);
+    vi.mocked(saveLibraryAnnotation).mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+
+    const result = await savedLibrary.libraryAnnotations.adoptRejectedBoundary(
+      document,
+      {
+        barIndex: 4,
+        unavailableReason: null,
+      },
+    );
+
+    expect(result).toEqual({
+      document,
+      error: 'Falha ao salvar esta divisão manual localmente.',
+    });
+    expect(document.sections).toHaveLength(1);
   });
 
   it('restores a locally saved Library annotation after reload', async () => {

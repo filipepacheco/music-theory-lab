@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  adoptRejectedBoundarySuggestion,
   createLibraryAnnotation,
   type LibraryAnnotationDocument,
   type LibraryAnnotationEditResult,
@@ -32,7 +31,7 @@ import LibrarySectionStatus from '@/components/library/LibrarySectionStatus';
 import {
   rejectedBoundarySuggestions,
   type RejectedBoundarySuggestion,
-} from '@/components/library/rejectedBoundarySuggestions';
+} from '@/domain/rejectedBoundarySuggestions';
 import { useLibraryAudio } from './useLibraryAudio';
 
 interface Props {
@@ -179,11 +178,19 @@ export default function LibraryTrackDetail({ track }: Props) {
     });
   };
 
-  const adoptSuggestion = (suggestion: RejectedBoundarySuggestion) => {
+  const adoptSuggestion = async (suggestion: RejectedBoundarySuggestion) => {
     if (!annotation) return;
-    const result = adoptRejectedBoundarySuggestion(annotation, suggestion);
-    editAnnotation(result);
-    if (!result.error) setShowRejectedSuggestions(false);
+    const result = await savedLibrary.libraryAnnotations.adoptRejectedBoundary(
+      annotation,
+      suggestion,
+    );
+    if (result.error) {
+      setAnnotationError(result.error);
+      return;
+    }
+    setAnnotation(result.document);
+    setAnnotationError(null);
+    setShowRejectedSuggestions(false);
   };
 
   const seek = audioUrl && audio.ready ? audio.seek : null;

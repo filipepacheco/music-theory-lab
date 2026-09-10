@@ -3,7 +3,7 @@ import {
   rejectedBoundaryReasonLabel,
   rejectedBoundarySuggestions,
   type StructuralSuggestionAnalysis,
-} from '@/components/library/rejectedBoundarySuggestions';
+} from '@/domain/rejectedBoundarySuggestions';
 import type { ChordChartBar } from '@/components/library/libraryData';
 
 function bar(
@@ -83,7 +83,20 @@ describe('rejected Library boundary suggestions', () => {
     });
   });
 
-  it('does not expose candidates for accepted or legacy analysis', () => {
+  it('does not remap an in-range candidate to a distant bar boundary', () => {
+    const analysis = rejectedAnalysis();
+    analysis.baseline_candidate_levels[0].boundaries_seconds = [0, 10, 24];
+    analysis.measurements.boundary_support = [0.54];
+
+    expect(rejectedBoundarySuggestions(analysis, bars)[0]).toMatchObject({
+      boundarySeconds: 10,
+      barIndex: null,
+      unavailableReason:
+        'Esta sugestão não corresponde mais à grade atual de compassos.',
+    });
+  });
+
+  it('does not expose candidates for accepted or absent analysis', () => {
     expect(
       rejectedBoundarySuggestions(
         { ...rejectedAnalysis(), decision: 'accepted' },

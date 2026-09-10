@@ -5,7 +5,7 @@ import {
   createLibraryAnnotation,
   renameLibrarySection,
 } from '@/domain/libraryAnnotation';
-import type { RejectedBoundarySuggestion } from '@/components/library/rejectedBoundarySuggestions';
+import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 import {
   initializeLibraryAnnotationStorage,
   loadLibraryAnnotation,

@@ -12,7 +12,7 @@ import {
   splitLibrarySection,
   validateLibraryAnnotation,
 } from '@/domain/libraryAnnotation';
-import type { RejectedBoundarySuggestion } from '@/components/library/rejectedBoundarySuggestions';
+import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 
 describe('Library annotation document', () => {
   it('starts a track without accepted boundaries as one neutral full-track section', () => {

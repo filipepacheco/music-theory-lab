@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import LibraryRejectedBoundaryReview from '@/components/library/LibraryRejectedBoundaryReview';
 import { createLibraryAnnotation } from '@/domain/libraryAnnotation';
 import type { ChordChartBar } from '@/components/library/libraryData';
-import type { RejectedBoundarySuggestion } from '@/components/library/rejectedBoundarySuggestions';
+import type { RejectedBoundarySuggestion } from '@/domain/rejectedBoundarySuggestions';
 
 const bars: ChordChartBar[] = Array.from({ length: 4 }, (_, index) => ({
   index,
@@ -66,6 +66,7 @@ describe('rejected boundary review', () => {
     expect(markup).toContain('Sugestão rejeitada antes do compasso 3');
     expect(markup).toContain('61% de apoio');
     expect(markup).toContain('apoio abaixo do mínimo de 67%');
+    expect(markup).toMatch(/<span[^>]*>apoio abaixo do mínimo de 67%<\/span>/);
     expect(markup).toContain('border-dashed');
     expect(markup).toContain('<button');
     expect(markup).not.toContain('tabindex="-1"');

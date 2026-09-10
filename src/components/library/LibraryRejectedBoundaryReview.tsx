@@ -8,7 +8,7 @@ import type { ChordChartBar } from '@/components/library/libraryData';
 import {
   rejectedBoundaryReasonLabel,
   type RejectedBoundarySuggestion,
-} from '@/components/library/rejectedBoundarySuggestions';
+} from '@/domain/rejectedBoundarySuggestions';
 
 interface Props {
   document: LibraryAnnotationDocument;

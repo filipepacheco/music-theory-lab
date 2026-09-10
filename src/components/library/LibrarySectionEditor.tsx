@@ -13,7 +13,7 @@ import type { ChordChartBar } from '@/components/library/libraryData';
 import {
   rejectedBoundaryReasonLabel,
   type RejectedBoundarySuggestion,
-} from '@/components/library/rejectedBoundarySuggestions';
+} from '@/domain/rejectedBoundarySuggestions';
 
 interface Props {
   document: LibraryAnnotationDocument;
@@ -142,6 +142,7 @@ function RejectedBoundaryMarker({
       <span aria-hidden="true" className="text-[9px] tabular-nums">
         {support}% de apoio
       </span>
+      <span className="mt-0.5 text-[8px] leading-tight">{reason}</span>
       <button
         type="button"
         aria-label={`Sugestão rejeitada antes do compasso ${barNumber}, ${support}% de apoio. Motivo: ${reason}. Usar como divisão manual`}

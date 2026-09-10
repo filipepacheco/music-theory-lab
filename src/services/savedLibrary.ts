@@ -27,6 +27,12 @@ import {
   pushStructure,
   syncAll,
 } from '@/services/sync';
+import {
+  adoptRejectedBoundarySuggestion,
+  type AdoptableLibraryBoundarySuggestion,
+  type LibraryAnnotationDocument,
+  type LibraryAnnotationEditResult,
+} from '@/domain/libraryAnnotation';
 
 export type { SavedProgression } from '@/services/db';
 
@@ -165,5 +171,21 @@ export const savedLibrary = {
       withDb(() => getLibraryAnnotation(sourceSha256, barCount)),
     save: (document: Parameters<typeof saveLibraryAnnotation>[0]) =>
       withDb(() => saveLibraryAnnotation(document)),
+    adoptRejectedBoundary: async (
+      document: LibraryAnnotationDocument,
+      suggestion: AdoptableLibraryBoundarySuggestion,
+    ): Promise<LibraryAnnotationEditResult> => {
+      const result = adoptRejectedBoundarySuggestion(document, suggestion);
+      if (result.error) return result;
+      try {
+        await withDb(() => saveLibraryAnnotation(result.document));
+        return result;
+      } catch {
+        return {
+          document,
+          error: 'Falha ao salvar esta divisão manual localmente.',
+        };
+      }
+    },
   },
 };

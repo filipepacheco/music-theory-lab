@@ -1,8 +1,3 @@
-import type {
-  ChordChartBar,
-  StructuralSectionAnalysisJson,
-} from '@/components/library/libraryData';
-
 export interface RejectedBoundarySuggestion {
   id: string;
   boundarySeconds: number;
@@ -12,19 +7,29 @@ export interface RejectedBoundarySuggestion {
   unavailableReason: string | null;
 }
 
-export type StructuralSuggestionAnalysis = Pick<
-  StructuralSectionAnalysisJson,
-  | 'source_sha256'
-  | 'stage_kind'
-  | 'decision'
-  | 'baseline_selected_m'
-  | 'baseline_candidate_levels'
-  | 'measurements'
-  | 'fallback_reason_codes'
->;
+export interface StructuralSuggestionAnalysis {
+  source_sha256: string;
+  stage_kind: 'section.mcfee_ellis_laplacian';
+  decision: 'accepted' | 'fallback';
+  baseline_selected_m: number | null;
+  baseline_candidate_levels: Array<{
+    m: number;
+    boundaries_seconds: number[];
+  }>;
+  measurements: {
+    boundary_support: number[];
+  };
+  fallback_reason_codes: string[];
+}
+
+interface LibraryBarGridCell {
+  startSeconds: number;
+  endSeconds: number;
+}
 
 const STALE_CANDIDATE_MESSAGE =
   'Esta sugestão não corresponde mais à grade atual de compassos.';
+const BAR_BOUNDARY_TOLERANCE_SECONDS = 0.05;
 
 const REASON_LABELS: Record<string, string> = {
   'section.gate_uncalibrated': 'limites de estabilidade ainda não calibrados',
@@ -43,11 +48,10 @@ export function rejectedBoundaryReasonLabel(reasonCode: string): string {
 
 export function rejectedBoundarySuggestions(
   analysis: StructuralSuggestionAnalysis | null,
-  bars: ChordChartBar[],
+  bars: LibraryBarGridCell[],
 ): RejectedBoundarySuggestion[] {
   if (
     !analysis ||
-    analysis.stage_kind !== 'section.mcfee_ellis_laplacian' ||
     analysis.decision !== 'fallback' ||
     analysis.baseline_selected_m === null
   ) {
@@ -73,7 +77,7 @@ export function rejectedBoundarySuggestions(
 
 function candidateBarIndex(
   boundarySeconds: number,
-  bars: ChordChartBar[],
+  bars: LibraryBarGridCell[],
 ): number | null {
   if (
     !Number.isFinite(boundarySeconds) ||
@@ -93,5 +97,7 @@ function candidateBarIndex(
       nearestDistance = distance;
     }
   }
-  return nearestIndex;
+  return nearestDistance <= BAR_BOUNDARY_TOLERANCE_SECONDS
+    ? nearestIndex
+    : null;
 }

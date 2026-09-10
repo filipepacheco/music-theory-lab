@@ -201,9 +201,7 @@ export function adoptRejectedBoundarySuggestion(
   if (error) return failure(document, error);
   const barIndex = suggestion.barIndex;
   if (barIndex === null) return failure(document, 'Sugestão indisponível.');
-  const section = document.sections.find(
-    (item) => item.startBar < barIndex && barIndex < item.endBar,
-  );
+  const section = findSuggestionSection(document, barIndex);
   if (!section) return failure(document, 'Sugestão indisponível.');
   return splitLibrarySection(document, section.id, barIndex);
 }
@@ -218,16 +216,20 @@ export function getRejectedBoundaryAdoptionError(
       'Esta sugestão não corresponde mais à grade atual de compassos.'
     );
   }
-  const section = document.sections.find(
-    (item) =>
-      suggestion.barIndex !== null &&
-      item.startBar < suggestion.barIndex &&
-      suggestion.barIndex < item.endBar,
-  );
+  const section = findSuggestionSection(document, suggestion.barIndex);
   if (!section) {
     return 'Esta divisão já existe ou não está disponível na anotação atual.';
   }
   return null;
+}
+
+function findSuggestionSection(
+  document: LibraryAnnotationDocument,
+  barIndex: number,
+): LibraryAnnotationSection | undefined {
+  return document.sections.find(
+    (section) => section.startBar < barIndex && barIndex < section.endBar,
+  );
 }
 
 export type BoundaryDirection = -1 | 1;
