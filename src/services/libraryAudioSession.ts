@@ -23,11 +23,26 @@ export interface LibraryAudioSession {
   dispose(): void;
 }
 
+export interface LibraryAnimationClock {
+  request(callback: () => void): number;
+  cancel(id: number): void;
+}
+
+function browserAnimationClock(): LibraryAnimationClock | null {
+  if (typeof requestAnimationFrame === 'undefined') return null;
+  return {
+    request: (callback) => requestAnimationFrame(callback),
+    cancel: (id) => cancelAnimationFrame(id),
+  };
+}
+
 export function createLibraryAudioSession(
   media: LibraryMediaElement,
   onStateChange: (state: LibraryAudioState) => void,
+  animationClock: LibraryAnimationClock | null = browserAnimationClock(),
 ): LibraryAudioSession {
   let disposed = false;
+  let animationFrame: number | null = null;
   let state: LibraryAudioState = {
     ready: false,
     playing: false,
@@ -46,13 +61,37 @@ export function createLibraryAudioSession(
       duration: Number.isFinite(media.duration) ? media.duration : 0,
     });
   const onTime = () => update({ currentSeconds: media.currentTime });
-  const onPlay = () => update({ playing: true });
-  const onPause = () => update({ playing: false });
-  const onEnded = () =>
+  const stopFrames = () => {
+    if (animationClock && animationFrame !== null) {
+      animationClock.cancel(animationFrame);
+      animationFrame = null;
+    }
+  };
+  const scheduleFrame = () => {
+    if (!animationClock || animationFrame !== null || !state.playing) return;
+    animationFrame = animationClock.request(() => {
+      animationFrame = null;
+      if (disposed || !state.playing) return;
+      onTime();
+      scheduleFrame();
+    });
+  };
+  const onPlay = () => {
+    update({ playing: true, currentSeconds: media.currentTime });
+    scheduleFrame();
+  };
+  const onPause = () => {
+    stopFrames();
     update({ playing: false, currentSeconds: media.currentTime });
+  };
+  const onEnded = () => {
+    stopFrames();
+    update({ playing: false, currentSeconds: media.currentTime });
+  };
   const listeners = [
     ['loadedmetadata', onLoaded],
     ['timeupdate', onTime],
+    ['seeked', onTime],
     ['play', onPlay],
     ['pause', onPause],
     ['ended', onEnded],
@@ -72,10 +111,11 @@ export function createLibraryAudioSession(
           : seconds;
       const clamped = Math.max(0, Math.min(seconds, end));
       media.currentTime = clamped;
-      update({ currentSeconds: clamped });
+      update({ currentSeconds: media.currentTime });
     },
     dispose: () => {
       if (disposed) return;
+      stopFrames();
       disposed = true;
       media.pause();
       for (const [type, listener] of listeners) {

@@ -5,6 +5,16 @@ import { toBassMidi } from '@/utils/growlybass';
 import { GROWLYBASS_SOURCE_COMMIT } from '@/constants/growlybass.generated';
 import { useBassSynth } from '@/hooks/useBassSynth';
 import BassFret from '@/components/instruments/BassFret';
+import { libraryFretHighlightKind } from '@/domain/libraryChordSync';
+
+export interface BassNeckHighlight {
+  pitchClasses: number[];
+  rootPitchClass: number | null;
+}
+
+interface Props {
+  highlight?: BassNeckHighlight;
+}
 
 // Standard bass tuning: E1, A1, D2, G2 (note indices)
 const TUNING = [4, 9, 2, 7]; // E, A, D, G
@@ -15,15 +25,20 @@ const STRING_LABELS = ['G', 'D', 'A', 'E'];
 const FRET_COUNT = 12;
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12]);
 
-export default function BassNeck() {
-  const highlightedNotes = useAppStore((s) => s.highlightedNotes);
-  const highlightRootName = useAppStore((s) => s.highlightRootName);
-  const highlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
+export default function BassNeck({ highlight }: Props = {}) {
+  const storedHighlightedNotes = useAppStore((s) => s.highlightedNotes);
+  const storedHighlightRootName = useAppStore((s) => s.highlightRootName);
+  const storedHighlightOctaveMap = useAppStore((s) => s.highlightOctaveMap);
   const rootNote = useAppStore((s) => s.rootNote);
   const [showAllNotes, setShowAllNotes] = useState(false);
   const { playBassNote, samplerStatus } = useBassSynth();
 
-  const rootNoteName = highlightRootName ?? getNoteName(rootNote);
+  const highlightedNotes = highlight?.pitchClasses ?? storedHighlightedNotes;
+  const highlightOctaveMap = highlight ? null : storedHighlightOctaveMap;
+  const rootPitchClass = highlight?.rootPitchClass ?? null;
+  const rootNoteName = highlight
+    ? getNoteName(rootPitchClass ?? rootNote)
+    : (storedHighlightRootName ?? getNoteName(rootNote));
   const hasAnyHighlights = highlightedNotes.length > 0;
 
   // When a chord voicing is active, compute exact (string, fret) positions
@@ -138,8 +153,12 @@ export default function BassNeck() {
                       )
                     : octave;
                 const isOctaveStart = fret > 0 && octave !== prevOctave;
-                const isHighlighted =
-                  bassHighlightPositions !== null
+                const libraryHighlightKind = highlight
+                  ? libraryFretHighlightKind(noteIndex, highlight)
+                  : null;
+                const isHighlighted = highlight
+                  ? libraryHighlightKind !== null
+                  : bassHighlightPositions !== null
                     ? bassHighlightPositions.has(`${stringIdx}-${fret}`)
                     : highlightedNotes.includes(noteIndex);
 
@@ -149,6 +168,7 @@ export default function BassNeck() {
                     noteIndex={noteIndex}
                     noteName={noteName}
                     isHighlighted={isHighlighted}
+                    isRootHighlighted={libraryHighlightKind === 'root'}
                     hasAnyHighlights={hasAnyHighlights}
                     showAllNotes={showAllNotes}
                     isOpenString={fret === 0}

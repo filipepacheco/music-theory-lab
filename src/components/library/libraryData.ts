@@ -1,4 +1,6 @@
-import { getPreferredRootName } from '@/utils/noteHelpers';
+import { chordDisplayName, type ChordSegment } from '@/domain/libraryChordSync';
+
+export { chordDisplayName, type ChordSegment } from '@/domain/libraryChordSync';
 
 const LIBRARY_ROOT = '/library';
 
@@ -30,15 +32,6 @@ export interface LibraryIndex {
   generated_at: string;
   track_count: number;
   tracks: LibraryIndexEntry[];
-}
-
-export interface ChordSegment {
-  start_seconds: number;
-  end_seconds: number;
-  label: 'major' | 'minor' | 'unknown' | 'no_chord';
-  root_pc: number | null;
-  candidate_label: string;
-  confidence: number | null;
 }
 
 export interface ChordAnalysisJson {
@@ -154,18 +147,6 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
     throw new Error(`Fetch failed: HTTP ${response.status} ${url}`);
   }
   return (await response.json()) as T;
-}
-
-/**
- * Display name for one chord segment. Returns 'N.C.' for no_chord and '?'
- * for unknown; a root_pc + label mapping otherwise (e.g. root_pc=9,
- * label=minor → "Am"; root_pc=1, label=major → "C#").
- */
-export function chordDisplayName(segment: ChordSegment): string {
-  if (segment.label === 'no_chord') return 'N.C.';
-  if (segment.label === 'unknown' || segment.root_pc === null) return '?';
-  const rootName = getPreferredRootName(segment.root_pc);
-  return segment.label === 'minor' ? `${rootName}m` : rootName;
 }
 
 type DegreeEntry = readonly [number, '' | 'b' | '#'];
