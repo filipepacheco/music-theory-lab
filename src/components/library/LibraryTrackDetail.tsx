@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import BassNeck from '@/components/instruments/BassNeck';
+import { resolveLibraryChordAt } from '@/domain/libraryChordSync';
 import {
   createLibraryAnnotation,
   type LibraryAnnotationDocument,
   type LibraryAnnotationEditResult,
 } from '@/domain/libraryAnnotation';
+import {
+  useLibraryAudioSource,
+  type AudioAttachmentStatus,
+} from '@/hooks/useLibraryAudioSource';
 import { savedLibrary } from '@/services/savedLibrary';
-import { probeAudioUrl } from './audioSource';
 import {
   barIndexAtSeconds,
   buildChordChartBars,
@@ -40,18 +45,16 @@ interface DetailData {
   section: SectionAnalysisJson | null;
 }
 
-/** `undefined` while the probe is still running, `null` once it found nothing. */
-type AudioProbe = string | null | undefined;
-
 const NO_SECTIONS: never[] = [];
 
 export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<AudioProbe>(undefined);
   const [annotation, setAnnotation] =
     useState<LibraryAnnotationDocument | null>(null);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
+  const { audioSource, attachmentStatus, attachAudio } =
+    useLibraryAudioSource(track);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,20 +70,9 @@ export default function LibraryTrackDetail({ track }: Props) {
     return () => controller.abort();
   }, [track]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setAudioUrl(undefined);
-    probeAudioUrl(track, controller.signal)
-      .then((url) => {
-        if (!controller.signal.aborted) setAudioUrl(url);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setAudioUrl(null);
-      });
-    return () => controller.abort();
-  }, [track]);
+  const audioUrl = audioSource.status === 'ready' ? audioSource.url : null;
 
-  const audio = useLibraryAudio(audioUrl ?? null);
+  const audio = useLibraryAudio(audioUrl);
 
   const bars = useMemo(() => {
     if (!data) return [];
@@ -124,9 +116,13 @@ export default function LibraryTrackDetail({ track }: Props) {
     let cancelled = false;
     setAnnotation(null);
     setAnnotationError(null);
-    savedLibrary.libraryAnnotations
-      .get(track.source_sha256, bars.length)
-      .then(async (saved) => {
+    const loadAnnotation = async () => {
+      try {
+        await savedLibrary.synchronize();
+        const saved = await savedLibrary.libraryAnnotations.get(
+          track.source_sha256,
+          bars.length,
+        );
         if (cancelled) return;
         const initial =
           saved ??
@@ -137,14 +133,17 @@ export default function LibraryTrackDetail({ track }: Props) {
           );
         setAnnotation(initial);
         if (!saved) await savedLibrary.libraryAnnotations.save(initial);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setAnnotationError('Falha ao carregar as seções salvas desta faixa.');
         }
-      });
+      }
+    };
+    void loadAnnotation();
+    window.addEventListener('focus', loadAnnotation);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', loadAnnotation);
     };
   }, [bars, data, sections, track.source_sha256]);
 
@@ -161,6 +160,15 @@ export default function LibraryTrackDetail({ track }: Props) {
   };
 
   const seek = audioUrl && audio.ready ? audio.seek : null;
+
+  const activeChord = useMemo(
+    () =>
+      resolveLibraryChordAt(
+        data?.chord.segments ?? [],
+        audioUrl && audio.ready ? audio.currentSeconds : Number.NaN,
+      ),
+    [audio.currentSeconds, audio.ready, audioUrl, data?.chord.segments],
+  );
 
   return (
     <section className="flex min-w-0 flex-col gap-4">
@@ -188,16 +196,13 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {audioUrl && <LibraryPlayer audio={audio} />}
 
-      {audioUrl === null && (
-        <p className="text-[11px] text-text-muted rounded-button border border-border-default bg-bg-card px-3 py-2">
-          Sem áudio para esta faixa — só a análise foi publicada. Rode{' '}
-          <code className="font-mono text-[10px]">
-            sync_workspace_to_public.py --copy-audio
-          </code>{' '}
-          para copiar o arquivo original e habilitar a reprodução e o salto por
-          compasso.
-        </p>
-      )}
+      <LocalAudioAttachment
+        fileName={
+          audioSource.status === 'ready' ? audioSource.localFileName : null
+        }
+        status={attachmentStatus}
+        onSelect={attachAudio}
+      />
 
       {error && (
         <p className="text-sm text-red-400">
@@ -211,6 +216,29 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {data && (
         <div className="flex flex-col gap-5">
+          <div className="rounded-card border border-border-default bg-bg-card p-3 sm:p-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h4 className="font-heading text-sm text-text-secondary">
+                Braço sincronizado
+              </h4>
+              <p className="font-heading text-sm text-text-primary tabular-nums">
+                {activeChord.text
+                  ? `Acorde atual: ${activeChord.text}`
+                  : 'Nenhum acorde ativo'}
+              </p>
+            </div>
+            <BassNeck
+              highlight={{
+                pitchClasses: activeChord.pitchClasses,
+                rootPitchClass: activeChord.rootPitchClass,
+              }}
+            />
+            <p className="mt-2 text-[11px] text-text-muted">
+              A fundamental aparece em âmbar; as demais notas do acorde, em
+              verde.
+            </p>
+          </div>
+
           {annotation && (
             <div className="flex flex-col gap-2">
               <h4 className="font-heading text-sm text-text-secondary">
@@ -274,6 +302,77 @@ export default function LibraryTrackDetail({ track }: Props) {
         </div>
       )}
     </section>
+  );
+}
+
+function LocalAudioAttachment({
+  fileName,
+  status,
+  onSelect,
+}: {
+  fileName: string | null;
+  status: AudioAttachmentStatus;
+  onSelect: (file: File) => Promise<void>;
+}) {
+  const inputId = 'library-local-audio';
+  const message = {
+    idle: null,
+    checking: 'Verificando o arquivo pelo SHA-256…',
+    attached: 'Áudio local vinculado com sucesso.',
+    mismatch:
+      'Este arquivo não corresponde à análise. Escolha a gravação original desta faixa.',
+    unreadable:
+      'Não foi possível ler este arquivo. Confira o arquivo e tente novamente.',
+    'storage-error':
+      'Não foi possível salvar o áudio neste navegador. Verifique o espaço disponível e tente novamente.',
+  }[status];
+  const isError =
+    status === 'mismatch' ||
+    status === 'unreadable' ||
+    status === 'storage-error';
+
+  return (
+    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
+      <div>
+        <p className="text-xs text-text-secondary">
+          {fileName
+            ? `Áudio local: ${fileName}`
+            : 'O áudio original ainda não está vinculado a esta análise.'}
+        </p>
+        <p className="text-[11px] text-text-muted">
+          O arquivo permanece somente neste navegador e não é enviado para a
+          nuvem.
+        </p>
+      </div>
+      <label
+        htmlFor={inputId}
+        className="font-heading text-xs px-3 py-1.5 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+      >
+        {fileName ? 'Trocar arquivo local' : 'Vincular áudio original'}
+      </label>
+      <input
+        id={inputId}
+        type="file"
+        accept="audio/*"
+        disabled={status === 'checking'}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file) void onSelect(file);
+        }}
+      />
+      {message && (
+        <p
+          role={isError ? 'alert' : 'status'}
+          className={`text-[11px] ${
+            isError ? 'text-red-400' : 'text-text-muted'
+          }`}
+        >
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
 

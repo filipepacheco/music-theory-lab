@@ -39,12 +39,15 @@ its bytes are never rewritten by a correction in the app.
 _Avoid_: editable analysis, Library state
 
 **Library annotation document**:
-The single locally persisted, user-owned correction layer for one Biblioteca
-track, keyed by the same stable `source_sha256` as its analysis artifacts. It
-contains only the editable chronological sections; loading, migration, and
-saving go through the saved-library façade. An accepted
-[[structural-segmentation-result]] may seed a new document, but regenerating
-analysis never replaces existing manual corrections.
+The single locally persisted and cloud-synchronized, user-owned correction
+layer for one Biblioteca track, keyed by the same stable `source_sha256` as
+its analysis artifacts. It contains only the editable chronological sections,
+their automatic, fallback, or manual boundary origins, review state, schema
+version, bar count, and timestamps; loading, migration, saving, and
+single-user last-write-wins synchronization go through the saved-library
+façade. An accepted [[structural-segmentation-result]] may seed a new document,
+but regenerating analysis never replaces existing manual corrections.
+Malformed cloud documents never replace valid local annotations.
 _Avoid_: section analysis, inferred structure, arrangement
 
 **Library section**:
@@ -84,6 +87,14 @@ calibration passes the confidence-bound targets; invalid or uncalibrated input
 exports one neutral, editable full-track section marked for review.
 _Avoid_: beat confidence, successful detection
 
+**Structural segmentation result**:
+The immutable offline evidence for a Library track's neutral chronological
+sections. It contains every `m = 2…10` hierarchy candidate from the baseline
+and all 36 perturbation runs, plus stability measurements and the accepted or
+fallback partition. It may seed a [[library-annotation-document]], but user
+edits never rewrite it.
+_Avoid_: annotation, verse/chorus detection, semantic sections
+
 **Groove**:
 The main drum pattern of a structure section: a configurable subdivision grid
 over three drum pieces, drawn on the section as a memory aid for what the
@@ -93,14 +104,6 @@ per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
 The section preview renders a compact standard-style percussion chart.
 _Avoid_: beat, rhythm
-
-**Structural segmentation result**:
-The immutable offline evidence for a Library track's neutral chronological
-sections. It contains every `m = 2…10` hierarchy candidate from the baseline
-and all 36 perturbation runs, plus stability measurements and the accepted or
-fallback partition. It may seed a [[library-annotation-document]], but user
-edits never rewrite it.
-_Avoid_: annotation, verse/chorus detection, semantic sections
 
 **Drum piece**:
 One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`

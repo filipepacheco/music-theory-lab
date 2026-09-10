@@ -532,7 +532,10 @@ def test_build_metrics_shape() -> None:
 
 @pytest.mark.parametrize("output", [None, (), object()])
 def test_non_tensor_model_output_yields_typed_failure(output: object) -> None:
-    import torch
+    torch = pytest.importorskip(
+        "torch",
+        reason="requires the optional inference dependency set",
+    )
 
     with pytest.raises(ExpectedStageFailure) as captured:
         _run_inference(

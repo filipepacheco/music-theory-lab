@@ -1,0 +1,127 @@
+export interface LibraryAudioState {
+  ready: boolean;
+  playing: boolean;
+  currentSeconds: number;
+  duration: number;
+}
+
+export interface LibraryMediaElement {
+  currentTime: number;
+  duration: number;
+  preload: string;
+  src: string;
+  play(): Promise<void>;
+  pause(): void;
+  addEventListener(type: string, listener: () => void): void;
+  removeEventListener(type: string, listener: () => void): void;
+}
+
+export interface LibraryAudioSession {
+  play(): Promise<void>;
+  pause(): void;
+  seek(seconds: number): void;
+  dispose(): void;
+}
+
+export interface LibraryAnimationClock {
+  request(callback: () => void): number;
+  cancel(id: number): void;
+}
+
+function browserAnimationClock(): LibraryAnimationClock | null {
+  if (typeof requestAnimationFrame === 'undefined') return null;
+  return {
+    request: (callback) => requestAnimationFrame(callback),
+    cancel: (id) => cancelAnimationFrame(id),
+  };
+}
+
+export function createLibraryAudioSession(
+  media: LibraryMediaElement,
+  onStateChange: (state: LibraryAudioState) => void,
+  animationClock: LibraryAnimationClock | null = browserAnimationClock(),
+): LibraryAudioSession {
+  let disposed = false;
+  let animationFrame: number | null = null;
+  let state: LibraryAudioState = {
+    ready: false,
+    playing: false,
+    currentSeconds: 0,
+    duration: 0,
+  };
+
+  const update = (next: Partial<LibraryAudioState>) => {
+    if (disposed) return;
+    state = { ...state, ...next };
+    onStateChange(state);
+  };
+  const onLoaded = () =>
+    update({
+      ready: true,
+      duration: Number.isFinite(media.duration) ? media.duration : 0,
+    });
+  const onTime = () => update({ currentSeconds: media.currentTime });
+  const stopFrames = () => {
+    if (animationClock && animationFrame !== null) {
+      animationClock.cancel(animationFrame);
+      animationFrame = null;
+    }
+  };
+  const scheduleFrame = () => {
+    if (!animationClock || animationFrame !== null || !state.playing) return;
+    animationFrame = animationClock.request(() => {
+      animationFrame = null;
+      if (disposed || !state.playing) return;
+      onTime();
+      scheduleFrame();
+    });
+  };
+  const onPlay = () => {
+    update({ playing: true, currentSeconds: media.currentTime });
+    scheduleFrame();
+  };
+  const onPause = () => {
+    stopFrames();
+    update({ playing: false, currentSeconds: media.currentTime });
+  };
+  const onEnded = () => {
+    stopFrames();
+    update({ playing: false, currentSeconds: media.currentTime });
+  };
+  const listeners = [
+    ['loadedmetadata', onLoaded],
+    ['timeupdate', onTime],
+    ['seeked', onTime],
+    ['play', onPlay],
+    ['pause', onPause],
+    ['ended', onEnded],
+  ] as const;
+
+  for (const [type, listener] of listeners) {
+    media.addEventListener(type, listener);
+  }
+
+  return {
+    play: () => media.play(),
+    pause: () => media.pause(),
+    seek: (seconds) => {
+      const end =
+        Number.isFinite(media.duration) && media.duration > 0
+          ? media.duration
+          : seconds;
+      const clamped = Math.max(0, Math.min(seconds, end));
+      media.currentTime = clamped;
+      update({ currentSeconds: media.currentTime });
+    },
+    dispose: () => {
+      if (disposed) return;
+      stopFrames();
+      disposed = true;
+      media.pause();
+      for (const [type, listener] of listeners) {
+        media.removeEventListener(type, listener);
+      }
+      media.src = '';
+    },
+  };
+}

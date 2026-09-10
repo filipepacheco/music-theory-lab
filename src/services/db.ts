@@ -21,6 +21,7 @@ import { migrateStructureData, type LegacySection } from '@/domain/migrations';
 import type { LibraryAnnotationDocument } from '@/domain/libraryAnnotation';
 import {
   initializeLibraryAnnotationStorage,
+  listLibraryAnnotations,
   loadLibraryAnnotation,
   storeLibraryAnnotation,
 } from '@/services/libraryAnnotationStorage';
@@ -551,6 +552,10 @@ export function saveLibraryAnnotation(
   return persistDB();
 }
 
+export function getAllLibraryAnnotations(): LibraryAnnotationDocument[] {
+  return db ? listLibraryAnnotations(db) : [];
+}
+
 // ---------------------------------------------------------------------------
 // Single-record helpers (used by sync)
 // ---------------------------------------------------------------------------
@@ -692,4 +697,11 @@ export function upsertStructureLocal(r: CloudStructure): void {
     r.updated_at,
   ]);
   stmt.free();
+}
+
+export function upsertLibraryAnnotationLocal(
+  document: LibraryAnnotationDocument,
+): void {
+  if (!db) return;
+  storeLibraryAnnotation(db, document);
 }
