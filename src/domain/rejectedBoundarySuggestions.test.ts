@@ -4,18 +4,14 @@ import {
   rejectedBoundarySuggestions,
   type StructuralSuggestionAnalysis,
 } from '@/domain/rejectedBoundarySuggestions';
-import type { ChordChartBar } from '@/components/library/libraryData';
 
 function bar(
-  index: number,
   startSeconds: number,
   endSeconds: number,
-): ChordChartBar {
+): { startSeconds: number; endSeconds: number } {
   return {
-    index,
     startSeconds,
     endSeconds,
-    chords: [{ chord: 'C', romanNumeral: 'I', raw: null }],
   };
 }
 
@@ -41,12 +37,12 @@ function rejectedAnalysis(): StructuralSuggestionAnalysis {
 
 describe('rejected Library boundary suggestions', () => {
   const bars = [
-    bar(0, 0, 4),
-    bar(1, 4, 8),
-    bar(2, 8, 12),
-    bar(3, 12, 16),
-    bar(4, 16, 20),
-    bar(5, 20, 24),
+    bar(0, 4),
+    bar(4, 8),
+    bar(8, 12),
+    bar(12, 16),
+    bar(16, 20),
+    bar(20, 24),
   ];
   const beatTimes = Array.from({ length: 13 }, (_, index) => index * 2);
 
