@@ -71,6 +71,13 @@
   --color-bass-highlight: #34d399;
   --color-bass-root-highlight: #f59e0b;
 
+  /* Bass-line degrees over the bar's root (Biblioteca analysis). Text on
+     the card background; the root uses --color-text-primary. */
+  --color-degree-third: #60a5fa;
+  --color-degree-fifth: #34d399;
+  --color-degree-seventh: #c084fc;
+  --color-degree-tension: #fb7185;
+
   /* Piano key chrome */
   --color-key-black-border: #3a3a52;
 
@@ -137,6 +144,11 @@
   --color-string: #6b7280;
 
   --color-bg-section: #ffffff;
+
+  --color-degree-third: #1d4ed8;
+  --color-degree-fifth: #047857;
+  --color-degree-seventh: #7e22ce;
+  --color-degree-tension: #be123c;
 
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-card-hover:
