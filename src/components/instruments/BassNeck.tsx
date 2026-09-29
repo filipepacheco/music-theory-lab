@@ -10,6 +10,11 @@ import { libraryFretHighlightKind } from '@/domain/libraryChordSync';
 export interface BassNeckHighlight {
   pitchClasses: number[];
   rootPitchClass: number | null;
+  /**
+   * Exact spots to light (string 0 = low E). When present, only these frets
+   * highlight, in the root colour, instead of every fret of each pitch class.
+   */
+  positions?: { string: number; fret: number }[];
 }
 
 interface Props {
@@ -153,9 +158,15 @@ export default function BassNeck({ highlight }: Props = {}) {
                       )
                     : octave;
                 const isOctaveStart = fret > 0 && octave !== prevOctave;
-                const libraryHighlightKind = highlight
-                  ? libraryFretHighlightKind(noteIndex, highlight)
-                  : null;
+                const libraryHighlightKind = highlight?.positions
+                  ? highlight.positions.some(
+                      (p) => p.string === stringIdx && p.fret === fret,
+                    )
+                    ? 'root'
+                    : null
+                  : highlight
+                    ? libraryFretHighlightKind(noteIndex, highlight)
+                    : null;
                 const isHighlighted = highlight
                   ? libraryHighlightKind !== null
                   : bassHighlightPositions !== null
