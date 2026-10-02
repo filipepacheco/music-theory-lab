@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NOTE_NAMES_FLAT } from '@/constants/notes';
 import {
   analyzeBassChart,
   barChordSymbol,
@@ -47,7 +48,13 @@ describe('analyzeBassChart', () => {
         ]),
       ),
     );
-    expect(bars.map(barChordSymbol)).toEqual(['Dm', 'G7', 'Cmaj7', 'A7', 'D']);
+    expect(bars.map((bar) => barChordSymbol(bar))).toEqual([
+      'Dm',
+      'G7',
+      'Cmaj7',
+      'A7',
+      'D',
+    ]);
     expect(bars.map((b) => b.rootSource)).toEqual(Array(5).fill('downbeat'));
     // The A♭ is a half step into G on the next downbeat, not a b5 of D.
     expect(bars[0].notes.map((n) => n.role)).toEqual([
@@ -85,6 +92,13 @@ describe('analyzeBassChart', () => {
     expect(bar.evidence.chordType).toBeNull();
     expect(barChordSymbol(bar)).toBe('C');
     expect(describeEvidence(bar.evidence)).toBe('3ª maior · sem 5ª · sem 7ª');
+  });
+
+  it('keeps a repeated root a root even when it leads into the next bar', () => {
+    // B♭ for a whole bar, then A: the last B♭ is a half step above A.
+    const [bar] = analyzeBassChart(chart(2, walking([[46, 46, 46, 46], [A2]])));
+    expect(bar.notes.map((n) => n.role)).toEqual(Array(4).fill('chordTone'));
+    expect(bar.counts.root).toBe(4);
   });
 
   it('marks a step out and back as a neighbour note', () => {
@@ -176,6 +190,13 @@ describe('analyzeBassChart', () => {
     // A minor third alone could be minor or diminished.
     expect(onlyThird.evidence.third).toBe('minor');
     expect(onlyThird.evidence.chordType).toBeNull();
+  });
+
+  it('spells the chord symbol with the key’s note names', () => {
+    // B♭ major: B♭2 D3 F3 D3.
+    const [bar] = analyzeBassChart(chart(1, walking([[46, D3, F3, D3]])));
+    expect(barChordSymbol(bar)).toBe('A#');
+    expect(barChordSymbol(bar, NOTE_NAMES_FLAT)).toBe('Bb');
   });
 
   it('labels a tritone over a major third as #11, not a fifth', () => {

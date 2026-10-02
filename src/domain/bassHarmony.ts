@@ -5,6 +5,7 @@ import {
   type DegreeTemplate,
   type HarmonicFunction,
 } from '@/constants/harmonicFields';
+import { FLAT_KEYS, NOTE_NAMES, NOTE_NAMES_FLAT } from '@/constants/notes';
 import { SCALE_PATTERNS } from '@/constants/scales';
 import {
   readEvidence,
@@ -984,4 +985,32 @@ export function repeatingCycle<T>(
     }
   }
   return { cycle: items, repeats: 1 };
+}
+
+/**
+ * Note names for a key: flats for F, Bb, Eb, Ab, Db and Gb major and their
+ * relative minors (so D minor has Bb, not A#), sharps otherwise.
+ */
+export function keyNoteNames(key: MusicalKey): readonly string[] {
+  const relativeMajor = key.mode === 'major' ? key.tonic : mod12(key.tonic + 3);
+  return FLAT_KEYS.has(getPreferredRootName(relativeMajor))
+    ? NOTE_NAMES_FLAT
+    : NOTE_NAMES;
+}
+
+export interface FieldChord {
+  numeral: string;
+  /** e.g. `Dm7`, `Bbmaj7`. */
+  name: string;
+  func: HarmonicFunction;
+}
+
+/** The key's harmonic field (§2.2–2.3) as numerals and chord names. */
+export function fieldChords(key: MusicalKey): FieldChord[] {
+  const names = keyNoteNames(key);
+  return FIELDS[key.mode].map((degree) => ({
+    numeral: degree.romanNumeral,
+    name: `${names[mod12(key.tonic + degree.scaleInterval)]}${CHORD_TYPES[degree.chordType].symbol}`,
+    func: degree.harmonicFunction,
+  }));
 }

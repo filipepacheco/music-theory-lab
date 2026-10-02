@@ -315,6 +315,9 @@ function lineRole(
   ) {
     return 'anticipation';
   }
+  // The bar's own root is a chord tone wherever it falls, even when it also
+  // leads by step into the next bar (B♭ on beat 4 of a B♭ bar before A).
+  if (pc === ownRoot) return 'chordTone';
 
   // Aproximação cromática (§12.3): a half step into the next downbeat, or
   // from off the beat into a note on the beat.
@@ -550,14 +553,18 @@ export function degreeLabel(note: AnalyzedNote): string {
 
 /**
  * Chord symbol for the bar, e.g. `G7`, `Bm7(b5)`; the root name alone when
- * the bass does not settle the quality, or null without a root.
+ * the bass does not settle the quality, or null without a root. Spelled
+ * with `noteNames`, sharps unless the key calls for flats.
  */
-export function barChordSymbol(bar: BarAnalysis): string | null {
+export function barChordSymbol(
+  bar: BarAnalysis,
+  noteNames: readonly string[] = NOTE_NAMES,
+): string | null {
   if (bar.root === null) return null;
   const type = bar.evidence.chordType
     ? CHORD_TYPES[bar.evidence.chordType]
     : undefined;
-  return `${NOTE_NAMES[bar.root]}${type?.symbol ?? ''}`;
+  return `${noteNames[bar.root]}${type?.symbol ?? ''}`;
 }
 
 const THIRD_TEXT = {

@@ -34,6 +34,8 @@ interface Props {
   segment: HarmonicSegment | null;
   /** Chart note indexes to mark as avoid notes. */
   avoidNotes: ReadonlySet<number> | null;
+  /** Note names for chord symbols, spelled for the key in use. */
+  noteNames: readonly string[];
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -109,13 +111,14 @@ function BassTabBar({
   analysis,
   segment,
   avoidNotes,
+  noteNames,
 }: Props) {
   const width = PAD_X * 2 + bar.beatCount * BEAT_WIDTH;
   const isActive = playhead !== null;
   const degrees = new Map<number, AnalyzedNote>(
     analysis?.notes.map((n) => [n.index, n]),
   );
-  const symbol = analysis ? barChordSymbol(analysis) : null;
+  const symbol = analysis ? barChordSymbol(analysis, noteNames) : null;
   const svgHeight = analysis ? HEIGHT + DEGREE_LANE : HEIGHT;
   const degreeOf = (index: number): AnalyzedNote | null => {
     const degree = degrees.get(index);
@@ -167,7 +170,16 @@ function BassTabBar({
           <span className="text-text-primary">
             {symbol}
             {symbol && !analysis.evidence.chordType && (
-              <span className="text-text-muted">?</span>
+              <span
+                className="text-text-muted"
+                title={
+                  analysis.evidence.third === null
+                    ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
+                    : 'As notas tocadas permitem mais de um acorde'
+                }
+              >
+                ?
+              </span>
             )}
           </span>
         </span>

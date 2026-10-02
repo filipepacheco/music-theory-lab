@@ -9,7 +9,9 @@ import {
 import {
   analyzeHarmony,
   describeKeyEvidence,
+  fieldChords,
   keyLabel,
+  keyNoteNames,
   repeatingCycle,
   suggestKeys,
   type HarmonyAnalysis,
@@ -326,5 +328,25 @@ describe('repeatingCycle', () => {
       repeats: 1,
     });
     expect(repeatingCycle([], same)).toEqual({ cycle: [], repeats: 1 });
+  });
+});
+
+describe('keyNoteNames and fieldChords', () => {
+  it('spells minor keys with their relative major’s accidentals', () => {
+    expect(keyNoteNames(D_MINOR)[10]).toBe('Bb');
+    expect(keyNoteNames({ tonic: 4, mode: 'minor' })[6]).toBe('F#');
+    expect(keyNoteNames(C_MAJOR)[10]).toBe('A#');
+  });
+
+  it('lists the harmonic field of D minor', () => {
+    expect(fieldChords(D_MINOR).map((c) => `${c.numeral} ${c.name}`)).toEqual([
+      'i Dm7',
+      'iiø Em7(b5)',
+      'III Fmaj7',
+      'iv Gm7',
+      'v Am7',
+      'VI Bbmaj7',
+      'VII C7',
+    ]);
   });
 });
