@@ -27,14 +27,15 @@ interface Props {
   playing: boolean;
   canPlay: boolean;
   onTogglePlay: () => void;
+  /** Extra header buttons, e.g. the circle of fifths toggle. */
+  actions: ReactNode;
   neck: ReactNode;
-  circle: ReactNode;
 }
 
 /**
- * A panel fixed to the bottom of the screen, above the mobile navigation,
- * with the fretboard and the circle of fifths: side by side on wide
- * screens, as tabs on narrow ones. It can be collapsed to its header.
+ * The fretboard panel, fixed to the bottom of the screen above the mobile
+ * navigation, with play/pause and what is sounding now. It can be
+ * collapsed to its header.
  */
 export default function PlaybackDock({
   dockRef,
@@ -44,11 +45,10 @@ export default function PlaybackDock({
   playing,
   canPlay,
   onTogglePlay,
+  actions,
   neck,
-  circle,
 }: Props) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  const [tab, setTab] = useState<'neck' | 'circle'>('neck');
 
   useEffect(() => {
     const element = dockRef.current;
@@ -63,18 +63,11 @@ export default function PlaybackDock({
     };
   }, [dockRef, onHeightChange]);
 
-  const tabClass = (active: boolean) =>
-    `px-2 py-0.5 rounded-control text-[11px] cursor-pointer ${
-      active
-        ? 'bg-accent/15 text-accent'
-        : 'text-text-muted hover:text-text-secondary'
-    }`;
-
   return (
     <div
       ref={dockRef}
       role="region"
-      aria-label="Braço do baixo e ciclo de quintas"
+      aria-label="Braço do baixo"
       className="fixed inset-x-0 bottom-20 sm:bottom-0 z-20 border-t border-border-default bg-bg-secondary/95 backdrop-blur-sm shadow-[0_-4px_16px_rgba(0,0,0,0.25)]"
     >
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-6 py-2 flex flex-col gap-2">
@@ -103,28 +96,7 @@ export default function PlaybackDock({
             </div>
             <div className="text-[11px] text-text-muted truncate">{status}</div>
           </div>
-          {!collapsed && (
-            <div className="flex gap-1 lg:hidden" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'neck'}
-                onClick={() => setTab('neck')}
-                className={tabClass(tab === 'neck')}
-              >
-                Braço
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'circle'}
-                onClick={() => setTab('circle')}
-                className={tabClass(tab === 'circle')}
-              >
-                Ciclo
-              </button>
-            </div>
-          )}
+          {actions}
           <button
             type="button"
             onClick={() => {
@@ -134,23 +106,10 @@ export default function PlaybackDock({
             aria-expanded={!collapsed}
             className="shrink-0 px-2 py-1 rounded-control border border-border-default text-[11px] text-text-muted hover:text-text-primary cursor-pointer"
           >
-            {collapsed ? 'Mostrar braço' : 'Recolher'}
+            {collapsed ? 'Mostrar braço' : 'Recolher braço'}
           </button>
         </div>
-        {!collapsed && (
-          <div className="flex items-start gap-4">
-            <div
-              className={`min-w-0 flex-1 ${tab === 'circle' ? 'hidden lg:block' : ''}`}
-            >
-              {neck}
-            </div>
-            <div
-              className={`shrink-0 mx-auto lg:mx-0 ${tab === 'neck' ? 'hidden lg:block' : ''}`}
-            >
-              {circle}
-            </div>
-          </div>
-        )}
+        {!collapsed && neck}
       </div>
     </div>
   );

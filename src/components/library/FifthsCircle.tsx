@@ -14,14 +14,22 @@ interface Props {
   previous: CircleCell | null;
   /** pt-BR description of the last root move, shown under the circle. */
   caption: string | null;
+  /** Shown small in the middle, e.g. `D menor`. */
+  centerLabel: string | null;
+  /** Shown large in the middle: the current chord, e.g. `Am`. */
+  centerChord: string | null;
+  /** Rendered width and height in pixels. */
+  size: number;
 }
 
-const SIZE = 200;
-const CENTER = SIZE / 2;
+/** Drawing units; the SVG scales to `size`. */
+const VIEW = 300;
+const CENTER = VIEW / 2;
 const RINGS = {
-  major: { outer: 97, inner: 67 },
-  minor: { outer: 67, inner: 39 },
+  major: { outer: 148, inner: 102 },
+  minor: { outer: 102, inner: 62 },
 } as const;
+const FONT = { major: 15, minor: 12, numeral: 10 } as const;
 /** Dark text that stays readable on the amber highlight in both themes. */
 const ON_HIGHLIGHT = '#1a1f2e';
 
@@ -54,31 +62,60 @@ function cellCentre({ ring, position }: CircleCell): [number, number] {
   return point((outer + inner) / 2, cellAngle(position));
 }
 
+/**
+ * The arrow between two cell centres, pulled in at both ends so it does
+ * not cover the chord names it connects.
+ */
+function arrowBetween(
+  from: CircleCell,
+  to: CircleCell,
+): [[number, number], [number, number]] {
+  const [x1, y1] = cellCentre(from);
+  const [x2, y2] = cellCentre(to);
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  const trim = Math.min(18, length / 3);
+  const ux = (x2 - x1) / length;
+  const uy = (y2 - y1) / length;
+  return [
+    [x1 + ux * trim, y1 + uy * trim],
+    [x2 - ux * trim, y2 - uy * trim],
+  ];
+}
+
 const sameCell = (a: CircleCell | null, b: CircleCell | null) =>
   a !== null && b !== null && a.ring === b.ring && a.position === b.position;
 
 /**
  * The circle of fifths with the key's harmonic field shaded by function,
- * the current chord in amber and an arrow from the chord before it.
+ * the current chord in amber, an arrow from the chord before it, and the
+ * key and current chord written in the middle.
  */
-function FifthsCircle({ musicalKey, current, previous, caption }: Props) {
+function FifthsCircle({
+  musicalKey,
+  current,
+  previous,
+  caption,
+  centerLabel,
+  centerChord,
+  size,
+}: Props) {
   const degrees = musicalKey ? keyDegreesOnCircle(musicalKey) : [];
   const cells: CircleCell[] = (['major', 'minor'] as const).flatMap((ring) =>
     Array.from({ length: 12 }, (_, position) => ({ ring, position })),
   );
   const arrow =
     current && previous && !sameCell(current, previous)
-      ? [cellCentre(previous), cellCentre(current)]
+      ? arrowBetween(previous, current)
       : null;
 
   return (
-    <figure className="flex flex-col items-center gap-1">
+    <figure className="flex flex-col items-center gap-2">
       <svg
-        width={SIZE}
-        height={SIZE}
-        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        width={size}
+        height={size}
+        viewBox={`0 0 ${VIEW} ${VIEW}`}
         role="img"
-        aria-label="Ciclo de quintas"
+        aria-label={`Ciclo de quintas${centerChord ? `, acorde atual ${centerChord}` : ''}`}
       >
         <defs>
           <marker
@@ -111,7 +148,7 @@ function FifthsCircle({ musicalKey, current, previous, caption }: Props) {
             ? ON_HIGHLIGHT
             : degree
               ? 'var(--color-text-primary)'
-              : 'var(--color-text-muted)';
+              : 'var(--color-text-secondary)';
           return (
             <g key={`${cell.ring}-${cell.position}`}>
               <path
@@ -122,10 +159,10 @@ function FifthsCircle({ musicalKey, current, previous, caption }: Props) {
               />
               <text
                 x={x}
-                y={degree ? y - 4 : y}
+                y={degree ? y - 6 : y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={cell.ring === 'major' ? 10 : 8}
+                fontSize={FONT[cell.ring]}
                 fontWeight={isCurrent || degree ? 700 : 500}
                 className="font-heading"
                 fill={textColor}
@@ -135,10 +172,10 @@ function FifthsCircle({ musicalKey, current, previous, caption }: Props) {
               {degree && (
                 <text
                   x={x}
-                  y={y + 6}
+                  y={y + 9}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  fontSize={7}
+                  fontSize={FONT.numeral}
                   fontWeight={700}
                   className="font-heading"
                   fill={isCurrent ? ON_HIGHLIGHT : FUNCTION_COLORS[degree.func]}
@@ -149,6 +186,33 @@ function FifthsCircle({ musicalKey, current, previous, caption }: Props) {
             </g>
           );
         })}
+        {centerLabel && (
+          <text
+            x={CENTER}
+            y={CENTER - 16}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={11}
+            className="font-heading"
+            fill="var(--color-text-muted)"
+          >
+            {centerLabel}
+          </text>
+        )}
+        {centerChord && (
+          <text
+            x={CENTER}
+            y={CENTER + 8}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={24}
+            fontWeight={700}
+            className="font-heading"
+            fill="var(--color-text-primary)"
+          >
+            {centerChord}
+          </text>
+        )}
         {arrow && (
           <line
             x1={arrow[0][0]}
@@ -156,13 +220,16 @@ function FifthsCircle({ musicalKey, current, previous, caption }: Props) {
             x2={arrow[1][0]}
             y2={arrow[1][1]}
             stroke="var(--color-text-primary)"
-            strokeWidth={1.5}
-            strokeOpacity={0.7}
+            strokeWidth={2}
+            strokeOpacity={0.75}
             markerEnd="url(#fifths-arrow)"
           />
         )}
       </svg>
-      <figcaption className="text-center text-[10px] leading-snug text-text-muted min-h-[2lh] max-w-[200px]">
+      <figcaption
+        className="text-center text-xs leading-snug text-text-secondary min-h-[2lh]"
+        style={{ maxWidth: size }}
+      >
         {caption ??
           'Cada passo no sentido horário sobe uma quinta; no anti-horário, uma quarta.'}
       </figcaption>
