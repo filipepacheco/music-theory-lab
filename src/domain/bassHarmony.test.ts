@@ -1,0 +1,285 @@
+import { describe, expect, it } from 'vitest';
+import { analyzeBassChart } from '@/domain/bassAnalysis';
+import type { BassChartSection } from '@/domain/bassChart';
+import {
+  fixtureChart,
+  walking,
+  type NoteSpec,
+} from '@/domain/bassChartFixture';
+import {
+  analyzeHarmony,
+  describeKeyEvidence,
+  keyLabel,
+  repeatingCycle,
+  suggestKeys,
+  type HarmonyAnalysis,
+  type MusicalKey,
+} from '@/domain/bassHarmony';
+
+// MIDI pitches in the bass register (C2 = 36).
+const D2 = 38;
+const E2 = 40;
+const F2 = 41;
+const G2 = 43;
+const GS2 = 44;
+const A2 = 45;
+const BB2 = 46;
+const B2 = 47;
+const C3 = 48;
+const CS3 = 49;
+const D3 = 50;
+const EB3 = 51;
+const E3 = 52;
+const F3 = 53;
+const G3 = 55;
+const AB3 = 56;
+const BB3 = 58;
+const B3 = 59;
+
+/** Root, third, fifth and seventh of common chords, as walking bars. */
+const Dm7 = [D2, F2, A2, C3];
+const G7 = [G2, B2, D3, F3];
+const Cmaj7 = [C3, E3, G3, B3];
+const C = [C3, E3, G3, E3];
+const A7 = [A2, CS3, E3, G3];
+const Am = [A2, C3, E3, C3];
+const F = [F2, A2, C3, A2];
+const G = [G2, B2, D3, B2];
+const E7 = [E2, GS2, B2, D3];
+const Bb = [BB2, D3, F3, D3];
+
+const C_MAJOR: MusicalKey = { tonic: 0, mode: 'major' };
+const A_MINOR: MusicalKey = { tonic: 9, mode: 'minor' };
+
+function analyze(
+  barNotes: number[][],
+  key: MusicalKey,
+  sections?: BassChartSection[],
+  extra: NoteSpec[] = [],
+): HarmonyAnalysis {
+  const chart = fixtureChart(
+    barNotes.length,
+    [...walking(barNotes), ...extra],
+    sections,
+  );
+  return analyzeHarmony(chart, analyzeBassChart(chart), key);
+}
+
+function numerals(analysis: HarmonyAnalysis): string[] {
+  return analysis.segments.map((s) => s.harmony.numeral);
+}
+
+function eventLabels(analysis: HarmonyAnalysis): string[] {
+  return analysis.events.map((e) => e.label);
+}
+
+describe('suggestKeys', () => {
+  it('prefers the key the bass resolves to over the relative minor', () => {
+    const chart = fixtureChart(
+      8,
+      walking([Dm7, G7, Cmaj7, A7, Dm7, G7, Cmaj7, C]),
+    );
+    const [best] = suggestKeys(chart, analyzeBassChart(chart));
+    expect(best).toMatchObject({ tonic: 0, mode: 'major' });
+    expect(best.evidence.dominantArrivals).toBe(2);
+    expect(best.evidence.endsOnTonic).toBe(true);
+    expect(describeKeyEvidence(best)).toBe(
+      '38% dos compassos em C · 100% das seções terminam em C · ' +
+        '2 chegadas V→I · última nota em C · 97% das notas na escala',
+    );
+  });
+
+  it('reads a minor key from the third over the tonic', () => {
+    const chart = fixtureChart(5, walking([Am, [G2, B2, D3, B2], F, E7, Am]));
+    const [best] = suggestKeys(chart, analyzeBassChart(chart));
+    expect(best).toMatchObject({ tonic: 9, mode: 'minor' });
+  });
+
+  it('does not take a rarely heard final note as the tonic', () => {
+    // Ten bars around C, then one stray E (9% of bars) to end on.
+    const chart = fixtureChart(
+      11,
+      walking([C, Dm7, G7, C, F, G7, C, Am, Dm7, G7, [E2]]),
+    );
+    const suggestions = suggestKeys(chart, analyzeBassChart(chart));
+    expect(suggestions[0]).toMatchObject({ tonic: 0, mode: 'major' });
+    expect(suggestions.map((s) => s.tonic)).not.toContain(4);
+  });
+
+  it('suggests nothing for a chart without pitched notes', () => {
+    const chart = fixtureChart(1, [
+      { bar: 0, beat: 0, string: 0, fret: 3, techniques: ['mute'] },
+    ]);
+    expect(suggestKeys(chart, analyzeBassChart(chart))).toEqual([]);
+  });
+});
+
+describe('analyzeHarmony', () => {
+  it('reads degrees, functions and a ii–V–I with a secondary dominant', () => {
+    const analysis = analyze([Dm7, G7, Cmaj7, A7, Dm7, G7, Cmaj7, C], C_MAJOR);
+    expect(numerals(analysis)).toEqual([
+      'ii',
+      'V',
+      'I',
+      'V7/ii',
+      'ii',
+      'V',
+      'I',
+    ]);
+    expect(analysis.segments.map((s) => s.harmony.func)).toEqual([
+      'SD',
+      'D',
+      'T',
+      'D',
+      'SD',
+      'D',
+      'T',
+    ]);
+    expect(analysis.segments[3].harmony.detail).toBe(
+      'Dominante secundária de ii',
+    );
+    // The last two bars hold one chord.
+    expect(analysis.segments[6]).toMatchObject({ startBar: 6, endBar: 8 });
+    expect(analysis.barSegments).toEqual([0, 1, 2, 3, 4, 5, 6, 6]);
+    expect(eventLabels(analysis)).toEqual([
+      'ii–V–I',
+      'Turnaround de jazz (I–vi–ii–V)',
+      'ii–V–I',
+    ]);
+  });
+
+  it('keeps the field quality when the bass plays no third', () => {
+    const analysis = analyze([[A2, E3, A2, E3]], C_MAJOR);
+    expect(analysis.segments[0].harmony).toMatchObject({
+      numeral: 'vi',
+      kind: 'diatonic',
+      confirmed: false,
+    });
+  });
+
+  it('names borrowed chords, passing diminished chords and SubV', () => {
+    const analysis = analyze(
+      [C, Bb, F, C, [CS3, E3, G3, BB3], Dm7, G7, C, [CS3, F3, AB3, B3], C],
+      C_MAJOR,
+    );
+    expect(numerals(analysis)).toEqual([
+      'I',
+      'bVII',
+      'IV',
+      'I',
+      '#i°7',
+      'ii',
+      'V',
+      'I',
+      'SubV7',
+      'I',
+    ]);
+    expect(analysis.segments[1].harmony).toMatchObject({
+      kind: 'borrowed',
+      func: 'SD',
+      detail: 'Empréstimo modal (menor natural / mixolídio) · Subdominante',
+    });
+    expect(analysis.segments[4].harmony).toMatchObject({
+      kind: 'passingDiminished',
+      func: 'D',
+      detail: 'Diminuto de passagem ascendente',
+    });
+    expect(analysis.segments[8].harmony.kind).toBe('subV');
+    expect(eventLabels(analysis)).toEqual([
+      'Rock modal (I–bVII–IV)',
+      'Cadência plagal (IV→I)',
+      'ii–V–I',
+    ]);
+  });
+
+  it('reads the minor iv borrowed in a major key', () => {
+    const analysis = analyze([C, [F2, AB3, C3, AB3], C], C_MAJOR);
+    expect(numerals(analysis)).toEqual(['I', 'iv', 'I']);
+  });
+
+  it('takes V7 from the harmonic minor and finds the Andalusian cadence', () => {
+    const analysis = analyze([Am, [G2, B2, D3, B2], F, E7, Am], A_MINOR);
+    expect(numerals(analysis)).toEqual(['i', 'VII', 'VI', 'V7', 'i']);
+    expect(analysis.segments[3].harmony.detail).toBe(
+      'Dominante · V da menor harmônica',
+    );
+    expect(eventLabels(analysis)).toEqual([
+      'Cadência andaluza (i–bVII–bVI–V)',
+      'Baixo b6→5: cadência frígia (iv6→V) ou sexta aumentada',
+      'Cadência autêntica (V7→i)',
+    ]);
+  });
+
+  it('finds deceptive and half cadences', () => {
+    const deceptive = analyze([C, G7, Am], C_MAJOR);
+    expect(eventLabels(deceptive)).toEqual(['Cadência deceptiva (V→vi)']);
+
+    const half = analyze([C, G, F, C], C_MAJOR, [
+      { name: 'verse', parts: 1, startBar: 0, endBar: 2 },
+      { name: 'chorus', parts: 1, startBar: 2, endBar: 4 },
+    ]);
+    expect(eventLabels(half)).toEqual([
+      'Semicadência (→V)',
+      'Cadência plagal (IV→I)',
+    ]);
+  });
+
+  it('counts a repeated progression once', () => {
+    const analysis = analyze([C, G, Am, F, C, G, Am, F], C_MAJOR);
+    expect(eventLabels(analysis)).toEqual(['Pop/Punk (I–V–vi–IV) ×2']);
+  });
+
+  it('recognises a 12-bar blues', () => {
+    const C7 = [C3, E3, G3, BB3];
+    const F7 = [F2, A2, C3, EB3];
+    const analysis = analyze(
+      [C7, C7, C7, C7, F7, F7, C7, C7, G7, F7, C7, G7],
+      C_MAJOR,
+    );
+    expect(analysis.events.map((e) => e.kind)).toContain('blues');
+    const blues = analysis.events.find((e) => e.kind === 'blues');
+    expect(blues).toMatchObject({ startBar: 0, endBar: 12 });
+    // I7 resolving to IV reads as its secondary dominant (§6.2 rule 2).
+    expect(numerals(analysis)[0]).toBe('V7/IV');
+  });
+
+  it('flags prominent avoid notes, and the 13 of ii only before V', () => {
+    // F on beat 3 over C: the 11, a b9 above the major third.
+    const avoidOnI = analyze([[C3, E3, F3, G3], Am], C_MAJOR);
+    expect([...avoidOnI.avoidNotes]).toEqual([2]);
+
+    // B on beat 3 over Dm: the 13 is avoided in a ii–V only.
+    const iiV = analyze([[D2, F2, B2, A2], G7], C_MAJOR);
+    expect([...iiV.avoidNotes]).toEqual([2]);
+    const iiAlone = analyze([[D2, F2, B2, A2], C], C_MAJOR);
+    expect(iiAlone.avoidNotes.size).toBe(0);
+  });
+});
+
+describe('keyLabel', () => {
+  it('names keys with the conventional flat spellings', () => {
+    expect(keyLabel({ tonic: 10, mode: 'major' })).toBe('Bb maior');
+    expect(keyLabel({ tonic: 9, mode: 'minor' })).toBe('A menor');
+  });
+});
+
+describe('repeatingCycle', () => {
+  const same = (a: string, b: string) => a === b;
+  it('finds the shortest exact repetition', () => {
+    expect(
+      repeatingCycle(['I', 'V', 'vi', 'IV', 'I', 'V', 'vi', 'IV'], same),
+    ).toEqual({ cycle: ['I', 'V', 'vi', 'IV'], repeats: 2 });
+    expect(repeatingCycle(['I', 'I', 'I'], same)).toEqual({
+      cycle: ['I'],
+      repeats: 3,
+    });
+  });
+
+  it('keeps a sequence that does not repeat whole', () => {
+    expect(repeatingCycle(['I', 'V', 'I'], same)).toEqual({
+      cycle: ['I', 'V', 'I'],
+      repeats: 1,
+    });
+    expect(repeatingCycle([], same)).toEqual({ cycle: [], repeats: 1 });
+  });
+});

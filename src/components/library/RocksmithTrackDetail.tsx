@@ -9,6 +9,7 @@ import {
 import BassNeck from '@/components/instruments/BassNeck';
 import BassTabBar, {
   DEGREE_COLORS,
+  FUNCTION_COLORS,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
@@ -40,6 +41,17 @@ import {
   type BassChartSectionBlock,
 } from '@/domain/bassChart';
 import {
+  analyzeHarmony,
+  describeKeyEvidence,
+  keyLabel,
+  repeatingCycle,
+  suggestKeys,
+  type HarmonicEvent,
+  type HarmonicSegment,
+  type KeySuggestion,
+  type MusicalKey,
+} from '@/domain/bassHarmony';
+import {
   BASS_MIX_MODES,
   bassCrossoverHz,
   bassMixLabel,
@@ -55,6 +67,19 @@ interface Props {
 
 const STRING_NAMES = ['E', 'A', 'D', 'G'];
 const NO_NOTES: readonly number[] = [];
+
+const ALL_KEYS: MusicalKey[] = (['major', 'minor'] as const).flatMap((mode) =>
+  Array.from({ length: 12 }, (_, tonic) => ({ tonic, mode })),
+);
+
+function keyValue(key: MusicalKey): string {
+  return `${key.tonic}-${key.mode}`;
+}
+
+interface SectionHarmony {
+  segments: HarmonicSegment[];
+  events: HarmonicEvent[];
+}
 
 const CATEGORY_LABELS: Record<DegreeCategory, string> = {
   root: 'R',
@@ -90,6 +115,29 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         summarizeBars(analysis, block.section.startBar, block.section.endBar),
       ),
     [analysis, blocks],
+  );
+  const keySuggestions = useMemo(
+    () => suggestKeys(chart, analysis),
+    [chart, analysis],
+  );
+  const [chosenKey, setChosenKey] = useState<MusicalKey | null>(null);
+  const musicalKey = chosenKey ?? keySuggestions[0] ?? null;
+  const harmony = useMemo(
+    () => (musicalKey ? analyzeHarmony(chart, analysis, musicalKey) : null),
+    [chart, analysis, musicalKey],
+  );
+  const sectionHarmonies = useMemo(
+    () =>
+      blocks.map(({ section }): SectionHarmony => {
+        const inSection = (bar: number) =>
+          bar >= section.startBar && bar < section.endBar;
+        return {
+          segments:
+            harmony?.segments.filter((s) => inSection(s.startBar)) ?? [],
+          events: harmony?.events.filter((e) => inSection(e.startBar)) ?? [],
+        };
+      }),
+    [blocks, harmony],
   );
 
   const clock =
@@ -251,6 +299,13 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           </div>
         </div>
         {showDegrees && <DegreeLegend />}
+        {showDegrees && musicalKey && (
+          <KeyPicker
+            value={musicalKey}
+            suggestions={keySuggestions}
+            onChange={setChosenKey}
+          />
+        )}
         <div ref={chartRef} className="flex flex-col gap-3">
           {blocks.map((block) => (
             <SectionBlock
@@ -259,6 +314,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
               block={block}
               isActive={block.index === activeSection}
               summary={showDegrees ? summaries[block.index] : null}
+              harmony={showDegrees ? sectionHarmonies[block.index] : null}
               renderBar={(barIndex) => (
                 <BassTabBar
                   key={barIndex}
@@ -269,6 +325,16 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
                   onSeek={seek}
                   analysis={
                     showDegrees ? (analysis[barIndex] as BarAnalysis) : null
+                  }
+                  segment={
+                    showDegrees && harmony
+                      ? (harmony.segments[
+                          harmony.barSegments[barIndex] as number
+                        ] ?? null)
+                      : null
+                  }
+                  avoidNotes={
+                    showDegrees ? (harmony?.avoidNotes ?? null) : null
                   }
                 />
               )}
@@ -295,6 +361,17 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
             compasso para ver a 3ª, 5ª e 7ª encontradas.
           </p>
         )}
+        {showDegrees && (
+          <p className="text-[11px] text-text-muted">
+            O tom é sugerido por onde o baixo repousa: compassos na tônica, como
+            as seções começam e terminam e chegadas V→I. Uma raiz do campo
+            harmônico mantém a qualidade do campo, a menos que o baixo toque uma
+            3ª, 5ª ou 7ª diferente; só então o acorde é lido como dominante
+            secundária, SubV, diminuto ou empréstimo modal. Notas sublinhadas
+            são notas evitadas (b9 sobre uma nota do acorde) em posição de
+            destaque.
+          </p>
+        )}
       </div>
     </section>
   );
@@ -305,6 +382,7 @@ function SectionBlock({
   block,
   isActive,
   summary,
+  harmony,
   renderBar,
   onSeek,
 }: {
@@ -312,6 +390,7 @@ function SectionBlock({
   block: BassChartSectionBlock;
   isActive: boolean;
   summary: AnalysisSummary | null;
+  harmony: SectionHarmony | null;
   renderBar: (barIndex: number) => ReactNode;
   onSeek: ((seconds: number) => void) | null;
 }) {
@@ -342,6 +421,7 @@ function SectionBlock({
           {barCount === 1 ? 'compasso' : 'compassos'}
         </span>
       </div>
+      {harmony && <SectionProgression harmony={harmony} />}
       {summary && <SectionSummary summary={summary} />}
       <div className="flex flex-wrap gap-1">
         {block.items.map((item) =>
@@ -405,6 +485,107 @@ function SectionSummary({ summary }: { summary: AnalysisSummary }) {
   );
 }
 
+/** The section's chords as numerals, a repeated cycle shown once ×n. */
+function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
+  // A rest between two bars of one chord splits it; show it once.
+  const chords = harmony.segments.filter(
+    (segment, i) =>
+      segment.harmony.numeral !== harmony.segments[i - 1]?.harmony.numeral,
+  );
+  if (chords.length === 0) return null;
+  const { cycle, repeats } = repeatingCycle(
+    chords,
+    (a, b) => a.harmony.numeral === b.harmony.numeral,
+  );
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="flex flex-wrap items-baseline gap-x-1 font-heading text-[11px] leading-snug">
+        {repeats > 1 && <span className="text-text-muted">(</span>}
+        {cycle.map((segment, i) => (
+          <span key={segment.startBar} className="flex items-baseline gap-1">
+            {i > 0 && <span className="text-text-muted">–</span>}
+            <span
+              title={segment.harmony.detail}
+              className="font-bold"
+              style={{
+                color: segment.harmony.func
+                  ? FUNCTION_COLORS[segment.harmony.func]
+                  : 'var(--color-text-secondary)',
+              }}
+            >
+              {segment.harmony.numeral}
+            </span>
+          </span>
+        ))}
+        {repeats > 1 && <span className="text-text-muted">) ×{repeats}</span>}
+      </p>
+      {harmony.events.length > 0 && (
+        <p className="flex flex-wrap gap-1">
+          {harmony.events.map((event) => (
+            <span
+              key={`${event.kind}-${event.startBar}`}
+              className="rounded-control border border-border-default bg-bg-card px-1.5 py-0.5 text-[10px] text-text-secondary"
+            >
+              {event.label}
+              <span className="text-text-muted tabular-nums">
+                {' '}
+                · c. {event.startBar + 1}–{event.endBar}
+              </span>
+            </span>
+          ))}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function KeyPicker({
+  value,
+  suggestions,
+  onChange,
+}: {
+  value: MusicalKey;
+  suggestions: KeySuggestion[];
+  onChange: (key: MusicalKey) => void;
+}) {
+  const suggested = new Set(suggestions.map(keyValue));
+  const others = ALL_KEYS.filter((key) => !suggested.has(keyValue(key)));
+  const current = suggestions.find((s) => keyValue(s) === keyValue(value));
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted">
+      <label className="flex items-center gap-1.5">
+        Tom
+        <select
+          value={keyValue(value)}
+          onChange={(e) => {
+            const key = ALL_KEYS.find((k) => keyValue(k) === e.target.value);
+            if (key) onChange(key);
+          }}
+          className="rounded-control border border-border-default bg-bg-card px-2 py-1 font-heading text-xs text-text-primary cursor-pointer"
+        >
+          <optgroup label="Sugeridos pelo baixo">
+            {suggestions.map((key) => (
+              <option key={keyValue(key)} value={keyValue(key)}>
+                {keyLabel(key)}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Outros tons">
+            {others.map((key) => (
+              <option key={keyValue(key)} value={keyValue(key)}>
+                {keyLabel(key)}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+      </label>
+      <span>
+        {current ? describeKeyEvidence(current) : 'Tom escolhido manualmente'}
+      </span>
+    </div>
+  );
+}
+
 function DegreeLegend() {
   return (
     <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-heading text-[10px] text-text-muted">
@@ -418,6 +599,12 @@ function DegreeLegend() {
       <span style={{ color: DEGREE_COLORS.ornament }}>
         ornamentos (passagem, bordadura, aproximação, antecipação)
       </span>
+      <span>
+        funções: <span style={{ color: FUNCTION_COLORS.T }}>T tônica</span>{' '}
+        <span style={{ color: FUNCTION_COLORS.SD }}>SD subdominante</span>{' '}
+        <span style={{ color: FUNCTION_COLORS.D }}>D dominante</span>
+      </span>
+      <span className="underline">nota evitada</span>
     </p>
   );
 }

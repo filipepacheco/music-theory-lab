@@ -8,6 +8,8 @@ import {
   type DegreeCategory,
 } from '@/domain/bassAnalysis';
 import type { BassChartBar, BassChartNote } from '@/domain/bassChart';
+import type { HarmonicSegment } from '@/domain/bassHarmony';
+import type { HarmonicFunction } from '@/constants/harmonicFields';
 
 export interface IndexedNote {
   note: BassChartNote;
@@ -25,7 +27,17 @@ interface Props {
   onSeek: ((seconds: number) => void) | null;
   /** When set, notes show their degree over the bar's root, not the fret. */
   analysis: BarAnalysis | null;
+  /** The chord this bar belongs to, read in the chosen key. */
+  segment: HarmonicSegment | null;
+  /** Chart note indexes to mark as avoid notes. */
+  avoidNotes: ReadonlySet<number> | null;
 }
+
+export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
+  T: 'var(--color-tonic-text)',
+  SD: 'var(--color-subdominant-text)',
+  D: 'var(--color-dominant-text)',
+};
 
 export const DEGREE_COLORS: Record<DegreeCategory, string> = {
   root: 'var(--color-text-primary)',
@@ -42,11 +54,20 @@ const ROOT_SOURCE_NOTES = {
   estimated: 'sem nota no tempo 1: raiz estimada',
 } as const;
 
-function barTitle(bar: BassChartBar, analysis: BarAnalysis | null): string {
+function barTitle(
+  bar: BassChartBar,
+  analysis: BarAnalysis | null,
+  segment: HarmonicSegment | null,
+): string {
   const base = `Compasso ${bar.index + 1} · ${bar.beatCount}/4`;
   if (!analysis?.rootSource) return base;
+  const harmony = segment?.harmony;
   return [
     base,
+    harmony ? `${harmony.numeral}: ${harmony.detail}` : '',
+    harmony && !harmony.confirmed && harmony.kind === 'diatonic'
+      ? 'qualidade suposta pelo campo harmônico'
+      : '',
     describeEvidence(analysis.evidence),
     ROOT_SOURCE_NOTES[analysis.rootSource],
   ]
@@ -80,6 +101,8 @@ function BassTabBar({
   playhead,
   onSeek,
   analysis,
+  segment,
+  avoidNotes,
 }: Props) {
   const width = PAD_X * 2 + bar.beatCount * BEAT_WIDTH;
   const isActive = playhead !== null;
@@ -96,7 +119,7 @@ function BassTabBar({
       type="button"
       onClick={onSeek ? () => onSeek(bar.startTime) : undefined}
       disabled={onSeek === null}
-      title={barTitle(bar, analysis)}
+      title={barTitle(bar, analysis, segment)}
       data-bar={bar.index}
       className={`relative shrink-0 rounded-button border text-left transition-colors ${
         isActive
@@ -108,11 +131,23 @@ function BassTabBar({
         {bar.index + 1}
       </span>
       {analysis && (
-        <span className="block h-3 pr-1 pt-0.5 text-right font-heading text-[10px] leading-none text-text-primary">
-          {symbol}
-          {symbol && !analysis.evidence.chordType && (
-            <span className="text-text-muted">?</span>
-          )}
+        <span className="flex h-3 items-start justify-between gap-1 pl-5 pr-1 pt-0.5 font-heading text-[10px] leading-none">
+          <span
+            className="font-bold"
+            style={{
+              color: segment?.harmony.func
+                ? FUNCTION_COLORS[segment.harmony.func]
+                : 'var(--color-text-secondary)',
+            }}
+          >
+            {segment?.harmony.numeral}
+          </span>
+          <span className="text-text-primary">
+            {symbol}
+            {symbol && !analysis.evidence.chordType && (
+              <span className="text-text-muted">?</span>
+            )}
+          </span>
         </span>
       )}
       <svg
@@ -161,6 +196,7 @@ function BassTabBar({
         {notes.map(({ note, index }) => {
           const active = activeNotes.includes(index);
           const category = degrees.get(index)?.category;
+          const avoid = avoidNotes?.has(index) ?? false;
           return (
             <text
               key={index}
@@ -188,7 +224,11 @@ function BassTabBar({
               }
               strokeWidth={3}
               paintOrder="stroke"
+              textDecoration={avoid ? 'underline' : undefined}
             >
+              {avoid && (
+                <title>Nota evitada: forma b9 com uma nota do acorde</title>
+              )}
               {label(note, index)}
             </text>
           );

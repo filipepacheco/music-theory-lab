@@ -120,6 +120,14 @@ third, fifth and seventh leave a single reading; otherwise only the root is
 shown.
 _Avoid_: chord, detected chord
 
+**Suggested key**:
+A ranked guess at a bass chart's [[tonal-center]], from where the bass rests
+(bars on the root, how sections start and end, V→I arrivals) rather than from
+which notes it uses, since a [[scale-collection]] fits relative keys equally.
+It is a default the user can replace, never a finding; degrees, functions and
+cadences are always read relative to the key in use.
+_Avoid_: detected key, the key
+
 **Quiz session**:
 One active run of music-theory questions, including its current question, answer result, score, streak, and replay state.
 _Avoid_: quiz state, quiz screen
