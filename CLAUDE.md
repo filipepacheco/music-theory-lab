@@ -25,6 +25,13 @@ Vitest covers pure domain behavior; no linter is configured. Prettier is
 available (`npx prettier --write .`): single quotes, 80 char width, 2-space
 indent.
 
+Fast local checks: `npx tsc --noEmit` (~10 s) and `npx vitest related <files>`
+or `npx vitest run <dir>` for the code you touched (the whole suite takes
+~7 s). The Growlybass asset test skips where `ffprobe` is missing; CI runs it
+in its own workflow (`.github/workflows/bass-assets.yml`) only when the
+assets, their manifest, the generated contract or the script change, so the
+main CI job does not spend half its time installing ffmpeg.
+
 Note: `postinstall` copies `sql-wasm.wasm` to `public/` - run `npm install` after cloning.
 
 ## Tech Stack
