@@ -342,9 +342,10 @@ function lineRole(
  * Chord slots from the intervals heard as harmony. A tritone is the fifth
  * only over a minor third (b5 of a diminished chord), a minor sixth only over
  * a major third (#5), a major sixth only over a diminished triad (bb7);
- * otherwise they are tensions (#11, b13, 13).
+ * otherwise they are tensions (#11, b13, 13). Also pools the evidence of a
+ * chord held over several bars.
  */
-function readEvidence(harmonic: number[]): ChordEvidence {
+export function readEvidence(harmonic: number[]): ChordEvidence {
   const intervals = [...new Set(harmonic)].sort((a, b) => a - b);
   const has = (interval: number) => intervals.includes(interval);
   if (intervals.length === 0) {
