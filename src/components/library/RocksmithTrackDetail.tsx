@@ -353,12 +353,14 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         </p>
         {showDegrees && (
           <p className="text-[11px] text-text-muted">
-            Graus lidos só do baixo: a raiz é a nota do tempo 1 de cada
-            compasso. Tempos fortes contam como harmonia; passagens, bordaduras,
-            aproximações cromáticas e antecipações em tempo fraco são
-            ornamentos. O acorde só é nomeado quando as notas tocadas não deixam
-            outra leitura; senão aparece a raiz com “?”. Passe o mouse num
-            compasso para ver a 3ª, 5ª e 7ª encontradas.
+            A linha sob as cordas mostra o grau de cada nota sobre a raiz do
+            compasso, e cada casa ganha a cor do seu grau. Graus lidos só do
+            baixo: a raiz é a nota do tempo 1 de cada compasso. Tempos fortes
+            contam como harmonia; passagens, bordaduras, aproximações cromáticas
+            e antecipações em tempo fraco são ornamentos. O acorde só é nomeado
+            quando as notas tocadas não deixam outra leitura; senão aparece a
+            raiz com “?”. Passe o mouse num compasso para ver a 3ª, 5ª e 7ª
+            encontradas.
           </p>
         )}
         {showDegrees && (
