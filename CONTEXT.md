@@ -111,6 +111,15 @@ One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`
 than a redesign.
 _Avoid_: drum, instrument, track
 
+**Bar root**:
+The pitch class a bass chart's bar is heard over: the bass note on the
+downbeat, or one held across the bar line. It is the root the bass line
+implies, not a proven chord root — slash chords and pedal points read as their
+bass note. A bar's chord type is named from the bass only when its played
+third, fifth and seventh leave a single reading; otherwise only the root is
+shown.
+_Avoid_: chord, detected chord
+
 **Quiz session**:
 One active run of music-theory questions, including its current question, answer result, score, streak, and replay state.
 _Avoid_: quiz state, quiz screen
