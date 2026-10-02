@@ -11,13 +11,16 @@ import {
 interface Props {
   musicalKey: MusicalKey | null;
   current: CircleCell | null;
-  previous: CircleCell | null;
-  /** pt-BR description of the last root move, shown under the circle. */
+  /** Where the harmony goes next: outlined, with an arrow from `current`. */
+  next: CircleCell | null;
+  /** pt-BR description of the coming root move, shown under the circle. */
   caption: string | null;
   /** Shown small in the middle, e.g. `D menor`. */
   centerLabel: string | null;
   /** Shown large in the middle: the current chord, e.g. `Am`. */
   centerChord: string | null;
+  /** Shown small under it: the next chord, e.g. `Dm`. */
+  nextChord: string | null;
   /** Rendered width and height in pixels. */
   size: number;
 }
@@ -87,26 +90,25 @@ const sameCell = (a: CircleCell | null, b: CircleCell | null) =>
 
 /**
  * The circle of fifths with the key's harmonic field shaded by function,
- * the current chord in amber, an arrow from the chord before it, and the
- * key and current chord written in the middle.
+ * the current chord in amber, an arrow to the chord that comes next (its
+ * cell outlined), and the key, current and next chords in the middle.
  */
 function FifthsCircle({
   musicalKey,
   current,
-  previous,
+  next,
   caption,
   centerLabel,
   centerChord,
+  nextChord,
   size,
 }: Props) {
   const degrees = musicalKey ? keyDegreesOnCircle(musicalKey) : [];
   const cells: CircleCell[] = (['major', 'minor'] as const).flatMap((ring) =>
     Array.from({ length: 12 }, (_, position) => ({ ring, position })),
   );
-  const arrow =
-    current && previous && !sameCell(current, previous)
-      ? arrowBetween(previous, current)
-      : null;
+  const upcoming = next && !sameCell(current, next) ? next : null;
+  const arrow = current && upcoming ? arrowBetween(current, upcoming) : null;
 
   return (
     <figure className="flex flex-col items-center gap-2">
@@ -115,7 +117,7 @@ function FifthsCircle({
         height={size}
         viewBox={`0 0 ${VIEW} ${VIEW}`}
         role="img"
-        aria-label={`Ciclo de quintas${centerChord ? `, acorde atual ${centerChord}` : ''}`}
+        aria-label={`Ciclo de quintas${centerChord ? `, acorde atual ${centerChord}` : ''}${nextChord ? `, próximo ${nextChord}` : ''}`}
       >
         <defs>
           <marker
@@ -135,18 +137,21 @@ function FifthsCircle({
             (d) => d.ring === cell.ring && d.position === cell.position,
           );
           const isCurrent = sameCell(cell, current);
+          const isNext = sameCell(cell, upcoming);
           const [x, y] = cellCentre(cell);
           const name = (cell.ring === 'major' ? MAJOR_RING : MINOR_RING)[
             cell.position
           ];
           const fill = isCurrent
             ? 'var(--color-bass-root-highlight)'
-            : degree
-              ? `color-mix(in srgb, ${FUNCTION_COLORS[degree.func]} 22%, var(--color-bg-card))`
-              : 'var(--color-bg-card)';
+            : isNext
+              ? 'color-mix(in srgb, var(--color-bass-root-highlight) 30%, var(--color-bg-card))'
+              : degree
+                ? `color-mix(in srgb, ${FUNCTION_COLORS[degree.func]} 22%, var(--color-bg-card))`
+                : 'var(--color-bg-card)';
           const textColor = isCurrent
             ? ON_HIGHLIGHT
-            : degree
+            : degree || isNext
               ? 'var(--color-text-primary)'
               : 'var(--color-text-secondary)';
           return (
@@ -163,7 +168,7 @@ function FifthsCircle({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={FONT[cell.ring]}
-                fontWeight={isCurrent || degree ? 700 : 500}
+                fontWeight={isCurrent || isNext || degree ? 700 : 500}
                 className="font-heading"
                 fill={textColor}
               >
@@ -186,6 +191,16 @@ function FifthsCircle({
             </g>
           );
         })}
+        {upcoming && (
+          <path
+            d={cellPath(upcoming)}
+            fill="none"
+            stroke="var(--color-bass-root-highlight)"
+            strokeWidth={2.5}
+            strokeDasharray="5 3"
+            strokeLinejoin="round"
+          />
+        )}
         {centerLabel && (
           <text
             x={CENTER}
@@ -211,6 +226,19 @@ function FifthsCircle({
             fill="var(--color-text-primary)"
           >
             {centerChord}
+          </text>
+        )}
+        {centerChord && nextChord && (
+          <text
+            x={CENTER}
+            y={CENTER + 33}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={11}
+            className="font-heading"
+            fill="var(--color-text-secondary)"
+          >
+            {`→ ${nextChord}`}
           </text>
         )}
         {arrow && (

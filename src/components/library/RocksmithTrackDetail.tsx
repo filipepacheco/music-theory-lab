@@ -250,22 +250,24 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   );
   const circle = useMemo(() => {
     if (!harmony || !segment) {
-      return { current: null, previous: null, caption: null };
+      return { current: null, next: null, nextChord: null, caption: null };
     }
     const minor = (s: HarmonicSegment) =>
       s.harmony.chordType !== null
         ? isMinorChordType(s.harmony.chordType)
         : s.evidence.third === 'minor';
-    const previous =
+    const next =
       harmony.segments
-        .slice(0, segmentIndex)
-        .reverse()
+        .slice(segmentIndex + 1)
         .find((s) => s.root !== segment.root) ?? null;
     return {
       current: chordCell(segment.root, minor(segment)),
-      previous: previous ? chordCell(previous.root, minor(previous)) : null,
-      caption: previous
-        ? describeRootMotion(previous.root, segment.root, noteNames)
+      next: next ? chordCell(next.root, minor(next)) : null,
+      nextChord: next
+        ? `${barChordSymbol(next, noteNames)}${next.evidence.chordType ? '' : '?'}`
+        : null,
+      caption: next
+        ? `A seguir, ${describeRootMotion(segment.root, next.root, noteNames)}`
         : null,
     };
   }, [harmony, segment, segmentIndex, noteNames]);
@@ -550,7 +552,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           <FifthsCircle
             musicalKey={musicalKey}
             current={circle.current}
-            previous={circle.previous}
+            next={circle.next}
             caption={circle.caption}
             centerLabel={musicalKey ? keyLabel(musicalKey) : null}
             centerChord={
@@ -558,6 +560,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
                 ? `${barChordSymbol(shownBar, noteNames)}${shownBar.evidence.chordType ? '' : '?'}`
                 : null
             }
+            nextChord={circle.nextChord}
             size={Math.min(CIRCLE_SIZE, viewport.width - 56)}
           />
         </FloatingWindow>

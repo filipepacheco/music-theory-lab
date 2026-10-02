@@ -560,12 +560,12 @@ export function intervalDegreeLabel(
 }
 
 /**
- * Chord symbol for the bar, e.g. `G7`, `Bm7(b5)`; the root name alone when
- * the bass does not settle the quality, or null without a root. Spelled
- * with `noteNames`, sharps unless the key calls for flats.
+ * Chord symbol for a bar or a run of bars, e.g. `G7`, `Bm7(b5)`; the root
+ * name alone when the bass does not settle the quality, or null without a
+ * root. Spelled with `noteNames`, sharps unless the key calls for flats.
  */
 export function barChordSymbol(
-  bar: BarAnalysis,
+  bar: Pick<BarAnalysis, 'root' | 'evidence'>,
   noteNames: readonly string[] = NOTE_NAMES,
 ): string | null {
   if (bar.root === null) return null;
