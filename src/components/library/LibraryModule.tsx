@@ -55,7 +55,8 @@ export default function LibraryModule() {
         <h2 className="font-heading text-lg text-text-primary">Biblioteca</h2>
         <p className="text-xs text-text-muted">
           Análise automática de cifra, tom e andamento das faixas processadas
-          pelo pipeline off-line, e linhas de baixo importadas do Rocksmith.
+          pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
+          de arquivos MIDI.
         </p>
       </div>
 

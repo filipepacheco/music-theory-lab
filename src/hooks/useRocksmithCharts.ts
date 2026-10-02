@@ -8,6 +8,24 @@ export type RocksmithImportStatus =
   | { state: 'imported'; chartId: string; hasAudio: boolean }
   | { state: 'error'; message: string };
 
+/** The importer for a file, by extension: MIDI, otherwise a Rocksmith package. */
+async function loadImporter(file: File) {
+  if (/\.midi?$/i.test(file.name)) {
+    const { importMidi, midiImportErrorMessage } =
+      await import('@/services/midi/importMidi');
+    return {
+      importChart: importMidi,
+      importErrorMessage: midiImportErrorMessage,
+    };
+  }
+  const { importPsarc, psarcImportErrorMessage } =
+    await import('@/services/rocksmith/importPsarc');
+  return {
+    importChart: importPsarc,
+    importErrorMessage: psarcImportErrorMessage,
+  };
+}
+
 export function useRocksmithCharts() {
   const [charts, setCharts] = useState<BassChart[]>([]);
   const [importStatus, setImportStatus] = useState<RocksmithImportStatus>({
@@ -32,10 +50,9 @@ export function useRocksmithCharts() {
       setImportStatus({ state: 'importing', fileName: file.name });
       // Let the status paint: parsing and audio conversion block the thread.
       await new Promise((resolve) => setTimeout(resolve, 30));
-      const { importPsarc, psarcImportErrorMessage } =
-        await import('@/services/rocksmith/importPsarc');
+      const { importChart, importErrorMessage } = await loadImporter(file);
       try {
-        const { chart, audio } = await importPsarc(file);
+        const { chart, audio } = await importChart(file);
         await rocksmithLibrary.save(
           chart,
           audio && { chartId: chart.id, origin: 'psarc', ...audio },
@@ -53,7 +70,7 @@ export function useRocksmithCharts() {
           message:
             error instanceof DOMException
               ? 'Não foi possível salvar a importação neste navegador.'
-              : psarcImportErrorMessage(error),
+              : importErrorMessage(error),
         });
         return null;
       }

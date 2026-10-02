@@ -23,7 +23,7 @@ export default function RocksmithChartList({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-heading text-xs uppercase tracking-wide text-text-muted">
-          Baixo do Rocksmith
+          Linhas de baixo
         </h3>
         <label
           htmlFor={inputId}
@@ -34,12 +34,12 @@ export default function RocksmithChartList({
               : 'hover:bg-bg-hover cursor-pointer'
           }`}
         >
-          Importar .psarc
+          Importar .psarc / .mid
         </label>
         <input
           id={inputId}
           type="file"
-          accept=".psarc"
+          accept=".psarc,.mid,.midi"
           disabled={importing}
           className="sr-only"
           onChange={(event) => {
@@ -52,7 +52,7 @@ export default function RocksmithChartList({
 
       {importStatus.state === 'importing' && (
         <p role="status" className="text-[11px] text-text-muted">
-          Lendo {importStatus.fileName} e extraindo o áudio…
+          Lendo {importStatus.fileName}…
         </p>
       )}
       {importStatus.state === 'imported' && !importStatus.hasAudio && (
@@ -68,8 +68,8 @@ export default function RocksmithChartList({
 
       {charts.length === 0 ? (
         <p className="text-[11px] text-text-muted">
-          Importe um pacote Rocksmith 2014 para ver a linha de baixo compasso a
-          compasso, tocando junto com a música.
+          Importe um pacote Rocksmith 2014 (.psarc) ou um MIDI (.mid) para ver a
+          linha de baixo compasso a compasso, tocando junto com a música.
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5" role="list">

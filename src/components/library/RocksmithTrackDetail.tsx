@@ -45,6 +45,7 @@ import {
   bassMixLabel,
   type BassMixMode,
 } from '@/domain/bassMix';
+import { useBassSynthPlayback } from '@/hooks/useBassSynthPlayback';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 
 interface Props {
@@ -69,7 +70,12 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const [mixMode, setMixMode] = useState<BassMixMode>('full');
   const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
-  const audio = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
+  const recording = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
+  // With no recording to follow, the sampled bass plays the chart itself.
+  const synthOnly = audioState.status === 'missing';
+  const synth = useBassSynthPlayback(chart, synthOnly);
+  const audio = synthOnly ? synth : recording;
+  const hasPlayer = audioUrl !== null || synthOnly;
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -87,7 +93,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   );
 
   const clock =
-    audioUrl && audio.ready && (audio.playing || audio.currentSeconds > 0)
+    hasPlayer && audio.ready && (audio.playing || audio.currentSeconds > 0)
       ? audio.currentSeconds
       : Number.NaN;
   const activeBar = barIndexAt(chart, clock);
@@ -100,7 +106,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   );
   const current = activeNotes.map((i) => chart.notes[i]);
 
-  // `useLibraryAudio` hands out fresh closures every render; a stable seek
+  // The audio hooks hand out fresh closures every render; a stable seek
   // keeps the memoised bars from re-rendering on every animation frame.
   const audioRef = useRef(audio);
   audioRef.current = audio;
@@ -108,7 +114,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
     (seconds: number) => audioRef.current.seek(seconds),
     [],
   );
-  const seek = audioUrl && audio.ready ? stableSeek : null;
+  const seek = hasPlayer && audio.ready ? stableSeek : null;
 
   useEffect(() => {
     if (!follow || !audio.playing || activeBar < 0) return;
@@ -171,7 +177,13 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         <Stat label="Notas" value={String(chart.notes.length)} />
       </dl>
 
-      {audioUrl && <LibraryPlayer audio={audio} />}
+      {hasPlayer && <LibraryPlayer audio={audio} />}
+      {synth.failed && (
+        <p role="alert" className="text-[11px] text-text-error">
+          Não foi possível carregar o som do baixo. Verifique a conexão e tente
+          de novo.
+        </p>
+      )}
       {audioUrl && (
         <BassMixPicker
           mode={mixMode}
@@ -268,6 +280,9 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           Um bloco = um compasso, na grade de tempos do próprio arquivo. As
           linhas vão da corda G (em cima) à E (embaixo); pontilhados marcam os
           tempos. x = nota abafada, / e \ = slide.
+          {chart.source === 'midi'
+            ? ' O MIDI não traz digitação: cordas e casas são uma sugestão automática.'
+            : ''}
           {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}
         </p>
         {showDegrees && (
@@ -428,7 +443,7 @@ function AudioSource({
               ? ready.origin === 'psarc'
                 ? `Áudio extraído do pacote: ${ready.fileName}`
                 : `Áudio local: ${ready.fileName}`
-              : 'Este pacote não trouxe áudio. Vincule a gravação para tocar junto.'}
+              : 'Este arquivo não trouxe áudio: o sintetizador toca a linha de baixo. Vincule a gravação para tocar junto com ela.'}
         </p>
         <p className="text-[11px] text-text-muted">
           Tudo fica somente neste navegador e não é enviado para a nuvem.

@@ -73,4 +73,33 @@ describe('Growlybass sampler', () => {
     expect(sampler.getStatus()).toBe('ready');
     expect(play).toHaveBeenCalledTimes(1);
   });
+
+  it('schedules a preloaded note at an audio time with a short release', async () => {
+    const load = vi.fn(async (url: string) => ({ url }));
+    const play = vi.fn();
+    const sampler = createGrowlybassSampler({ load, play });
+
+    // E1 and F1 share one sample: preloading fetches each file once.
+    await sampler.preload([28, 29, 28]);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(sampler.getStatus()).toBe('ready');
+
+    sampler.schedule(29, 0.6, 0.25, 12.5);
+    expect(play).toHaveBeenCalledWith(
+      { url: '/audio/growlybass/e2_p_rr1.mp3' },
+      expect.objectContaining({ requestedMidi: 29 }),
+      0.25,
+      0.08,
+      12.5,
+    );
+  });
+
+  it('skips a scheduled note whose sample is not loaded', () => {
+    const play = vi.fn();
+    const sampler = createGrowlybassSampler({ load: vi.fn(), play });
+
+    sampler.schedule(28, 0.6, 0.25, 12.5);
+
+    expect(play).not.toHaveBeenCalled();
+  });
 });
