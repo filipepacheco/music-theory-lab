@@ -5,16 +5,24 @@ import {
   keyDegreesOnCircle,
   MAJOR_RING,
   MINOR_RING,
+  otherQualityCell,
   type CircleCell,
 } from '@/domain/circleOfFifths';
 
+export interface CircleMark extends CircleCell {
+  /** The bass left the third open, so the ring is a guess. */
+  guess: boolean;
+}
+
 interface Props {
   musicalKey: MusicalKey | null;
-  current: CircleCell | null;
+  current: CircleMark | null;
   /** Where the harmony goes next: outlined, with an arrow from `current`. */
-  next: CircleCell | null;
+  next: CircleMark | null;
   /** pt-BR description of the coming root move, shown under the circle. */
   caption: string | null;
+  /** pt-BR note on whether the current chord's third was played. */
+  note: string | null;
   /** Shown small in the middle, e.g. `D menor`. */
   centerLabel: string | null;
   /** Shown large in the middle: the current chord, e.g. `Am`. */
@@ -91,13 +99,16 @@ const sameCell = (a: CircleCell | null, b: CircleCell | null) =>
 /**
  * The circle of fifths with the key's harmonic field shaded by function,
  * the current chord in amber, an arrow to the chord that comes next (its
- * cell outlined), and the key, current and next chords in the middle.
+ * cell outlined), and the key, current and next chords in the middle. A
+ * guessed quality is marked `?`: the current chord is drawn lighter and the
+ * same root with the other third gets a dotted outline.
  */
 function FifthsCircle({
   musicalKey,
   current,
   next,
   caption,
+  note,
   centerLabel,
   centerChord,
   nextChord,
@@ -109,6 +120,7 @@ function FifthsCircle({
   );
   const upcoming = next && !sameCell(current, next) ? next : null;
   const arrow = current && upcoming ? arrowBetween(current, upcoming) : null;
+  const alternative = current?.guess ? otherQualityCell(current) : null;
 
   return (
     <figure className="flex flex-col items-center gap-2">
@@ -138,20 +150,26 @@ function FifthsCircle({
           );
           const isCurrent = sameCell(cell, current);
           const isNext = sameCell(cell, upcoming);
+          const isAlternative = sameCell(cell, alternative);
+          const solid = isCurrent && !current?.guess;
+          const unsure =
+            isAlternative ||
+            (isCurrent && current?.guess) ||
+            (isNext && upcoming?.guess);
           const [x, y] = cellCentre(cell);
-          const name = (cell.ring === 'major' ? MAJOR_RING : MINOR_RING)[
-            cell.position
-          ];
-          const fill = isCurrent
+          const name = `${(cell.ring === 'major' ? MAJOR_RING : MINOR_RING)[cell.position]}${unsure ? '?' : ''}`;
+          const fill = solid
             ? 'var(--color-bass-root-highlight)'
-            : isNext
-              ? 'color-mix(in srgb, var(--color-bass-root-highlight) 30%, var(--color-bg-card))'
-              : degree
-                ? `color-mix(in srgb, ${FUNCTION_COLORS[degree.func]} 22%, var(--color-bg-card))`
-                : 'var(--color-bg-card)';
-          const textColor = isCurrent
+            : isCurrent
+              ? 'color-mix(in srgb, var(--color-bass-root-highlight) 55%, var(--color-bg-card))'
+              : isNext
+                ? 'color-mix(in srgb, var(--color-bass-root-highlight) 30%, var(--color-bg-card))'
+                : degree
+                  ? `color-mix(in srgb, ${FUNCTION_COLORS[degree.func]} 22%, var(--color-bg-card))`
+                  : 'var(--color-bg-card)';
+          const textColor = solid
             ? ON_HIGHLIGHT
-            : degree || isNext
+            : degree || isCurrent || isNext || isAlternative
               ? 'var(--color-text-primary)'
               : 'var(--color-text-secondary)';
           return (
@@ -168,7 +186,9 @@ function FifthsCircle({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={FONT[cell.ring]}
-                fontWeight={isCurrent || isNext || degree ? 700 : 500}
+                fontWeight={
+                  isCurrent || isNext || isAlternative || degree ? 700 : 500
+                }
                 className="font-heading"
                 fill={textColor}
               >
@@ -183,7 +203,13 @@ function FifthsCircle({
                   fontSize={FONT.numeral}
                   fontWeight={700}
                   className="font-heading"
-                  fill={isCurrent ? ON_HIGHLIGHT : FUNCTION_COLORS[degree.func]}
+                  fill={
+                    solid
+                      ? ON_HIGHLIGHT
+                      : isCurrent
+                        ? 'var(--color-text-primary)'
+                        : FUNCTION_COLORS[degree.func]
+                  }
                 >
                   {degree.numeral}
                 </text>
@@ -191,6 +217,25 @@ function FifthsCircle({
             </g>
           );
         })}
+        {current?.guess && (
+          <path
+            d={cellPath(current)}
+            fill="none"
+            stroke="var(--color-bass-root-highlight)"
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+          />
+        )}
+        {alternative && (
+          <path
+            d={cellPath(alternative)}
+            fill="none"
+            stroke="var(--color-bass-root-highlight)"
+            strokeWidth={2.5}
+            strokeDasharray="0.1 5"
+            strokeLinecap="round"
+          />
+        )}
         {upcoming && (
           <path
             d={cellPath(upcoming)}
@@ -258,6 +303,7 @@ function FifthsCircle({
         className="text-center text-xs leading-snug text-text-secondary min-h-[2lh]"
         style={{ maxWidth: size }}
       >
+        {note && <span className="block mb-1 text-text-muted">{note}</span>}
         {caption ??
           'Cada passo no sentido horário sobe uma quinta; no anti-horário, uma quarta.'}
       </figcaption>

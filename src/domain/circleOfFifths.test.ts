@@ -3,10 +3,13 @@ import {
   chordCell,
   circleSteps,
   describeRootMotion,
+  describeThird,
   fifthsPosition,
   keyDegreesOnCircle,
   MAJOR_RING,
   MINOR_RING,
+  otherQualityCell,
+  thirdNames,
 } from '@/domain/circleOfFifths';
 
 describe('circle of fifths', () => {
@@ -69,6 +72,37 @@ describe('circle of fifths', () => {
     );
     expect(describeRootMotion(0, 6, names)).toBe(
       'C → Gb: trítono, o lado oposto do ciclo',
+    );
+  });
+
+  it('finds the same root with the other third', () => {
+    const d = chordCell(2, false);
+    const dm = chordCell(2, true);
+    expect(otherQualityCell(d)).toEqual(dm);
+    expect(otherQualityCell(dm)).toEqual(d);
+    expect(MINOR_RING[otherQualityCell(chordCell(10, false)).position]).toBe(
+      'Bbm',
+    );
+  });
+
+  it('spells the thirds above a root on the next letter but one', () => {
+    expect(thirdNames('D')).toEqual({ minor: 'F', major: 'F#' });
+    expect(thirdNames('Bb')).toEqual({ minor: 'Db', major: 'D' });
+    expect(thirdNames('A')).toEqual({ minor: 'C', major: 'C#' });
+    expect(thirdNames('F#')).toEqual({ minor: 'A', major: 'A#' });
+    expect(thirdNames('Eb')).toEqual({ minor: 'Gb', major: 'G' });
+    expect(thirdNames('G#')).toEqual({ minor: 'B', major: 'B#' });
+  });
+
+  it('says whether the bass settled the third', () => {
+    expect(describeThird('D', 'minor', true, true)).toBe(
+      'O baixo tocou a terça F: acorde menor, confirmado.',
+    );
+    expect(describeThird('D', null, true, true)).toBe(
+      'O baixo não tocou a terça, então Dm? é um palpite pelo tom. Com F é Dm; com F# seria D (pontilhado).',
+    );
+    expect(describeThird('Bb', 'both', false, false)).toBe(
+      'O baixo tocou as duas terças (Db e D), então Bb? é só um palpite. Com D é Bb; com Db seria Bbm (pontilhado).',
     );
   });
 });

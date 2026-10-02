@@ -3,14 +3,17 @@ import {
   activeNoteIndexes,
   barIndexAt,
   buildBassChart,
+  fittedBarsPerRow,
   hardestNotes,
   midiNoteName,
   sectionBlocks,
   sectionLabel,
+  sectionRows,
   TICKS_PER_BEAT,
   timeSignatures,
   tuningLabel,
   type BassChart,
+  type BassChartSectionBlock,
 } from '@/domain/bassChart';
 import type { SngArrangement, SngNote } from '@/services/rocksmith/sng';
 
@@ -223,6 +226,48 @@ describe('queries', () => {
       [1, 1],
       [1, 1],
     ]);
+  });
+
+  it('breaks a section into lines of a chosen number of bars', () => {
+    const bars = (from: number, to: number) =>
+      Array.from({ length: to - from }, (_, i) => ({
+        kind: 'bar' as const,
+        bar: from + i,
+      }));
+    const block: BassChartSectionBlock = {
+      section: { name: 'intro', parts: 1, startBar: 10, endBar: 26 },
+      index: 0,
+      colorIndex: 0,
+      occurrence: 1,
+      occurrenceTotal: 1,
+      items: bars(10, 26),
+    };
+    expect(sectionRows(block, 8)).toEqual([bars(10, 18), bars(18, 26)]);
+    expect(sectionRows(block, 5).map((row) => row.length)).toEqual([
+      5, 5, 5, 1,
+    ]);
+
+    // Lines stay on the same bar numbers around a rest, which is never
+    // split, and a line the rest fills on its own disappears.
+    const rest = { kind: 'rest' as const, startBar: 12, count: 6 };
+    const withRest = {
+      ...block,
+      items: [...bars(10, 12), rest, ...bars(18, 26)],
+    };
+    expect(sectionRows(withRest, 4)).toEqual([
+      [...bars(10, 12), rest],
+      bars(18, 22),
+      bars(22, 26),
+    ]);
+  });
+
+  it('halves a line length that does not fit the screen', () => {
+    expect(fittedBarsPerRow(8, 9)).toBe(8);
+    expect(fittedBarsPerRow(8, 7)).toBe(4);
+    expect(fittedBarsPerRow(8, 3)).toBe(2);
+    expect(fittedBarsPerRow(12, 7)).toBe(6);
+    expect(fittedBarsPerRow(7, 6)).toBe(6);
+    expect(fittedBarsPerRow(8, 0)).toBe(1);
   });
 
   it('labels sections and tunings for display', () => {
