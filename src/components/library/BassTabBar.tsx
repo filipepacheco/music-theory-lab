@@ -42,6 +42,11 @@ interface Props {
    * to `MIN_FIT_SCALE` of its size, and never grows past it.
    */
   fitWidth?: string;
+  /**
+   * The bar drawn right above this one when it shows the same tab: the bar
+   * is then left empty under a repeat sign.
+   */
+  repeatOf?: number;
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -103,6 +108,28 @@ export function tabBarWidth(beatCount: number): number {
   return PAD_X * 2 + beatCount * BEAT_WIDTH + 2;
 }
 
+/**
+ * The bar-repeat sign (a slash between two dots, like %), centred on
+ * `x`, `y`: play the bar above again.
+ */
+function RepeatSign({ x, y }: { x: number; y: number }) {
+  return (
+    <g aria-hidden fill="var(--color-text-secondary)">
+      <line
+        x1={x - 9}
+        y1={y + 11}
+        x2={x + 9}
+        y2={y - 11}
+        stroke="var(--color-text-secondary)"
+        strokeWidth={3.5}
+        strokeLinecap="round"
+      />
+      <circle cx={x - 8} cy={y - 6} r={2.6} />
+      <circle cx={x + 8} cy={y + 6} r={2.6} />
+    </g>
+  );
+}
+
 /** Tab label for one note: fret, `x` for a dead note, slide direction. */
 function noteLabel(note: BassChartNote): string {
   const base = note.techniques.includes('mute') ? 'x' : String(note.fret);
@@ -126,7 +153,9 @@ function BassTabBar({
   avoidNotes,
   noteNames,
   fitWidth,
+  repeatOf,
 }: Props) {
+  const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * BEAT_WIDTH;
   const outer = tabBarWidth(bar.beatCount);
   const fitStyle = fitWidth
@@ -166,7 +195,11 @@ function BassTabBar({
       type="button"
       onClick={onSeek ? () => onSeek(bar.startTime) : undefined}
       disabled={onSeek === null}
-      title={barTitle(bar, analysis, segment)}
+      title={
+        repeat
+          ? `Compasso ${bar.index + 1} · igual ao compasso ${repeatOf + 1}, o de cima`
+          : barTitle(bar, analysis, segment)
+      }
       data-bar={bar.index}
       style={fitStyle}
       className={`relative shrink-0 rounded-button border text-left transition-colors ${
@@ -178,7 +211,8 @@ function BassTabBar({
       <span className="absolute left-1 top-0 font-heading text-[8px] leading-none text-text-muted tabular-nums">
         {bar.index + 1}
       </span>
-      {analysis && (
+      {analysis && repeat && <span className="block h-3" />}
+      {analysis && !repeat && (
         <span className="flex h-3 items-start justify-between gap-1 pl-5 pr-1 pt-0.5 font-heading text-[10px] leading-none">
           <span
             className="font-bold"
@@ -213,9 +247,13 @@ function BassTabBar({
         viewBox={`0 0 ${width} ${svgHeight}`}
         style={fitWidth ? { width: '100%', height: 'auto' } : undefined}
         role="img"
-        aria-label={`Compasso ${bar.index + 1}${symbol ? ` (${symbol})` : ''}: ${
-          notes.length === 0 ? 'pausa' : notes.map(spoken).join(' ')
-        }`}
+        aria-label={
+          repeat
+            ? `Compasso ${bar.index + 1}: igual ao compasso ${repeatOf + 1}`
+            : `Compasso ${bar.index + 1}${symbol ? ` (${symbol})` : ''}: ${
+                notes.length === 0 ? 'pausa' : notes.map(spoken).join(' ')
+              }`
+        }
       >
         {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
           <line
@@ -236,9 +274,10 @@ function BassTabBar({
             y1={stringY(string)}
             y2={stringY(string)}
             stroke="var(--color-string)"
-            strokeOpacity={0.55}
+            strokeOpacity={repeat ? 0.25 : 0.55}
           />
         ))}
+        {repeat && <RepeatSign x={width / 2} y={HEIGHT / 2} />}
         {playhead !== null && (
           <line
             x1={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
@@ -249,73 +288,75 @@ function BassTabBar({
             strokeWidth={1.5}
           />
         )}
-        {notes.map(({ note, index }) => {
-          const active = activeNotes.includes(index);
-          const category = degrees.get(index)?.category;
-          return (
+        {!repeat &&
+          notes.map(({ note, index }) => {
+            const active = activeNotes.includes(index);
+            const category = degrees.get(index)?.category;
+            return (
+              <text
+                key={index}
+                x={PAD_X + note.beatInBar * BEAT_WIDTH + 1}
+                y={stringY(note.string)}
+                dominantBaseline="central"
+                fontSize={11}
+                fontWeight={
+                  active || note.techniques.includes('accent') ? 700 : 500
+                }
+                className="font-heading"
+                fill={
+                  active
+                    ? 'var(--color-bass-root-highlight)'
+                    : category
+                      ? DEGREE_COLORS[category]
+                      : 'var(--color-text-primary)'
+                }
+                stroke={
+                  isActive ? 'var(--color-bg-hover)' : 'var(--color-bg-card)'
+                }
+                strokeWidth={3}
+                paintOrder="stroke"
+              >
+                {noteLabel(note)}
+              </text>
+            );
+          })}
+        {!repeat &&
+          [...onsets].map(([beatInBar, atOnset]) => (
             <text
-              key={index}
-              x={PAD_X + note.beatInBar * BEAT_WIDTH + 1}
-              y={stringY(note.string)}
+              key={`degree-${beatInBar}`}
+              x={PAD_X + beatInBar * BEAT_WIDTH + 1}
+              y={DEGREE_Y}
               dominantBaseline="central"
-              fontSize={11}
-              fontWeight={
-                active || note.techniques.includes('accent') ? 700 : 500
-              }
+              fontSize={9}
               className="font-heading"
-              fill={
-                active
-                  ? 'var(--color-bass-root-highlight)'
-                  : category
-                    ? DEGREE_COLORS[category]
-                    : 'var(--color-text-primary)'
-              }
-              stroke={
-                isActive ? 'var(--color-bg-hover)' : 'var(--color-bg-card)'
-              }
-              strokeWidth={3}
-              paintOrder="stroke"
             >
-              {noteLabel(note)}
+              {[...atOnset]
+                .sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0))
+                .map((degree, i) => {
+                  const avoid = avoidNotes?.has(degree.index) ?? false;
+                  return (
+                    <tspan
+                      key={degree.index}
+                      fill={
+                        degree.category
+                          ? DEGREE_COLORS[degree.category]
+                          : 'var(--color-text-primary)'
+                      }
+                      fontWeight={degree.category === 'root' ? 700 : 500}
+                      textDecoration={avoid ? 'underline' : undefined}
+                    >
+                      {i > 0 ? '/' : ''}
+                      {degreeLabel(degree)}
+                      {avoid && (
+                        <title>
+                          Nota evitada: forma b9 com uma nota do acorde
+                        </title>
+                      )}
+                    </tspan>
+                  );
+                })}
             </text>
-          );
-        })}
-        {[...onsets].map(([beatInBar, atOnset]) => (
-          <text
-            key={`degree-${beatInBar}`}
-            x={PAD_X + beatInBar * BEAT_WIDTH + 1}
-            y={DEGREE_Y}
-            dominantBaseline="central"
-            fontSize={9}
-            className="font-heading"
-          >
-            {[...atOnset]
-              .sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0))
-              .map((degree, i) => {
-                const avoid = avoidNotes?.has(degree.index) ?? false;
-                return (
-                  <tspan
-                    key={degree.index}
-                    fill={
-                      degree.category
-                        ? DEGREE_COLORS[degree.category]
-                        : 'var(--color-text-primary)'
-                    }
-                    fontWeight={degree.category === 'root' ? 700 : 500}
-                    textDecoration={avoid ? 'underline' : undefined}
-                  >
-                    {i > 0 ? '/' : ''}
-                    {degreeLabel(degree)}
-                    {avoid && (
-                      <title>
-                        Nota evitada: forma b9 com uma nota do acorde
-                      </title>
-                    )}
-                  </tspan>
-                );
-              })}
-          </text>
-        ))}
+          ))}
       </svg>
     </button>
   );

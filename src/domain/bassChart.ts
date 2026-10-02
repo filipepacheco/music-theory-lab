@@ -540,6 +540,48 @@ export function fittedBarsPerRow(chosen: number, fits: number): number {
   return room;
 }
 
+/**
+ * Bars that show the same tab as the bar right above them when a section
+ * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
+ * means the same meter and the same notes at the same beats, strings and
+ * frets, with the same slides and techniques; sustain is not drawn, so it
+ * is not compared. Bars without notes never count as repeats.
+ */
+export function barsRepeatingAbove(
+  chart: BassChart,
+  block: BassChartSectionBlock,
+  barsPerRow: number,
+  notes: { note: BassChartNote }[][] = notesByBar(chart),
+): Map<number, number> {
+  const shown = new Set(
+    block.items.flatMap((item) => (item.kind === 'bar' ? [item.bar] : [])),
+  );
+  const tab = (bar: number): string | null => {
+    const cells = (notes[bar] ?? [])
+      .map(({ note }) =>
+        [
+          note.beatInBar,
+          note.string,
+          note.fret,
+          note.slideToFret,
+          [...note.techniques].sort().join('+'),
+        ].join(':'),
+      )
+      .sort();
+    return cells.length > 0
+      ? `${chart.bars[bar].beatCount}|${cells.join(',')}`
+      : null;
+  };
+  const repeats = new Map<number, number>();
+  for (const bar of shown) {
+    const above = bar - barsPerRow;
+    if (!shown.has(above)) continue;
+    const drawn = tab(bar);
+    if (drawn !== null && drawn === tab(above)) repeats.set(bar, above);
+  }
+  return repeats;
+}
+
 /** The chart's notes bucketed by bar, each paired with its chart index. */
 export function notesByBar(
   chart: BassChart,

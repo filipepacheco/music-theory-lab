@@ -39,6 +39,7 @@ import {
 import {
   activeNoteIndexes,
   barIndexAt,
+  barsRepeatingAbove,
   fittedBarsPerRow,
   isStandardTuning,
   notesByBar,
@@ -150,7 +151,26 @@ function storedBarsPerRow(
     : null;
 }
 
+const MARK_REPEATS_KEY = 'music-theory-lab:mark-repeats';
+
+function readMarkRepeats(): boolean {
+  try {
+    return localStorage.getItem(MARK_REPEATS_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeMarkRepeats(on: boolean): void {
+  try {
+    localStorage.setItem(MARK_REPEATS_KEY, String(on));
+  } catch {
+    // Blocked storage: repeats go back to being drawn in full next time.
+  }
+}
+
 const NO_NOTES: readonly number[] = [];
+const NO_REPEATS: ReadonlyMap<number, number> = new Map();
 
 const ALL_KEYS: MusicalKey[] = (['major', 'minor'] as const).flatMap((mode) =>
   Array.from({ length: 12 }, (_, tonic) => ({ tonic, mode })),
@@ -187,6 +207,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const hasPlayer = audioUrl !== null || synthOnly;
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
+  const [markRepeats, setMarkRepeats] = useState(readMarkRepeats);
   const [barsPerRow, setBarsPerRow] = useState(readBarsPerRow);
   const changeBarsPerRow = useCallback(
     (startBar: number, count: number | null) =>
@@ -485,6 +506,21 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
               />
               Acompanhar a reprodução
             </label>
+            <label
+              className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer"
+              title="Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição"
+            >
+              <input
+                type="checkbox"
+                checked={markRepeats}
+                onChange={(e) => {
+                  setMarkRepeats(e.target.checked);
+                  writeMarkRepeats(e.target.checked);
+                }}
+                className="accent-text-primary"
+              />
+              Marcar repetições
+            </label>
           </div>
         </div>
         {showDegrees && <DegreeLegend />}
@@ -513,10 +549,13 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
               onBarsPerRowChange={(count) =>
                 changeBarsPerRow(block.section.startBar, count)
               }
-              renderBar={(barIndex, fitWidth) => (
+              barNotes={barNotes}
+              markRepeats={markRepeats}
+              renderBar={(barIndex, fitWidth, repeatOf) => (
                 <BassTabBar
                   key={barIndex}
                   fitWidth={fitWidth}
+                  repeatOf={repeatOf}
                   bar={chart.bars[barIndex]}
                   notes={barNotes[barIndex] as IndexedNote[]}
                   activeNotes={barIndex === activeBar ? activeNotes : NO_NOTES}
@@ -549,7 +588,9 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           {chart.source === 'midi'
             ? ' O MIDI não traz digitação: cordas e casas são uma sugestão automática.'
             : ''}
-          {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}
+          {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}{' '}
+          Com “Marcar repetições” e um número em “por linha”, o compasso igual
+          ao de cima fica vazio, com o sinal de repetição.
         </p>
       </div>
 
@@ -669,6 +710,8 @@ function SectionBlock({
   harmony,
   barsPerRow,
   onBarsPerRowChange,
+  barNotes,
+  markRepeats,
   renderBar,
   onSeek,
 }: {
@@ -680,7 +723,14 @@ function SectionBlock({
   /** Bars per line, or null to wrap at the screen's edge. */
   barsPerRow: number | null;
   onBarsPerRowChange: (count: number | null) => void;
-  renderBar: (barIndex: number, fitWidth?: string) => ReactNode;
+  barNotes: IndexedNote[][];
+  /** Leave a bar that repeats the one above empty, under a repeat sign. */
+  markRepeats: boolean;
+  renderBar: (
+    barIndex: number,
+    fitWidth?: string,
+    repeatOf?: number,
+  ) => ReactNode;
   onSeek: ((seconds: number) => void) | null;
 }) {
   const { section } = block;
@@ -717,9 +767,17 @@ function SectionBlock({
   const fitWidth = perLine
     ? `calc((100% - ${(perLine - 1) * BAR_GAP}px) / ${perLine})`
     : undefined;
+  // "Above" only means something once the lines have a set length.
+  const repeats: ReadonlyMap<number, number> = useMemo(
+    () =>
+      markRepeats && perLine
+        ? barsRepeatingAbove(chart, block, perLine, barNotes)
+        : NO_REPEATS,
+    [markRepeats, perLine, chart, block, barNotes],
+  );
   const renderItem = (item: SectionBlockItem) =>
     item.kind === 'bar' ? (
-      renderBar(item.bar, fitWidth)
+      renderBar(item.bar, fitWidth, repeats.get(item.bar))
     ) : (
       <button
         key={`rest-${item.startBar}`}
