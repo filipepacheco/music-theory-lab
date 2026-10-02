@@ -37,6 +37,19 @@ export interface PlaybackEngine {
     velocity?: number,
     duration?: string,
   ): Promise<void>;
+  /** Load the bass samples a sequenced line will need. */
+  preloadBassNotes(midiNotes: number[], velocity?: number): Promise<void>;
+  /** Start a preloaded bass note at `time` on the audio clock. */
+  scheduleBassNote(
+    midiNote: number,
+    velocity: number,
+    durationSeconds: number,
+    time: number,
+  ): void;
+  /** Silence sounding bass notes and cancel scheduled ones. */
+  stopBassNotes(): void;
+  /** Seconds on the audio clock that scheduled notes are timed against. */
+  now(): number;
   getBassSamplerStatus(): GrowlybassSamplerStatus;
   subscribeBassSampler(
     listener: (status: GrowlybassSamplerStatus) => void,
@@ -90,8 +103,9 @@ const activeGrowlybassPlayers = new Set<Tone.Player>();
 function playGrowlybassBuffer(
   buffer: Tone.ToneAudioBuffer,
   plan: GrowlybassSamplePlan,
-  duration: string,
+  duration: string | number,
   releaseSeconds: number,
+  time?: number,
 ) {
   let player: Tone.Player;
   player = new Tone.Player({
@@ -106,7 +120,7 @@ function playGrowlybassBuffer(
     },
   }).connect(reverb);
   activeGrowlybassPlayers.add(player);
-  const startedAt = Tone.now();
+  const startedAt = time ?? Tone.now();
   player.start(startedAt, 0);
   player.stop(startedAt + Tone.Time(duration).toSeconds());
 }
@@ -362,6 +376,18 @@ export function createPlaybackEngine(): PlaybackEngine {
       void ensureAudio();
       return growlybassSampler.trigger(midiNote, velocity, duration);
     },
+
+    preloadBassNotes: (midiNotes, velocity) =>
+      growlybassSampler.preload(midiNotes, velocity),
+
+    scheduleBassNote: (midiNote, velocity, durationSeconds, time) =>
+      growlybassSampler.schedule(midiNote, velocity, durationSeconds, time),
+
+    stopBassNotes: () => {
+      for (const player of activeGrowlybassPlayers) player.stop();
+    },
+
+    now: () => Tone.now(),
 
     getBassSamplerStatus: () => growlybassSampler.getStatus(),
 

@@ -4,6 +4,9 @@ import {
 } from '@/constants/growlybass.generated';
 
 export const GROWLYBASS_BASE_URL = '/audio/growlybass/';
+/** E1 to G3: the range the sampled bass covers. */
+export const GROWLYBASS_LOWEST_MIDI = 28;
+export const GROWLYBASS_HIGHEST_MIDI = 55;
 
 export type GrowlybassLayer = (typeof GROWLYBASS_LAYERS)[number];
 
@@ -37,8 +40,8 @@ export function resolveGrowlybassSample(
 ): GrowlybassSamplePlan {
   if (
     !Number.isInteger(requestedMidi) ||
-    requestedMidi < 28 ||
-    requestedMidi > 55
+    requestedMidi < GROWLYBASS_LOWEST_MIDI ||
+    requestedMidi > GROWLYBASS_HIGHEST_MIDI
   ) {
     throw new RangeError('Growlybass suporta somente notas entre E1 e G3.');
   }
