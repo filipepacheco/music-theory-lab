@@ -539,8 +539,16 @@ const TENSION_DEGREES: Record<number, string> = {
 
 /** Degree of a note over the bar's root, e.g. `b3`, `5`, `#11`, `bb7`. */
 export function degreeLabel(note: AnalyzedNote): string {
-  const { interval, category } = note;
-  if (interval === null) return '';
+  return note.interval === null
+    ? ''
+    : intervalDegreeLabel(note.interval, note.category);
+}
+
+/** Degree label for `interval` semitones over a root heard as `category`. */
+export function intervalDegreeLabel(
+  interval: number,
+  category: DegreeCategory | null,
+): string {
   if (category === 'fifth') {
     return interval === 6 ? 'b5' : interval === 8 ? '#5' : '5';
   }

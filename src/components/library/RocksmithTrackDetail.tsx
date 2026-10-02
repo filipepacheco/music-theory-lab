@@ -6,14 +6,16 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import BassNeck from '@/components/instruments/BassNeck';
 import BassDegreeGuide from '@/components/library/BassDegreeGuide';
 import BassTabBar, {
   DEGREE_COLORS,
   FUNCTION_COLORS,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
+import ChartFretboard from '@/components/library/ChartFretboard';
+import FifthsCircle from '@/components/library/FifthsCircle';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
+import PlaybackDock from '@/components/library/PlaybackDock';
 import {
   formatDuration,
   sectionColorVar,
@@ -21,6 +23,8 @@ import {
 import { useLibraryAudio } from '@/components/library/useLibraryAudio';
 import {
   analyzeBassChart,
+  barChordSymbol,
+  degreeLabel,
   DEGREE_CATEGORIES,
   summarizeBars,
   type AnalysisSummary,
@@ -31,7 +35,6 @@ import {
   activeNoteIndexes,
   barIndexAt,
   isStandardTuning,
-  midiNoteName,
   notesByBar,
   sectionBlocks,
   sectionIndexOfBar,
@@ -43,6 +46,7 @@ import {
 } from '@/domain/bassChart';
 import {
   analyzeHarmony,
+  barChordTones,
   describeKeyEvidence,
   keyLabel,
   keyNoteNames,
@@ -61,6 +65,11 @@ import {
 } from '@/domain/bassMix';
 import { useBassSynthPlayback } from '@/hooks/useBassSynthPlayback';
 import { NOTE_NAMES } from '@/constants/notes';
+import {
+  chordCell,
+  describeRootMotion,
+  isMinorChordType,
+} from '@/domain/circleOfFifths';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 
 interface Props {
@@ -107,6 +116,8 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dockHeight, setDockHeight] = useState(0);
 
   const noteTimes = useMemo(() => chart.notes.map((n) => n.time), [chart]);
   const barNotes = useMemo(() => notesByBar(chart), [chart]);
@@ -158,6 +169,59 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   );
   const current = activeNotes.map((i) => chart.notes[i]);
 
+  // The floating fretboard and circle follow the bar under the playhead.
+  const fretCount = useMemo(
+    () =>
+      Math.min(
+        24,
+        chart.notes.reduce(
+          (most, n) => Math.max(most, n.fret, n.slideToFret ?? 0),
+          12,
+        ),
+      ),
+    [chart],
+  );
+  const shownBar = activeBar >= 0 ? (analysis[activeBar] ?? null) : null;
+  const segmentIndex =
+    harmony && activeBar >= 0 ? (harmony.barSegments[activeBar] ?? -1) : -1;
+  const segment =
+    harmony && segmentIndex >= 0
+      ? (harmony.segments[segmentIndex] ?? null)
+      : null;
+  const tones = useMemo(
+    () => (shownBar ? barChordTones(shownBar, segment) : []),
+    [shownBar, segment],
+  );
+  const activePositions = useMemo(
+    () =>
+      activeNotes.map((i) => ({
+        string: chart.notes[i].string,
+        fret: chart.notes[i].fret,
+      })),
+    [activeNotes, chart],
+  );
+  const circle = useMemo(() => {
+    if (!harmony || !segment) {
+      return { current: null, previous: null, caption: null };
+    }
+    const minor = (s: HarmonicSegment) =>
+      s.harmony.chordType !== null
+        ? isMinorChordType(s.harmony.chordType)
+        : s.evidence.third === 'minor';
+    const previous =
+      harmony.segments
+        .slice(0, segmentIndex)
+        .reverse()
+        .find((s) => s.root !== segment.root) ?? null;
+    return {
+      current: chordCell(segment.root, minor(segment)),
+      previous: previous ? chordCell(previous.root, minor(previous)) : null,
+      caption: previous
+        ? describeRootMotion(previous.root, segment.root, noteNames)
+        : null,
+    };
+  }, [harmony, segment, segmentIndex, noteNames]);
+
   // The audio hooks hand out fresh closures every render; a stable seek
   // keeps the memoised bars from re-rendering on every animation frame.
   const audioRef = useRef(audio);
@@ -168,12 +232,31 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   );
   const seek = hasPlayer && audio.ready ? stableSeek : null;
 
+  // Keep the playing bar in the middle of what is visible: below the app
+  // header while it is on screen and above the floating dock.
   useEffect(() => {
     if (!follow || !audio.playing || activeBar < 0) return;
-    chartRef.current
-      ?.querySelector(`[data-bar="${activeBar}"]`)
-      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const element = chartRef.current?.querySelector(
+      `[data-bar="${activeBar}"]`,
+    );
+    if (!element) return;
+    const bar = element.getBoundingClientRect();
+    const top = Math.max(
+      0,
+      document.querySelector('header')?.getBoundingClientRect().bottom ?? 0,
+    );
+    const bottom =
+      dockRef.current?.getBoundingClientRect().top ?? window.innerHeight;
+    window.scrollTo({
+      top: window.scrollY + bar.top + bar.height / 2 - (top + bottom) / 2,
+      behavior: 'smooth',
+    });
   }, [activeBar, audio.playing, follow]);
+
+  const togglePlay = useCallback(() => {
+    if (audioRef.current.playing) audioRef.current.pause();
+    else void audioRef.current.play();
+  }, []);
 
   const playhead = (barIndex: number): number | null => {
     if (barIndex !== activeBar) return null;
@@ -245,36 +328,6 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
       )}
 
       <AudioSource state={audioState} saveError={saveError} onAttach={attach} />
-
-      <div className="rounded-card border border-border-default bg-bg-card p-3 sm:p-4">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h4 className="font-heading text-sm text-text-secondary">
-            Braço sincronizado
-          </h4>
-          <p className="font-heading text-sm text-text-primary tabular-nums">
-            {current.length > 0
-              ? `Nota atual: ${current
-                  .map(
-                    (n) =>
-                      `${midiNoteName(n.midi)} (corda ${STRING_NAMES[n.string]}, casa ${n.fret})`,
-                  )
-                  .join(' + ')}`
-              : 'Nenhuma nota ativa'}
-          </p>
-        </div>
-        <BassNeck
-          highlight={{
-            pitchClasses: current.map((n) => n.midi % 12),
-            rootPitchClass: current[0] ? current[0].midi % 12 : null,
-            positions: current.map((n) => ({ string: n.string, fret: n.fret })),
-          }}
-        />
-        {!isStandardTuning(chart.tuning) && (
-          <p className="mt-2 text-[11px] text-text-muted">
-            O braço mostra a afinação padrão; as casas seguem a tablatura.
-          </p>
-        )}
-      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -358,6 +411,80 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}
         </p>
       </div>
+
+      {/* Room under the last bars so the fixed dock never hides them. */}
+      <div aria-hidden style={{ height: dockHeight }} />
+      <PlaybackDock
+        dockRef={dockRef}
+        onHeightChange={setDockHeight}
+        title={
+          shownBar ? (
+            <>
+              Compasso {shownBar.bar + 1}
+              {shownBar.root !== null && (
+                <>
+                  {' · '}
+                  {barChordSymbol(shownBar, noteNames)}
+                  {!shownBar.evidence.chordType && (
+                    <span className="text-text-muted">?</span>
+                  )}
+                </>
+              )}
+              {segment && (
+                <>
+                  {' · '}
+                  <span
+                    className="font-bold"
+                    style={{
+                      color: segment.harmony.func
+                        ? FUNCTION_COLORS[segment.harmony.func]
+                        : 'var(--color-text-secondary)',
+                    }}
+                  >
+                    {segment.harmony.numeral}
+                  </span>
+                </>
+              )}
+            </>
+          ) : (
+            'Toque a música ou clique num compasso'
+          )
+        }
+        status={
+          current.length > 0
+            ? `Tocando: ${current
+                .map((note, i) => {
+                  const degree = shownBar?.notes.find(
+                    (n) => n.index === activeNotes[i],
+                  );
+                  const label = degree ? degreeLabel(degree) : '';
+                  return `${noteNames[note.midi % 12]}${Math.floor(note.midi / 12) - 1}${label ? ` (${label})` : ''} · corda ${STRING_NAMES[note.string]}, casa ${note.fret}`;
+                })
+                .join(' + ')}`
+            : 'Contorno cheio: o baixo tocou · tracejado: nota do acorde suposta pelo tom'
+        }
+        playing={audio.playing}
+        canPlay={hasPlayer && audio.ready}
+        onTogglePlay={togglePlay}
+        neck={
+          <ChartFretboard
+            tuning={chart.tuning}
+            fretCount={fretCount}
+            rootPitchClass={shownBar?.root ?? null}
+            tones={tones}
+            active={activePositions}
+            noteNames={noteNames}
+          />
+        }
+        circle={
+          <FifthsCircle
+            musicalKey={musicalKey}
+            current={circle.current}
+            previous={circle.previous}
+            caption={circle.caption}
+          />
+        }
+      />
     </section>
   );
 }

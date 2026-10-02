@@ -8,6 +8,7 @@ import {
 } from '@/domain/bassChartFixture';
 import {
   analyzeHarmony,
+  barChordTones,
   describeKeyEvidence,
   fieldChords,
   keyLabel,
@@ -348,5 +349,48 @@ describe('keyNoteNames and fieldChords', () => {
       'VI Bbmaj7',
       'VII C7',
     ]);
+  });
+});
+
+describe('barChordTones', () => {
+  function tones(barNotes: number[][], key: MusicalKey, bar = 0) {
+    const chart = fixtureChart(barNotes.length, walking(barNotes));
+    const bars = analyzeBassChart(chart);
+    const analysis = analyzeHarmony(chart, bars, key);
+    const segment = analysis.segments[analysis.barSegments[bar]] ?? null;
+    return barChordTones(bars[bar], segment).map(
+      (t) => `${t.label}${t.played ? '' : '?'}`,
+    );
+  }
+
+  it('fills the chord from the key when the bass plays only the root', () => {
+    // i in D minor is Dm7: the b3, 5 and b7 are implied, not played.
+    expect(tones([D5, A5, D5], D_MINOR)).toEqual(['R', 'b3?', '5', 'b7?']);
+  });
+
+  it('prefers what the bass played over the key', () => {
+    // Two bars of D read as ii in C major (min7). The second bar plays F#:
+    // its played major third wins over the b3 the reading implies.
+    const FS2 = 42;
+    expect(
+      tones([[D2, F2, A2, F2], [D2, FS2, A2, FS2], G7], C_MAJOR, 1),
+    ).toEqual(['R', '3', '5', 'b7?']);
+  });
+
+  it('adds the tensions the bass played', () => {
+    // F# on beat 3 over C major: the #11.
+    expect(tones([[C3, E3, 54, G3]], C_MAJOR)).toEqual([
+      'R',
+      '3',
+      '5',
+      '7?',
+      '#11',
+    ]);
+  });
+
+  it('uses only the played notes without a key', () => {
+    const chart = fixtureChart(1, walking([D5]));
+    const [bar] = analyzeBassChart(chart);
+    expect(barChordTones(bar, null).map((t) => t.label)).toEqual(['R', '5']);
   });
 });

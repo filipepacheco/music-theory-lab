@@ -8,9 +8,11 @@ import {
 import { FLAT_KEYS, NOTE_NAMES, NOTE_NAMES_FLAT } from '@/constants/notes';
 import { SCALE_PATTERNS } from '@/constants/scales';
 import {
+  intervalDegreeLabel,
   readEvidence,
   type BarAnalysis,
   type ChordEvidence,
+  type DegreeCategory,
 } from '@/domain/bassAnalysis';
 import type { BassChart } from '@/domain/bassChart';
 import { getPreferredRootName } from '@/utils/noteHelpers';
@@ -72,6 +74,12 @@ export interface SegmentHarmony {
   confirmed: boolean;
   /** Intervals over the root that are avoid notes on this degree (§8). */
   avoid: number[];
+  /**
+   * The `CHORD_TYPES` chord this reading implies, e.g. `min7` for i in a
+   * minor key; null when nothing implies one (a chromatic root with no
+   * quality played).
+   */
+  chordType: string | null;
 }
 
 /** One chord: a run of consecutive bars on the same root. */
@@ -386,6 +394,8 @@ const FUNCTION_NAMES: Record<HarmonicFunction, string> = {
 interface Borrowing {
   fromTonic: number;
   numeral: (evidence: ChordEvidence) => string;
+  /** The chord as it stands in the field it is borrowed from (§2.2–2.3). */
+  chordType: (evidence: ChordEvidence) => string;
   func: HarmonicFunction;
   source: string;
   fits: (evidence: ChordEvidence) => boolean;
@@ -403,6 +413,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 5,
       numeral: () => 'iv',
+      chordType: () => 'min7',
       func: 'SD',
       source: 'menor natural',
       fits: (e) => e.third === 'minor',
@@ -410,6 +421,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 10,
       numeral: () => 'bVII',
+      chordType: () => 'dom7',
       func: 'SD',
       source: 'menor natural / mixolídio',
       fits: notMinor,
@@ -417,6 +429,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 8,
       numeral: () => 'bVI',
+      chordType: () => 'maj7',
       func: 'SD',
       source: 'menor natural',
       fits: notMinor,
@@ -424,6 +437,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 3,
       numeral: () => 'bIII',
+      chordType: () => 'maj7',
       func: 'T',
       source: 'menor natural',
       fits: notMinor,
@@ -431,6 +445,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 2,
       numeral: (e) => (e.seventh === 'minor' ? 'iiø' : 'ii°'),
+      chordType: (e) => (e.seventh === 'minor' ? 'halfDim7' : 'dim'),
       func: 'SD',
       source: 'menor harmônica',
       fits: (e) => e.fifth === 'diminished',
@@ -438,6 +453,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 0,
       numeral: () => 'i',
+      chordType: () => 'min7',
       func: 'T',
       source: 'menor paralelo',
       fits: (e) => e.third === 'minor',
@@ -447,6 +463,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 5,
       numeral: () => 'IV',
+      chordType: () => 'maj7',
       func: 'SD',
       source: 'maior paralelo',
       fits: (e) => e.third === 'major',
@@ -454,6 +471,7 @@ const BORROWINGS: Record<KeyMode, Borrowing[]> = {
     {
       fromTonic: 0,
       numeral: () => 'I',
+      chordType: () => 'maj7',
       func: 'T',
       source: 'maior paralelo',
       fits: (e) => e.third === 'major',
@@ -539,6 +557,7 @@ function classify(
         detail: 'Dominante · V da menor harmônica',
         confirmed: true,
         avoid: DOMINANT_AVOID,
+        chordType: 'dom7',
       };
     }
     if (fromTonic === 11 && !contradicts(evidence, 'dim7')) {
@@ -549,6 +568,7 @@ function classify(
         detail: 'Dominante · vii° da menor harmônica',
         confirmed: evidence.fifth === 'diminished',
         avoid: [],
+        chordType: 'dim7',
       };
     }
   }
@@ -566,6 +586,7 @@ function classify(
       detail: `${FUNCTION_NAMES[degree.harmonicFunction]} · ${degree.romanNumeral} do campo harmônico`,
       confirmed: evidence.third !== null && evidence.third === expected.third,
       avoid,
+      chordType: degree.chordType,
     };
   }
 
@@ -586,6 +607,7 @@ function classify(
       detail: `Dominante secundária de ${target.romanNumeral}`,
       confirmed: evidence.third === 'major',
       avoid: DOMINANT_AVOID,
+      chordType: 'dom7',
     };
   }
 
@@ -604,6 +626,7 @@ function classify(
       detail: `SubV (substituto de trítono) de ${target.romanNumeral}`,
       confirmed: evidence.third === 'major',
       avoid: DOMINANT_AVOID,
+      chordType: 'dom7',
     };
   }
 
@@ -635,6 +658,7 @@ function classify(
             : 'Diminuto auxiliar',
         confirmed: true,
         avoid: [],
+        chordType: evidence.chordType ?? 'dim7',
       };
     }
   }
@@ -650,6 +674,7 @@ function classify(
       detail: `Empréstimo modal (${borrowing.source}) · ${FUNCTION_NAMES[borrowing.func]}`,
       confirmed: evidence.third !== null,
       avoid: [],
+      chordType: borrowing.chordType(evidence),
     };
   }
 
@@ -660,6 +685,7 @@ function classify(
     detail: 'Cromático: fora do campo harmônico',
     confirmed: evidence.third !== null,
     avoid: [],
+    chordType: evidence.chordType,
   };
 }
 
@@ -1013,4 +1039,67 @@ export function fieldChords(key: MusicalKey): FieldChord[] {
     name: `${names[mod12(key.tonic + degree.scaleInterval)]}${CHORD_TYPES[degree.chordType].symbol}`,
     func: degree.harmonicFunction,
   }));
+}
+
+export interface ChordTone {
+  /** Semitones above the bar's root. */
+  interval: number;
+  category: Exclude<DegreeCategory, 'ornament'>;
+  /** e.g. `R`, `b3`, `5`, `b7`, `9`. */
+  label: string;
+  /** The bass played it in this bar; false when the key's reading implies it. */
+  played: boolean;
+}
+
+const SLOT_INTERVALS = {
+  third: { minor: [3], major: [4], both: [3, 4] },
+  fifth: { diminished: [6], perfect: [7], augmented: [8] },
+  seventh: { diminished: [9], minor: [10], major: [11], both: [10, 11] },
+} as const;
+
+/**
+ * The bar's chord tones for the fretboard: the root, then for the third,
+ * fifth and seventh what the bass played in this bar or, failing that, what
+ * the chord's reading in the key implies; then the tensions it played.
+ */
+export function barChordTones(
+  bar: BarAnalysis,
+  segment: HarmonicSegment | null,
+): ChordTone[] {
+  if (bar.root === null) return [];
+  const played = bar.evidence;
+  const chordType = segment?.harmony.chordType ?? played.chordType;
+  const implied = chordType
+    ? readEvidence(CHORD_TYPES[chordType].intervals)
+    : null;
+  const tones: ChordTone[] = [
+    { interval: 0, category: 'root', label: 'R', played: true },
+  ];
+  for (const slot of ['third', 'fifth', 'seventh'] as const) {
+    const playedValue = played[slot];
+    const value = playedValue ?? implied?.[slot] ?? null;
+    if (value === null) continue;
+    const intervals = (
+      SLOT_INTERVALS[slot] as Record<string, readonly number[]>
+    )[value];
+    for (const interval of intervals) {
+      tones.push({
+        interval,
+        category: slot,
+        label: intervalDegreeLabel(interval, slot),
+        played: playedValue !== null,
+      });
+    }
+  }
+  const used = new Set(tones.map((tone) => tone.interval));
+  for (const interval of played.intervals) {
+    if (used.has(interval)) continue;
+    tones.push({
+      interval,
+      category: 'tension',
+      label: intervalDegreeLabel(interval, 'tension'),
+      played: true,
+    });
+  }
+  return tones;
 }
