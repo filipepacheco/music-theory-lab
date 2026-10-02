@@ -366,12 +366,12 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         {showDegrees && (
           <p className="text-[11px] text-text-muted">
             O tom é sugerido por onde o baixo repousa: compassos na tônica, como
-            as seções começam e terminam e chegadas V→I. Uma raiz do campo
-            harmônico mantém a qualidade do campo, a menos que o baixo toque uma
-            3ª, 5ª ou 7ª diferente; só então o acorde é lido como dominante
-            secundária, SubV, diminuto ou empréstimo modal. Notas sublinhadas
-            são notas evitadas (b9 sobre uma nota do acorde) em posição de
-            destaque.
+            as seções começam e terminam e chegadas do 5º grau à tônica. Uma
+            raiz do campo harmônico mantém a qualidade do campo, a menos que o
+            baixo toque uma 3ª, 5ª ou 7ª diferente; só então o acorde é lido
+            como dominante secundária, SubV, diminuto ou empréstimo modal. Notas
+            sublinhadas são notas evitadas (b9 sobre uma nota do acorde) em
+            posição de destaque.
           </p>
         )}
       </div>

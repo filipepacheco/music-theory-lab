@@ -37,7 +37,7 @@ export interface KeyEvidence {
   sectionStarts: number;
   /** Share of sections whose last chord is on the tonic. */
   sectionEnds: number;
-  /** Chord changes from a fifth above into the tonic (V→I). */
+  /** Chord changes from the fifth degree into the tonic, of any quality. */
   dominantArrivals: number;
   endsOnTonic: boolean;
   /** Share of sounding notes inside the key's scale. */
@@ -89,6 +89,7 @@ export interface HarmonicSegment {
 export type HarmonicEventKind =
   | 'twoFiveOne'
   | 'authentic'
+  | 'modal'
   | 'plagal'
   | 'deceptive'
   | 'half'
@@ -153,12 +154,12 @@ function rootChanges(rooted: RootedBar[]): [number, number][] {
 /**
  * Keys ranked by where the bass rests, not just which notes it uses: a
  * scale collection fits its relative major and minor equally, so the tonic
- * is chosen by the share of bars on it, how sections start and end, V→I
- * arrivals and (at half weight, one chord being one data point) the final
- * chord; the notes' fit to the scale breaks ties. A tonic under
- * `MIN_TONIC_SHARE` of the bars ranks below every other: rarely heard, it is
- * evidence against itself. The mode follows the third the bass plays over
- * the tonic, else the scale.
+ * is chosen by the share of bars on it, how sections start and end,
+ * arrivals from the fifth degree and (at half weight, one chord being one
+ * data point) the final chord; the notes' fit to the scale breaks ties. A
+ * tonic under `MIN_TONIC_SHARE` of the bars ranks below every other: rarely
+ * heard, it is evidence against itself. The mode follows the third the bass
+ * plays over the tonic, else the scale.
  */
 export function suggestKeys(
   chart: BassChart,
@@ -754,9 +755,15 @@ function findEvents(
 
   const events: HarmonicEvent[] = [];
   const numeral = (link: Link) => link.segment.harmony.numeral;
-  const dominantLike = (link: Link) =>
-    link.segment.evidence.third !== 'minor' &&
-    link.segment.evidence.fifth !== 'diminished';
+  // A dominant needs its major third, the leading tone (§3.2). The major
+  // field's V has it, so an unplayed third is assumed major; the natural
+  // minor field's v does not (§2.3 note), so in a minor key only a major
+  // third the bass actually played makes it V.
+  const majorDominant = (link: Link) => {
+    const { third, fifth } = link.segment.evidence;
+    if (fifth === 'diminished') return false;
+    return key.mode === 'major' ? third !== 'minor' : third === 'major';
+  };
   const resolvedByTwoFive = new Set<number>();
 
   chain.forEach((a, i) => {
@@ -769,10 +776,9 @@ function findEvents(
       c &&
       mod12(b.segment.root - a.segment.root) === 5 &&
       mod12(c.segment.root - b.segment.root) === 5 &&
-      a.segment.evidence.third !== 'major' &&
-      dominantLike(b)
+      a.segment.evidence.third !== 'major'
     ) {
-      if (c.segment.fromTonic === 0) {
+      if (c.segment.fromTonic === 0 && majorDominant(b)) {
         resolvedByTwoFive.add(i + 1);
         const shown = `${numeral(a)}–${numeral(b)}–${numeral(c)}`;
         events.push({
@@ -796,17 +802,21 @@ function findEvents(
     const to = b.segment.fromTonic;
     const pair = { startBar: a.startBar, endBar: b.endBar };
     const arrow = `${numeral(a)}→${numeral(b)}`;
-    if (
-      from === 7 &&
-      to === 0 &&
-      dominantLike(a) &&
-      !resolvedByTwoFive.has(i)
-    ) {
-      events.push({
-        kind: 'authentic',
-        label: `Cadência autêntica (${arrow})`,
-        ...pair,
-      });
+    if (from === 7 && to === 0 && !resolvedByTwoFive.has(i)) {
+      // Without the leading tone v→i is a modal cadence, not an authentic one.
+      events.push(
+        majorDominant(a)
+          ? {
+              kind: 'authentic',
+              label: `Cadência autêntica (${arrow})`,
+              ...pair,
+            }
+          : {
+              kind: 'modal',
+              label: `Cadência modal (${arrow}, sem sensível)`,
+              ...pair,
+            },
+      );
     } else if (from === 5 && to === 0) {
       events.push({
         kind: 'plagal',
@@ -816,14 +826,20 @@ function findEvents(
     } else if (
       from === 7 &&
       to === (key.mode === 'major' ? 9 : 8) &&
-      dominantLike(a)
+      majorDominant(a)
     ) {
       events.push({
         kind: 'deceptive',
         label: `Cadência deceptiva (${arrow})`,
         ...pair,
       });
-    } else if (key.mode === 'minor' && from === 8 && to === 7) {
+    } else if (
+      key.mode === 'minor' &&
+      from === 8 &&
+      to === 7 &&
+      majorDominant(b)
+    ) {
+      // Both resolve to a major V (§4.1, §15.2); b6 → v is only a step.
       events.push({
         kind: 'phrygianBass',
         label: 'Baixo b6→5: cadência frígia (iv6→V) ou sexta aumentada',
@@ -841,7 +857,7 @@ function findEvents(
     if (
       endsSection &&
       link.segment.fromTonic === 7 &&
-      dominantLike(link) &&
+      majorDominant(link) &&
       next?.segment.fromTonic !== 0
     ) {
       events.push({
@@ -907,13 +923,14 @@ function findEvents(
     bar += choruses * BLUES_BARS.length;
   }
 
-  // Inside a named progression its V→I, IV→I and V→vi are the progression
-  // itself, not cadences worth listing on every repeat.
+  // Inside a named progression its V→I, v→i, IV→I and V→vi are the
+  // progression itself, not cadences worth listing on every repeat.
   const patterns = events.filter(
     (e) => e.kind === 'progression' || e.kind === 'blues',
   );
   const explained = (event: HarmonicEvent) =>
     (event.kind === 'authentic' ||
+      event.kind === 'modal' ||
       event.kind === 'plagal' ||
       event.kind === 'deceptive') &&
     patterns.some(
@@ -943,7 +960,7 @@ export function describeKeyEvidence(suggestion: KeySuggestion): string {
     `${percent(evidence.tonicBars)} dos compassos em ${tonic}`,
     `${percent(evidence.sectionEnds)} das seções terminam em ${tonic}`,
     evidence.dominantArrivals > 0
-      ? `${evidence.dominantArrivals} chegada${evidence.dominantArrivals > 1 ? 's' : ''} V→I`
+      ? `${evidence.dominantArrivals} chegada${evidence.dominantArrivals > 1 ? 's' : ''} do 5º grau à tônica`
       : '',
     evidence.endsOnTonic ? `última nota em ${tonic}` : '',
     `${percent(evidence.scaleFit)} das notas na escala`,
