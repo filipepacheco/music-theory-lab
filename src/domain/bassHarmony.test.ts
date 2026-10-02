@@ -48,8 +48,16 @@ const G = [G2, B2, D3, B2];
 const E7 = [E2, GS2, B2, D3];
 const Bb = [BB2, D3, F3, D3];
 
+/** Root and fifth only: the bass never says major or minor. */
+const D5 = [D2, A2, D2, A2];
+const G5 = [G2, D3, G2, D3];
+const Bb5 = [BB2, F3, BB2, F3];
+const A5 = [A2, E3, A2, E3];
+const E5 = [E2, B2, E2, B2];
+
 const C_MAJOR: MusicalKey = { tonic: 0, mode: 'major' };
 const A_MINOR: MusicalKey = { tonic: 9, mode: 'minor' };
+const D_MINOR: MusicalKey = { tonic: 2, mode: 'minor' };
 
 function analyze(
   barNotes: number[][],
@@ -85,7 +93,7 @@ describe('suggestKeys', () => {
     expect(best.evidence.endsOnTonic).toBe(true);
     expect(describeKeyEvidence(best)).toBe(
       '38% dos compassos em C · 100% das seções terminam em C · ' +
-        '2 chegadas V→I · última nota em C · 97% das notas na escala',
+        '2 chegadas do 5º grau à tônica · última nota em C · 97% das notas na escala',
     );
   });
 
@@ -205,6 +213,43 @@ describe('analyzeHarmony', () => {
     );
     expect(eventLabels(analysis)).toEqual([
       'Cadência andaluza (i–bVII–bVI–V)',
+      'Baixo b6→5: cadência frígia (iv6→V) ou sexta aumentada',
+      'Cadência autêntica (V7→i)',
+    ]);
+  });
+
+  it('calls v→i modal, not authentic, when the bass plays no leading tone', () => {
+    // i–iv–VI–v ×2 in D minor on roots and fifths, then home.
+    const bars = [D5, G5, Bb5, A5, D5, G5, Bb5, A5, D5];
+    const chart = fixtureChart(bars.length, walking(bars));
+    const [best] = suggestKeys(chart, analyzeBassChart(chart));
+    expect(best).toMatchObject({ tonic: 2, mode: 'minor' });
+
+    const analysis = analyze(bars, D_MINOR);
+    expect(numerals(analysis)).toEqual([
+      'i',
+      'iv',
+      'VI',
+      'v',
+      'i',
+      'iv',
+      'VI',
+      'v',
+      'i',
+    ]);
+    // No Phrygian / augmented-sixth reading: VI→v is a step, not a cadence.
+    expect(eventLabels(analysis)).toEqual([
+      'Cadência modal (v→i, sem sensível)',
+      'Cadência modal (v→i, sem sensível)',
+    ]);
+  });
+
+  it('needs a played major V for minor-key cadences that resolve on V', () => {
+    expect(eventLabels(analyze([Am, E5, F], A_MINOR))).toEqual([]);
+    expect(eventLabels(analyze([Am, E7, F], A_MINOR))).toEqual([
+      'Cadência deceptiva (V7→VI)',
+    ]);
+    expect(eventLabels(analyze([Am, F, E7, Am], A_MINOR))).toEqual([
       'Baixo b6→5: cadência frígia (iv6→V) ou sexta aumentada',
       'Cadência autêntica (V7→i)',
     ]);

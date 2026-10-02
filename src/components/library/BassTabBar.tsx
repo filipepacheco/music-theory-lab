@@ -25,7 +25,10 @@ interface Props {
   /** 0–1 position of the playhead inside this bar, or null elsewhere. */
   playhead: number | null;
   onSeek: ((seconds: number) => void) | null;
-  /** When set, notes show their degree over the bar's root, not the fret. */
+  /**
+   * When set, frets take their degree's colour and a lane under the strings
+   * names each note's degree over the bar's root.
+   */
   analysis: BarAnalysis | null;
   /** The chord this bar belongs to, read in the chosen key. */
   segment: HarmonicSegment | null;
@@ -81,6 +84,9 @@ const PAD_TOP = 9;
 const LINE_GAP = 12;
 const STRING_COUNT = 4;
 const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
+/** Height of the degree lane drawn under the strings. */
+const DEGREE_LANE = 12;
+const DEGREE_Y = HEIGHT + DEGREE_LANE / 2 - 2;
 
 /** Tab label for one note: fret, `x` for a dead note, slide direction. */
 function noteLabel(note: BassChartNote): string {
@@ -110,9 +116,25 @@ function BassTabBar({
     analysis?.notes.map((n) => [n.index, n]),
   );
   const symbol = analysis ? barChordSymbol(analysis) : null;
-  const label = (note: BassChartNote, index: number): string => {
+  const svgHeight = analysis ? HEIGHT + DEGREE_LANE : HEIGHT;
+  const degreeOf = (index: number): AnalyzedNote | null => {
     const degree = degrees.get(index);
-    return (degree && degreeLabel(degree)) || noteLabel(note);
+    return degree && degreeLabel(degree) ? degree : null;
+  };
+  // One lane entry per onset; a double stop lists its degrees low to high.
+  const onsets = new Map<number, AnalyzedNote[]>();
+  for (const { note, index } of notes) {
+    const degree = degreeOf(index);
+    if (!degree) continue;
+    const atOnset = onsets.get(note.beatInBar) ?? [];
+    atOnset.push(degree);
+    onsets.set(note.beatInBar, atOnset);
+  }
+  const spoken = ({ note, index }: IndexedNote): string => {
+    const degree = degreeOf(index);
+    return degree
+      ? `${noteLabel(note)} (${degreeLabel(degree)})`
+      : noteLabel(note);
   };
   return (
     <button
@@ -152,13 +174,11 @@ function BassTabBar({
       )}
       <svg
         width={width}
-        height={HEIGHT}
-        viewBox={`0 0 ${width} ${HEIGHT}`}
+        height={svgHeight}
+        viewBox={`0 0 ${width} ${svgHeight}`}
         role="img"
         aria-label={`Compasso ${bar.index + 1}${symbol ? ` (${symbol})` : ''}: ${
-          notes.length === 0
-            ? 'pausa'
-            : notes.map(({ note, index }) => label(note, index)).join(' ')
+          notes.length === 0 ? 'pausa' : notes.map(spoken).join(' ')
         }`}
       >
         {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
@@ -167,7 +187,7 @@ function BassTabBar({
             x1={PAD_X + (beat + 1) * BEAT_WIDTH}
             x2={PAD_X + (beat + 1) * BEAT_WIDTH}
             y1={PAD_TOP - 3}
-            y2={HEIGHT - PAD_TOP + 3}
+            y2={analysis ? svgHeight - 2 : HEIGHT - PAD_TOP + 3}
             stroke="var(--color-border-default)"
             strokeDasharray="1 3"
           />
@@ -188,7 +208,7 @@ function BassTabBar({
             x1={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
             x2={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
             y1={2}
-            y2={HEIGHT - 2}
+            y2={svgHeight - 2}
             stroke="var(--color-accent)"
             strokeWidth={1.5}
           />
@@ -196,7 +216,6 @@ function BassTabBar({
         {notes.map(({ note, index }) => {
           const active = activeNotes.includes(index);
           const category = degrees.get(index)?.category;
-          const avoid = avoidNotes?.has(index) ?? false;
           return (
             <text
               key={index}
@@ -205,11 +224,7 @@ function BassTabBar({
               dominantBaseline="central"
               fontSize={11}
               fontWeight={
-                active ||
-                category === 'root' ||
-                note.techniques.includes('accent')
-                  ? 700
-                  : 500
+                active || note.techniques.includes('accent') ? 700 : 500
               }
               className="font-heading"
               fill={
@@ -224,15 +239,47 @@ function BassTabBar({
               }
               strokeWidth={3}
               paintOrder="stroke"
-              textDecoration={avoid ? 'underline' : undefined}
             >
-              {avoid && (
-                <title>Nota evitada: forma b9 com uma nota do acorde</title>
-              )}
-              {label(note, index)}
+              {noteLabel(note)}
             </text>
           );
         })}
+        {[...onsets].map(([beatInBar, atOnset]) => (
+          <text
+            key={`degree-${beatInBar}`}
+            x={PAD_X + beatInBar * BEAT_WIDTH + 1}
+            y={DEGREE_Y}
+            dominantBaseline="central"
+            fontSize={9}
+            className="font-heading"
+          >
+            {[...atOnset]
+              .sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0))
+              .map((degree, i) => {
+                const avoid = avoidNotes?.has(degree.index) ?? false;
+                return (
+                  <tspan
+                    key={degree.index}
+                    fill={
+                      degree.category
+                        ? DEGREE_COLORS[degree.category]
+                        : 'var(--color-text-primary)'
+                    }
+                    fontWeight={degree.category === 'root' ? 700 : 500}
+                    textDecoration={avoid ? 'underline' : undefined}
+                  >
+                    {i > 0 ? '/' : ''}
+                    {degreeLabel(degree)}
+                    {avoid && (
+                      <title>
+                        Nota evitada: forma b9 com uma nota do acorde
+                      </title>
+                    )}
+                  </tspan>
+                );
+              })}
+          </text>
+        ))}
       </svg>
     </button>
   );
