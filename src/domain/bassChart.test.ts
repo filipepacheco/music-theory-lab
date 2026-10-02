@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeNoteIndexes,
   barIndexAt,
+  barsRepeatingAbove,
   buildBassChart,
   fittedBarsPerRow,
   hardestNotes,
@@ -15,6 +16,7 @@ import {
   type BassChart,
   type BassChartSectionBlock,
 } from '@/domain/bassChart';
+import { fixtureChart, type NoteSpec } from '@/domain/bassChartFixture';
 import type { SngArrangement, SngNote } from '@/services/rocksmith/sng';
 
 const BEAT = 0.5;
@@ -268,6 +270,30 @@ describe('queries', () => {
     expect(fittedBarsPerRow(12, 7)).toBe(6);
     expect(fittedBarsPerRow(7, 6)).toBe(6);
     expect(fittedBarsPerRow(8, 0)).toBe(1);
+  });
+
+  it('finds bars that repeat the one above them', () => {
+    // Bars 0-3, then the same four bars again, except that bar 6 gains a
+    // dead note where bar 2 is empty and bar 7 moves its last note.
+    const line = (offset: number): NoteSpec[] => [
+      { bar: offset, beat: 0, string: 1, fret: 5 },
+      { bar: offset, beat: 2, string: 1, fret: 5 },
+      { bar: offset + 1, beat: 0, string: 0, fret: 3 },
+      { bar: offset + 3, beat: 0, string: 1, fret: 7 },
+      { bar: offset + 3, beat: 3, string: 1, fret: 7 },
+    ];
+    const specs = [...line(0), ...line(4)];
+    specs.push({ bar: 6, beat: 1, string: 2, fret: 2, techniques: ['mute'] });
+    specs[specs.length - 2] = { bar: 7, beat: 3.5, string: 1, fret: 7 };
+    const built = fixtureChart(8, specs);
+    const [block] = sectionBlocks(built);
+
+    expect([...barsRepeatingAbove(built, block, 4)]).toEqual([
+      [4, 0],
+      [5, 1],
+    ]);
+    // Drawn two to a line, nothing sits under an identical bar.
+    expect(barsRepeatingAbove(built, block, 2).size).toBe(0);
   });
 
   it('labels sections and tunings for display', () => {
