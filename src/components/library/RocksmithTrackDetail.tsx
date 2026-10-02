@@ -14,6 +14,7 @@ import BassTabBar, {
 } from '@/components/library/BassTabBar';
 import ChartFretboard from '@/components/library/ChartFretboard';
 import FifthsCircle from '@/components/library/FifthsCircle';
+import FloatingWindow from '@/components/library/FloatingWindow';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
 import PlaybackDock from '@/components/library/PlaybackDock';
 import {
@@ -78,6 +79,28 @@ interface Props {
 }
 
 const STRING_NAMES = ['E', 'A', 'D', 'G'];
+const CIRCLE_OPEN_KEY = 'music-theory-lab:fifths-window-open';
+/** The circle's largest size; narrower screens get what fits. */
+const CIRCLE_SIZE = 300;
+
+/** Open as last left; by default open on wide screens, closed on phones. */
+function readCircleOpen(): boolean {
+  try {
+    const stored = localStorage.getItem(CIRCLE_OPEN_KEY);
+    if (stored !== null) return stored === 'true';
+  } catch {
+    // Blocked storage: fall back to the screen-size default.
+  }
+  return window.innerWidth >= 1024;
+}
+
+function writeCircleOpen(open: boolean): void {
+  try {
+    localStorage.setItem(CIRCLE_OPEN_KEY, String(open));
+  } catch {
+    // Blocked storage: the default applies next time.
+  }
+}
 const NO_NOTES: readonly number[] = [];
 
 const ALL_KEYS: MusicalKey[] = (['major', 'minor'] as const).flatMap((mode) =>
@@ -118,6 +141,31 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(0);
+  const [circleOpen, setCircleOpen] = useState(readCircleOpen);
+  const [viewport, setViewport] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }));
+  useEffect(() => {
+    const onResize = () =>
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  // The circle window starts just above the fretboard dock.
+  const [circleAnchor, setCircleAnchor] = useState(16);
+  useEffect(() => {
+    const dockTop = dockRef.current?.getBoundingClientRect().top;
+    setCircleAnchor(
+      dockTop === undefined ? 16 : viewport.height - dockTop + 12,
+    );
+  }, [dockHeight, viewport.height]);
+  const toggleCircle = useCallback(() => {
+    setCircleOpen((open) => {
+      writeCircleOpen(!open);
+      return !open;
+    });
+  }, []);
 
   const noteTimes = useMemo(() => chart.notes.map((n) => n.time), [chart]);
   const barNotes = useMemo(() => notesByBar(chart), [chart]);
@@ -466,6 +514,20 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         playing={audio.playing}
         canPlay={hasPlayer && audio.ready}
         onTogglePlay={togglePlay}
+        actions={
+          <button
+            type="button"
+            onClick={toggleCircle}
+            aria-pressed={circleOpen}
+            className={`shrink-0 px-2 py-1 rounded-control border text-[11px] cursor-pointer ${
+              circleOpen
+                ? 'border-accent bg-accent/15 text-accent'
+                : 'border-border-default text-text-muted hover:text-text-primary'
+            }`}
+          >
+            Ciclo
+          </button>
+        }
         neck={
           <ChartFretboard
             tuning={chart.tuning}
@@ -476,15 +538,30 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
             noteNames={noteNames}
           />
         }
-        circle={
+      />
+      {circleOpen && (
+        <FloatingWindow
+          title="Ciclo de quintas"
+          storageKey="music-theory-lab:fifths-window-position"
+          anchorBottom={circleAnchor}
+          anchorSide="left"
+          onClose={toggleCircle}
+        >
           <FifthsCircle
             musicalKey={musicalKey}
             current={circle.current}
             previous={circle.previous}
             caption={circle.caption}
+            centerLabel={musicalKey ? keyLabel(musicalKey) : null}
+            centerChord={
+              shownBar && shownBar.root !== null
+                ? `${barChordSymbol(shownBar, noteNames)}${shownBar.evidence.chordType ? '' : '?'}`
+                : null
+            }
+            size={Math.min(CIRCLE_SIZE, viewport.width - 56)}
           />
-        }
-      />
+        </FloatingWindow>
+      )}
     </section>
   );
 }
