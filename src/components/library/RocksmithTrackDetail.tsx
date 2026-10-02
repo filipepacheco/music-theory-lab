@@ -28,6 +28,12 @@ import {
   type BassChart,
   type BassChartSectionBlock,
 } from '@/domain/bassChart';
+import {
+  BASS_MIX_MODES,
+  bassCrossoverHz,
+  bassMixLabel,
+  type BassMixMode,
+} from '@/domain/bassMix';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 
 interface Props {
@@ -41,7 +47,9 @@ const NO_NOTES: readonly number[] = [];
 export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
-  const audio = useLibraryAudio(audioUrl);
+  const [mixMode, setMixMode] = useState<BassMixMode>('full');
+  const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
+  const audio = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
   const [follow, setFollow] = useState(true);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +143,13 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
       </dl>
 
       {audioUrl && <LibraryPlayer audio={audio} />}
+      {audioUrl && (
+        <BassMixPicker
+          mode={mixMode}
+          crossoverHz={crossoverHz}
+          onChange={setMixMode}
+        />
+      )}
 
       <AudioSource state={audioState} saveError={saveError} onAttach={attach} />
 
@@ -343,6 +358,53 @@ function AudioSource({
         <p role="alert" className="text-[11px] text-text-error">
           Não foi possível salvar o áudio neste navegador. Verifique o espaço
           disponível e tente novamente.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BassMixPicker({
+  mode,
+  crossoverHz,
+  onChange,
+}: {
+  mode: BassMixMode;
+  crossoverHz: number;
+  onChange: (mode: BassMixMode) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div
+        role="radiogroup"
+        aria-label="Mixagem para praticar"
+        className="flex flex-wrap gap-1"
+      >
+        {BASS_MIX_MODES.map((option) => {
+          const selected = option === mode;
+          return (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option)}
+              className={`font-heading text-xs px-3 py-1.5 rounded-button border cursor-pointer ${
+                selected
+                  ? 'border-text-primary bg-bg-elevated text-text-primary'
+                  : 'border-border-default text-text-muted hover:text-text-primary'
+              }`}
+            >
+              {bassMixLabel(option)}
+            </button>
+          );
+        })}
+      </div>
+      {mode !== 'full' && (
+        <p className="text-[11px] text-text-muted">
+          Separação por frequência, com corte em ~{crossoverHz} Hz: o bumbo
+          continua no "Só baixo" e os harmônicos agudos do baixo vazam no "Sem
+          baixo".
         </p>
       )}
     </div>
