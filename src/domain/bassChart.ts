@@ -8,9 +8,14 @@ import type { SngArrangement, SngNote } from '@/services/rocksmith/sng';
  */
 export interface BassChart {
   schemaVersion: 1;
-  /** SHA-256 of the imported `.psarc`, so re-importing a file is idempotent. */
+  /** SHA-256 of the imported file, so re-importing it is idempotent. */
   id: string;
   sourceFileName: string;
+  /**
+   * `midi` charts have no fingering of their own: their strings and frets are
+   * a suggestion. Absent on charts stored before MIDI import, all Rocksmith.
+   */
+  source?: BassChartSource;
   importedAt: string;
   title: string;
   artist: string;
@@ -24,6 +29,8 @@ export interface BassChart {
   sections: BassChartSection[];
   notes: BassChartNote[];
 }
+
+export type BassChartSource = 'rocksmith' | 'midi';
 
 export interface BassChartBar {
   index: number;
@@ -82,7 +89,7 @@ export interface BassChartMetadata {
 
 /** Twelve ticks per beat covers straight 8ths, 16ths and triplets. */
 export const TICKS_PER_BEAT = 12;
-const STANDARD_OPEN_MIDI = [28, 33, 38, 43];
+export const STANDARD_OPEN_MIDI = [28, 33, 38, 43];
 const STRING_COUNT = 4;
 
 const TECHNIQUE_MASKS: [number, BassTechnique][] = [
@@ -107,6 +114,7 @@ export function buildBassChart(input: {
   importedAt: string;
   metadata: BassChartMetadata;
   arrangement: SngArrangement;
+  source?: BassChartSource;
 }): BassChart {
   const { arrangement } = input;
   const beatTimes = arrangement.beats.map((b) => b.time);
@@ -148,6 +156,7 @@ export function buildBassChart(input: {
     schemaVersion: 1,
     id: input.id,
     sourceFileName: input.sourceFileName,
+    source: input.source ?? 'rocksmith',
     importedAt: input.importedAt,
     title: input.metadata.title,
     artist: input.metadata.artist,

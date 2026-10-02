@@ -223,6 +223,9 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           Um bloco = um compasso, na grade de tempos do próprio arquivo. As
           linhas vão da corda G (em cima) à E (embaixo); pontilhados marcam os
           tempos. x = nota abafada, / e \ = slide.
+          {chart.source === 'midi'
+            ? ' O MIDI não traz digitação: cordas e casas são uma sugestão automática.'
+            : ''}
           {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}
         </p>
       </div>
@@ -325,7 +328,7 @@ function AudioSource({
               ? ready.origin === 'psarc'
                 ? `Áudio extraído do pacote: ${ready.fileName}`
                 : `Áudio local: ${ready.fileName}`
-              : 'Este pacote não trouxe áudio. Vincule a gravação para tocar junto.'}
+              : 'Este arquivo não trouxe áudio. Vincule a gravação para tocar junto.'}
         </p>
         <p className="text-[11px] text-text-muted">
           Tudo fica somente neste navegador e não é enviado para a nuvem.
