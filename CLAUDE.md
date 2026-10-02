@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The user's global CLAUDE.md has a standing "never commit, never push" rule. For **this repo only**, the user has explicitly waived it (2026-08-06) — local commits are allowed here, including on side branches (needed for the `/wayfinder` skill's research/prototype ticket resolutions, which commit findings as a durable primary-source pointer). Pushing to the remote or merging to `main` still requires the normal explicit-confirmation judgment calls, not blanket pre-authorization.
 
+Exception (2026-10-02): when a task is finished on its feature branch, push that branch and open the pull request without asking first. Merging to `main` still waits for the user.
+
 ## Project
 
 Music Theory Lab - interactive educational app for learning music theory (Portuguese/pt-BR). Features real audio playback via Tone.js, visual instruments (piano + bass fretboard), harmonic field analysis, chord progression builder with persistence, scale comparison, and metronome-synced playback.
