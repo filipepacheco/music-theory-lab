@@ -7,13 +7,24 @@ import {
   type ReactNode,
 } from 'react';
 import BassNeck from '@/components/instruments/BassNeck';
-import BassTabBar, { type IndexedNote } from '@/components/library/BassTabBar';
+import BassTabBar, {
+  DEGREE_COLORS,
+  type IndexedNote,
+} from '@/components/library/BassTabBar';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
 import {
   formatDuration,
   sectionColorVar,
 } from '@/components/library/libraryData';
 import { useLibraryAudio } from '@/components/library/useLibraryAudio';
+import {
+  analyzeBassChart,
+  DEGREE_CATEGORIES,
+  summarizeBars,
+  type AnalysisSummary,
+  type BarAnalysis,
+  type DegreeCategory,
+} from '@/domain/bassAnalysis';
 import {
   activeNoteIndexes,
   barIndexAt,
@@ -44,6 +55,15 @@ interface Props {
 const STRING_NAMES = ['E', 'A', 'D', 'G'];
 const NO_NOTES: readonly number[] = [];
 
+const CATEGORY_LABELS: Record<DegreeCategory, string> = {
+  root: 'R',
+  third: '3ª',
+  fifth: '5ª',
+  seventh: '7ª',
+  tension: 'tensões',
+  ornament: 'ornamentos',
+};
+
 export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
@@ -51,11 +71,20 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
   const audio = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
   const [follow, setFollow] = useState(true);
+  const [showDegrees, setShowDegrees] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const noteTimes = useMemo(() => chart.notes.map((n) => n.time), [chart]);
   const barNotes = useMemo(() => notesByBar(chart), [chart]);
   const blocks = useMemo(() => sectionBlocks(chart), [chart]);
+  const analysis = useMemo(() => analyzeBassChart(chart), [chart]);
+  const summaries = useMemo(
+    () =>
+      blocks.map((block) =>
+        summarizeBars(analysis, block.section.startBar, block.section.endBar),
+      ),
+    [analysis, blocks],
+  );
 
   const clock =
     audioUrl && audio.ready && (audio.playing || audio.currentSeconds > 0)
@@ -188,16 +217,28 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           <h4 className="font-heading text-sm text-text-secondary">
             Tablatura por seção
           </h4>
-          <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
-            <input
-              type="checkbox"
-              checked={follow}
-              onChange={(e) => setFollow(e.target.checked)}
-              className="accent-text-primary"
-            />
-            Acompanhar a reprodução
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDegrees}
+                onChange={(e) => setShowDegrees(e.target.checked)}
+                className="accent-text-primary"
+              />
+              Mostrar graus
+            </label>
+            <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={follow}
+                onChange={(e) => setFollow(e.target.checked)}
+                className="accent-text-primary"
+              />
+              Acompanhar a reprodução
+            </label>
+          </div>
         </div>
+        {showDegrees && <DegreeLegend />}
         <div ref={chartRef} className="flex flex-col gap-3">
           {blocks.map((block) => (
             <SectionBlock
@@ -205,6 +246,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
               chart={chart}
               block={block}
               isActive={block.index === activeSection}
+              summary={showDegrees ? summaries[block.index] : null}
               renderBar={(barIndex) => (
                 <BassTabBar
                   key={barIndex}
@@ -213,6 +255,9 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
                   activeNotes={barIndex === activeBar ? activeNotes : NO_NOTES}
                   playhead={playhead(barIndex)}
                   onSeek={seek}
+                  analysis={
+                    showDegrees ? (analysis[barIndex] as BarAnalysis) : null
+                  }
                 />
               )}
               onSeek={seek}
@@ -225,6 +270,16 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           tempos. x = nota abafada, / e \ = slide.
           {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}
         </p>
+        {showDegrees && (
+          <p className="text-[11px] text-text-muted">
+            Graus lidos só do baixo: a raiz é a nota do tempo 1 de cada
+            compasso. Tempos fortes contam como harmonia; passagens, bordaduras,
+            aproximações cromáticas e antecipações em tempo fraco são
+            ornamentos. O acorde só é nomeado quando as notas tocadas não deixam
+            outra leitura; senão aparece a raiz com “?”. Passe o mouse num
+            compasso para ver a 3ª, 5ª e 7ª encontradas.
+          </p>
+        )}
       </div>
     </section>
   );
@@ -234,12 +289,14 @@ function SectionBlock({
   chart,
   block,
   isActive,
+  summary,
   renderBar,
   onSeek,
 }: {
   chart: BassChart;
   block: BassChartSectionBlock;
   isActive: boolean;
+  summary: AnalysisSummary | null;
   renderBar: (barIndex: number) => ReactNode;
   onSeek: ((seconds: number) => void) | null;
 }) {
@@ -270,6 +327,7 @@ function SectionBlock({
           {barCount === 1 ? 'compasso' : 'compassos'}
         </span>
       </div>
+      {summary && <SectionSummary summary={summary} />}
       <div className="flex flex-wrap gap-1">
         {block.items.map((item) =>
           item.kind === 'bar' ? (
@@ -301,6 +359,51 @@ function SectionBlock({
         )}
       </div>
     </div>
+  );
+}
+
+function percent(part: number, total: number): string {
+  return `${total > 0 ? Math.round((part / total) * 100) : 0}%`;
+}
+
+/** Share of the section's notes per degree, and how the line moves. */
+function SectionSummary({ summary }: { summary: AnalysisSummary }) {
+  const { counts, motion } = summary;
+  const total = DEGREE_CATEGORIES.reduce((sum, c) => sum + counts[c], 0);
+  const moves = motion.repeats + motion.steps + motion.leaps;
+  if (total === 0) return null;
+  return (
+    <p className="flex flex-wrap gap-x-2 gap-y-0.5 font-heading text-[10px] text-text-muted tabular-nums">
+      {DEGREE_CATEGORIES.map((category) => (
+        <span key={category} style={{ color: DEGREE_COLORS[category] }}>
+          {CATEGORY_LABELS[category]} {percent(counts[category], total)}
+        </span>
+      ))}
+      {moves > 0 && (
+        <span>
+          · graus conjuntos {percent(motion.steps, moves)} · saltos{' '}
+          {percent(motion.leaps, moves)} · repetições{' '}
+          {percent(motion.repeats, moves)}
+        </span>
+      )}
+    </p>
+  );
+}
+
+function DegreeLegend() {
+  return (
+    <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-heading text-[10px] text-text-muted">
+      <span style={{ color: DEGREE_COLORS.root }}>R fundamental</span>
+      <span style={{ color: DEGREE_COLORS.third }}>3ª b3 / 3</span>
+      <span style={{ color: DEGREE_COLORS.fifth }}>5ª b5 / 5 / #5</span>
+      <span style={{ color: DEGREE_COLORS.seventh }}>7ª bb7 / b7 / 7</span>
+      <span style={{ color: DEGREE_COLORS.tension }}>
+        tensões b9 9 11 #11 b13 13
+      </span>
+      <span style={{ color: DEGREE_COLORS.ornament }}>
+        ornamentos (passagem, bordadura, aproximação, antecipação)
+      </span>
+    </p>
   );
 }
 
