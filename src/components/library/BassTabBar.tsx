@@ -36,6 +36,12 @@ interface Props {
   avoidNotes: ReadonlySet<number> | null;
   /** Note names for chord symbols, spelled for the key in use. */
   noteNames: readonly string[];
+  /**
+   * The bar's share of its line as a CSS width, when the section is laid
+   * out a fixed number of bars per line. The bar then shrinks to fit, down
+   * to `MIN_FIT_SCALE` of its size, and never grows past it.
+   */
+  fitWidth?: string;
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -89,6 +95,13 @@ const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
 /** Height of the degree lane drawn under the strings. */
 const DEGREE_LANE = 12;
 const DEGREE_Y = HEIGHT + DEGREE_LANE / 2 - 2;
+/** How far a bar may shrink to keep a chosen line length before wrapping. */
+export const MIN_FIT_SCALE = 0.8;
+
+/** A bar's drawn width in pixels, border included. */
+export function tabBarWidth(beatCount: number): number {
+  return PAD_X * 2 + beatCount * BEAT_WIDTH + 2;
+}
 
 /** Tab label for one note: fret, `x` for a dead note, slide direction. */
 function noteLabel(note: BassChartNote): string {
@@ -112,8 +125,17 @@ function BassTabBar({
   segment,
   avoidNotes,
   noteNames,
+  fitWidth,
 }: Props) {
   const width = PAD_X * 2 + bar.beatCount * BEAT_WIDTH;
+  const outer = tabBarWidth(bar.beatCount);
+  const fitStyle = fitWidth
+    ? {
+        width: fitWidth,
+        maxWidth: outer,
+        minWidth: Math.round(outer * MIN_FIT_SCALE),
+      }
+    : undefined;
   const isActive = playhead !== null;
   const degrees = new Map<number, AnalyzedNote>(
     analysis?.notes.map((n) => [n.index, n]),
@@ -146,6 +168,7 @@ function BassTabBar({
       disabled={onSeek === null}
       title={barTitle(bar, analysis, segment)}
       data-bar={bar.index}
+      style={fitStyle}
       className={`relative shrink-0 rounded-button border text-left transition-colors ${
         isActive
           ? 'border-text-primary bg-bg-hover'
@@ -188,6 +211,7 @@ function BassTabBar({
         width={width}
         height={svgHeight}
         viewBox={`0 0 ${width} ${svgHeight}`}
+        style={fitWidth ? { width: '100%', height: 'auto' } : undefined}
         role="img"
         aria-label={`Compasso ${bar.index + 1}${symbol ? ` (${symbol})` : ''}: ${
           notes.length === 0 ? 'pausa' : notes.map(spoken).join(' ')

@@ -10,10 +10,14 @@ import BassDegreeGuide from '@/components/library/BassDegreeGuide';
 import BassTabBar, {
   DEGREE_COLORS,
   FUNCTION_COLORS,
+  MIN_FIT_SCALE,
+  tabBarWidth,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
 import ChartFretboard from '@/components/library/ChartFretboard';
-import FifthsCircle from '@/components/library/FifthsCircle';
+import FifthsCircle, {
+  type CircleMark,
+} from '@/components/library/FifthsCircle';
 import FloatingWindow from '@/components/library/FloatingWindow';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
 import PlaybackDock from '@/components/library/PlaybackDock';
@@ -35,15 +39,18 @@ import {
 import {
   activeNoteIndexes,
   barIndexAt,
+  fittedBarsPerRow,
   isStandardTuning,
   notesByBar,
   sectionBlocks,
   sectionIndexOfBar,
   sectionLabel,
+  sectionRows,
   timeSignatures,
   tuningLabel,
   type BassChart,
   type BassChartSectionBlock,
+  type SectionBlockItem,
 } from '@/domain/bassChart';
 import {
   analyzeHarmony,
@@ -69,6 +76,7 @@ import { NOTE_NAMES } from '@/constants/notes';
 import {
   chordCell,
   describeRootMotion,
+  describeThird,
   isMinorChordType,
 } from '@/domain/circleOfFifths';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
@@ -101,6 +109,47 @@ function writeCircleOpen(open: boolean): void {
     // Blocked storage: the default applies next time.
   }
 }
+
+const BARS_PER_ROW_KEY = 'music-theory-lab:bars-per-row';
+/** Tailwind's gap-1 between bars, in pixels. */
+const BAR_GAP = 4;
+const BARS_PER_ROW_OPTIONS = Array.from({ length: 16 }, (_, i) => i + 1);
+
+/** Bars per line, by chart id and then by the section's first bar. */
+type BarsPerRow = Record<string, Record<string, number>>;
+
+function readBarsPerRow(): BarsPerRow {
+  try {
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem(BARS_PER_ROW_KEY) ?? '{}',
+    );
+    if (parsed && typeof parsed === 'object') return parsed as BarsPerRow;
+  } catch {
+    // Unreadable or blocked storage: every section wraps on its own.
+  }
+  return {};
+}
+
+function writeBarsPerRow(value: BarsPerRow): void {
+  try {
+    localStorage.setItem(BARS_PER_ROW_KEY, JSON.stringify(value));
+  } catch {
+    // Blocked storage: the choice lasts until the page is reloaded.
+  }
+}
+
+/** A stored count when it is one the picker offers, else wrap freely. */
+function storedBarsPerRow(
+  all: BarsPerRow,
+  chartId: string,
+  startBar: number,
+): number | null {
+  const count = all[chartId]?.[startBar];
+  return typeof count === 'number' && BARS_PER_ROW_OPTIONS.includes(count)
+    ? count
+    : null;
+}
+
 const NO_NOTES: readonly number[] = [];
 
 const ALL_KEYS: MusicalKey[] = (['major', 'minor'] as const).flatMap((mode) =>
@@ -138,6 +187,19 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const hasPlayer = audioUrl !== null || synthOnly;
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
+  const [barsPerRow, setBarsPerRow] = useState(readBarsPerRow);
+  const changeBarsPerRow = useCallback(
+    (startBar: number, count: number | null) =>
+      setBarsPerRow((all) => {
+        const rows = { ...all[chart.id] };
+        if (count === null) delete rows[startBar];
+        else rows[startBar] = count;
+        const next = { ...all, [chart.id]: rows };
+        writeBarsPerRow(next);
+        return next;
+      }),
+    [chart.id],
+  );
   const chartRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(0);
@@ -250,25 +312,45 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   );
   const circle = useMemo(() => {
     if (!harmony || !segment) {
-      return { current: null, next: null, nextChord: null, caption: null };
+      return {
+        current: null,
+        next: null,
+        nextChord: null,
+        caption: null,
+        note: null,
+      };
     }
+    // A third the bass played decides the ring; with none, or both, the
+    // key's reading of the chord stands in and is marked as a guess.
+    const settled = (s: HarmonicSegment) =>
+      s.evidence.third === 'minor' || s.evidence.third === 'major';
     const minor = (s: HarmonicSegment) =>
-      s.harmony.chordType !== null
-        ? isMinorChordType(s.harmony.chordType)
-        : s.evidence.third === 'minor';
+      settled(s)
+        ? s.evidence.third === 'minor'
+        : isMinorChordType(s.harmony.chordType);
+    const mark = (s: HarmonicSegment): CircleMark => ({
+      ...chordCell(s.root, minor(s)),
+      guess: !settled(s),
+    });
     const next =
       harmony.segments
         .slice(segmentIndex + 1)
         .find((s) => s.root !== segment.root) ?? null;
     return {
-      current: chordCell(segment.root, minor(segment)),
-      next: next ? chordCell(next.root, minor(next)) : null,
+      current: mark(segment),
+      next: next ? mark(next) : null,
       nextChord: next
         ? `${barChordSymbol(next, noteNames)}${next.evidence.chordType ? '' : '?'}`
         : null,
       caption: next
         ? `A seguir, ${describeRootMotion(segment.root, next.root, noteNames)}`
         : null,
+      note: describeThird(
+        noteNames[segment.root],
+        segment.evidence.third,
+        minor(segment),
+        segment.harmony.chordType !== null,
+      ),
     };
   }, [harmony, segment, segmentIndex, noteNames]);
 
@@ -423,9 +505,18 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
               isActive={block.index === activeSection}
               summary={showDegrees ? summaries[block.index] : null}
               harmony={showDegrees ? sectionHarmonies[block.index] : null}
-              renderBar={(barIndex) => (
+              barsPerRow={storedBarsPerRow(
+                barsPerRow,
+                chart.id,
+                block.section.startBar,
+              )}
+              onBarsPerRowChange={(count) =>
+                changeBarsPerRow(block.section.startBar, count)
+              }
+              renderBar={(barIndex, fitWidth) => (
                 <BassTabBar
                   key={barIndex}
+                  fitWidth={fitWidth}
                   bar={chart.bars[barIndex]}
                   notes={barNotes[barIndex] as IndexedNote[]}
                   activeNotes={barIndex === activeBar ? activeNotes : NO_NOTES}
@@ -554,6 +645,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
             current={circle.current}
             next={circle.next}
             caption={circle.caption}
+            note={circle.note}
             centerLabel={musicalKey ? keyLabel(musicalKey) : null}
             centerChord={
               shownBar && shownBar.root !== null
@@ -575,6 +667,8 @@ function SectionBlock({
   isActive,
   summary,
   harmony,
+  barsPerRow,
+  onBarsPerRowChange,
   renderBar,
   onSeek,
 }: {
@@ -583,10 +677,69 @@ function SectionBlock({
   isActive: boolean;
   summary: AnalysisSummary | null;
   harmony: SectionHarmony | null;
-  renderBar: (barIndex: number) => ReactNode;
+  /** Bars per line, or null to wrap at the screen's edge. */
+  barsPerRow: number | null;
+  onBarsPerRowChange: (count: number | null) => void;
+  renderBar: (barIndex: number, fitWidth?: string) => ReactNode;
   onSeek: ((seconds: number) => void) | null;
 }) {
   const { section } = block;
+  const linesRef = useRef<HTMLDivElement>(null);
+  const [lineWidth, setLineWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const element = linesRef.current;
+    if (barsPerRow === null || !element) return;
+    const observer = new ResizeObserver(() =>
+      setLineWidth(element.clientWidth),
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [barsPerRow]);
+  // How many bars fit a line at the smallest size a bar may take; when the
+  // chosen length does not, a divisor of it keeps the phrases aligned.
+  const smallestBar = Math.round(
+    tabBarWidth(
+      Math.max(
+        ...chart.bars
+          .slice(section.startBar, section.endBar)
+          .map((b) => b.beatCount),
+      ),
+    ) * MIN_FIT_SCALE,
+  );
+  const perLine =
+    barsPerRow === null || lineWidth === null
+      ? barsPerRow
+      : fittedBarsPerRow(
+          barsPerRow,
+          Math.floor((lineWidth + BAR_GAP) / (smallestBar + BAR_GAP)),
+        );
+  // Each bar takes an equal share of its line, shrinking a little first.
+  const fitWidth = perLine
+    ? `calc((100% - ${(perLine - 1) * BAR_GAP}px) / ${perLine})`
+    : undefined;
+  const renderItem = (item: SectionBlockItem) =>
+    item.kind === 'bar' ? (
+      renderBar(item.bar, fitWidth)
+    ) : (
+      <button
+        key={`rest-${item.startBar}`}
+        type="button"
+        onClick={
+          onSeek ? () => onSeek(chart.bars[item.startBar].startTime) : undefined
+        }
+        disabled={onSeek === null}
+        className={`rounded-button border border-border-default bg-bg-card px-3 py-1 flex flex-col items-start justify-center text-left ${
+          onSeek ? 'cursor-pointer hover:border-text-primary' : 'cursor-default'
+        }`}
+      >
+        <span className="font-heading text-sm text-text-secondary">
+          Pausa ×{item.count}
+        </span>
+        <span className="text-[9px] text-text-muted tabular-nums">
+          compassos {item.startBar + 1}–{item.startBar + item.count}
+        </span>
+      </button>
+    );
   const start = chart.bars[section.startBar].startTime;
   const end = chart.bars[section.endBar - 1].endTime;
   const barCount = section.endBar - section.startBar;
@@ -612,39 +765,49 @@ function SectionBlock({
           {formatDuration(start)}–{formatDuration(end)} · {barCount}{' '}
           {barCount === 1 ? 'compasso' : 'compassos'}
         </span>
+        <label className="flex items-center gap-1 text-[11px] text-text-muted">
+          por linha
+          <select
+            value={barsPerRow ?? ''}
+            onChange={(e) =>
+              onBarsPerRowChange(
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            aria-label={`Compassos por linha em ${sectionLabel(section.name)}`}
+            title="Quantos compassos cabem em cada linha desta seção"
+            className="rounded-control border border-border-default bg-bg-card px-1 py-0.5 font-heading text-[11px] text-text-secondary cursor-pointer"
+          >
+            <option value="">auto</option>
+            {BARS_PER_ROW_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       {harmony && <SectionProgression harmony={harmony} />}
       {summary && <SectionSummary summary={summary} />}
-      <div className="flex flex-wrap gap-1">
-        {block.items.map((item) =>
-          item.kind === 'bar' ? (
-            renderBar(item.bar)
-          ) : (
-            <button
-              key={`rest-${item.startBar}`}
-              type="button"
-              onClick={
-                onSeek
-                  ? () => onSeek(chart.bars[item.startBar].startTime)
-                  : undefined
-              }
-              disabled={onSeek === null}
-              className={`rounded-button border border-border-default bg-bg-card px-3 py-1 flex flex-col items-start justify-center text-left ${
-                onSeek
-                  ? 'cursor-pointer hover:border-text-primary'
-                  : 'cursor-default'
-              }`}
-            >
-              <span className="font-heading text-sm text-text-secondary">
-                Pausa ×{item.count}
-              </span>
-              <span className="text-[9px] text-text-muted tabular-nums">
-                compassos {item.startBar + 1}–{item.startBar + item.count}
-              </span>
-            </button>
-          ),
-        )}
-      </div>
+      {perLine === null ? (
+        <div className="flex flex-wrap gap-1">
+          {block.items.map(renderItem)}
+        </div>
+      ) : (
+        <div ref={linesRef} className="flex flex-col gap-1">
+          {sectionRows(block, perLine).map((row) => {
+            const first = row[0];
+            return (
+              <div
+                key={first.kind === 'bar' ? first.bar : first.startBar}
+                className="flex flex-wrap gap-1"
+              >
+                {row.map(renderItem)}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

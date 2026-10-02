@@ -222,6 +222,12 @@ export default function BassDegreeGuide({
             D ou Dm; com D e C (b7), D7 ou Dm7. Quem decide é a guitarra ou o
             teclado: escute a gravação.
           </p>
+          <p>
+            No ciclo de quintas, um acorde assim aparece no anel que o tom
+            sugere, com “?” e mais claro; a mesma raiz com a outra 3ª ganha um
+            contorno pontilhado. Teste de ouvido: toque a 3ª menor e a maior por
+            cima da música e veja qual soa certa.
+          </p>
         </Card>
 
         <Card title="i, iv, V… — o lugar do acorde no tom">

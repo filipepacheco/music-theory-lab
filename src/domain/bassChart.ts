@@ -505,6 +505,41 @@ export function sectionBlocks(chart: BassChart): BassChartSectionBlock[] {
   });
 }
 
+/**
+ * Break a section into lines of `barsPerRow` bars counted from its first
+ * bar, so every line starts on the same bar numbers whatever comes before
+ * it. A rest stays whole on the line where it starts; lines a rest covers
+ * entirely are dropped.
+ */
+export function sectionRows(
+  block: BassChartSectionBlock,
+  barsPerRow: number,
+): SectionBlockItem[][] {
+  const size = Math.max(1, Math.floor(barsPerRow));
+  const rows: SectionBlockItem[][] = [];
+  for (const item of block.items) {
+    const start = item.kind === 'bar' ? item.bar : item.startBar;
+    const row = Math.floor((start - block.section.startBar) / size);
+    (rows[row] ??= []).push(item);
+  }
+  return rows.filter((row) => row !== undefined);
+}
+
+/**
+ * The line length to draw when only `fits` bars fit on screen: the chosen
+ * one when it fits, else its largest divisor that does (8 → 4 → 2), so the
+ * lines still start on the same bars of each phrase. A length with no such
+ * divisor (7 with room for 6) falls back to as many as fit.
+ */
+export function fittedBarsPerRow(chosen: number, fits: number): number {
+  if (fits >= chosen) return chosen;
+  const room = Math.max(1, fits);
+  for (let length = room; length > 1; length -= 1) {
+    if (chosen % length === 0) return length;
+  }
+  return room;
+}
+
 /** The chart's notes bucketed by bar, each paired with its chart index. */
 export function notesByBar(
   chart: BassChart,
