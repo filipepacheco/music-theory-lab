@@ -12,8 +12,8 @@ export interface BassChart {
   id: string;
   sourceFileName: string;
   /**
-   * `midi` charts have no fingering of their own: their strings and frets are
-   * a suggestion. Absent on charts stored before MIDI import, all Rocksmith.
+   * `midi` and `gp` imports use suggested fingering. Absent on charts stored
+   * before MIDI import, all Rocksmith.
    */
   source?: BassChartSource;
   importedAt: string;
@@ -30,7 +30,7 @@ export interface BassChart {
   notes: BassChartNote[];
 }
 
-export type BassChartSource = 'rocksmith' | 'midi';
+export type BassChartSource = 'rocksmith' | 'midi' | 'gp';
 
 export interface BassChartBar {
   index: number;

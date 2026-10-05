@@ -34,12 +34,12 @@ export default function RocksmithChartList({
               : 'hover:bg-bg-hover cursor-pointer'
           }`}
         >
-          Importar .psarc / .mid
+          Importar .psarc / .mid / .gp
         </label>
         <input
           id={inputId}
           type="file"
-          accept=".psarc,.mid,.midi"
+          accept=".psarc,.mid,.midi,.gp"
           disabled={importing}
           className="sr-only"
           onChange={(event) => {
@@ -68,8 +68,9 @@ export default function RocksmithChartList({
 
       {charts.length === 0 ? (
         <p className="text-[11px] text-text-muted">
-          Importe um pacote Rocksmith 2014 (.psarc) ou um MIDI (.mid) para ver a
-          linha de baixo compasso a compasso, tocando junto com a música.
+          Importe Rocksmith 2014 (.psarc), MIDI (.mid) ou Guitar Pro 7/8 (.gp)
+          para ver a linha de baixo compasso a compasso, tocando junto com a
+          música.
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5" role="list">

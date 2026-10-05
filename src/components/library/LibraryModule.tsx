@@ -14,7 +14,8 @@ export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { charts, importStatus, importFile, remove } = useRocksmithCharts();
+  const { charts, importStatus, importFile, remove, syncStatus, synchronize } =
+    useRocksmithCharts();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,7 +57,7 @@ export default function LibraryModule() {
         <p className="text-xs text-text-muted">
           Análise automática de cifra, tom e andamento das faixas processadas
           pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
-          de arquivos MIDI.
+          de arquivos MIDI e Guitar Pro (.gp).
         </p>
       </div>
 
@@ -69,6 +70,22 @@ export default function LibraryModule() {
             onSelect={(c) => setSelection({ kind: 'rocksmith', id: c.id })}
             onImport={(file) => void handleImport(file)}
           />
+          <p role="status" className="text-[11px] text-text-muted">
+            {syncStatus === 'syncing'
+              ? 'Sincronizando linhas de baixo…'
+              : syncStatus === 'synced'
+                ? 'Linhas de baixo salvas on-line. Áudio vinculado fica neste dispositivo.'
+                : 'Sem sincronização: as linhas salvas neste dispositivo serão reenviadas.'}
+            {syncStatus === 'offline' && (
+              <button
+                type="button"
+                onClick={() => void synchronize()}
+                className="ml-1 text-accent underline"
+              >
+                Tentar novamente
+              </button>
+            )}
+          </p>
 
           <div className="flex flex-col gap-2">
             <h3 className="font-heading text-xs uppercase tracking-wide text-text-muted">
