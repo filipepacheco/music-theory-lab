@@ -1,15 +1,17 @@
-// Browser-only storage for bass charts imported from Rocksmith packages.
-//
-// Charts and their audio stay in this browser, like attached Biblioteca
-// audio: the packages are the user's own files and are never uploaded. Audio
-// lives in its own store so listing charts never loads megabytes of blobs.
+// Local chart cache and deletion journal. Only derived charts synchronize;
+// original packages and audio blobs remain in this browser.
 
 import type { BassChart } from '@/domain/bassChart';
+import {
+  isNewerChartRecord,
+  type BassChartRecord,
+} from '@/domain/bassChartRecord';
 
 const DATABASE_NAME = 'music-theory-lab-rocksmith';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const CHART_STORE = 'charts';
 const AUDIO_STORE = 'audio';
+const RECORD_STORE = 'records';
 
 export interface StoredChartAudio {
   chartId: string;
@@ -25,6 +27,8 @@ export interface RocksmithLibraryRepository {
   save(chart: BassChart, audio: StoredChartAudio | null): Promise<void>;
   saveAudio(audio: StoredChartAudio): Promise<void>;
   remove(chartId: string): Promise<void>;
+  listRecords(): Promise<BassChartRecord[]>;
+  applyRecord(record: BassChartRecord): Promise<void>;
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -52,6 +56,26 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
       }
       if (!database.objectStoreNames.contains(AUDIO_STORE)) {
         database.createObjectStore(AUDIO_STORE, { keyPath: 'chartId' });
+      }
+      if (!database.objectStoreNames.contains(RECORD_STORE)) {
+        const records = database.createObjectStore(RECORD_STORE, {
+          keyPath: 'id',
+        });
+        // Upgrade existing MIDI/Rocksmith imports so they also synchronize.
+        const cursor = request
+          .transaction!.objectStore(CHART_STORE)
+          .openCursor();
+        cursor.onsuccess = () => {
+          const current = cursor.result;
+          if (!current) return;
+          const chart = current.value as BassChart;
+          records.put({
+            id: chart.id,
+            updatedAt: new Date(chart.importedAt).toISOString(),
+            chart,
+          });
+          current.continue();
+        };
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -97,10 +121,15 @@ export function createIndexedDbRocksmithLibrary(
     save: (chart, audio) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(
-          [CHART_STORE, AUDIO_STORE],
+          [CHART_STORE, AUDIO_STORE, RECORD_STORE],
           'readwrite',
         );
         transaction.objectStore(CHART_STORE).put(chart);
+        transaction.objectStore(RECORD_STORE).put({
+          id: chart.id,
+          updatedAt: new Date().toISOString(),
+          chart,
+        });
         if (audio) transaction.objectStore(AUDIO_STORE).put(audio);
         await transactionComplete(transaction);
       }),
@@ -115,12 +144,47 @@ export function createIndexedDbRocksmithLibrary(
     remove: (chartId) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(
-          [CHART_STORE, AUDIO_STORE],
+          [CHART_STORE, AUDIO_STORE, RECORD_STORE],
           'readwrite',
         );
         transaction.objectStore(CHART_STORE).delete(chartId);
         transaction.objectStore(AUDIO_STORE).delete(chartId);
+        transaction.objectStore(RECORD_STORE).put({
+          id: chartId,
+          updatedAt: new Date().toISOString(),
+          chart: null,
+        });
         await transactionComplete(transaction);
+      }),
+
+    listRecords: () =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(RECORD_STORE, 'readonly');
+        return requestResult<BassChartRecord[]>(
+          transaction.objectStore(RECORD_STORE).getAll(),
+        );
+      }),
+
+    applyRecord: (record) =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(
+          [CHART_STORE, AUDIO_STORE, RECORD_STORE],
+          'readwrite',
+        );
+        const done = transactionComplete(transaction);
+        const records = transaction.objectStore(RECORD_STORE);
+        const request = records.get(record.id);
+        request.onsuccess = () => {
+          if (!isNewerChartRecord(record, request.result)) return;
+          records.put(record);
+          if (record.chart)
+            transaction.objectStore(CHART_STORE).put(record.chart);
+          else {
+            transaction.objectStore(CHART_STORE).delete(record.id);
+            transaction.objectStore(AUDIO_STORE).delete(record.id);
+          }
+        };
+        await done;
       }),
   };
 }
@@ -133,4 +197,7 @@ export const rocksmithLibrary: RocksmithLibraryRepository = {
   saveAudio: (audio) =>
     createIndexedDbRocksmithLibrary(indexedDB).saveAudio(audio),
   remove: (id) => createIndexedDbRocksmithLibrary(indexedDB).remove(id),
+  listRecords: () => createIndexedDbRocksmithLibrary(indexedDB).listRecords(),
+  applyRecord: (record) =>
+    createIndexedDbRocksmithLibrary(indexedDB).applyRecord(record),
 };
