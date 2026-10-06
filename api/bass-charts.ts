@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { Client } from '@libsql/client';
-import { parseBassChartRecord } from '@/domain/bassChartRecord';
+// Vercel emits ESM without Vite's aliases; use the emitted .js module path.
+import { parseBassChartRecord } from '../src/domain/bassChartRecord.js';
 
 let client: Client | null = null;
 async function database(): Promise<Client> {

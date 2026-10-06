@@ -2,7 +2,7 @@ import {
   STANDARD_OPEN_MIDI,
   type BassChart,
   type BassTechnique,
-} from '@/domain/bassChart';
+} from './bassChart.js';
 
 /** A null chart is a durable deletion, so offline devices cannot resurrect it. */
 export interface BassChartRecord {
