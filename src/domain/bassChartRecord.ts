@@ -68,6 +68,7 @@ export function parseBassChart(value: unknown): BassChart | null {
     'bars',
     'sections',
     'notes',
+    'originalFingering',
   ]);
   if (Object.keys(value).some((key) => !fields.has(key))) return null;
   if (
@@ -135,6 +136,7 @@ export function parseBassChart(value: unknown): BassChart | null {
     return null;
 
   const tuning = value.tuning;
+  const notes = value.notes;
   if (
     !value.notes.every(
       (note, i, notes) =>
@@ -166,6 +168,29 @@ export function parseBassChart(value: unknown): BassChart | null {
         Array.isArray(note.techniques) &&
         note.techniques.every((t) => techniques.has(t)),
     )
+  )
+    return null;
+  if (
+    value.originalFingering !== undefined &&
+    (value.source !== 'gp' ||
+      !Array.isArray(value.originalFingering) ||
+      value.originalFingering.length !== value.notes.length ||
+      !value.originalFingering.every(
+        (position, i) =>
+          object(position) &&
+          Object.keys(position).every(
+            (key) => key === 'string' || key === 'fret',
+          ) &&
+          integer(position.string) &&
+          position.string >= 0 &&
+          position.string < 4 &&
+          integer(position.fret) &&
+          position.fret >= 0 &&
+          notes[i].midi ===
+            STANDARD_OPEN_MIDI[position.string] +
+              tuning[position.string] +
+              position.fret,
+      ))
   )
     return null;
   return value as unknown as BassChart;

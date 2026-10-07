@@ -12,8 +12,16 @@ suggestions, harmonic functions, cadence analysis, tabs, the fretboard and
 sampled-bass playback all consume that chart. Bass notes on Guitar Pro's
 secondary bend channel stay with their primary track.
 
-The adapter suggests four-string bass fingering, as it does for MIDI; it
-does not preserve Guitar Pro's original strings, frets or all articulations.
+For four-string GP bass scores, the adapter keeps the score's actual tuning
+and stores the original string/fret positions alongside the suggested
+fingering. “Digitação” defaults to “Original do GP” and can switch to
+“Sugerida pelo Music Lab”; both views have identical pitches, timing and
+analysis evidence. The original positions synchronize with the derived chart.
+Older GP imports need to be reimported once to recover their positions from
+the source file. Reimporting updates the same chart without removing linked
+audio. If any note cannot be matched faithfully to a plain string/fret position
+(for example, generated ornament notes or harmonics), only the suggested
+view is available. Guitar Pro's full articulation notation is not preserved.
 Only the bass part feeds these analyses. The file's other instrument parts
 are not additional harmony evidence.
 
@@ -24,6 +32,10 @@ controls, up to an octave in either direction. Each click shifts the chord
 names, analysis key, bass notes, tabs, fretboard and sampled-bass playback.
 Playback keeps its position when the transposition changes. “Tom original”
 resets the practice view; the saved import stays unchanged.
+
+While transposed or in a different tuning, GP fingering is recalculated and
+the original/suggested picker is disabled. Returning to the original pitches
+and tuning restores the user's selected fingering view.
 
 Fingering is recalculated in the original tuning, which never changes
 automatically. For standard E–A–D–G imports, “Afinação para tocar” offers an

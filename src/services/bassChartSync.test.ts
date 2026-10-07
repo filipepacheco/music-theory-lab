@@ -16,6 +16,7 @@ const chart = {
   ...fixtureChart(2, [{ bar: 0, beat: 0, midi: 33 }]),
   id: 'a'.repeat(64),
   source: 'gp' as const,
+  originalFingering: [{ string: 1, fret: 0 }],
 };
 
 function cloud(
@@ -126,6 +127,18 @@ describe('bass chart persistence and sync', () => {
   it('rejects corrupt data and original audio payloads', () => {
     const record = { id: chart.id, updatedAt: chart.importedAt, chart };
     expect(parseBassChartRecord(record)).not.toBeNull();
+    for (const originalFingering of [
+      [],
+      [{ string: 1, fret: 7 }],
+      [{ string: 4, fret: 0 }],
+    ]) {
+      expect(
+        parseBassChartRecord({
+          ...record,
+          chart: { ...chart, originalFingering },
+        }),
+      ).toBeNull();
+    }
     expect(
       parseBassChartRecord({
         ...record,

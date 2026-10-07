@@ -82,6 +82,7 @@ import {
   isMinorChordType,
 } from '@/domain/circleOfFifths';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
+import { withOriginalGpFingering } from '@/domain/bassFingering';
 import {
   canTransposeBassChart,
   DROP_D_TUNING,
@@ -209,6 +210,7 @@ export default function RocksmithTrackDetail({
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const [semitones, setSemitones] = useState(0);
   const [practiceTuning, setPracticeTuning] = useState('original');
+  const [fingering, setFingering] = useState('original');
   const supportsTransposition = supportsBassTransposition(originalChart);
   const canTranspose = supportsTransposition && audioState.status === 'missing';
   const shift = canTranspose ? semitones : 0;
@@ -220,9 +222,25 @@ export default function RocksmithTrackDetail({
         : E_STANDARD_TUNING;
   const canLower = canTransposeBassChart(originalChart, shift - 1, tuning);
   const canRaise = canTransposeBassChart(originalChart, shift + 1, tuning);
+  const originalFingeringAvailable = !!originalChart.originalFingering;
+  const fingeringRecalculated =
+    shift !== 0 ||
+    tuning.some((offset, string) => offset !== originalChart.tuning[string]);
+  const showingOriginalFingering =
+    originalChart.source === 'gp' &&
+    originalFingeringAvailable &&
+    !fingeringRecalculated &&
+    fingering === 'original';
+  const sourceChart = useMemo(
+    () =>
+      fingering === 'original'
+        ? withOriginalGpFingering(originalChart)
+        : originalChart,
+    [originalChart, fingering],
+  );
   const chart = useMemo(
-    () => transposeBassChart(originalChart, shift, tuning),
-    [originalChart, shift, tuning],
+    () => transposeBassChart(sourceChart, shift, tuning),
+    [sourceChart, shift, tuning],
   );
   const octaveAdjustments = chart.notes.filter(
     (note, index) => note.midi !== originalChart.notes[index].midi + shift,
@@ -509,6 +527,34 @@ export default function RocksmithTrackDetail({
         <Stat label="Notas" value={String(chart.notes.length)} />
       </dl>
 
+      {originalChart.source === 'gp' && (
+        <div className="flex flex-col gap-1">
+          <label className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+            Digitação
+            <select
+              value={
+                originalFingeringAvailable && !fingeringRecalculated
+                  ? fingering
+                  : 'suggested'
+              }
+              disabled={!originalFingeringAvailable || fingeringRecalculated}
+              onChange={(event) => setFingering(event.target.value)}
+              className="rounded-button border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+            >
+              <option value="original">Original do GP</option>
+              <option value="suggested">Sugerida pelo Music Lab</option>
+            </select>
+          </label>
+          <p className="text-[11px] text-text-muted">
+            {!originalFingeringAvailable
+              ? 'Este GP só tem a digitação sugerida. Reimporte o arquivo para recuperar as posições originais quando disponíveis.'
+              : fingeringRecalculated
+                ? 'Digitação recalculada para o tom e a afinação escolhidos. Ao voltar ao tom e à afinação originais, sua escolha será restaurada.'
+                : 'Original do GP mantém as cordas e casas da partitura. A sugerida procura reduzir os deslocamentos da mão. As notas e a análise são as mesmas.'}
+          </p>
+        </div>
+      )}
+
       {supportsTransposition && (
         <div className="flex flex-col gap-1">
           <div
@@ -734,7 +780,9 @@ export default function RocksmithTrackDetail({
           linhas vão da corda G (em cima) à E (embaixo); pontilhados marcam os
           tempos. x = nota abafada, / e \ = slide.
           {chart.source === 'midi' || chart.source === 'gp'
-            ? ' Cordas e casas são uma sugestão automática para a linha importada.'
+            ? showingOriginalFingering
+              ? ' Cordas e casas seguem a digitação original do GP.'
+              : ' Cordas e casas são uma sugestão automática para a linha importada.'
             : ''}
           {seek ? ' Clique num compasso para saltar a reprodução até ele.' : ''}{' '}
           Com “Marcar repetições” e um número em “por linha”, o compasso igual

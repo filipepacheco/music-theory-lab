@@ -68,6 +68,83 @@ afterEach(() => {
 });
 
 describe('Biblioteca semitone buttons', () => {
+  it('switches GP fingering without changing pitches, and restores the choice after transposition', () => {
+    const gp = {
+      ...fixtureChart(1, [
+        { bar: 0, beat: 0, string: 0, fret: 0 },
+        { bar: 0, beat: 1, string: 2, fret: 2 },
+      ]),
+      source: 'gp' as const,
+      originalFingering: [
+        { string: 0, fret: 0 },
+        { string: 1, fret: 7 },
+      ],
+    };
+    render(<RocksmithTrackDetail chart={gp} onRemove={vi.fn()} />);
+    const picker = screen.getByLabelText('Digitação') as HTMLSelectElement;
+    expect(picker.value).toBe('original');
+    expect(
+      screen.getByText(/Cordas e casas seguem a digitação original do GP/),
+    ).toBeTruthy();
+    expect(state.synthChart!.notes[1]).toMatchObject({
+      midi: 40,
+      string: 1,
+      fret: 7,
+    });
+    fireEvent.change(picker, { target: { value: 'suggested' } });
+    expect(
+      screen.getByText(/Cordas e casas são uma sugestão automática/),
+    ).toBeTruthy();
+    expect(state.synthChart!.notes[1]).toMatchObject({
+      midi: 40,
+      string: 2,
+      fret: 2,
+    });
+    fireEvent.change(picker, { target: { value: 'original' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir meio tom' }));
+    expect(picker.disabled).toBe(true);
+    expect(picker.value).toBe('suggested');
+    expect(state.synthChart!.notes[1].midi).toBe(39);
+    fireEvent.click(screen.getByRole('button', { name: 'Tom original' }));
+    expect(picker.disabled).toBe(false);
+    expect(picker.value).toBe('original');
+    expect(state.synthChart!.notes[1]).toMatchObject({
+      midi: 40,
+      string: 1,
+      fret: 7,
+    });
+    fireEvent.change(screen.getByLabelText('Afinação para tocar'), {
+      target: { value: 'drop-d' },
+    });
+    expect(picker.disabled).toBe(true);
+    expect(picker.value).toBe('suggested');
+    fireEvent.change(screen.getByLabelText('Afinação para tocar'), {
+      target: { value: 'original' },
+    });
+    expect(picker.value).toBe('original');
+    expect(state.synthChart!.notes.map((n) => n.midi)).toEqual(
+      gp.notes.map((n) => n.midi),
+    );
+  });
+
+  it('explains how to recover original fingering for older GP imports', () => {
+    render(<RocksmithTrackDetail chart={chart} onRemove={vi.fn()} />);
+    expect(
+      (screen.getByLabelText('Digitação') as HTMLSelectElement).disabled,
+    ).toBe(true);
+    expect(screen.getByText(/Reimporte o arquivo para recuperar/)).toBeTruthy();
+  });
+
+  it('does not offer an original tab choice for MIDI imports', () => {
+    render(
+      <RocksmithTrackDetail
+        chart={{ ...chart, source: 'midi' }}
+        onRemove={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText('Digitação')).toBeNull();
+  });
+
   it('offers E Standard and Drop D for imports with a different tuning', () => {
     render(
       <RocksmithTrackDetail
