@@ -25,14 +25,35 @@ const original = {
 };
 
 describe('MIDI/GP practice transposition', () => {
+  it('keeps the GP octave riff an octave apart when lowering in E Standard', () => {
+    const riff = {
+      ...fixtureChart(1, [
+        { bar: 0, beat: 0, string: 0, fret: 0 },
+        { bar: 0, beat: 1, string: 1, fret: 7 },
+        { bar: 0, beat: 2, string: 0, fret: 0 },
+        { bar: 0, beat: 3, string: 1, fret: 7 },
+      ]),
+      source: 'gp' as const,
+    };
+    const chart = transposeBassChart(riff, -1, E_STANDARD_TUNING);
+    expect(chart.notes.map((n) => n.midi)).toEqual([39, 51, 39, 51]);
+    expect(
+      bassSynthNotes(chart.notes, -1).map(
+        (n) => n.midi + (n.transposeSemitones ?? 0),
+      ),
+    ).toEqual([39, 51, 39, 51]);
+    expect(
+      transposeBassChart(riff, -1, DROP_D_TUNING).notes.map((n) => n.midi),
+    ).toEqual([27, 39, 27, 39]);
+  });
   it.each([{ tuning: E_STANDARD_TUNING }, { tuning: DROP_D_TUNING }])(
-    'keeps every semitone playable in $tuning without changing pitch classes',
+    'keeps a two-octave line playable in $tuning without changing intervals',
     ({ tuning }) => {
       const range = {
         ...fixtureChart(1, [
           { bar: 0, beat: 0, string: 0, fret: 0 },
           { bar: 0, beat: 1, string: 1, fret: 12 },
-          { bar: 0, beat: 2, string: 3, fret: 24 },
+          { bar: 0, beat: 2, string: 3, fret: 12 },
         ]),
         source: 'midi' as const,
       };
@@ -47,12 +68,31 @@ describe('MIDI/GP practice transposition', () => {
           expect(note.fret).toBeGreaterThanOrEqual(0);
           expect(note.fret).toBeLessThanOrEqual(24);
           expect(note.time).toBe(range.notes[i].time);
+          expect(note.midi - result.notes[0].midi).toBe(
+            range.notes[i].midi - range.notes[0].midi,
+          );
         });
       }
       expect(range.tuning).toEqual([0, 0, 0, 0]);
       expect(canTransposeBassChart(range, -13, tuning)).toBe(false);
     },
   );
+  it('blocks a register change when the whole line cannot fit without altering intervals', () => {
+    const fullRange = {
+      ...fixtureChart(1, [
+        { bar: 0, beat: 0, string: 0, fret: 0 },
+        { bar: 0, beat: 1, string: 3, fret: 24 },
+      ]),
+      source: 'midi' as const,
+    };
+    expect(canTransposeBassChart(fullRange, -1)).toBe(false);
+    expect(canTransposeBassChart(fullRange, 1)).toBe(false);
+    expect(() => transposeBassChart(fullRange, -1)).toThrow(RangeError);
+    expect(canTransposeBassChart(fullRange, -1, DROP_D_TUNING)).toBe(true);
+    expect(
+      transposeBassChart(fullRange, -1, DROP_D_TUNING).notes.map((n) => n.midi),
+    ).toEqual([27, 66]);
+  });
   it.each([-1, 1])(
     'shifts chords and playback by %i semitone, preserving harmony',
     (shift) => {
@@ -76,9 +116,11 @@ describe('MIDI/GP practice transposition', () => {
       expect(harmony.segments.map((s) => s.harmony.numeral)).toEqual(
         before.segments.map((s) => s.harmony.numeral),
       );
-      expect(bassSynthNotes(chart.notes).map((n) => n.midi % 12)).toEqual(
-        bassSynthNotes(original.notes).map((n) => (n.midi + shift + 12) % 12),
-      );
+      expect(
+        bassSynthNotes(chart.notes).map(
+          (n) => n.midi + (n.transposeSemitones ?? 0),
+        ),
+      ).toEqual(original.notes.map((n) => n.midi + shift));
       expect(chart.bars).toBe(original.bars);
       expect(chart.sections).toBe(original.sections);
       chart.notes.forEach((note, i) => {
@@ -94,7 +136,7 @@ describe('MIDI/GP practice transposition', () => {
     },
   );
 
-  it('lowers an open E in E Standard by moving only the unreachable note up an octave', () => {
+  it('lowers an open E in E Standard by moving the whole line up an octave', () => {
     const low = {
       ...fixtureChart(1, [
         { bar: 0, beat: 0, string: 0, fret: 0 },
@@ -104,14 +146,14 @@ describe('MIDI/GP practice transposition', () => {
     };
     expect(canTransposeBassChart(low, -2)).toBe(true);
     const chart = transposeBassChart(low, -2);
-    expect(chart.notes.map((n) => n.midi)).toEqual([38, 41]);
+    expect(chart.notes.map((n) => n.midi)).toEqual([38, 53]);
     expect(chart.tuning).toEqual([0, 0, 0, 0]);
     chart.notes.forEach((note) => {
       expect(note.midi).toBe(STANDARD_OPEN_MIDI[note.string] + note.fret);
     });
     const sounds = bassSynthNotes(chart.notes, -2);
     expect(sounds.map((n) => n.midi + (n.transposeSemitones ?? 0))).toEqual([
-      38, 41,
+      38, 53,
     ]);
     expect(low.tuning).toEqual([0, 0, 0, 0]);
     expect(transposeBassChart(low, 0)).toBe(low);
@@ -134,7 +176,7 @@ describe('MIDI/GP practice transposition', () => {
       [41, 2, 3],
     ]);
     expect(transposeBassChart(low, -3, dropD).notes.map((n) => n.midi)).toEqual(
-      [37, 40],
+      [37, 52],
     );
     expect(low.tuning).toEqual([0, 0, 0, 0]);
   });

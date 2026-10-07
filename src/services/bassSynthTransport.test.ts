@@ -63,6 +63,15 @@ function harness(notes: BassChartNote[], songLengthSeconds = 4) {
 }
 
 describe('bassSynthNotes', () => {
+  it('preserves sounding octave intervals across the sample range boundary', () => {
+    const sounds = bassSynthNotes(
+      [note({ time: 0, midi: 51 }), note({ time: 1, midi: 63 })],
+      -1,
+    );
+    expect(sounds.map((n) => n.midi + (n.transposeSemitones ?? 0))).toEqual([
+      51, 63,
+    ]);
+  });
   it('transposes from the original register without octave jumps at sample boundaries', () => {
     const down = bassSynthNotes([note({ time: 0, midi: 27 })], -1)[0];
     const up = bassSynthNotes([note({ time: 0, midi: 56 })], 1)[0];
@@ -86,7 +95,7 @@ describe('bassSynthNotes', () => {
     expect(notes.map((n) => n.seconds)).toEqual([0.5, 0.5, 1]);
   });
 
-  it('plays dead notes short and folds pitches into the sampled range', () => {
+  it('plays dead notes short and shifts available samples to the exact chart register', () => {
     const notes = bassSynthNotes([
       note({ time: 0, techniques: ['mute'], sustain: 1 }),
       note({ time: 1, midi: 23 }),
@@ -94,6 +103,9 @@ describe('bassSynthNotes', () => {
     ]);
     expect(notes[0].seconds).toBe(0.06);
     expect(notes.map((n) => n.midi)).toEqual([35, 35, 48]);
+    expect(notes.map((n) => n.midi + (n.transposeSemitones ?? 0))).toEqual([
+      35, 23, 60,
+    ]);
   });
 });
 

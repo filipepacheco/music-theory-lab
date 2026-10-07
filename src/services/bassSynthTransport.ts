@@ -29,7 +29,7 @@ export interface BassSynthNote {
   time: number;
   /** Pitch folded into the range the sampled bass covers. */
   midi: number;
-  /** Shift the sampled voice after choosing its original register. */
+  /** Shift the sample to the chart's exact pitch, including its octave. */
   transposeSemitones?: number;
   seconds: number;
 }
@@ -75,11 +75,12 @@ export function bassSynthNotes(
     let midi = note.midi - transposeSemitones;
     while (midi < GROWLYBASS_LOWEST_MIDI) midi += 12;
     while (midi > GROWLYBASS_HIGHEST_MIDI) midi -= 12;
+    const sampleShift = note.midi - midi;
     result.unshift({
       time: note.time,
       midi,
       seconds,
-      ...(transposeSemitones !== 0 && { transposeSemitones }),
+      ...(sampleShift !== 0 && { transposeSemitones: sampleShift }),
     });
     if (i === 0 || notes[i - 1].time < note.time) nextOnset = note.time;
   }

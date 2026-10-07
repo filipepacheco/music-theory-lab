@@ -40,11 +40,14 @@ and tuning restores the user's selected fingering view.
 Fingering is recalculated in the original tuning, which never changes
 automatically. For standard E–A–D–G imports, “Afinação para tocar” offers an
 explicit E Standard (E–A–D–G) or Drop D (D–A–D–G) choice. Only the E string
-is lowered for Drop D. Notes outside the selected tuning's playable range
-(0–24 frets) move to the nearest playable octave, keeping their pitch class.
-For example, lowering E1 by two semitones gives D2 in E Standard and D1 in
-Drop D. Notes already in range retain their exact transposed register. The
-view reports how many notes needed an octave adjustment. Tuning can change
+is lowered for Drop D. The entire line retains its transposed register when
+it fits the selected tuning's playable range (0–24 frets). Otherwise it moves
+by a common octave offset, preserving every interval. For example, lowering
+an E1–E2 octave riff by one semitone gives Eb2–Eb3 in E Standard and Eb1–Eb2
+in Drop D. The view reports the whole-line octave shift. If no common octave
+fits, that transposition or tuning choice is disabled rather than changing
+the line's intervals. Sampled playback shifts the available samples to each
+note's exact pitch, preserving octaves beyond the sample range. Tuning can change
 independently at any transposition, including for nonstandard imports.
 “Tom original” restores both the pitches and imported tuning. Linked
 recordings such as Ogg or MP3 disable these controls, and Rocksmith charts
