@@ -63,6 +63,12 @@ function harness(notes: BassChartNote[], songLengthSeconds = 4) {
 }
 
 describe('bassSynthNotes', () => {
+  it('transposes from the original register without octave jumps at sample boundaries', () => {
+    const down = bassSynthNotes([note({ time: 0, midi: 27 })], -1)[0];
+    const up = bassSynthNotes([note({ time: 0, midi: 56 })], 1)[0];
+    expect(down).toMatchObject({ midi: 28, transposeSemitones: -1 });
+    expect(up).toMatchObject({ midi: 55, transposeSemitones: 1 });
+  });
   it('holds a note for its sustain, or for as long as the chart shows it', () => {
     const notes = bassSynthNotes([
       note({ time: 0, sustain: 0.25 }),

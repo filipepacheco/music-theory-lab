@@ -35,6 +35,28 @@ describe('Growlybass asset cache', () => {
 });
 
 describe('Growlybass sampler', () => {
+  it.each([-1, 1])(
+    'shifts a scheduled sample by %i semitone without changing timing',
+    async (shift) => {
+      const play = vi.fn();
+      const sampler = createGrowlybassSampler({
+        load: async () => 'sample',
+        play,
+      });
+      await sampler.preload([28]);
+      sampler.schedule(28, 0.6, 0.5, 10, shift);
+      expect(play).toHaveBeenCalledWith(
+        'sample',
+        expect.objectContaining({
+          requestedMidi: 28 + shift,
+          playbackRate: 2 ** (shift / 12),
+        }),
+        0.5,
+        0.08,
+        10,
+      );
+    },
+  );
   it('loads on first trigger and plays from frame zero with 500 ms release', async () => {
     const asset = { decoded: true };
     const load = vi.fn(async () => asset);

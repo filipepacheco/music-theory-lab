@@ -17,6 +17,20 @@ does not preserve Guitar Pro's original strings, frets or all articulations.
 Only the bass part feeds these analyses. The file's other instrument parts
 are not additional harmony evidence.
 
+## Transposition
+
+MIDI and GP charts without a linked recording have “−½ tom” and “+½ tom”
+controls, up to an octave in either direction. Each click shifts the chord
+names, analysis key, bass notes, tabs, fretboard and sampled-bass playback.
+Playback keeps its position when the transposition changes. “Tom original”
+resets the practice view; the saved import stays unchanged.
+
+Fingering is recalculated for the shifted pitches. The original tuning is
+kept when the notes fit; otherwise the indicated tuning moves enough to
+retain every pitch. Linked recordings such as Ogg or MP3 disable these
+controls, and Rocksmith charts do not expose them. “Tom para análise” still
+chooses the harmonic interpretation independently of transposition.
+
 ## Persistence
 
 Derived charts synchronize to the existing Turso database through

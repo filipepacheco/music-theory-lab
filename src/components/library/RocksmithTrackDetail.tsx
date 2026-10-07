@@ -47,6 +47,7 @@ import {
   sectionIndexOfBar,
   sectionLabel,
   sectionRows,
+  STANDARD_OPEN_MIDI,
   timeSignatures,
   tuningLabel,
   type BassChart,
@@ -81,13 +82,18 @@ import {
   isMinorChordType,
 } from '@/domain/circleOfFifths';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
+import {
+  canTransposeBassChart,
+  supportsBassTransposition,
+  transposeBassChart,
+  transposeMusicalKey,
+} from '@/domain/bassTransposition';
 
 interface Props {
   chart: BassChart;
   onRemove: () => void;
 }
 
-const STRING_NAMES = ['E', 'A', 'D', 'G'];
 const CIRCLE_OPEN_KEY = 'music-theory-lab:fifths-window-open';
 /** The circle's largest size; narrower screens get what fits. */
 const CIRCLE_SIZE = 300;
@@ -194,15 +200,26 @@ const CATEGORY_LABELS: Record<DegreeCategory, string> = {
   ornament: 'ornamentos',
 };
 
-export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
-  const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
+export default function RocksmithTrackDetail({
+  chart: originalChart,
+  onRemove,
+}: Props) {
+  const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
+  const [semitones, setSemitones] = useState(0);
+  const supportsTransposition = supportsBassTransposition(originalChart);
+  const canTranspose = supportsTransposition && audioState.status === 'missing';
+  const shift = canTranspose ? semitones : 0;
+  const chart = useMemo(
+    () => transposeBassChart(originalChart, shift),
+    [originalChart, shift],
+  );
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const [mixMode, setMixMode] = useState<BassMixMode>('full');
   const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
   const recording = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
   // With no recording to follow, the sampled bass plays the chart itself.
   const synthOnly = audioState.status === 'missing';
-  const synth = useBassSynthPlayback(chart, synthOnly);
+  const synth = useBassSynthPlayback(chart, synthOnly, shift);
   const audio = synthOnly ? synth : recording;
   const hasPlayer = audioUrl !== null || synthOnly;
   const [follow, setFollow] = useState(true);
@@ -253,7 +270,14 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
   const noteTimes = useMemo(() => chart.notes.map((n) => n.time), [chart]);
   const barNotes = useMemo(() => notesByBar(chart), [chart]);
   const blocks = useMemo(() => sectionBlocks(chart), [chart]);
-  const analysis = useMemo(() => analyzeBassChart(chart), [chart]);
+  const originalAnalysis = useMemo(
+    () => analyzeBassChart(originalChart),
+    [originalChart],
+  );
+  const analysis = useMemo(
+    () => (shift === 0 ? originalAnalysis : analyzeBassChart(chart)),
+    [chart, shift, originalAnalysis],
+  );
   const summaries = useMemo(
     () =>
       blocks.map((block) =>
@@ -261,12 +285,18 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
       ),
     [analysis, blocks],
   );
+  const originalSuggestions = useMemo(
+    () => suggestKeys(originalChart, originalAnalysis),
+    [originalChart, originalAnalysis],
+  );
   const keySuggestions = useMemo(
-    () => suggestKeys(chart, analysis),
-    [chart, analysis],
+    () => originalSuggestions.map((key) => transposeMusicalKey(key, shift)),
+    [originalSuggestions, shift],
   );
   const [chosenKey, setChosenKey] = useState<MusicalKey | null>(null);
-  const musicalKey = chosenKey ?? keySuggestions[0] ?? null;
+  const musicalKey = chosenKey
+    ? transposeMusicalKey(chosenKey, shift)
+    : (keySuggestions[0] ?? null);
   const noteNames = musicalKey ? keyNoteNames(musicalKey) : NOTE_NAMES;
   const harmony = useMemo(
     () => (musicalKey ? analyzeHarmony(chart, analysis, musicalKey) : null),
@@ -465,6 +495,64 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         <Stat label="Notas" value={String(chart.notes.length)} />
       </dl>
 
+      {supportsTransposition && (
+        <div className="flex flex-col gap-1">
+          <div
+            role="group"
+            aria-label="Transposição da música"
+            className="flex flex-wrap items-center gap-2 text-xs"
+          >
+            <span className="text-text-secondary">Transpor</span>
+            <button
+              type="button"
+              aria-label="Diminuir meio tom"
+              disabled={
+                !canTranspose ||
+                !canTransposeBassChart(originalChart, shift - 1)
+              }
+              onClick={() => setSemitones((value) => value - 1)}
+              className="rounded-button border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              −½ tom
+            </button>
+            <span
+              role="status"
+              className="min-w-20 text-center font-heading tabular-nums text-text-primary"
+            >
+              {shift === 0
+                ? 'Original'
+                : `${shift > 0 ? '+' : ''}${shift} ${Math.abs(shift) === 1 ? 'semitom' : 'semitons'}`}
+            </span>
+            <button
+              type="button"
+              aria-label="Aumentar meio tom"
+              disabled={
+                !canTranspose ||
+                !canTransposeBassChart(originalChart, shift + 1)
+              }
+              onClick={() => setSemitones((value) => value + 1)}
+              className="rounded-button border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              +½ tom
+            </button>
+            {shift !== 0 && (
+              <button
+                type="button"
+                onClick={() => setSemitones(0)}
+                className="text-text-muted underline hover:text-text-primary cursor-pointer"
+              >
+                Tom original
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-text-muted">
+            {audioState.status === 'ready'
+              ? 'Transposição indisponível com uma gravação vinculada. O áudio toca no tom original.'
+              : 'Cada clique muda a cifra, as notas e o som do baixo em meio tom. Confira a afinação indicada.'}
+          </p>
+        </div>
+      )}
+
       {hasPlayer && <LibraryPlayer audio={audio} />}
       {synth.failed && (
         <p role="alert" className="text-[11px] text-text-error">
@@ -480,7 +568,14 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
         />
       )}
 
-      <AudioSource state={audioState} saveError={saveError} onAttach={attach} />
+      <AudioSource
+        state={audioState}
+        saveError={saveError}
+        onAttach={(file) => {
+          setSemitones(0);
+          return attach(file);
+        }}
+      />
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -528,7 +623,7 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
           <KeyPicker
             value={musicalKey}
             suggestions={keySuggestions}
-            onChange={setChosenKey}
+            onChange={(key) => setChosenKey(transposeMusicalKey(key, -shift))}
           />
         )}
         {showDegrees && <BassDegreeGuide musicalKey={musicalKey} />}
@@ -640,7 +735,10 @@ export default function RocksmithTrackDetail({ chart, onRemove }: Props) {
                     (n) => n.index === activeNotes[i],
                   );
                   const label = degree ? degreeLabel(degree) : '';
-                  return `${noteNames[note.midi % 12]}${Math.floor(note.midi / 12) - 1}${label ? ` (${label})` : ''} · corda ${STRING_NAMES[note.string]}, casa ${note.fret}`;
+                  const openMidi =
+                    STANDARD_OPEN_MIDI[note.string] + chart.tuning[note.string];
+                  const stringName = noteNames[((openMidi % 12) + 12) % 12];
+                  return `${noteNames[note.midi % 12]}${Math.floor(note.midi / 12) - 1}${label ? ` (${label})` : ''} · corda ${stringName}, casa ${note.fret}`;
                 })
                 .join(' + ')}`
             : 'Contorno cheio: o baixo tocou · tracejado: nota do acorde suposta pelo tom'
@@ -967,7 +1065,7 @@ function KeyPicker({
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted">
       <label className="flex items-center gap-1.5">
-        Tom
+        Tom para análise
         <select
           value={keyValue(value)}
           onChange={(e) => {

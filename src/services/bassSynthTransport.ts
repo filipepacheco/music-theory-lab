@@ -29,6 +29,8 @@ export interface BassSynthNote {
   time: number;
   /** Pitch folded into the range the sampled bass covers. */
   midi: number;
+  /** Shift the sampled voice after choosing its original register. */
+  transposeSemitones?: number;
   seconds: number;
 }
 
@@ -58,7 +60,10 @@ const browserTimer: BassSynthTimer = (callback, milliseconds) => {
  * long as the chart shows it when it has none, and never runs into the next
  * onset: a bass line is one voice. Dead notes are a short thud.
  */
-export function bassSynthNotes(notes: BassChartNote[]): BassSynthNote[] {
+export function bassSynthNotes(
+  notes: BassChartNote[],
+  transposeSemitones = 0,
+): BassSynthNote[] {
   const result: BassSynthNote[] = [];
   let nextOnset = Infinity;
   for (let i = notes.length - 1; i >= 0; i -= 1) {
@@ -67,10 +72,15 @@ export function bassSynthNotes(notes: BassChartNote[]): BassSynthNote[] {
     const seconds = note.techniques.includes('mute')
       ? MUTED_NOTE_SECONDS
       : Math.max(MIN_NOTE_SECONDS, Math.min(written, nextOnset - note.time));
-    let midi = note.midi;
+    let midi = note.midi - transposeSemitones;
     while (midi < GROWLYBASS_LOWEST_MIDI) midi += 12;
     while (midi > GROWLYBASS_HIGHEST_MIDI) midi -= 12;
-    result.unshift({ time: note.time, midi, seconds });
+    result.unshift({
+      time: note.time,
+      midi,
+      seconds,
+      ...(transposeSemitones !== 0 && { transposeSemitones }),
+    });
     if (i === 0 || notes[i - 1].time < note.time) nextOnset = note.time;
   }
   return result;
@@ -81,8 +91,9 @@ export function createBassSynthTransport(
   voice: BassSynthVoice,
   onStateChange: (state: LibraryAudioState) => void,
   timer: BassSynthTimer = browserTimer,
+  transposeSemitones = 0,
 ): LibraryAudioSession {
-  const notes = bassSynthNotes(chart.notes);
+  const notes = bassSynthNotes(chart.notes, transposeSemitones);
   const pitches = [...new Set(notes.map((n) => n.midi))];
   const duration = chart.songLengthSeconds;
   let state: LibraryAudioState = {
