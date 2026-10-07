@@ -85,6 +85,7 @@ import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 import {
   canTransposeBassChart,
   DROP_D_TUNING,
+  E_STANDARD_TUNING,
   supportsBassTransposition,
   transposeBassChart,
   transposeMusicalKey,
@@ -207,23 +208,25 @@ export default function RocksmithTrackDetail({
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const [semitones, setSemitones] = useState(0);
-  const [useDropD, setUseDropD] = useState(false);
+  const [practiceTuning, setPracticeTuning] = useState('original');
   const supportsTransposition = supportsBassTransposition(originalChart);
   const canTranspose = supportsTransposition && audioState.status === 'missing';
   const shift = canTranspose ? semitones : 0;
   const tuning =
-    canTranspose && useDropD ? DROP_D_TUNING : originalChart.tuning;
+    !canTranspose || practiceTuning === 'original'
+      ? originalChart.tuning
+      : practiceTuning === 'drop-d'
+        ? DROP_D_TUNING
+        : E_STANDARD_TUNING;
   const canLower = canTransposeBassChart(originalChart, shift - 1, tuning);
   const canRaise = canTransposeBassChart(originalChart, shift + 1, tuning);
-  const dropDWouldHelp =
-    isStandardTuning(originalChart.tuning) &&
-    !useDropD &&
-    !canLower &&
-    canTransposeBassChart(originalChart, shift - 1, DROP_D_TUNING);
   const chart = useMemo(
     () => transposeBassChart(originalChart, shift, tuning),
     [originalChart, shift, tuning],
   );
+  const octaveAdjustments = chart.notes.filter(
+    (note, index) => note.midi !== originalChart.notes[index].midi + shift,
+  ).length;
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const [mixMode, setMixMode] = useState<BassMixMode>('full');
   const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
@@ -540,12 +543,12 @@ export default function RocksmithTrackDetail({
             >
               +½ tom
             </button>
-            {(shift !== 0 || useDropD) && (
+            {(shift !== 0 || practiceTuning !== 'original') && (
               <button
                 type="button"
                 onClick={() => {
                   setSemitones(0);
-                  setUseDropD(false);
+                  setPracticeTuning('original');
                 }}
                 className="text-text-muted underline hover:text-text-primary cursor-pointer"
               >
@@ -553,45 +556,52 @@ export default function RocksmithTrackDetail({
               </button>
             )}
           </div>
-          {isStandardTuning(originalChart.tuning) && (
-            <label className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-              Afinação para tocar
-              <select
-                value={canTranspose && useDropD ? 'drop-d' : 'original'}
-                disabled={!canTranspose}
-                onChange={(event) =>
-                  setUseDropD(event.target.value === 'drop-d')
-                }
-                className="rounded-button border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+          <label className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+            Afinação para tocar
+            <select
+              value={canTranspose ? practiceTuning : 'original'}
+              disabled={!canTranspose}
+              onChange={(event) => setPracticeTuning(event.target.value)}
+              className="rounded-button border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+            >
+              <option
+                value="original"
+                disabled={!canTransposeBassChart(originalChart, shift)}
               >
-                <option
-                  value="original"
-                  disabled={!canTransposeBassChart(originalChart, shift)}
-                >
-                  Original (E A D G)
-                </option>
-                <option
-                  value="drop-d"
-                  disabled={
-                    !canTransposeBassChart(originalChart, shift, DROP_D_TUNING)
-                  }
-                >
-                  Drop D (D A D G)
-                </option>
-              </select>
-            </label>
-          )}
+                {isStandardTuning(originalChart.tuning)
+                  ? 'E Standard (E A D G)'
+                  : `Original (${tuningLabel(originalChart.tuning)})`}
+              </option>
+              {!isStandardTuning(originalChart.tuning) && (
+                <option value="standard">E Standard (E A D G)</option>
+              )}
+              <option
+                value="drop-d"
+                disabled={
+                  !canTransposeBassChart(originalChart, shift, DROP_D_TUNING)
+                }
+              >
+                Drop D (D A D G)
+              </option>
+            </select>
+          </label>
           <p className="text-[11px] text-text-muted">
             {audioState.status === 'ready'
               ? 'Transposição indisponível com uma gravação vinculada. O áudio toca no tom original.'
-              : dropDWouldHelp
-                ? 'Para baixar mais, selecione Drop D e afine apenas a corda E em D. As casas são recalculadas na afinação escolhida.'
-                : useDropD
-                  ? 'Drop D: afine apenas a corda E em D. Cada clique recalcula as casas e muda o som em meio tom.'
-                  : !canLower || !canRaise
-                    ? 'Limite de transposição: as notas precisam caber na afinação escolhida, até a casa 24, sem mudar de oitava.'
-                    : 'Cada clique recalcula as casas e muda a cifra e o som em meio tom, mantendo a afinação escolhida.'}
+              : 'Cada clique muda o tom em meio tom e recalcula as casas na afinação escolhida. Notas fora do alcance são tocadas na oitava mais próxima.'}
           </p>
+          {canTranspose && practiceTuning === 'drop-d' && (
+            <p className="text-[11px] text-text-muted">
+              Drop D: afine apenas a corda E em D; mantenha A, D e G.
+            </p>
+          )}
+          {canTranspose && octaveAdjustments > 0 && (
+            <p role="status" className="text-[11px] text-text-muted">
+              {octaveAdjustments}{' '}
+              {octaveAdjustments === 1 ? 'nota ajustada' : 'notas ajustadas'} de
+              oitava para caber na afinação escolhida.
+            </p>
+          )}
         </div>
       )}
 
@@ -615,7 +625,7 @@ export default function RocksmithTrackDetail({
         saveError={saveError}
         onAttach={(file) => {
           setSemitones(0);
-          setUseDropD(false);
+          setPracticeTuning('original');
           return attach(file);
         }}
       />

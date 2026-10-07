@@ -6,6 +6,8 @@ import { STANDARD_OPEN_MIDI } from '@/domain/bassChart';
 import { bassSynthNotes } from '@/services/bassSynthTransport';
 import {
   canTransposeBassChart,
+  DROP_D_TUNING,
+  E_STANDARD_TUNING,
   transposeBassChart,
   transposeMusicalKey,
 } from '@/domain/bassTransposition';
@@ -23,6 +25,34 @@ const original = {
 };
 
 describe('MIDI/GP practice transposition', () => {
+  it.each([{ tuning: E_STANDARD_TUNING }, { tuning: DROP_D_TUNING }])(
+    'keeps every semitone playable in $tuning without changing pitch classes',
+    ({ tuning }) => {
+      const range = {
+        ...fixtureChart(1, [
+          { bar: 0, beat: 0, string: 0, fret: 0 },
+          { bar: 0, beat: 1, string: 1, fret: 12 },
+          { bar: 0, beat: 2, string: 3, fret: 24 },
+        ]),
+        source: 'midi' as const,
+      };
+      for (let shift = -12; shift <= 12; shift += 1) {
+        expect(canTransposeBassChart(range, shift, tuning)).toBe(true);
+        const result = transposeBassChart(range, shift, tuning);
+        result.notes.forEach((note, i) => {
+          expect(note.midi % 12).toBe((range.notes[i].midi + shift) % 12);
+          expect(note.midi).toBe(
+            STANDARD_OPEN_MIDI[note.string] + tuning[note.string] + note.fret,
+          );
+          expect(note.fret).toBeGreaterThanOrEqual(0);
+          expect(note.fret).toBeLessThanOrEqual(24);
+          expect(note.time).toBe(range.notes[i].time);
+        });
+      }
+      expect(range.tuning).toEqual([0, 0, 0, 0]);
+      expect(canTransposeBassChart(range, -13, tuning)).toBe(false);
+    },
+  );
   it.each([-1, 1])(
     'shifts chords and playback by %i semitone, preserving harmony',
     (shift) => {
@@ -64,13 +94,25 @@ describe('MIDI/GP practice transposition', () => {
     },
   );
 
-  it('does not silently retune an open E when lowering', () => {
+  it('lowers an open E in E Standard by moving only the unreachable note up an octave', () => {
     const low = {
-      ...fixtureChart(1, [{ bar: 0, beat: 0, string: 0, fret: 0 }]),
+      ...fixtureChart(1, [
+        { bar: 0, beat: 0, string: 0, fret: 0 },
+        { bar: 0, beat: 1, string: 3, fret: 0 },
+      ]),
       source: 'midi' as const,
     };
-    expect(canTransposeBassChart(low, -1)).toBe(false);
-    expect(() => transposeBassChart(low, -1)).toThrow(RangeError);
+    expect(canTransposeBassChart(low, -2)).toBe(true);
+    const chart = transposeBassChart(low, -2);
+    expect(chart.notes.map((n) => n.midi)).toEqual([38, 41]);
+    expect(chart.tuning).toEqual([0, 0, 0, 0]);
+    chart.notes.forEach((note) => {
+      expect(note.midi).toBe(STANDARD_OPEN_MIDI[note.string] + note.fret);
+    });
+    const sounds = bassSynthNotes(chart.notes, -2);
+    expect(sounds.map((n) => n.midi + (n.transposeSemitones ?? 0))).toEqual([
+      38, 41,
+    ]);
     expect(low.tuning).toEqual([0, 0, 0, 0]);
     expect(transposeBassChart(low, 0)).toBe(low);
   });
@@ -91,7 +133,9 @@ describe('MIDI/GP practice transposition', () => {
       [26, 0, 0],
       [41, 2, 3],
     ]);
-    expect(canTransposeBassChart(low, -3, dropD)).toBe(false);
+    expect(transposeBassChart(low, -3, dropD).notes.map((n) => n.midi)).toEqual(
+      [37, 40],
+    );
     expect(low.tuning).toEqual([0, 0, 0, 0]);
   });
 
@@ -107,12 +151,15 @@ describe('MIDI/GP practice transposition', () => {
     });
   });
 
-  it('stops at the last fret instead of raising every string', () => {
+  it('moves notes above the last fret down an octave without retuning', () => {
     const high = {
       ...fixtureChart(1, [{ bar: 0, beat: 0, string: 3, fret: 24 }]),
       source: 'midi' as const,
     };
-    expect(canTransposeBassChart(high, 1)).toBe(false);
-    expect(() => transposeBassChart(high, 1)).toThrow(RangeError);
+    expect(canTransposeBassChart(high, 1)).toBe(true);
+    const chart = transposeBassChart(high, 1);
+    expect(chart.notes[0].midi).toBe(56);
+    expect(chart.tuning).toEqual([0, 0, 0, 0]);
+    expect(chart.notes[0].fret).toBeLessThanOrEqual(24);
   });
 });

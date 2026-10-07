@@ -27,9 +27,13 @@ resets the practice view; the saved import stays unchanged.
 
 Fingering is recalculated in the original tuning, which never changes
 automatically. For standard E–A–D–G imports, “Afinação para tocar” offers an
-explicit Drop D choice (D–A–D–G): only the E string is lowered, so a low E
-can transpose down to D without changing octaves. Transposition buttons and
-tuning choices stop at the selected tuning's playable range (0–24 frets).
+explicit E Standard (E–A–D–G) or Drop D (D–A–D–G) choice. Only the E string
+is lowered for Drop D. Notes outside the selected tuning's playable range
+(0–24 frets) move to the nearest playable octave, keeping their pitch class.
+For example, lowering E1 by two semitones gives D2 in E Standard and D1 in
+Drop D. Notes already in range retain their exact transposed register. The
+view reports how many notes needed an octave adjustment. Tuning can change
+independently at any transposition, including for nonstandard imports.
 “Tom original” restores both the pitches and imported tuning. Linked
 recordings such as Ogg or MP3 disable these controls, and Rocksmith charts
 do not expose them. “Tom para análise” still chooses the harmonic
