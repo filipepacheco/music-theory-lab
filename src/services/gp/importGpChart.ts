@@ -1,13 +1,22 @@
 import { importer, midi, Settings } from '@coderline/alphatab';
-import { buildBassChart, type BassChart } from '@/domain/bassChart';
-import { midiToArrangement, pickBassChannel } from '@/domain/midiBassChart';
+import {
+  buildBassChart,
+  STANDARD_OPEN_MIDI,
+  type BassChart,
+  type BassFretPosition,
+} from '@/domain/bassChart';
+import {
+  midiToArrangement,
+  pickBassChannel,
+  tickToSeconds,
+} from '@/domain/midiBassChart';
 import {
   parseGpFile,
   gpParseErrorMessage,
   GpParseError,
 } from '@/services/gpFile';
 import { metadataFromFileName } from '@/services/midi/importMidi';
-import { parseMidi } from '@/services/midi/midiFile';
+import { parseMidi, type MidiFile } from '@/services/midi/midiFile';
 
 export function gpChartImportErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) return gpParseErrorMessage(error);
@@ -21,7 +30,8 @@ export function gpChartImportErrorMessage(error: unknown): string {
  * Export the score's playback order to MIDI before using the existing bass
  * adapter. alphaTab owns repeats, alternate endings, ties and tempo changes;
  * the same BassChart drives analysis and playback for every import format.
- * Fingering is suggested by the MIDI adapter rather than copied from the tab.
+ * Keep the MIDI adapter's fingering and recover the score's original positions
+ * on the same expanded playback timeline as an alternative practice view.
  */
 export async function importGpChart(
   file: Blob & { name: string },
@@ -69,20 +79,90 @@ export async function importGpChart(
     b.toString(16).padStart(2, '0'),
   ).join('');
   const fallback = metadataFromFileName(file.name);
+  const staff = track?.staves.find(
+    (candidate) => candidate.tuning.length === 4,
+  );
+  const importedTuning =
+    staff && staff.capo === 0
+      ? [...staff.tuning]
+          .reverse()
+          .map(
+            (pitch, string) =>
+              pitch - staff.transpositionPitch - STANDARD_OPEN_MIDI[string],
+          )
+      : undefined;
+  const chart = buildBassChart({
+    id,
+    source: 'gp',
+    sourceFileName: file.name,
+    importedAt: now.toISOString(),
+    metadata: {
+      ...fallback,
+      title: score.title.trim() || fallback.title,
+      artist: score.artist.trim() || fallback.artist,
+      album: score.album.trim(),
+    },
+    arrangement: midiToArrangement(parsed, channel, importedTuning),
+  });
+  if (staff && importedTuning) {
+    chart.originalFingering = recoverOriginalFingering(
+      chart,
+      parsed,
+      generator,
+      staff,
+    );
+  }
   return {
-    chart: buildBassChart({
-      id,
-      source: 'gp',
-      sourceFileName: file.name,
-      importedAt: now.toISOString(),
-      metadata: {
-        ...fallback,
-        title: score.title.trim() || fallback.title,
-        artist: score.artist.trim() || fallback.artist,
-        album: score.album.trim(),
-      },
-      arrangement: midiToArrangement(parsed, channel),
-    }),
+    chart,
     audio: null,
   };
+}
+
+/** Match by sounding pitch and playback onset, never by written bar number. */
+function recoverOriginalFingering(
+  chart: BassChart,
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  staff: import('@coderline/alphatab').model.Staff,
+): BassFretPosition[] | undefined {
+  const toSeconds = tickToSeconds(parsed);
+  const positions = new Map<string, BassFretPosition[]>();
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        if (item.beat.voice.bar.staff !== staff || seen.has(item.beat.id))
+          continue;
+        seen.add(item.beat.id);
+        const time = toSeconds(Math.round(played.start + item.playbackStart));
+        for (const note of item.beat.notes) {
+          if (!note.isStringed || note.isTieDestination) continue;
+          const string = note.string - 1;
+          const pitch = note.calculateRealValue(
+            generator.applyTranspositionPitches,
+            true,
+          );
+          // Harmonics/ornaments whose sounding pitch differs from the written
+          // fret cannot be represented faithfully by a plain fret position.
+          if (
+            pitch !==
+            STANDARD_OPEN_MIDI[string] + chart.tuning[string] + note.fret
+          )
+            continue;
+          const key = `${time}:${pitch}`;
+          const candidates = positions.get(key) ?? [];
+          candidates.push({ string, fret: note.fret });
+          positions.set(key, candidates);
+        }
+      }
+    }
+  }
+  const original: BassFretPosition[] = [];
+  for (const note of chart.notes) {
+    const position = positions.get(`${note.time}:${note.midi}`)?.shift();
+    // Never advertise invented fingering as the original GP transcription.
+    if (!position) return undefined;
+    original.push(position);
+  }
+  return original;
 }

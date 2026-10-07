@@ -7,6 +7,7 @@ import {
 import { importMidi } from '@/services/midi/importMidi';
 import { analyzeBassChart } from '@/domain/bassAnalysis';
 import { parseBassChart } from '@/domain/bassChartRecord';
+import { withOriginalGpFingering } from '@/domain/bassFingering';
 
 function score(tex = '0.4.4 2.4 3.4 0.3 | 2.3.4 3.3 0.2 2.2') {
   return importer.ScoreLoader.loadAlphaTex(
@@ -21,6 +22,70 @@ function file(bytes: Uint8Array, name = 'Teste.gp') {
 }
 
 describe('Biblioteca Guitar Pro import', () => {
+  it('keeps the written A-string seventh fret alongside the suggested D-string second fret', async () => {
+    const result = await importGpChart(
+      file(
+        new exporter.Gp7Exporter().export(
+          score('0.4.8 7.3 0.4 7.3 0.4 0.4 7.3 0.4'),
+        ),
+      ),
+    );
+    expect(result.chart.notes[1]).toMatchObject({
+      midi: 40,
+      string: 2,
+      fret: 2,
+    });
+    expect(result.chart.originalFingering?.[1]).toEqual({ string: 1, fret: 7 });
+    const original = withOriginalGpFingering(result.chart);
+    expect(original.notes[1]).toMatchObject({ midi: 40, string: 1, fret: 7 });
+    expect(original.notes.map((n) => [n.midi, n.time, n.sustain])).toEqual(
+      result.chart.notes.map((n) => [n.midi, n.time, n.sustain]),
+    );
+    expect(analyzeBassChart(original)).toEqual(analyzeBassChart(result.chart));
+    expect(parseBassChart(result.chart)).not.toBeNull();
+  });
+
+  it('preserves the score tuning rather than inferring it from the lowest note', async () => {
+    const original = importer.ScoreLoader.loadAlphaTex(
+      String.raw`\instrument 34 \tuning G2 D2 A1 D1 . 0.4.4 7.3 0.4 7.3`,
+    );
+    const { chart } = await importGpChart(
+      file(new exporter.Gp7Exporter().export(original)),
+    );
+    expect(chart.tuning).toEqual([-2, 0, 0, 0]);
+    expect(chart.originalFingering).toEqual([
+      { string: 0, fret: 0 },
+      { string: 1, fret: 7 },
+      { string: 0, fret: 0 },
+      { string: 1, fret: 7 },
+    ]);
+    expect(parseBassChart(chart)).not.toBeNull();
+  });
+
+  it('keeps original fingering aligned when a tie sustains across two bars', async () => {
+    const original = score('7.3.1 | 7.3.1');
+    original.tracks[0].staves[0].bars[1].voices[0].beats[0].notes[0].isTieDestination = true;
+    const { chart } = await importGpChart(
+      file(new exporter.Gp7Exporter().export(original)),
+    );
+    expect(chart.notes).toHaveLength(1);
+    expect(chart.notes[0].sustain).toBeGreaterThan(3.9);
+    expect(chart.originalFingering).toEqual([{ string: 1, fret: 7 }]);
+  });
+
+  it('does not advertise invented original positions for harmonic pitches', async () => {
+    const original = score();
+    const note =
+      original.tracks[0].staves[0].bars[0].voices[0].beats[0].notes[0];
+    note.harmonicType = model.HarmonicType.Natural;
+    note.harmonicValue = 12;
+    const { chart } = await importGpChart(
+      file(new exporter.Gp7Exporter().export(original)),
+    );
+    expect(chart.originalFingering).toBeUndefined();
+    expect(parseBassChart(chart)).not.toBeNull();
+  });
+
   it('reuses the MIDI chart and analysis with score metadata', async () => {
     const original = score();
     const gp = await importGpChart(
@@ -70,6 +135,10 @@ describe('Biblioteca Guitar Pro import', () => {
     expect(result.chart.songLengthSeconds).toBeCloseTo(8);
     expect(result.chart.notes).toHaveLength(16);
     expect(result.chart.notes[8].time).toBeCloseTo(4);
+    expect(result.chart.originalFingering).toHaveLength(16);
+    expect(result.chart.originalFingering?.slice(8)).toEqual(
+      result.chart.originalFingering?.slice(0, 8),
+    );
     expect(
       result.chart.sections.map((section) => [
         section.name,
@@ -94,6 +163,7 @@ describe('Biblioteca Guitar Pro import', () => {
       file(new exporter.Gp7Exporter().export(original)),
     );
     expect(result.chart.notes).toHaveLength(8);
+    expect(result.chart.originalFingering).toHaveLength(8);
     expect(
       result.chart.notes.some((note) => note.techniques.includes('bend')),
     ).toBe(true);
@@ -109,6 +179,9 @@ describe('Biblioteca Guitar Pro import', () => {
     expect(result.chart.bars.map((bar) => bar.beatCount)).toEqual([3, 6]);
     expect(result.chart.bars[1].startTime).toBeCloseTo(1.5);
     expect(result.chart.songLengthSeconds).toBeCloseTo(4.5);
+    expect(result.chart.originalFingering).toHaveLength(
+      result.chart.notes.length,
+    );
   });
 
   it('rejects malformed and legacy files with a useful message', async () => {

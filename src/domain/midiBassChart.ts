@@ -62,10 +62,11 @@ export function pickBassChannel(midi: MidiFile): number | null {
 export function midiToArrangement(
   midi: MidiFile,
   channel: number,
+  importedTuning?: number[],
 ): SngArrangement {
   const toSeconds = tickToSeconds(midi);
   const played = midi.notes.filter((n) => n.channel === channel);
-  const tuning = tuningFor(played.map((n) => n.pitch));
+  const tuning = importedTuning ?? tuningFor(played.map((n) => n.pitch));
   const openPitches = STANDARD_OPEN_MIDI.map((open, i) => open + tuning[i]);
   const highest = openPitches[openPitches.length - 1] + MAX_FRET;
 
@@ -109,7 +110,7 @@ export function midiToArrangement(
 }
 
 /** Seconds elapsed at a tick, following every tempo change in the file. */
-function tickToSeconds(midi: MidiFile): (tick: number) => number {
+export function tickToSeconds(midi: MidiFile): (tick: number) => number {
   const segments = [
     { tick: 0, seconds: 0, microsPerQuarter: DEFAULT_MICROS_PER_QUARTER },
   ];

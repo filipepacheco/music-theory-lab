@@ -19,6 +19,7 @@ const chart = {
   ...fixtureChart(1, [{ bar: 0, beat: 0, midi: 33 }]),
   id: 'a'.repeat(64),
   source: 'gp' as const,
+  originalFingering: [{ string: 1, fret: 0 }],
 };
 const record = { id: chart.id, updatedAt: '2026-10-05T10:00:00.000Z', chart };
 
