@@ -69,6 +69,56 @@ afterEach(() => {
 
 describe('Biblioteca semitone buttons', () => {
   it.each(['midi', 'gp'] as const)(
+    'keeps %s tuning and requires an explicit Drop D choice for low notes',
+    (source) => {
+      const low = {
+        ...fixtureChart(1, [
+          { bar: 0, beat: 0, string: 0, fret: 0 },
+          { bar: 0, beat: 1, string: 3, fret: 0 },
+        ]),
+        source,
+      };
+      render(<RocksmithTrackDetail chart={low} onRemove={vi.fn()} />);
+      const lower = screen.getByRole('button', {
+        name: 'Diminuir meio tom',
+      }) as HTMLButtonElement;
+      expect(lower.disabled).toBe(true);
+      expect(state.synthChart!.tuning).toEqual([0, 0, 0, 0]);
+      expect(
+        screen.getByText(/Para baixar mais, selecione Drop D/),
+      ).toBeTruthy();
+      fireEvent.change(screen.getByLabelText('Afinação para tocar'), {
+        target: { value: 'drop-d' },
+      });
+      expect(lower.disabled).toBe(false);
+      expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([28, 43]);
+      fireEvent.click(lower);
+      fireEvent.click(lower);
+      expect(state.synthChart!.tuning).toEqual([-2, 0, 0, 0]);
+      expect(
+        state.synthChart!.notes.map((n) => [n.midi, n.string, n.fret]),
+      ).toEqual([
+        [26, 0, 0],
+        [41, 2, 3],
+      ]);
+      expect(lower.disabled).toBe(true);
+      expect(
+        (
+          screen.getByRole('option', {
+            name: 'Original (E A D G)',
+          }) as HTMLOptionElement
+        ).disabled,
+      ).toBe(true);
+      fireEvent.click(screen.getByRole('button', { name: 'Tom original' }));
+      expect(state.synthChart).toBe(low);
+      expect(
+        (screen.getByLabelText('Afinação para tocar') as HTMLSelectElement)
+          .value,
+      ).toBe('original');
+    },
+  );
+
+  it.each(['midi', 'gp'] as const)(
     'transposes %s chords and synth notes in both directions, then restores the original',
     (source) => {
       render(
@@ -130,6 +180,10 @@ describe('Biblioteca semitone buttons', () => {
       ).disabled,
     ).toBe(true);
     expect(state.synthChart!.notes).toEqual(chart.notes);
+    expect(
+      (screen.getByLabelText('Afinação para tocar') as HTMLSelectElement)
+        .disabled,
+    ).toBe(true);
   });
 
   it('does not offer transposition for Rocksmith', () => {

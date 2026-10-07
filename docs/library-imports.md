@@ -25,11 +25,15 @@ names, analysis key, bass notes, tabs, fretboard and sampled-bass playback.
 Playback keeps its position when the transposition changes. “Tom original”
 resets the practice view; the saved import stays unchanged.
 
-Fingering is recalculated for the shifted pitches. The original tuning is
-kept when the notes fit; otherwise the indicated tuning moves enough to
-retain every pitch. Linked recordings such as Ogg or MP3 disable these
-controls, and Rocksmith charts do not expose them. “Tom para análise” still
-chooses the harmonic interpretation independently of transposition.
+Fingering is recalculated in the original tuning, which never changes
+automatically. For standard E–A–D–G imports, “Afinação para tocar” offers an
+explicit Drop D choice (D–A–D–G): only the E string is lowered, so a low E
+can transpose down to D without changing octaves. Transposition buttons and
+tuning choices stop at the selected tuning's playable range (0–24 frets).
+“Tom original” restores both the pitches and imported tuning. Linked
+recordings such as Ogg or MP3 disable these controls, and Rocksmith charts
+do not expose them. “Tom para análise” still chooses the harmonic
+interpretation independently of transposition.
 
 ## Persistence
 

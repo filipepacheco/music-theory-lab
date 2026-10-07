@@ -84,6 +84,7 @@ import {
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 import {
   canTransposeBassChart,
+  DROP_D_TUNING,
   supportsBassTransposition,
   transposeBassChart,
   transposeMusicalKey,
@@ -206,12 +207,22 @@ export default function RocksmithTrackDetail({
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const [semitones, setSemitones] = useState(0);
+  const [useDropD, setUseDropD] = useState(false);
   const supportsTransposition = supportsBassTransposition(originalChart);
   const canTranspose = supportsTransposition && audioState.status === 'missing';
   const shift = canTranspose ? semitones : 0;
+  const tuning =
+    canTranspose && useDropD ? DROP_D_TUNING : originalChart.tuning;
+  const canLower = canTransposeBassChart(originalChart, shift - 1, tuning);
+  const canRaise = canTransposeBassChart(originalChart, shift + 1, tuning);
+  const dropDWouldHelp =
+    isStandardTuning(originalChart.tuning) &&
+    !useDropD &&
+    !canLower &&
+    canTransposeBassChart(originalChart, shift - 1, DROP_D_TUNING);
   const chart = useMemo(
-    () => transposeBassChart(originalChart, shift),
-    [originalChart, shift],
+    () => transposeBassChart(originalChart, shift, tuning),
+    [originalChart, shift, tuning],
   );
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const [mixMode, setMixMode] = useState<BassMixMode>('full');
@@ -506,10 +517,7 @@ export default function RocksmithTrackDetail({
             <button
               type="button"
               aria-label="Diminuir meio tom"
-              disabled={
-                !canTranspose ||
-                !canTransposeBassChart(originalChart, shift - 1)
-              }
+              disabled={!canTranspose || !canLower}
               onClick={() => setSemitones((value) => value - 1)}
               className="rounded-button border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -526,29 +534,63 @@ export default function RocksmithTrackDetail({
             <button
               type="button"
               aria-label="Aumentar meio tom"
-              disabled={
-                !canTranspose ||
-                !canTransposeBassChart(originalChart, shift + 1)
-              }
+              disabled={!canTranspose || !canRaise}
               onClick={() => setSemitones((value) => value + 1)}
               className="rounded-button border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               +½ tom
             </button>
-            {shift !== 0 && (
+            {(shift !== 0 || useDropD) && (
               <button
                 type="button"
-                onClick={() => setSemitones(0)}
+                onClick={() => {
+                  setSemitones(0);
+                  setUseDropD(false);
+                }}
                 className="text-text-muted underline hover:text-text-primary cursor-pointer"
               >
                 Tom original
               </button>
             )}
           </div>
+          {isStandardTuning(originalChart.tuning) && (
+            <label className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+              Afinação para tocar
+              <select
+                value={canTranspose && useDropD ? 'drop-d' : 'original'}
+                disabled={!canTranspose}
+                onChange={(event) =>
+                  setUseDropD(event.target.value === 'drop-d')
+                }
+                className="rounded-button border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+              >
+                <option
+                  value="original"
+                  disabled={!canTransposeBassChart(originalChart, shift)}
+                >
+                  Original (E A D G)
+                </option>
+                <option
+                  value="drop-d"
+                  disabled={
+                    !canTransposeBassChart(originalChart, shift, DROP_D_TUNING)
+                  }
+                >
+                  Drop D (D A D G)
+                </option>
+              </select>
+            </label>
+          )}
           <p className="text-[11px] text-text-muted">
             {audioState.status === 'ready'
               ? 'Transposição indisponível com uma gravação vinculada. O áudio toca no tom original.'
-              : 'Cada clique muda a cifra, as notas e o som do baixo em meio tom. Confira a afinação indicada.'}
+              : dropDWouldHelp
+                ? 'Para baixar mais, selecione Drop D e afine apenas a corda E em D. As casas são recalculadas na afinação escolhida.'
+                : useDropD
+                  ? 'Drop D: afine apenas a corda E em D. Cada clique recalcula as casas e muda o som em meio tom.'
+                  : !canLower || !canRaise
+                    ? 'Limite de transposição: as notas precisam caber na afinação escolhida, até a casa 24, sem mudar de oitava.'
+                    : 'Cada clique recalcula as casas e muda a cifra e o som em meio tom, mantendo a afinação escolhida.'}
           </p>
         </div>
       )}
@@ -573,6 +615,7 @@ export default function RocksmithTrackDetail({
         saveError={saveError}
         onAttach={(file) => {
           setSemitones(0);
+          setUseDropD(false);
           return attach(file);
         }}
       />

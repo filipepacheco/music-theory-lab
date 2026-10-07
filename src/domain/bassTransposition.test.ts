@@ -64,17 +64,35 @@ describe('MIDI/GP practice transposition', () => {
     },
   );
 
-  it('keeps a low open note when lowering, with a reachable tuning', () => {
+  it('does not silently retune an open E when lowering', () => {
     const low = {
       ...fixtureChart(1, [{ bar: 0, beat: 0, string: 0, fret: 0 }]),
       source: 'midi' as const,
     };
-    const chart = transposeBassChart(low, -1);
-    expect(chart.notes[0].midi).toBe(27);
-    expect(chart.notes[0].fret).toBe(0);
-    expect(chart.tuning[0]).toBe(-1);
+    expect(canTransposeBassChart(low, -1)).toBe(false);
+    expect(() => transposeBassChart(low, -1)).toThrow(RangeError);
     expect(low.tuning).toEqual([0, 0, 0, 0]);
     expect(transposeBassChart(low, 0)).toBe(low);
+  });
+
+  it('refingers E to D in explicit Drop D without moving the other strings', () => {
+    const low = {
+      ...fixtureChart(1, [
+        { bar: 0, beat: 0, string: 0, fret: 0 },
+        { bar: 0, beat: 1, string: 3, fret: 0 },
+      ]),
+      source: 'gp' as const,
+    };
+    const dropD = [-2, 0, 0, 0];
+    expect(canTransposeBassChart(low, -2, dropD)).toBe(true);
+    const chart = transposeBassChart(low, -2, dropD);
+    expect(chart.tuning).toEqual(dropD);
+    expect(chart.notes.map((n) => [n.midi, n.string, n.fret])).toEqual([
+      [26, 0, 0],
+      [41, 2, 3],
+    ]);
+    expect(canTransposeBassChart(low, -3, dropD)).toBe(false);
+    expect(low.tuning).toEqual([0, 0, 0, 0]);
   });
 
   it('ignores Rocksmith recordings and guards MIDI limits', () => {
@@ -87,5 +105,14 @@ describe('MIDI/GP practice transposition', () => {
       tonic: 0,
       mode: 'minor',
     });
+  });
+
+  it('stops at the last fret instead of raising every string', () => {
+    const high = {
+      ...fixtureChart(1, [{ bar: 0, beat: 0, string: 3, fret: 24 }]),
+      source: 'midi' as const,
+    };
+    expect(canTransposeBassChart(high, 1)).toBe(false);
+    expect(() => transposeBassChart(high, 1)).toThrow(RangeError);
   });
 });
