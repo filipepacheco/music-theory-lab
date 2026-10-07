@@ -25,6 +25,7 @@ const engineVoice: BassSynthVoice = {
       SYNTH_VELOCITY,
       note.seconds,
       when,
+      note.transposeSemitones ?? 0,
     ),
   stop: () => playbackEngine.stopBassNotes(),
 };
@@ -37,6 +38,7 @@ const engineVoice: BassSynthVoice = {
 export function useBassSynthPlayback(
   chart: BassChart,
   enabled: boolean,
+  transposeSemitones = 0,
 ): LibraryAudio & { failed: boolean } {
   const [state, setState] = useState<LibraryAudioState>({
     ready: false,
@@ -46,18 +48,38 @@ export function useBassSynthPlayback(
   });
   const [failed, setFailed] = useState(false);
   const transportRef = useRef<LibraryAudioSession | null>(null);
+  const previousChartId = useRef<string | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
+    const previous =
+      previousChartId.current === chart.id ? stateRef.current : null;
+    previousChartId.current = enabled ? chart.id : null;
     setState({ ready: false, playing: false, duration: 0, currentSeconds: 0 });
     setFailed(false);
     if (!enabled) return;
-    const transport = createBassSynthTransport(chart, engineVoice, setState);
+    const transport = createBassSynthTransport(
+      chart,
+      engineVoice,
+      setState,
+      undefined,
+      transposeSemitones,
+    );
     transportRef.current = transport;
+    if (previous) {
+      transport.seek(previous.currentSeconds);
+      if (previous.playing) {
+        void transport.play().catch(() => {
+          if (transportRef.current === transport) setFailed(true);
+        });
+      }
+    }
     return () => {
       transport.dispose();
       if (transportRef.current === transport) transportRef.current = null;
     };
-  }, [chart, enabled]);
+  }, [chart, enabled, transposeSemitones]);
 
   return {
     ...state,

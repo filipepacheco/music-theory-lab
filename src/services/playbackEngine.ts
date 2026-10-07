@@ -45,6 +45,7 @@ export interface PlaybackEngine {
     velocity: number,
     durationSeconds: number,
     time: number,
+    transposeSemitones?: number,
   ): void;
   /** Silence sounding bass notes and cancel scheduled ones. */
   stopBassNotes(): void;
@@ -380,8 +381,20 @@ export function createPlaybackEngine(): PlaybackEngine {
     preloadBassNotes: (midiNotes, velocity) =>
       growlybassSampler.preload(midiNotes, velocity),
 
-    scheduleBassNote: (midiNote, velocity, durationSeconds, time) =>
-      growlybassSampler.schedule(midiNote, velocity, durationSeconds, time),
+    scheduleBassNote: (
+      midiNote,
+      velocity,
+      durationSeconds,
+      time,
+      transposeSemitones,
+    ) =>
+      growlybassSampler.schedule(
+        midiNote,
+        velocity,
+        durationSeconds,
+        time,
+        transposeSemitones,
+      ),
 
     stopBassNotes: () => {
       for (const player of activeGrowlybassPlayers) player.stop();

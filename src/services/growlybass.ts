@@ -55,6 +55,7 @@ export interface GrowlybassSampler {
     velocity: number,
     durationSeconds: number,
     time: number,
+    transposeSemitones?: number,
   ): void;
   getStatus(): GrowlybassSamplerStatus;
   subscribe(listener: (status: GrowlybassSamplerStatus) => void): () => void;
@@ -115,8 +116,20 @@ export function createGrowlybassSampler<T>({
         throw error;
       }
     },
-    schedule(midiNote, velocity, durationSeconds, time) {
-      const plan = resolveGrowlybassSample(midiNote, velocity);
+    schedule(
+      midiNote,
+      velocity,
+      durationSeconds,
+      time,
+      transposeSemitones = 0,
+    ) {
+      const original = resolveGrowlybassSample(midiNote, velocity);
+      const plan = {
+        ...original,
+        requestedMidi: midiNote + transposeSemitones,
+        semitones: original.semitones + transposeSemitones,
+        playbackRate: original.playbackRate * 2 ** (transposeSemitones / 12),
+      };
       const asset = loaded.get(plan.url);
       if (asset === undefined) return;
       play(
