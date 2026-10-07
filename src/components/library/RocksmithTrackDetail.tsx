@@ -242,9 +242,9 @@ export default function RocksmithTrackDetail({
     () => transposeBassChart(sourceChart, shift, tuning),
     [sourceChart, shift, tuning],
   );
-  const octaveAdjustments = chart.notes.filter(
-    (note, index) => note.midi !== originalChart.notes[index].midi + shift,
-  ).length;
+  const octaveOffset = chart.notes.length
+    ? (chart.notes[0].midi - originalChart.notes[0].midi - shift) / 12
+    : 0;
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const [mixMode, setMixMode] = useState<BassMixMode>('full');
   const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
@@ -619,7 +619,18 @@ export default function RocksmithTrackDetail({
                   : `Original (${tuningLabel(originalChart.tuning)})`}
               </option>
               {!isStandardTuning(originalChart.tuning) && (
-                <option value="standard">E Standard (E A D G)</option>
+                <option
+                  value="standard"
+                  disabled={
+                    !canTransposeBassChart(
+                      originalChart,
+                      shift,
+                      E_STANDARD_TUNING,
+                    )
+                  }
+                >
+                  E Standard (E A D G)
+                </option>
               )}
               <option
                 value="drop-d"
@@ -634,20 +645,29 @@ export default function RocksmithTrackDetail({
           <p className="text-[11px] text-text-muted">
             {audioState.status === 'ready'
               ? 'Transposição indisponível com uma gravação vinculada. O áudio toca no tom original.'
-              : 'Cada clique muda o tom em meio tom e recalcula as casas na afinação escolhida. Notas fora do alcance são tocadas na oitava mais próxima.'}
+              : 'Cada clique muda o tom em meio tom e recalcula as casas na afinação escolhida. Se necessário, a linha inteira muda de oitava, preservando os intervalos.'}
           </p>
           {canTranspose && practiceTuning === 'drop-d' && (
             <p className="text-[11px] text-text-muted">
               Drop D: afine apenas a corda E em D; mantenha A, D e G.
             </p>
           )}
-          {canTranspose && octaveAdjustments > 0 && (
+          {canTranspose && octaveOffset !== 0 && (
             <p role="status" className="text-[11px] text-text-muted">
-              {octaveAdjustments}{' '}
-              {octaveAdjustments === 1 ? 'nota ajustada' : 'notas ajustadas'} de
-              oitava para caber na afinação escolhida.
+              Linha inteira {Math.abs(octaveOffset)}{' '}
+              {Math.abs(octaveOffset) === 1 ? 'oitava' : 'oitavas'}{' '}
+              {octaveOffset > 0 ? 'acima' : 'abaixo'} para caber na afinação
+              escolhida, preservando os intervalos.
             </p>
           )}
+          {canTranspose &&
+            ((!canLower && shift > -12) || (!canRaise && shift < 12)) && (
+              <p role="status" className="text-[11px] text-text-muted">
+                Um dos próximos tons não comporta a linha inteira nesta
+                afinação. A transposição foi limitada para preservar os
+                intervalos.
+              </p>
+            )}
         </div>
       )}
 

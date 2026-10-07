@@ -104,7 +104,7 @@ describe('Biblioteca semitone buttons', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Diminuir meio tom' }));
     expect(picker.disabled).toBe(true);
     expect(picker.value).toBe('suggested');
-    expect(state.synthChart!.notes[1].midi).toBe(39);
+    expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([39, 51]);
     fireEvent.click(screen.getByRole('button', { name: 'Tom original' }));
     expect(picker.disabled).toBe(false);
     expect(picker.value).toBe('original');
@@ -161,6 +161,44 @@ describe('Biblioteca semitone buttons', () => {
     fireEvent.change(tuning, { target: { value: 'drop-d' } });
     expect(state.synthChart!.tuning).toEqual([-2, 0, 0, 0]);
   });
+  it('limits transposition and tuning choices when the full line cannot fit', () => {
+    const wide = {
+      ...fixtureChart(1, [
+        { bar: 0, beat: 0, string: 0, fret: 0 },
+        { bar: 0, beat: 1, string: 3, fret: 24 },
+      ]),
+      source: 'gp' as const,
+    };
+    render(<RocksmithTrackDetail chart={wide} onRemove={vi.fn()} />);
+    const lower = screen.getByRole('button', {
+      name: 'Diminuir meio tom',
+    }) as HTMLButtonElement;
+    const raise = screen.getByRole('button', {
+      name: 'Aumentar meio tom',
+    }) as HTMLButtonElement;
+    expect(lower.disabled).toBe(true);
+    expect(raise.disabled).toBe(true);
+    expect(
+      screen.getByText(
+        /A transposição foi limitada para preservar os intervalos/,
+      ),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Afinação para tocar'), {
+      target: { value: 'drop-d' },
+    });
+    expect(lower.disabled).toBe(false);
+    fireEvent.click(lower);
+    expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([27, 66]);
+    expect(
+      (
+        screen.getByRole('option', {
+          name: 'E Standard (E A D G)',
+        }) as HTMLOptionElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Tom original' }));
+    expect(state.synthChart).toBe(wide);
+  });
   it.each(['midi', 'gp'] as const)(
     'lowers %s in E Standard and independently switches to Drop D and back',
     (source) => {
@@ -179,9 +217,9 @@ describe('Biblioteca semitone buttons', () => {
       expect(state.synthChart!.tuning).toEqual([0, 0, 0, 0]);
       fireEvent.click(lower);
       fireEvent.click(lower);
-      expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([38, 41]);
+      expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([38, 53]);
       expect(state.synthChart!.tuning).toEqual([0, 0, 0, 0]);
-      expect(screen.getByText(/1 nota ajustada de oitava/)).toBeTruthy();
+      expect(screen.getByText(/Linha inteira 1 oitava acima/)).toBeTruthy();
       fireEvent.change(screen.getByLabelText('Afinação para tocar'), {
         target: { value: 'drop-d' },
       });
@@ -194,7 +232,7 @@ describe('Biblioteca semitone buttons', () => {
         [41, 2, 3],
       ]);
       expect(lower.disabled).toBe(false);
-      expect(screen.queryByText(/nota ajustada de oitava/)).toBeNull();
+      expect(screen.queryByText(/Linha inteira 1 oitava acima/)).toBeNull();
       expect(
         (
           screen.getByRole('option', {
@@ -206,7 +244,7 @@ describe('Biblioteca semitone buttons', () => {
         target: { value: 'original' },
       });
       expect(state.synthChart!.tuning).toEqual([0, 0, 0, 0]);
-      expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([38, 41]);
+      expect(state.synthChart!.notes.map((n) => n.midi)).toEqual([38, 53]);
       fireEvent.click(screen.getByRole('button', { name: 'Tom original' }));
       expect(state.synthChart).toBe(low);
       expect(
