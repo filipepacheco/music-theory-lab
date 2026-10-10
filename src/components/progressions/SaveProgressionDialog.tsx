@@ -112,7 +112,7 @@ export default function SaveProgressionDialog({
               <button
                 onClick={handleSave}
                 disabled={!canSave}
-                className="px-6 py-2.5 text-sm rounded-button bg-accent text-white hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                className="px-6 py-2.5 text-sm rounded-button bg-accent text-on-accent hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer disabled:cursor-not-allowed"
               >
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>

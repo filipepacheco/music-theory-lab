@@ -100,7 +100,7 @@ export default function ProgressionAnalysis() {
           {functions.map((fn, i) => (
             <span
               key={i}
-              className="px-2 py-0.5 rounded text-xs font-mono font-medium"
+              className="px-2 py-0.5 text-xs font-mono font-medium"
               style={{
                 background: fn ? FUNCTION_COLORS[fn] : "var(--color-accent)",
                 color: "#0f1219",

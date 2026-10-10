@@ -77,7 +77,7 @@ export default function PlaybackDock({
             onClick={onTogglePlay}
             disabled={!canPlay}
             aria-label={playing ? 'Pausar' : 'Tocar'}
-            className="w-8 h-8 shrink-0 rounded-full bg-accent text-white flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            className="w-8 h-8 shrink-0 rounded-full bg-accent text-on-accent flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-default"
           >
             {playing ? (
               <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>

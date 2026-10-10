@@ -150,7 +150,7 @@ export default function AnalyzeModule() {
           <button
             type="submit"
             disabled={!file || blocked || busy}
-            className="font-heading text-sm rounded-button bg-accent px-3 py-2 text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="font-heading text-sm rounded-button bg-accent px-3 py-2 text-on-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {busy ? 'Enviando…' : 'Analisar'}
           </button>

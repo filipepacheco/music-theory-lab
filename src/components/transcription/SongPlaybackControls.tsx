@@ -75,7 +75,7 @@ export default function SongPlaybackControls({
           className={`px-6 py-2.5 rounded-button text-sm font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
             isPlaying
               ? 'bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.3)]'
-              : 'bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)]'
+              : 'bg-accent text-on-accent'
           }`}
         >
           <span className="flex items-center gap-2">

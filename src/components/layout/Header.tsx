@@ -10,7 +10,7 @@ export default function Header() {
     <header className="sticky top-0 z-30 flex items-center px-4 sm:px-6 lg:px-8 py-3 border-b border-border-default bg-bg-secondary/80 backdrop-blur-sm">
       <div className="flex items-center gap-4 w-full min-w-0">
         <div className="flex items-center gap-2.5 shrink-0">
-          <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-button bg-accent flex items-center justify-center text-white font-heading text-sm font-bold shrink-0">
+          <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-button bg-accent flex items-center justify-center text-on-accent font-heading text-sm font-bold shrink-0">
             M
           </span>
           <h1 className="font-heading text-[15px] sm:text-base text-text-primary font-semibold tracking-tight leading-tight">

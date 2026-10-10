@@ -41,7 +41,7 @@ function SectionComment({
         }}
         onPointerDown={(e) => e.stopPropagation()}
         placeholder="Notas sobre esta seção..."
-        className="w-full h-full min-h-[4rem] px-2 py-1 rounded bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
+        className="w-full h-full min-h-[4rem] px-2 py-1 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
       />
     );
   }
@@ -51,7 +51,7 @@ function SectionComment({
       type="button"
       onClick={startEditing}
       onPointerDown={(e) => e.stopPropagation()}
-      className="text-left text-xs px-2 py-1 rounded hover:bg-bg-tertiary/50 transition-colors cursor-pointer flex-1"
+      className="text-left text-xs px-2 py-1 hover:bg-bg-tertiary/50 transition-colors cursor-pointer flex-1"
     >
       {comment ? (
         <span className="text-text-secondary italic whitespace-pre-line">
@@ -100,7 +100,7 @@ function InlineSectionName({
           if (e.key === 'Escape') setEditing(false);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="px-2 py-0.5 rounded text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary focus:outline-none focus:border-accent transition-colors w-28"
+        className="px-2 py-0.5 text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary focus:outline-none focus:border-accent transition-colors w-28"
       />
     );
   }
@@ -110,7 +110,7 @@ function InlineSectionName({
       type="button"
       onClick={startEditing}
       onPointerDown={(e) => e.stopPropagation()}
-      className="text-xs font-medium px-2 py-0.5 rounded shrink-0 cursor-pointer hover:brightness-110 transition-all"
+      className="text-xs font-medium px-2 py-0.5 shrink-0 cursor-pointer hover:brightness-110 transition-all"
       style={{
         backgroundColor: color + '20',
         color,
@@ -127,7 +127,7 @@ export function SectionOverlay({ section }: { section: StructureSection }) {
     <div className="flex items-center gap-2 px-3 py-2 rounded-button border-2 border-accent bg-bg-card shadow-lg opacity-90">
       <span className="text-text-muted text-xs cursor-grabbing">&#9776;</span>
       <span
-        className="text-xs font-medium px-2 py-0.5 rounded"
+        className="text-xs font-medium px-2 py-0.5"
         style={{ backgroundColor: section.color + '20', color: section.color }}
       >
         {section.name}
@@ -242,7 +242,7 @@ function DroppableSection({
               setSectionBarsPerRow(section.id, val ? Number(val) : undefined);
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default rounded px-1 py-0.5 text-text-muted hover:text-text-secondary transition-colors cursor-pointer focus:outline-none focus:border-accent w-full"
+            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default px-1 py-0.5 text-text-muted hover:text-text-secondary transition-colors cursor-pointer focus:outline-none focus:border-accent w-full"
             aria-label="Compassos por linha"
           >
             <option value="">Auto</option>
@@ -308,7 +308,7 @@ function DroppableSection({
                 e.stopPropagation();
                 addBarToSection(section.id);
               }}
-              className="w-5 h-5 flex items-center justify-center rounded border border-dashed text-text-muted hover:text-accent hover:border-accent/50 transition-colors cursor-pointer text-xs"
+              className="w-5 h-5 flex items-center justify-center border border-dashed text-text-muted hover:text-accent hover:border-accent/50 transition-colors cursor-pointer text-xs"
               style={{ borderColor: color + '30' }}
               aria-label="Adicionar compasso"
             >

@@ -54,7 +54,7 @@ export default function SongList() {
                 {song.sections.map((sec) => (
                   <span
                     key={sec.id}
-                    className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                    className="text-[10px] font-mono px-1.5 py-0.5"
                     style={{
                       backgroundColor: SECTION_COLORS[sec.type] + '20',
                       color: SECTION_COLORS[sec.type],

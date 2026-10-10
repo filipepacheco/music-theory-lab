@@ -391,7 +391,7 @@ export default function TranscriptionReviewWorkspace() {
                         (selectedItem.step.beats ?? 4) - 0.5,
                       )
                     }
-                    className="h-7 w-7 rounded bg-bg-tertiary text-text-secondary"
+                    className="h-7 w-7 bg-bg-tertiary text-text-secondary"
                     aria-label="Diminuir duração"
                   >
                     −
@@ -408,7 +408,7 @@ export default function TranscriptionReviewWorkspace() {
                         (selectedItem.step.beats ?? 4) + 0.5,
                       )
                     }
-                    className="h-7 w-7 rounded bg-bg-tertiary text-text-secondary"
+                    className="h-7 w-7 bg-bg-tertiary text-text-secondary"
                     aria-label="Aumentar duração"
                   >
                     +
@@ -434,7 +434,7 @@ export default function TranscriptionReviewWorkspace() {
               <button
                 type="button"
                 onClick={toggleConfidence}
-                className="rounded-button bg-accent px-3 py-2.5 text-xs font-semibold text-white"
+                className="rounded-button bg-accent px-3 py-2.5 text-xs font-semibold text-on-accent"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Confirmar'

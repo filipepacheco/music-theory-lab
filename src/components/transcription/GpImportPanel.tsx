@@ -234,7 +234,7 @@ export default function GpImportPanel() {
                           key={n}
                           active={keyRoot === i}
                           onClick={() => setKeyRoot(i)}
-                          className="px-1 py-1.5 rounded text-[11px] font-mono"
+                          className="px-1 py-1.5 text-[11px] font-mono"
                         >
                           {getPreferredRootName(i)}
                         </PillButton>
@@ -246,7 +246,7 @@ export default function GpImportPanel() {
                           key={String(m)}
                           active={isMinor === m}
                           onClick={() => setIsMinor(m)}
-                          className="flex-1 px-2 py-1.5 rounded text-[11px]"
+                          className="flex-1 px-2 py-1.5 text-[11px]"
                         >
                           {m ? 'menor' : 'maior'}
                         </PillButton>
@@ -290,7 +290,7 @@ export default function GpImportPanel() {
                     <button
                       onClick={handleImport}
                       disabled={importing}
-                      className="px-4 py-2 rounded-button bg-accent text-white text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-4 py-2 rounded-button bg-accent text-on-accent text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {importing
                         ? 'Importando...'
@@ -325,7 +325,7 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
       title={
         bar.detected ?? (bar.carried ? 'mantido do compasso anterior' : '')
       }
-      className={`px-1.5 py-1 rounded text-center ${tone}`}
+      className={`px-1.5 py-1 text-center ${tone}`}
     >
       <div className="text-[9px] font-mono text-text-muted">{bar.bar}</div>
       <div
@@ -355,7 +355,7 @@ function PillButton({
       onClick={onClick}
       className={`cursor-pointer transition-colors ${
         active
-          ? 'bg-accent text-white'
+          ? 'bg-accent text-on-accent'
           : 'bg-bg-card text-text-secondary hover:text-text-primary'
       } ${className}`}
     >

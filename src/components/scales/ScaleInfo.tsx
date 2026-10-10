@@ -80,7 +80,7 @@ function ScaleDetail({
         {noteNames.map((name, i) => (
           <span
             key={i}
-            className="px-2 py-0.5 rounded text-xs font-mono font-medium"
+            className="px-2 py-0.5 text-xs font-mono font-medium"
             style={{ background: color, color: "#0f1219" }}
           >
             {name}
@@ -93,7 +93,7 @@ function ScaleDetail({
         {pattern.intervals.map((interval, i) => (
           <span
             key={i}
-            className="px-1.5 py-0.5 bg-bg-tertiary rounded text-xs font-mono text-text-secondary"
+            className="px-1.5 py-0.5 bg-bg-tertiary text-xs font-mono text-text-secondary"
           >
             {INTERVAL_LABELS[interval] ?? interval}
           </span>
@@ -105,7 +105,7 @@ function ScaleDetail({
         {steps.map((step, i) => (
           <span
             key={i}
-            className="px-1.5 py-0.5 bg-bg-tertiary rounded text-xs font-mono text-text-secondary"
+            className="px-1.5 py-0.5 bg-bg-tertiary text-xs font-mono text-text-secondary"
           >
             {step}
           </span>

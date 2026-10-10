@@ -56,7 +56,7 @@ export default function StructureList() {
                   {structure.sections.map((sec) => (
                     <span
                       key={sec.id}
-                      className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                      className="text-[10px] font-mono px-1.5 py-0.5"
                       style={{
                         backgroundColor: sec.color + '20',
                         color: sec.color,

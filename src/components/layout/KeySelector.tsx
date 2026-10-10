@@ -59,7 +59,7 @@ export default function KeySelector() {
             onClick={() => setIsMinor(false)}
             className={`px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm font-medium transition-colors cursor-pointer ${
               !isMinor
-                ? "bg-accent text-white"
+                ? "bg-accent text-on-accent"
                 : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -69,7 +69,7 @@ export default function KeySelector() {
             onClick={() => setIsMinor(true)}
             className={`px-2.5 sm:px-3 py-1.5 sm:py-2 text-sm font-medium transition-colors cursor-pointer ${
               isMinor
-                ? "bg-accent text-white"
+                ? "bg-accent text-on-accent"
                 : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
             }`}
           >

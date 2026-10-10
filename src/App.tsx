@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "@/components/layout/Header";
 import KeySelector from "@/components/layout/KeySelector";
@@ -22,8 +23,13 @@ export default function App() {
   );
   const theme = useAppStore((s) => s.theme);
 
+  // On <html> so the body ground, portals and color-scheme follow the theme.
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+  }, [theme]);
+
   return (
-    <div className={`min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0 ${theme === 'light' ? 'light' : ''}`}>
+    <div className="min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0">
       <Header />
       <KeySelector />
 
@@ -41,7 +47,7 @@ export default function App() {
           <button
             onClick={() => setInstrumentsPanelOpen(!instrumentsPanelOpen)}
             aria-expanded={instrumentsPanelOpen}
-            className="flex items-center justify-between w-full cursor-pointer focus-visible:ring-2 focus-visible:ring-accent rounded"
+            className="flex items-center justify-between w-full cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
           >
             <h3 className="font-heading text-sm text-text-secondary">
               Instrumentos

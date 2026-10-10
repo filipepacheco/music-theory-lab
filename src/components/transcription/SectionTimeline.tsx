@@ -112,7 +112,7 @@ export default function SectionTimeline() {
                     }
                     disabled={beats <= 0.5}
                     aria-label="Diminuir tempos"
-                    className="w-8 h-8 flex items-center justify-center rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     -
                   </button>
@@ -128,7 +128,7 @@ export default function SectionTimeline() {
                     }
                     disabled={beats >= 8}
                     aria-label="Aumentar tempos"
-                    className="w-8 h-8 flex items-center justify-center rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>

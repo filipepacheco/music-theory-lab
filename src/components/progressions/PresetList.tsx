@@ -83,7 +83,7 @@ export default function PresetList() {
                   {prog.steps.map((s, i) => (
                     <span
                       key={i}
-                      className="text-[10px] font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded"
+                      className="text-[10px] font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5"
                     >
                       {s.label}
                     </span>
@@ -129,7 +129,7 @@ export default function PresetList() {
                 {prog.steps.map((s, i) => (
                   <span
                     key={i}
-                    className="text-[10px] font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded"
+                    className="text-[10px] font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5"
                   >
                     {s.label}
                   </span>

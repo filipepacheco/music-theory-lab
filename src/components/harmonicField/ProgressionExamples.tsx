@@ -43,7 +43,7 @@ export default function ProgressionExamples() {
                       bpm: prog.bpm,
                     })
               }
-              className={`text-left p-3 sm:p-5 rounded-[10px] sm:rounded-card border transition-all cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink ${
+              className={`text-left p-3 sm:p-5 sm:rounded-card border transition-all cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink ${
                 isPlaying
                   ? 'border-accent bg-accent/10'
                   : 'bg-bg-card hover:border-border-focus'
@@ -61,14 +61,14 @@ export default function ProgressionExamples() {
                 </span>
                 <div className="flex gap-1 shrink-0">
                   {preset && (
-                    <span className="text-[10px] font-mono text-accent px-1.5 py-0.5 rounded bg-accent/10">
+                    <span className="text-[10px] font-mono text-accent px-1.5 py-0.5 bg-accent/10">
                       {preset.name}
                     </span>
                   )}
-                  <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 rounded bg-bg-tertiary">
+                  <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 bg-bg-tertiary">
                     {prog.bpm} bpm
                   </span>
-                  <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 rounded bg-bg-tertiary">
+                  <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 bg-bg-tertiary">
                     {prog.mode === 'minor' ? 'menor' : 'maior'}
                   </span>
                 </div>
@@ -78,9 +78,9 @@ export default function ProgressionExamples() {
                 {prog.steps.map((step, i) => (
                   <span
                     key={i}
-                    className={`text-xs font-mono px-1.5 py-0.5 rounded transition-colors ${
+                    className={`text-xs font-mono px-1.5 py-0.5 transition-colors ${
                       isPlaying && currentStep === i
-                        ? 'bg-accent text-white'
+                        ? 'bg-accent text-on-accent'
                         : step.degree === null
                           ? 'bg-accent/20 text-accent'
                           : 'bg-bg-tertiary text-text-secondary'

@@ -57,7 +57,7 @@ const PianoKey = memo(function PianoKey({
     <button
       onPointerDown={handleClick}
       aria-label={`${noteName} (tecla branca)`}
-      className="relative w-12 h-36 rounded-b-md border border-border-default transition-colors duration-75 flex flex-col items-center justify-end pb-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
+      className="relative w-12 h-36 rounded-b-md border border-border-strong transition-colors duration-75 flex flex-col items-center justify-end pb-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
       style={{
         backgroundColor: pressed
           ? "var(--color-accent-hover)"

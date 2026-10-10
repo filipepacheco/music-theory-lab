@@ -84,10 +84,10 @@ export default function ProgressionChordStrip() {
           const bg = isActive
             ? fn
               ? FUNCTION_BG_ACTIVE[fn]
-              : "rgba(79, 110, 247, 0.35)"
+              : "color-mix(in srgb, var(--color-accent) 35%, transparent)"
             : fn
               ? FUNCTION_BG[fn]
-              : "rgba(79, 110, 247, 0.08)";
+              : "color-mix(in srgb, var(--color-accent) 8%, transparent)";
 
           return (
             <div

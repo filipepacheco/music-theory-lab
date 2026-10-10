@@ -8,164 +8,218 @@
   font-display: swap;
 }
 
+/* Latin subset; other characters fall back to the regular face. */
 @font-face {
-  font-family: 'JetBrains Sans';
-  src: url('/fonts/JetBrainsSans-Regular.woff2') format('woff2');
-  font-weight: 400;
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-SemiBold-latin.woff2') format('woff2');
+  font-weight: 600;
   font-style: normal;
   font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Lighthouse design system primitives. Night is the default theme; day
+   applies under .light on <html>. Components use the semantic --color-*
+   tokens in @theme below, never these directly. See docs/adr/0001. */
+:root {
+  --sea-950: #131518;
+  --sea-900: #1a1d21;
+  --sea-800: #22262b;
+  --rule: #2b3036;
+  --rule-strong: #6b727c;
+  --fog: #c3c9d1;
+  --fog-bright: #e8ebef;
+  --fog-dim: #8c95a1;
+  --beam: #e3b04f;
+  --beam-tint: #2a2417;
+  --buoy: #8fbf9b;
+  --flare: #e0a070;
+  --wreck: #e88a8a;
+  --sky: #8fb0d6;
+  --heather: #b4a2d6;
+  --scrim: rgba(8, 9, 11, 0.72);
+  --shadow-ink: #08090b;
+  color-scheme: dark;
+}
+
+:root.light {
+  --sea-950: #f5f6f7;
+  --sea-900: #eceef0;
+  --sea-800: #e3e6e9;
+  --rule: #d9dde1;
+  --rule-strong: #7c848e;
+  --fog: #3b4149;
+  --fog-bright: #1e2125;
+  --fog-dim: #59616c;
+  --beam: #7f5300;
+  --beam-tint: #f3e6c8;
+  --buoy: #3b6b49;
+  --flare: #9a4a12;
+  --wreck: #a52a32;
+  --sky: #3a5c86;
+  --heather: #5e4d86;
+  --scrim: rgba(30, 33, 37, 0.45);
+  --shadow-ink: #d2d6db;
+  color-scheme: light;
+
+  /* Piano keys depict a physical object, so they do not flip with the theme. */
+  --color-key-white: var(--sea-950);
+  --color-key-white-hover: var(--sea-800);
+  --color-key-black: var(--fog-bright);
+  --color-key-black-hover: var(--fog);
 }
 
 @theme {
-  /* Colors - Dark mode palette */
-  --color-bg-primary: #0f1219;
-  --color-bg-secondary: #1a1f2e;
-  --color-bg-tertiary: #252b3b;
-  --color-bg-card: #1e2433;
-  --color-bg-hover: #2a3148;
+  /* Surfaces */
+  --color-bg-primary: var(--sea-950);
+  --color-bg-section: var(--sea-950);
+  --color-bg-secondary: var(--sea-900);
+  --color-bg-card: var(--sea-900);
+  --color-bg-tertiary: var(--sea-800);
+  --color-bg-hover: var(--rule);
+  --color-scrim: var(--scrim);
 
-  --color-text-primary: #e8eaf0;
-  --color-text-secondary: #9ca3b4;
-  --color-text-muted: #7b8294;
-  --color-text-error: #f87171;
+  --color-text-primary: var(--fog-bright);
+  --color-text-secondary: var(--fog);
+  --color-text-muted: var(--fog-dim);
+  --color-text-error: var(--wreck);
 
-  --color-border-default: #2d3548;
-  --color-border-focus: #4f6ef7;
+  --color-border-default: var(--rule);
+  --color-border-strong: var(--rule-strong);
+  --color-border-focus: var(--fog-bright);
 
-  /* Accent */
-  --color-accent: #4f6ef7;
-  --color-accent-hover: #6b85f9;
+  /* Selected and primary: inverted text, fog-bright fill with on-accent text. */
+  --color-accent: var(--fog-bright);
+  --color-accent-hover: var(--fog);
+  --color-on-accent: var(--sea-950);
+
+  /* The lamp. Only for a live state: playing, recording, the current beat. */
+  --color-live: var(--beam);
+  --color-live-tint: var(--beam-tint);
+
+  /* Status. Always with a glyph or a word, never colour alone. */
+  --color-success: var(--buoy);
+  --color-warning: var(--flare);
+  --color-danger: var(--wreck);
 
   /* Harmonic function colors */
-  --color-tonic: #3b82f6;
-  --color-tonic-light: #60a5fa;
-  --color-subdominant: #22c55e;
-  --color-subdominant-light: #4ade80;
-  --color-dominant: #f97316;
-  --color-dominant-light: #fb923c;
+  --color-tonic: var(--sky);
+  --color-tonic-light: var(--sky);
+  --color-subdominant: var(--buoy);
+  --color-subdominant-light: var(--buoy);
+  --color-dominant: var(--flare);
+  --color-dominant-light: var(--flare);
 
   /* Piano colors */
-  --color-key-white: #f8f9fa;
-  --color-key-white-hover: #e9ecef;
-  --color-key-black: #1a1a2e;
-  --color-key-black-hover: #2d2d44;
+  --color-key-white: var(--fog-bright);
+  --color-key-white-hover: var(--fog);
+  --color-key-black: var(--sea-950);
+  --color-key-black-hover: var(--sea-800);
 
   /* Scale comparison colors */
-  --color-scale-a: #60a5fa;
-  --color-scale-b: #c084fc;
-  --color-scale-shared: #f59e0b;
+  --color-scale-a: var(--sky);
+  --color-scale-b: var(--heather);
+  --color-scale-shared: var(--flare);
 
   /* Bass colors */
-  --color-fret-bg: #2a2a3e;
-  --color-fret-border: #3d3d55;
-  --color-string: #8b8b9e;
+  --color-fret-bg: var(--sea-800);
+  --color-fret-border: var(--rule-strong);
+  --color-string: var(--fog-dim);
 
   /* Bass octave palette and highlight */
-  --color-octave-1: rgba(251, 191, 36, 0.75);
-  --color-octave-2: rgba(94, 234, 212, 0.75);
-  --color-octave-3: rgba(147, 197, 253, 0.75);
-  --color-octave-1-dim: rgba(251, 191, 36, 0.25);
-  --color-octave-2-dim: rgba(94, 234, 212, 0.25);
-  --color-octave-3-dim: rgba(147, 197, 253, 0.25);
-  --color-octave-fallback: rgba(255, 255, 255, 0.3);
-  --color-bass-highlight: #34d399;
-  --color-bass-root-highlight: #f59e0b;
+  --color-octave-1: color-mix(in srgb, var(--flare) 75%, transparent);
+  --color-octave-2: color-mix(in srgb, var(--buoy) 75%, transparent);
+  --color-octave-3: color-mix(in srgb, var(--sky) 75%, transparent);
+  --color-octave-1-dim: color-mix(in srgb, var(--flare) 25%, transparent);
+  --color-octave-2-dim: color-mix(in srgb, var(--buoy) 25%, transparent);
+  --color-octave-3-dim: color-mix(in srgb, var(--sky) 25%, transparent);
+  --color-octave-fallback: color-mix(
+    in srgb,
+    var(--fog-bright) 30%,
+    transparent
+  );
+  --color-bass-highlight: var(--buoy);
+  --color-bass-root-highlight: var(--flare);
 
   /* Bass-line degrees over the bar's root (Biblioteca analysis). Text on
      the card background; the root uses --color-text-primary. */
-  --color-degree-third: #60a5fa;
-  --color-degree-fifth: #34d399;
-  --color-degree-seventh: #c084fc;
-  --color-degree-tension: #fb7185;
+  --color-degree-third: var(--sky);
+  --color-degree-fifth: var(--buoy);
+  --color-degree-seventh: var(--heather);
+  --color-degree-tension: var(--wreck);
 
   /* Harmonic functions as small text on cards (bass-line degree numerals). */
-  --color-tonic-text: #60a5fa;
-  --color-subdominant-text: #4ade80;
-  --color-dominant-text: #fb923c;
+  --color-tonic-text: var(--sky);
+  --color-subdominant-text: var(--buoy);
+  --color-dominant-text: var(--flare);
 
   /* Piano key chrome */
-  --color-key-black-border: #3a3a52;
-
-  /* Section surface */
-  --color-bg-section: #161b28;
+  --color-key-black-border: var(--rule-strong);
 
   /* Song-form labels (Biblioteca). Cycled by order of first appearance;
      the detector's letters are opaque cluster ids, not verse/chorus names.
-     Chosen to stay legible on both themes as accents, never as text on
-     their own background. */
-  --color-form-1: #60a5fa;
-  --color-form-2: #f59e0b;
-  --color-form-3: #c084fc;
-  --color-form-4: #34d399;
-  --color-form-5: #fb7185;
-  --color-form-6: #a3e635;
+     Accents only, never text on their own background. */
+  --color-form-1: var(--sky);
+  --color-form-2: var(--flare);
+  --color-form-3: var(--heather);
+  --color-form-4: var(--buoy);
+  --color-form-5: var(--wreck);
+  --color-form-6: var(--fog);
 
-  /* Elevation shadows */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-card-hover:
-    0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-key: 0 2px 4px rgba(0, 0, 0, 0.4);
+  /* Shadows: hard, no blur, like a window in a text UI. Only things that
+     float (window) or lift under the pointer (lift) cast one. */
+  --shadow-window: 6px 6px 0 0 var(--shadow-ink);
+  --shadow-lift: 4px 4px 0 0 var(--rule);
+  --shadow-card: 0 0 #0000;
+  --shadow-card-hover: 4px 4px 0 0 var(--rule);
+  --shadow-key: 0 0 #0000;
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 6px 6px 0 0 var(--shadow-ink);
+  --shadow-xl: 6px 6px 0 0 var(--shadow-ink);
+  --shadow-2xl: 6px 6px 0 0 var(--shadow-ink);
 
   /* Harmonic function glows */
-  --color-tonic-glow: rgba(59, 130, 246, 0.25);
-  --color-subdominant-glow: rgba(34, 197, 94, 0.25);
-  --color-dominant-glow: rgba(249, 115, 22, 0.25);
+  --color-tonic-glow: color-mix(in srgb, var(--sky) 25%, transparent);
+  --color-subdominant-glow: color-mix(in srgb, var(--buoy) 25%, transparent);
+  --color-dominant-glow: color-mix(in srgb, var(--flare) 25%, transparent);
 
-  /* Radius tokens */
-  --radius-card: 0.75rem;
-  --radius-section: 1rem;
-  --radius-button: 0.5rem;
-  --radius-control: 0.375rem;
+  /* Radius: square, like a terminal grid. rounded-full is the one exception,
+     for dots and pips. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+  --radius-card: 0;
+  --radius-section: 0;
+  --radius-button: 0;
+  --radius-control: 0;
 
-  /* Font families */
-  --font-heading: 'JetBrains Mono', monospace;
-  --font-body: 'IBM Plex Sans', 'JetBrains Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* Font families: one mono for chrome and prose alike. */
+  --font-mono:
+    'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+  --font-sans: var(--font-mono);
+  --font-heading: var(--font-mono);
+  --font-body: var(--font-mono);
+
+  /* Two weights only: 400 and 600. */
+  --font-weight-medium: 400;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
 }
 
-/* Light mode overrides */
-.light {
-  --color-bg-primary: #f5f6fa;
-  --color-bg-secondary: #e8eaf0;
-  --color-bg-tertiary: #dde0e9;
-  --color-bg-card: #ffffff;
-  --color-bg-hover: #eceef4;
-
-  --color-text-primary: #1a1f2e;
-  --color-text-secondary: #4a5068;
-  --color-text-muted: #6b7280;
-  --color-text-error: #b91c1c;
-
-  --color-border-default: #d1d5e0;
-  --color-border-focus: #4f6ef7;
-
-  --color-key-white: #ffffff;
-  --color-key-white-hover: #f0f1f3;
-  --color-key-black: #2d2d44;
-  --color-key-black-hover: #3d3d55;
-
-  --color-fret-bg: #e2e4eb;
-  --color-fret-border: #c8cbd6;
-  --color-string: #6b7280;
-
-  --color-bg-section: #ffffff;
-
-  --color-degree-third: #1d4ed8;
-  --color-degree-fifth: #047857;
-  --color-degree-seventh: #7e22ce;
-  --color-degree-tension: #be123c;
-
-  --color-tonic-text: #1d4ed8;
-  --color-subdominant-text: #15803d;
-  --color-dominant-text: #c2410c;
-
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-card-hover:
-    0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-
-  --color-tonic-glow: rgba(59, 130, 246, 0.15);
-  --color-subdominant-glow: rgba(34, 197, 94, 0.15);
-  --color-dominant-glow: rgba(249, 115, 22, 0.15);
+html {
+  scrollbar-color: var(--rule-strong) transparent;
 }
 
 body {
@@ -175,6 +229,11 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--fog-bright);
+  color: var(--sea-950);
 }
 
 h1,

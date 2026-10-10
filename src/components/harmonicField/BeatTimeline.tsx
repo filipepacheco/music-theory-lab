@@ -135,8 +135,8 @@ export default function BeatTimeline() {
             const colors = cell.harmonicFunction
               ? FUNCTION_COLORS[cell.harmonicFunction]
               : {
-                  bg: "rgba(79, 110, 247, 0.15)",
-                  active: "rgba(79, 110, 247, 0.45)",
+                  bg: "color-mix(in srgb, var(--color-accent) 15%, transparent)",
+                  active: "color-mix(in srgb, var(--color-accent) 45%, transparent)",
                 };
             const accentColor = cell.harmonicFunction
               ? FUNCTION_BORDER_COLORS[cell.harmonicFunction]

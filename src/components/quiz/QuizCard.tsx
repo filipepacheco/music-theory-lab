@@ -83,7 +83,7 @@ export default function QuizCard({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={onNext}
-              className="px-6 py-2.5 rounded-button text-sm font-semibold bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)] cursor-pointer"
+              className="px-6 py-2.5 rounded-button text-sm font-semibold bg-accent text-on-accent cursor-pointer"
             >
               Próxima pergunta
             </motion.button>

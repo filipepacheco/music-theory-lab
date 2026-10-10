@@ -121,9 +121,9 @@ export default function ChromaticChordPicker({
                     <button
                       key={name}
                       onClick={() => handleRootClick(i)}
-                      className={`px-2.5 py-1.5 rounded text-xs font-mono transition-all cursor-pointer ${
+                      className={`px-2.5 py-1.5 text-xs font-mono transition-all cursor-pointer ${
                         selectedRoot === i
-                          ? 'bg-accent text-white'
+                          ? 'bg-accent text-on-accent'
                           : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                       }`}
                     >
@@ -156,7 +156,7 @@ export default function ChromaticChordPicker({
                           <button
                             key={typeId}
                             onClick={() => handleTypeClick(typeId)}
-                            className="px-2.5 py-1.5 rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent/20 hover:text-accent transition-all cursor-pointer"
+                            className="px-2.5 py-1.5 text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent/20 hover:text-accent transition-all cursor-pointer"
                           >
                             {chordRootName}
                             {ct.symbol || 'M'}
@@ -221,7 +221,7 @@ export default function ChromaticChordPicker({
                                         chord.chordTypeId,
                                       )
                                     }
-                                    className="px-2.5 py-1.5 rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent/20 hover:text-accent transition-all cursor-pointer"
+                                    className="px-2.5 py-1.5 text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent/20 hover:text-accent transition-all cursor-pointer"
                                     title={`${chord.description} (${displayName})`}
                                   >
                                     {chord.label}

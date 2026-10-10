@@ -75,7 +75,7 @@ const ChordCard = memo(function ChordCard({
         {noteNames.map((n, i) => (
           <span
             key={i}
-            className="text-[10px] font-mono text-text-primary px-1 sm:px-2 py-0.5 rounded-[3px] sm:rounded"
+            className="text-[10px] font-mono text-text-primary px-1 sm:px-2 py-0.5"
             style={{ backgroundColor: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
           >
             {n}
