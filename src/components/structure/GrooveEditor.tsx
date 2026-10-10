@@ -83,7 +83,7 @@ export function GrooveEditor({
             }}
             className={`text-[10px] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               isPlaying
-                ? 'text-red-400 hover:text-red-300'
+                ? 'text-danger hover:text-danger'
                 : 'text-accent hover:text-accent/80'
             }`}
             aria-label={isPlaying ? 'Parar groove' : 'Ouvir groove'}
@@ -142,7 +142,7 @@ export function GrooveEditor({
               if (isPlaying) groovePlayer.stop();
               clearGroove(section.id);
             }}
-            className="text-[10px] text-text-muted hover:text-red-400 transition-colors cursor-pointer"
+            className="text-[10px] text-text-muted hover:text-danger transition-colors cursor-pointer"
           >
             Limpar
           </button>

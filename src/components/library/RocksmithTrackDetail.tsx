@@ -1276,7 +1276,7 @@ function AudioSource({
       )}
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-bg-hover cursor-pointer"
       >
         {ready ? 'Trocar áudio' : 'Vincular áudio'}
       </label>
@@ -1328,7 +1328,7 @@ function BassMixPicker({
               onClick={() => onChange(option)}
               className={`font-heading text-xs px-3 py-1.5 border cursor-pointer ${
                 selected
-                  ? 'border-text-primary bg-bg-elevated text-text-primary'
+                  ? 'border-text-primary bg-bg-tertiary text-text-primary'
                   : 'border-border-default text-text-muted hover:text-text-primary'
               }`}
             >

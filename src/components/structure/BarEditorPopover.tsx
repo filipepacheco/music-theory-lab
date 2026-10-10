@@ -143,7 +143,7 @@ export default function BarEditorPopover({
               }}
               className={`w-5 h-5 transition-transform hover:scale-110 cursor-pointer ${
                 bar.color === color
-                  ? 'ring-2 ring-white ring-offset-1 ring-offset-bg-card'
+                  ? 'ring-2 ring-accent ring-offset-1 ring-offset-bg-card'
                   : ''
               }`}
               style={{ backgroundColor: color }}

@@ -70,7 +70,7 @@ export function DraggableBar({
               e.stopPropagation();
               onRemove();
             }}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center text-[8px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center text-[8px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
           >
             X
           </button>

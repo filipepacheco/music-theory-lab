@@ -67,7 +67,7 @@ function ReviewChordCard({
           : ''
       } ${
         isUnsure
-          ? 'border-amber-300/70 bg-amber-300/10'
+          ? 'border-warning/70 bg-warning/10'
           : 'border-border-default bg-bg-card hover:border-accent/50'
       }`}
       style={{ borderLeftColor: isUnsure ? undefined : borderColor }}
@@ -76,7 +76,7 @@ function ReviewChordCard({
       <div className="flex items-center justify-between gap-2">
         <span
           className={`text-[9px] uppercase tracking-[0.12em] ${
-            isUnsure ? 'text-amber-200' : 'text-text-muted'
+            isUnsure ? 'text-warning' : 'text-text-muted'
           }`}
         >
           {isUnsure ? 'Revisar' : 'Confirmado'}
@@ -85,7 +85,7 @@ function ReviewChordCard({
       </div>
       <p
         className={`mt-2 truncate font-heading text-base ${
-          isUnsure ? 'text-amber-200' : 'text-text-primary'
+          isUnsure ? 'text-warning' : 'text-text-primary'
         }`}
       >
         {step.label}
@@ -263,16 +263,16 @@ export default function TranscriptionReviewWorkspace() {
           </div>
         </header>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border border-amber-300/20 bg-amber-300/5 px-3 py-3">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border border-warning/20 bg-warning/5 px-3 py-3">
           <div>
-            <p className="text-xs font-medium text-amber-100">
+            <p className="text-xs font-medium text-warning">
               Selecione um acorde para conferir os detalhes
             </p>
-            <p className="mt-1 text-[10px] text-amber-100/60">
+            <p className="mt-1 text-[10px] text-warning/60">
               Os acordes em amarelo ainda precisam de revisão.
             </p>
           </div>
-          <span className="text-xs text-amber-200">
+          <span className="text-xs text-warning">
             {reviewCount > 0 ? `${reviewCount} para revisar` : 'Tudo revisado'}
           </span>
         </div>
@@ -325,13 +325,13 @@ export default function TranscriptionReviewWorkspace() {
           <>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-amber-200">
+                <p className="text-[10px] uppercase tracking-[0.12em] text-warning">
                   Acorde selecionado
                 </p>
                 <h3
                   className={`mt-2 font-heading text-4xl ${
                     selectedItem.step.confidence === 'unsure'
-                      ? 'text-amber-200'
+                      ? 'text-warning'
                       : 'text-accent'
                   }`}
                 >
@@ -347,8 +347,8 @@ export default function TranscriptionReviewWorkspace() {
               <span
                 className={`px-2 py-1 text-[10px] ${
                   selectedItem.step.confidence === 'unsure'
-                    ? 'bg-amber-300/10 text-amber-200'
-                    : 'bg-emerald-400/10 text-emerald-300'
+                    ? 'bg-warning/10 text-warning'
+                    : 'bg-success/10 text-success'
                 }`}
               >
                 {selectedItem.step.confidence === 'unsure'
@@ -449,7 +449,7 @@ export default function TranscriptionReviewWorkspace() {
                   selectedItem.stepIndex,
                 )
               }
-              className="mt-3 text-xs text-red-300/80 hover:text-red-300"
+              className="mt-3 text-xs text-danger/80 hover:text-danger"
             >
               Remover acorde
             </button>

@@ -209,7 +209,7 @@ export default function GpImportPanel() {
                 )}
               </Field>
 
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-xs text-danger">{error}</p>}
 
               {gp && (
                 <>
@@ -267,13 +267,13 @@ export default function GpImportPanel() {
                 <div className="flex flex-col gap-3">
                   {summary && (
                     <p className="text-xs font-mono text-text-secondary">
-                      <span className="text-emerald-400">
+                      <span className="text-success">
                         {summary.diatonic}
                       </span>{' '}
                       no campo{' '}
                       <span className="text-sky-400">{summary.chromatic}</span>{' '}
                       cromáticos{' '}
-                      <span className="text-amber-400">{summary.unclear}</span>{' '}
+                      <span className="text-warning">{summary.unclear}</span>{' '}
                       incertos{' '}
                       <span className="text-text-muted">{summary.noData}</span>{' '}
                       sem dados
@@ -313,11 +313,11 @@ export default function GpImportPanel() {
 const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
   const tone =
     bar.result.kind === 'unclear'
-      ? 'bg-amber-500/15'
+      ? 'bg-warning/15'
       : bar.result.kind === 'no-chord-data'
         ? 'bg-bg-tertiary'
         : bar.step.degree !== null
-          ? 'bg-emerald-500/15'
+          ? 'bg-success/15'
           : 'bg-sky-500/15';
 
   return (

@@ -239,7 +239,7 @@ export default function LibraryTrackDetail({ track }: Props) {
       />
 
       {error && (
-        <p className="text-sm text-red-400">
+        <p className="text-sm text-danger">
           Falha ao carregar detalhes: {error}
         </p>
       )}
@@ -304,13 +304,13 @@ export default function LibraryTrackDetail({ track }: Props) {
                 original da gravação não muda.
               </p>
               {annotationError && (
-                <p className="text-[11px] text-red-400">{annotationError}</p>
+                <p className="text-[11px] text-danger">{annotationError}</p>
               )}
             </div>
           )}
 
           {annotationError && !annotation && (
-            <p className="text-[11px] text-red-400">{annotationError}</p>
+            <p className="text-[11px] text-danger">{annotationError}</p>
           )}
 
           <div className="flex flex-col gap-2">
@@ -393,7 +393,7 @@ function LocalAudioAttachment({
       </div>
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-bg-hover cursor-pointer"
       >
         {fileName ? 'Trocar arquivo local' : 'Vincular áudio original'}
       </label>
@@ -413,7 +413,7 @@ function LocalAudioAttachment({
         <p
           role={isError ? 'alert' : 'status'}
           className={`text-[11px] ${
-            isError ? 'text-red-400' : 'text-text-muted'
+            isError ? 'text-danger' : 'text-text-muted'
           }`}
         >
           {message}

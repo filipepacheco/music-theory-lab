@@ -74,7 +74,7 @@ export default function SectionTimeline() {
                   }
                   className={`absolute top-1 left-1 w-5 h-5 transition-all cursor-pointer flex items-center justify-center ${
                     isUnsure
-                      ? 'bg-amber-400/80 shadow-[0_0_4px_rgba(251,191,36,0.4)]'
+                      ? 'bg-warning/80 shadow-[0_0_4px_rgba(251,191,36,0.4)]'
                       : 'bg-transparent border border-border-default opacity-40 hover:opacity-100'
                   }`}
                   title={isUnsure ? 'Marcar como certo' : 'Marcar como incerto'}
@@ -85,7 +85,7 @@ export default function SectionTimeline() {
                 <button
                   onClick={() => removeSongStep(activeSectionIndex, idx)}
                   aria-label="Remover acorde"
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent transition-colors cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>

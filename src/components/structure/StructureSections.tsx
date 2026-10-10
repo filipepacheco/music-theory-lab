@@ -401,7 +401,7 @@ function DroppableSection({
           e.stopPropagation();
           onRemove(section.id);
         }}
-        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
+        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
       >
         X
       </button>

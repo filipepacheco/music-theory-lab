@@ -153,7 +153,7 @@ export default function StructureModule() {
                     STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length],
                   );
                 }}
-                className="w-8 h-8 border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 border-2 border-border-strong hover:border-accent transition-colors cursor-pointer shrink-0"
                 style={{ backgroundColor: newSectionColor }}
                 aria-label="Mudar cor"
               />
@@ -259,7 +259,7 @@ export default function StructureModule() {
           {(activeStructureId || structureBars.length > 0) && (
             <button
               onClick={clearStructure}
-              className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-red-400 border border-border-default hover:border-red-400/50 transition-colors cursor-pointer"
+              className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-danger border border-border-default hover:border-danger/50 transition-colors cursor-pointer"
             >
               Limpar estrutura
             </button>

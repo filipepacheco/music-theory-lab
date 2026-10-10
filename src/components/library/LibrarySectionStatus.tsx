@@ -13,7 +13,7 @@ export default function LibrarySectionStatus({ analysis }: Props) {
   return (
     <div
       role="status"
-      className="border border-amber-500/35 bg-amber-500/10 px-3 py-2"
+      className="border border-warning/35 bg-warning/10 px-3 py-2"
     >
       <p className="text-xs font-medium text-text-primary">
         Seções automáticas não publicadas

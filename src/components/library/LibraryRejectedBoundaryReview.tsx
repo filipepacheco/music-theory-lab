@@ -54,7 +54,7 @@ export default function LibraryRejectedBoundaryReview({
             aria-expanded={visible}
             aria-controls={regionId}
             onClick={() => onVisibleChange(!visible)}
-            className="cursor-pointer border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-amber-300/50"
+            className="cursor-pointer border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-warning/50"
           >
             {visible
               ? 'Ocultar sugestões rejeitadas'
@@ -68,7 +68,7 @@ export default function LibraryRejectedBoundaryReview({
           id={regionId}
           role="note"
           aria-label="Sugestões rejeitadas da análise estrutural"
-          className="border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[11px] text-text-secondary"
+          className="border border-warning/25 bg-warning/5 px-3 py-2 text-[11px] text-text-secondary"
         >
           Estas divisões falharam no teste de estabilidade. São pistas para
           revisão manual, não resultados automáticos aceitos.

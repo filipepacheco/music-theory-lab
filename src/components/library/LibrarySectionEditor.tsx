@@ -135,7 +135,7 @@ function RejectedBoundaryMarker({
   const barNumber = (suggestion.barIndex ?? 0) + 1;
 
   return (
-    <div className="flex w-24 shrink-0 flex-col items-center justify-center border-x border-dashed border-amber-400/45 bg-amber-400/5 px-1 py-1 text-center text-amber-200/75">
+    <div className="flex w-24 shrink-0 flex-col items-center justify-center border-x border-dashed border-warning/45 bg-warning/5 px-1 py-1 text-center text-warning/75">
       <span aria-hidden="true" className="text-[8px] uppercase tracking-wide">
         rejeitada
       </span>
@@ -148,7 +148,7 @@ function RejectedBoundaryMarker({
         aria-label={`Sugestão rejeitada antes do compasso ${barNumber}, ${support}% de apoio. Motivo: ${reason}. Usar como divisão manual`}
         title={`${support}% de apoio · ${reason}`}
         onClick={() => onAdopt?.(suggestion)}
-        className="mt-1 cursor-pointer border border-dashed border-amber-300/40 bg-bg-primary px-1.5 py-1 text-[8px] text-amber-100/80 hover:border-amber-200"
+        className="mt-1 cursor-pointer border border-dashed border-warning/40 bg-bg-primary px-1.5 py-1 text-[8px] text-warning/80 hover:border-warning"
       >
         usar divisão
       </button>

@@ -38,7 +38,7 @@ export default function ColorPicker({
           setOpen(!open);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className={`${triggerSize} border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0`}
+        className={`${triggerSize} border-2 border-border-strong hover:border-accent transition-colors cursor-pointer shrink-0`}
         style={{ backgroundColor: value }}
         aria-label="Escolher cor"
       />
@@ -64,7 +64,7 @@ export default function ColorPicker({
                   onPointerDown={(e) => e.stopPropagation()}
                   className={`w-6 h-6 transition-transform hover:scale-110 cursor-pointer ${
                     value === color
-                      ? 'ring-2 ring-white ring-offset-1 ring-offset-bg-card'
+                      ? 'ring-2 ring-accent ring-offset-1 ring-offset-bg-card'
                       : ''
                   }`}
                   style={{ backgroundColor: color }}

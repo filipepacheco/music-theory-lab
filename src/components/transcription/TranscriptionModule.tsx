@@ -65,7 +65,7 @@ export default function TranscriptionModule() {
               <span>·</span>
               <span
                 className={
-                  reviewCount > 0 ? 'text-amber-200' : 'text-emerald-300'
+                  reviewCount > 0 ? 'text-warning' : 'text-success'
                 }
               >
                 {reviewCount > 0

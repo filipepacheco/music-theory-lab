@@ -95,7 +95,7 @@ export default function LibraryModule() {
               Faixas analisadas
             </h3>
             {error && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-danger">
                 Falha ao carregar o índice da biblioteca: {error}
               </p>
             )}

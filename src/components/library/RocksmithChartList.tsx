@@ -28,7 +28,7 @@ export default function RocksmithChartList({
         <label
           htmlFor={inputId}
           aria-disabled={importing}
-          className={`font-heading text-xs px-3 py-1.5 bg-bg-elevated text-text-primary ${
+          className={`font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary ${
             importing
               ? 'opacity-50 cursor-wait'
               : 'hover:bg-bg-hover cursor-pointer'

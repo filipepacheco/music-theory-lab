@@ -104,7 +104,7 @@ export default function AnalyzeModule() {
       {offline && <OfflineNotice />}
 
       {!offline && health && !health.ok && (
-        <p className="text-sm text-amber-400 border border-amber-400/30 bg-amber-400/10 px-3 py-2">
+        <p className="text-sm text-warning border border-warning/30 bg-warning/10 px-3 py-2">
           Checkpoints ausentes: {health.missing_checkpoints.join(', ')}. Rode{' '}
           <code className="font-mono text-xs">
             scripts/fetch_checkpoints.py
@@ -131,7 +131,7 @@ export default function AnalyzeModule() {
               accept=".mp3,.m4a,.wav,.flac,.ogg,audio/*"
               disabled={blocked || busy}
               onChange={(event) => pickFile(event.target.files?.[0] ?? null)}
-              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-elevated file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-bg-hover file:cursor-pointer disabled:opacity-50"
+              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-tertiary file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-bg-hover file:cursor-pointer disabled:opacity-50"
             />
           </label>
 
@@ -156,7 +156,7 @@ export default function AnalyzeModule() {
             {busy ? 'Enviando…' : 'Analisar'}
           </button>
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
 
           {health?.ok && (
             <p className="text-[11px] text-text-muted">
@@ -196,7 +196,7 @@ function OfflineNotice() {
         precisa da GPU e dos checkpoints. Em outro terminal, dentro de{' '}
         <code className="font-mono">research/audio-library-poc</code>:
       </p>
-      <pre className="text-[11px] font-mono text-text-secondary bg-bg-elevated px-2 py-1.5 overflow-x-auto">
+      <pre className="text-[11px] font-mono text-text-secondary bg-bg-tertiary px-2 py-1.5 overflow-x-auto">
         .venv\Scripts\audio-library-intake.exe --workspace workspace --public
         ..\..\public
       </pre>
@@ -252,7 +252,7 @@ function JobCard({ job }: { job: IntakeJob }) {
         <span
           className={`text-[11px] shrink-0 ${
             job.status === 'failed'
-              ? 'text-red-400'
+              ? 'text-danger'
               : job.status === 'succeeded'
                 ? 'text-text-secondary'
                 : 'text-text-muted'
@@ -269,7 +269,7 @@ function JobCard({ job }: { job: IntakeJob }) {
           <StageChip key={stage.kind} stage={stage} />
         ))}
       </ul>
-      {job.error && <p className="text-[11px] text-red-400">{job.error}</p>}
+      {job.error && <p className="text-[11px] text-danger">{job.error}</p>}
       {job.status === 'succeeded' && (
         <p className="text-[11px] text-text-muted">
           Publicada na Biblioteca — abra o módulo para ver a cifra.
@@ -283,7 +283,7 @@ const STAGE_TONE: Record<StageProgress['status'], string> = {
   pending: 'border-border-default text-text-muted',
   running: 'border-accent text-text-primary',
   succeeded: 'border-border-default text-text-secondary',
-  failed: 'border-red-400/50 text-red-400',
+  failed: 'border-danger/50 text-danger',
 };
 
 function StageChip({ stage }: { stage: StageProgress }) {
