@@ -122,7 +122,7 @@ export default function BeatTimeline() {
               <div
                 key={`c-${idx}`}
                 ref={isActive ? cursorRef : undefined}
-                className="transition-colors duration-75"
+                className="transition-colors"
                 style={{
                   gridRow: 2,
                   gridColumn: idx + 1,

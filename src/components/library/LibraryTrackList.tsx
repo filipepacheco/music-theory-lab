@@ -31,7 +31,7 @@ export default function LibraryTrackList({
               type="button"
               onClick={() => onSelect(track)}
               aria-current={isActive ? 'true' : undefined}
-              className={`w-full text-left px-3 py-2 transition-colors cursor-pointer border ${
+              className={`w-full text-left px-3 py-2 cursor-pointer border ${
                 isActive
                   ? 'bg-accent/15 border-accent/40 text-text-primary'
                   : 'bg-bg-card border-border-default hover:bg-bg-hover'

@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
+import Button from '@/components/shared/Button';
+import Tag from '@/components/shared/Tag';
 
 export default function PlaybackControls() {
   const customProgression = useAppStore((s) => s.customProgression);
@@ -18,31 +19,23 @@ export default function PlaybackControls() {
 
   return (
     <div className="flex items-center gap-3">
-      <motion.button
+      <Button
+        variant={isPlaying ? 'default' : 'primary'}
+        pressed={isPlaying}
+        live={isPlaying}
         onClick={() => (isPlaying ? stop() : play())}
         disabled={customProgression.length === 0}
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        className={`px-4 sm:px-6 py-2.5 text-sm font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-          isPlaying
-            ? 'bg-danger text-white shadow-[0_0_16px_rgba(239,68,68,0.3)]'
-            : 'bg-accent text-on-accent'
-        }`}
       >
-        <span className="flex items-center gap-2">
-          <span>{isPlaying ? '\u25A0' : '\u25B6'}</span>
-          <span className="hidden sm:inline">
-            {isPlaying ? 'Parar' : 'Tocar Progressão'}
-          </span>
-          <span className="sm:hidden">{isPlaying ? 'Parar' : 'Tocar'}</span>
+        <span aria-hidden className="mr-[1ch]">
+          {isPlaying ? '\u25A0' : '\u25B6'}
         </span>
-      </motion.button>
+        <span className="hidden sm:inline">
+          {isPlaying ? 'Parar' : 'Tocar Progressão'}
+        </span>
+        <span className="sm:hidden">{isPlaying ? 'Parar' : 'Tocar'}</span>
+      </Button>
 
-      {isPlaying && (
-        <span className="text-xs text-text-muted animate-pulse">
-          Tocando...
-        </span>
-      )}
+      {isPlaying && <Tag tone="live">tocando</Tag>}
     </div>
   );
 }

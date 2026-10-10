@@ -61,7 +61,7 @@ function ReviewChordCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`min-w-0 border p-3 text-left transition-all ${
+      className={`min-w-0 border p-3 text-left ${
         selected
           ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-primary'
           : ''

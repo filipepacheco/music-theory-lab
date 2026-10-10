@@ -103,7 +103,7 @@ export default function ProgressionAnalysis() {
               className="px-2 py-0.5 text-xs font-mono font-medium"
               style={{
                 background: fn ? FUNCTION_COLORS[fn] : "var(--color-accent)",
-                color: "#0f1219",
+                color: "var(--color-on-accent)",
               }}
             >
               {fn ? FUNCTION_LABELS[fn] : "Cromatico"}
@@ -137,7 +137,7 @@ export default function ProgressionAnalysis() {
         </div>
 
         {analysis && (
-          <p className="text-sm text-text-secondary leading-relaxed border-l-2 border-accent/40 pl-3">
+          <p className="text-sm text-text-secondary leading-relaxed border-l border-border-strong pl-[2ch]">
             {analysis}
           </p>
         )}

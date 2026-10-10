@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useSavedProgressions } from '@/hooks/useSavedProgressions';
 import SaveProgressionDialog from '@/components/progressions/SaveProgressionDialog';
+import { confirmDialog } from '@/services/confirm';
+import Button from '@/components/shared/Button';
 
 export default function PresetList() {
   const loadProgressionPreset = useAppStore((s) => s.loadProgressionPreset);
@@ -40,15 +41,7 @@ export default function PresetList() {
     <div className="space-y-4">
       {/* Save button */}
       {customProgression.length > 0 && (
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setShowSave(true)}
-          className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-2.5 border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer w-full sm:w-auto"
-        >
-          <span>+</span>
-          <span>Salvar progressão</span>
-        </motion.button>
+        <Button onClick={() => setShowSave(true)}>+ Salvar progressão</Button>
       )}
 
       <SaveProgressionDialog
@@ -69,14 +62,12 @@ export default function PresetList() {
           </h3>
           <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap">
             {userSaved.map((prog) => (
-              <motion.button
+              <button
                 key={prog.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
                 onClick={() => loadProgression(prog)}
-                className="group relative text-left px-4 py-3 border border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)] transition-all cursor-pointer"
+                className="group relative text-left px-4 py-3 border border-border-default bg-bg-card hover:border-accent hover:shadow-lift active:translate-x-px active:translate-y-px cursor-pointer"
               >
-                <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent transition-colors">
+                <span className="font-heading text-xs text-text-primary block pr-6">
                   {prog.name}
                 </span>
                 <div className="flex gap-1 flex-wrap mt-1.5">
@@ -93,16 +84,20 @@ export default function PresetList() {
                 <button
                   type="button"
                   aria-label={`Remover ${prog.name}`}
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    if (window.confirm(`Remover "${prog.name}"?`))
-                      remove(prog.id);
+                    const confirmed = await confirmDialog({
+                      title: `Remover "${prog.name}"?`,
+                      confirmLabel: 'Remover',
+                      danger: true,
+                    });
+                    if (confirmed) remove(prog.id);
                   }}
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent transition-colors cursor-pointer opacity-60 hover:opacity-100"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>
-              </motion.button>
+              </button>
             ))}
           </div>
         </div>
@@ -115,14 +110,12 @@ export default function PresetList() {
         </h4>
         <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap">
           {examples.map((prog) => (
-            <motion.button
+            <button
               key={prog.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
               onClick={() => loadProgression(prog)}
-              className="group text-left px-4 py-3 border border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)] transition-all cursor-pointer"
+              className="group text-left px-4 py-3 border border-border-default bg-bg-card hover:border-accent hover:shadow-lift active:translate-x-px active:translate-y-px cursor-pointer"
             >
-              <span className="font-heading text-xs text-text-primary block group-hover:text-accent transition-colors">
+              <span className="font-heading text-xs text-text-primary block">
                 {prog.name}
               </span>
               <div className="flex gap-1 flex-wrap mt-1.5">
@@ -135,7 +128,7 @@ export default function PresetList() {
                   </span>
                 ))}
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
       </div>

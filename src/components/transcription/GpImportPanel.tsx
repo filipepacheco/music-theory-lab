@@ -188,7 +188,7 @@ export default function GpImportPanel() {
             <div className="flex flex-col gap-4">
               <Field label="Arquivo">
                 <label className="block cursor-pointer">
-                  <span className="block px-3 py-2 bg-bg-card border border-border-default text-xs text-text-secondary truncate hover:text-text-primary transition-colors">
+                  <span className="block px-3 py-2 bg-bg-card border border-border-default text-xs text-text-secondary truncate hover:text-text-primary">
                     {fileName ?? 'Selecionar .gp'}
                   </span>
                   <input
@@ -353,7 +353,7 @@ function PillButton({
   return (
     <button
       onClick={onClick}
-      className={`cursor-pointer transition-colors ${
+      className={`cursor-pointer ${
         active
           ? 'bg-accent text-on-accent'
           : 'bg-bg-card text-text-secondary hover:text-text-primary'

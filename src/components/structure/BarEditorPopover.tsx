@@ -69,7 +69,7 @@ export default function BarEditorPopover({
               key={ts}
               type="button"
               onClick={() => setBarTimeSignature(bar.id, ts)}
-              className={`px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs cursor-pointer ${
                 bar.timeSignature === ts
                   ? 'bg-accent/20 text-accent font-bold border border-accent/40'
                   : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary/80 border border-transparent'
@@ -98,7 +98,7 @@ export default function BarEditorPopover({
                     key={idx}
                     type="button"
                     onClick={() => toggleBarAccent(bar.id, idx)}
-                    className={`w-5 h-5 transition-all cursor-pointer flex items-center justify-center ${
+                    className={`w-5 h-5 cursor-pointer flex items-center justify-center ${
                       isDownbeat ? 'ring-1 ring-border-default/30' : ''
                     }`}
                     style={{
@@ -141,7 +141,7 @@ export default function BarEditorPopover({
               onClick={() => {
                 setBarColor(bar.id, color);
               }}
-              className={`w-5 h-5 transition-transform hover:scale-110 cursor-pointer ${
+              className={`w-5 h-5 cursor-pointer ${
                 bar.color === color
                   ? 'ring-2 ring-accent ring-offset-1 ring-offset-bg-card'
                   : ''
@@ -153,7 +153,7 @@ export default function BarEditorPopover({
           <button
             type="button"
             onClick={() => setBarColor(bar.id, undefined)}
-            className="w-5 h-5 border border-border-default bg-bg-tertiary flex items-center justify-center text-[9px] text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            className="w-5 h-5 border border-border-default bg-bg-tertiary flex items-center justify-center text-[9px] text-text-muted hover:text-text-primary cursor-pointer"
             title="Remover cor"
           >
             X

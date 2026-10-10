@@ -202,7 +202,7 @@ function BassTabBar({
       }
       data-bar={bar.index}
       style={fitStyle}
-      className={`relative shrink-0 border text-left transition-colors ${
+      className={`relative shrink-0 border text-left ${
         isActive
           ? 'border-text-primary bg-bg-hover'
           : 'border-border-default bg-bg-card'

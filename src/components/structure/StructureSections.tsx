@@ -41,7 +41,7 @@ function SectionComment({
         }}
         onPointerDown={(e) => e.stopPropagation()}
         placeholder="Notas sobre esta seção..."
-        className="w-full h-full min-h-[4rem] px-2 py-1 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted transition-colors resize-y"
+        className="w-full h-full min-h-[4rem] px-2 py-1 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted resize-y"
       />
     );
   }
@@ -51,7 +51,7 @@ function SectionComment({
       type="button"
       onClick={startEditing}
       onPointerDown={(e) => e.stopPropagation()}
-      className="text-left text-xs px-2 py-1 hover:bg-bg-tertiary/50 transition-colors cursor-pointer flex-1"
+      className="text-left text-xs px-2 py-1 hover:bg-bg-tertiary/50 cursor-pointer flex-1"
     >
       {comment ? (
         <span className="text-text-secondary italic whitespace-pre-line">
@@ -100,7 +100,7 @@ function InlineSectionName({
           if (e.key === 'Escape') setEditing(false);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="px-2 py-0.5 text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary transition-colors w-28"
+        className="px-2 py-0.5 text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary w-28"
       />
     );
   }
@@ -110,7 +110,7 @@ function InlineSectionName({
       type="button"
       onClick={startEditing}
       onPointerDown={(e) => e.stopPropagation()}
-      className="text-xs font-medium px-2 py-0.5 shrink-0 cursor-pointer hover:brightness-110 transition-all"
+      className="text-xs font-medium px-2 py-0.5 shrink-0 cursor-pointer"
       style={{
         backgroundColor: color + '20',
         color,
@@ -197,7 +197,7 @@ function DroppableSection({
       ref={mergedRef}
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 border transition-all ${
+      className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 border ${
         isOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''
       } ${isFocused ? 'ring-2 ring-accent/60 shadow-[0_0_12px_var(--color-accent)/15]' : ''}`}
       style={{
@@ -216,7 +216,7 @@ function DroppableSection({
         {/* Left column: action buttons stacked vertically */}
         <div className="flex flex-col items-center gap-1.5 shrink-0">
           <span
-            className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing transition-colors select-none"
+            className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing select-none"
             {...attributes}
             {...listeners}
           >
@@ -242,7 +242,7 @@ function DroppableSection({
               setSectionBarsPerRow(section.id, val ? Number(val) : undefined);
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default px-1 py-0.5 text-text-muted hover:text-text-secondary transition-colors cursor-pointer w-full"
+            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default px-1 py-0.5 text-text-muted hover:text-text-secondary cursor-pointer w-full"
             aria-label="Compassos por linha"
           >
             <option value="">Auto</option>
@@ -264,7 +264,7 @@ function DroppableSection({
                 e.stopPropagation();
                 setGrooveOpen((open) => !open);
               }}
-              className={`text-[10px] sm:text-xs transition-colors cursor-pointer ${
+              className={`text-[10px] sm:text-xs cursor-pointer ${
                 grooveOpen || section.groove
                   ? 'text-accent'
                   : 'text-text-muted hover:text-text-secondary'
@@ -282,7 +282,7 @@ function DroppableSection({
                 e.stopPropagation();
                 duplicateSection(section.id);
               }}
-              className="text-[10px] sm:text-xs text-text-muted hover:text-accent transition-colors cursor-pointer"
+              className="text-[10px] sm:text-xs text-text-muted hover:text-accent cursor-pointer"
               title="Duplicar seção"
             >
               <svg
@@ -300,15 +300,13 @@ function DroppableSection({
             </button>
 
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 addBarToSection(section.id);
               }}
-              className="w-5 h-5 flex items-center justify-center border border-dashed text-text-muted hover:text-accent hover:border-accent/50 transition-colors cursor-pointer text-xs"
+              className="w-5 h-5 flex items-center justify-center border border-dashed text-text-muted hover:text-accent hover:border-accent/50 cursor-pointer text-xs"
               style={{ borderColor: color + '30' }}
               aria-label="Adicionar compasso"
             >
@@ -401,7 +399,7 @@ function DroppableSection({
           e.stopPropagation();
           onRemove(section.id);
         }}
-        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
+        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
       >
         X
       </button>

@@ -70,9 +70,7 @@ export default function SongPlaybackControls({
         <motion.button
           onClick={() => (isPlaying ? stop() : handlePlay())}
           disabled={!hasSteps}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className={`px-6 py-2.5 text-sm font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+          className={`px-6 py-2.5 text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
             isPlaying
               ? 'bg-danger text-white shadow-[0_0_16px_rgba(239,68,68,0.3)]'
               : 'bg-accent text-on-accent'
@@ -89,7 +87,7 @@ export default function SongPlaybackControls({
         {/* Loop section toggle */}
         <button
           onClick={() => setLoopSection(!loopSection)}
-          className={`px-3 py-1.5 text-xs font-medium transition-all cursor-pointer border ${
+          className={`px-3 py-1.5 text-xs font-medium cursor-pointer border ${
             loopSection
               ? 'border-accent/40 text-accent bg-accent/10'
               : 'border-border-default text-text-secondary hover:border-accent/40'

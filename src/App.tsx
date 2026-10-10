@@ -11,6 +11,7 @@ import TranscriptionModule from "@/components/transcription/TranscriptionModule"
 import StructureModule from "@/components/structure/StructureModule";
 import LibraryModule from "@/components/library/LibraryModule";
 import AnalyzeModule from "@/components/analyze/AnalyzeModule";
+import ConfirmHost from "@/components/shared/ConfirmHost";
 import Frame from "@/components/shared/Frame";
 import Piano from "@/components/instruments/Piano";
 import BassNeck from "@/components/instruments/BassNeck";
@@ -79,6 +80,7 @@ export default function App() {
       </main>
 
       <BottomNav />
+      <ConfirmHost />
     </div>
   );
 }

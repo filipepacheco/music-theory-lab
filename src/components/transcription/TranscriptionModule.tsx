@@ -80,7 +80,7 @@ export default function TranscriptionModule() {
               <button
                 type="button"
                 onClick={clearSong}
-                className="text-xs text-text-muted transition-colors hover:text-text-primary"
+                className="text-xs text-text-muted hover:text-text-primary"
               >
                 Nova transcrição
               </button>

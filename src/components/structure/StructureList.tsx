@@ -30,16 +30,14 @@ export default function StructureList() {
           return (
             <motion.button
               key={structure.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
               onClick={() => loadStructure(structure)}
-              className={`group relative text-left px-4 py-3 border transition-all cursor-pointer ${
+              className={`group relative text-left px-4 py-3 border cursor-pointer ${
                 isActive
                   ? 'border-accent bg-accent/10'
                   : 'border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)]'
               }`}
             >
-              <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent transition-colors">
+              <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent">
                 {structure.title}
               </span>
               {structure.artist && (
@@ -80,7 +78,7 @@ export default function StructureList() {
                   )
                     void remove(structure.id);
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent transition-colors cursor-pointer opacity-60 hover:opacity-100"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>

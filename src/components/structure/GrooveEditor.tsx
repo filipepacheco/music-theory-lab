@@ -81,7 +81,7 @@ export function GrooveEditor({
                 void groovePlayer.play(section.groove, structureBpm);
               }
             }}
-            className={`text-[10px] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`text-[10px] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               isPlaying
                 ? 'text-danger hover:text-danger'
                 : 'text-accent hover:text-accent/80'
@@ -142,7 +142,7 @@ export function GrooveEditor({
               if (isPlaying) groovePlayer.stop();
               clearGroove(section.id);
             }}
-            className="text-[10px] text-text-muted hover:text-danger transition-colors cursor-pointer"
+            className="text-[10px] text-text-muted hover:text-danger cursor-pointer"
           >
             Limpar
           </button>
@@ -177,7 +177,7 @@ export function GrooveEditor({
                       e.stopPropagation();
                       toggleGrooveHit(section.id, piece.id, step);
                     }}
-                    className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 transition-colors cursor-pointer"
+                    className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 cursor-pointer"
                     style={{
                       backgroundColor: active
                         ? color

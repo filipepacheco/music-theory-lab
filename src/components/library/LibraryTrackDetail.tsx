@@ -500,7 +500,7 @@ function ChordCells({
         const widthUnits = Math.min(cell.span, MAX_COLLAPSED_SPAN);
         const className = [
           'border px-2 py-1 flex flex-col items-start justify-center',
-          'text-left leading-tight transition-colors',
+          'text-left leading-tight',
           isActive
             ? 'border-text-primary bg-bg-hover'
             : 'border-border-default bg-bg-card',

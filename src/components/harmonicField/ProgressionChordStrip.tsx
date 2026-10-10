@@ -73,7 +73,7 @@ export default function ProgressionChordStrip() {
           return (
             <div
               key={idx}
-              className="flex-1 min-w-0 px-2 py-1.5 transition-colors duration-100"
+              className="flex-1 min-w-0 px-2 py-1.5"
               style={{
                 backgroundColor: functionTint(fn, isActive ? 35 : 12),
                 // The lamp marks the chord that sounds now.
