@@ -142,7 +142,7 @@ export default function StructureModule() {
                   if (e.key === 'Enter') handleAddSection();
                 }}
                 placeholder="Nome da seção..."
-                className="bg-bg-tertiary/50 border border-border-default rounded-button px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors w-40"
+                className="bg-bg-tertiary/50 border border-border-default rounded-button px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted transition-colors w-40"
               />
 
               <button

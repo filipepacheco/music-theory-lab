@@ -105,7 +105,7 @@ export function GrooveEditor({
                 e.target.value as GrooveSubdivision,
               );
             }}
-            className="bg-bg-tertiary/70 border border-border-default px-1.5 py-0.5 text-[10px] text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+            className="bg-bg-tertiary/70 border border-border-default px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
           >
             {GROOVE_SUBDIVISIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -125,7 +125,7 @@ export function GrooveEditor({
                 Number(e.target.value) as GrooveMeasureCount,
               );
             }}
-            className="bg-bg-tertiary/70 border border-border-default px-1.5 py-0.5 text-[10px] text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+            className="bg-bg-tertiary/70 border border-border-default px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
           >
             {GROOVE_MEASURE_COUNTS.map((option) => (
               <option key={option.id} value={option.id}>

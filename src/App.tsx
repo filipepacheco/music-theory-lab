@@ -30,7 +30,7 @@ export default function App() {
   }, [theme]);
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0">
+    <div className="min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-24 sm:pb-0">
       <Header />
       <KeySelector />
 

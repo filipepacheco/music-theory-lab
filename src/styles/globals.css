@@ -259,6 +259,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* One focus mark for every control. It is in the base layer, so a component
+   can move it; do not hide it with focus:outline-none. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--fog-bright);
+    outline-offset: 2px;
+  }
+}
+
 ::selection {
   background: var(--fog-bright);
   color: var(--sea-950);

@@ -5,7 +5,8 @@
    globals.css loads this file into the `components` layer, so a Tailwind
    utility on the same element wins. This file is the design system layer, so
    it may use the primitives directly. React components reach it through the
-   wrappers in src/components/shared (Frame, Button, Tag, Field, Callout).
+   wrappers in src/components/shared (Frame, Button, Tag, Field, Select,
+   Segmented, Callout).
 
    Horizontal steps inside a line use ch, the width of one mono cell. The
    "App extensions" section at the end is ours, not Lighthouse's. */
@@ -265,6 +266,27 @@ textarea.lh-input {
   color: var(--wreck);
 }
 
+/* ---- Pips: a row of small squares. A filled one is done or live ---- */
+.lh-pips {
+  display: flex;
+  font: 400 10px/12px var(--font-mono);
+  letter-spacing: 2px;
+  color: var(--rule-strong);
+}
+.lh-pip::before {
+  content: '\25A1';
+}
+.lh-pip.is-done {
+  color: var(--buoy);
+}
+.lh-pip.is-done::before,
+.lh-pip.is-active::before {
+  content: '\25A0';
+}
+.lh-pip.is-active {
+  color: var(--beam);
+}
+
 /* ---- Callout: a frame with a glyph in its gutter ---- */
 .lh-callout {
   position: relative;
@@ -358,6 +380,106 @@ textarea.lh-input {
   color: var(--color-dominant);
 }
 
+/* A button for a thing that runs now (the metronome, a recording). */
+.lh-btn.is-live,
+.lh-btn.is-live::before,
+.lh-btn.is-live::after {
+  color: var(--beam);
+}
+/* Pips in a button follow its text when the button inverts. */
+.lh-btn:hover:not(:disabled) :is(.lh-pips, .lh-pip) {
+  color: inherit;
+}
+
+/* Tabs: a row of cells for the modules and for a choice of a few. The open
+   cell is inverted, like the open phase of Lighthouse; the pointer gives a
+   quiet ground, so the two do not look the same. */
+.lh-tabs {
+  display: flex;
+  min-width: 0;
+}
+.lh-tabs.is-boxed {
+  border: 1px solid var(--rule-strong);
+}
+.lh-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: var(--space-1) 1ch;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--fog);
+  font: var(--type-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lh-tabs.is-boxed > .lh-tab {
+  min-height: 30px;
+  padding-inline: 1.5ch;
+}
+.lh-tab:hover {
+  background: var(--sea-800);
+  color: var(--fog-bright);
+}
+.lh-tab:is([aria-current], [aria-pressed='true'], [aria-expanded='true']) {
+  background: var(--fog-bright);
+  color: var(--sea-950);
+  font-weight: 600;
+}
+/* Inset, so a scrolling row of tabs does not cut the outline. */
+.lh-tab:focus-visible {
+  outline: var(--lh-focus);
+  outline-offset: -2px;
+}
+.lh-tab:is(
+    [aria-current],
+    [aria-pressed='true'],
+    [aria-expanded='true']
+  ):focus-visible {
+  outline-color: var(--sea-950);
+}
+
+/* Select: a native select with the look of the input, and its own arrow. */
+.lh-select {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+.lh-select > select {
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  padding: 5px 3ch 5px 1ch;
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--sea-800);
+  color: var(--fog);
+  font: var(--type-ui);
+  cursor: pointer;
+}
+.lh-select > select:disabled {
+  color: var(--fog-dim);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.lh-select > select:focus-visible {
+  outline: var(--lh-focus);
+  outline-offset: 0;
+  border-color: var(--fog-bright);
+}
+.lh-select::after {
+  content: '\25BE';
+  position: absolute;
+  right: 1ch;
+  top: 50%;
+  transform: translateY(-50%);
+  font: var(--type-ui);
+  color: var(--fog-dim);
+  pointer-events: none;
+}
+
 /* A frame folded to its title line. The border fades instead of changing
    width, so the fold does not move the layout. */
 .lh-frame {
@@ -380,7 +502,10 @@ textarea.lh-input {
   .lh-btn.is-small {
     min-height: 32px;
   }
-  .lh-input {
+  .lh-input,
+  .lh-select > select,
+  .lh-tab,
+  .lh-tabs.is-boxed > .lh-tab {
     min-height: 44px;
   }
 }

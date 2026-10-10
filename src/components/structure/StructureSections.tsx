@@ -41,7 +41,7 @@ function SectionComment({
         }}
         onPointerDown={(e) => e.stopPropagation()}
         placeholder="Notas sobre esta seção..."
-        className="w-full h-full min-h-[4rem] px-2 py-1 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors resize-y"
+        className="w-full h-full min-h-[4rem] px-2 py-1 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted transition-colors resize-y"
       />
     );
   }
@@ -100,7 +100,7 @@ function InlineSectionName({
           if (e.key === 'Escape') setEditing(false);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="px-2 py-0.5 text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary focus:outline-none focus:border-accent transition-colors w-28"
+        className="px-2 py-0.5 text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary transition-colors w-28"
       />
     );
   }
@@ -242,7 +242,7 @@ function DroppableSection({
               setSectionBarsPerRow(section.id, val ? Number(val) : undefined);
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default px-1 py-0.5 text-text-muted hover:text-text-secondary transition-colors cursor-pointer focus:outline-none focus:border-accent w-full"
+            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default px-1 py-0.5 text-text-muted hover:text-text-secondary transition-colors cursor-pointer w-full"
             aria-label="Compassos por linha"
           >
             <option value="">Auto</option>

@@ -148,7 +148,7 @@ function RejectedBoundaryMarker({
         aria-label={`Sugestão rejeitada antes do compasso ${barNumber}, ${support}% de apoio. Motivo: ${reason}. Usar como divisão manual`}
         title={`${support}% de apoio · ${reason}`}
         onClick={() => onAdopt?.(suggestion)}
-        className="mt-1 cursor-pointer rounded-control border border-dashed border-amber-300/40 bg-bg-primary px-1.5 py-1 text-[8px] text-amber-100/80 hover:border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-300"
+        className="mt-1 cursor-pointer rounded-control border border-dashed border-amber-300/40 bg-bg-primary px-1.5 py-1 text-[8px] text-amber-100/80 hover:border-amber-200"
       >
         usar divisão
       </button>
@@ -188,7 +188,7 @@ function SectionNameInput({
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur();
       }}
-      className="mb-2 w-full rounded-control bg-bg-primary px-2 py-1 font-heading text-xs text-text-primary outline-none focus:ring-2 focus:ring-accent"
+      className="mb-2 w-full rounded-control bg-bg-primary px-2 py-1 font-heading text-xs text-text-primary outline-none"
     />
   );
 }

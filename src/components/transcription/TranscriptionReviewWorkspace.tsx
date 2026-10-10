@@ -125,7 +125,7 @@ function AddSectionControl({ className = '' }: { className?: string }) {
             addSection(event.target.value as (typeof SECTION_TYPES)[number]);
           }
         }}
-        className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
+        className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary"
         aria-label="Adicionar seção"
       >
         <option value="">Escolher</option>

@@ -54,7 +54,7 @@ export default function LibraryRejectedBoundaryReview({
             aria-expanded={visible}
             aria-controls={regionId}
             onClick={() => onVisibleChange(!visible)}
-            className="cursor-pointer rounded-button border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-amber-300/50 focus:outline-none focus:ring-2 focus:ring-accent"
+            className="cursor-pointer rounded-button border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-amber-300/50"
           >
             {visible
               ? 'Ocultar sugestões rejeitadas'

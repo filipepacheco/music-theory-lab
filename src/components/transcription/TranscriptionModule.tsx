@@ -58,7 +58,7 @@ export default function TranscriptionModule() {
               value={songTitle}
               onChange={(event) => setSongTitle(event.target.value)}
               placeholder="Título da música"
-              className="mt-1 w-full max-w-2xl truncate bg-transparent font-heading text-2xl text-text-primary placeholder:text-text-muted focus:outline-none"
+              className="mt-1 w-full max-w-2xl truncate bg-transparent font-heading text-2xl text-text-primary placeholder:text-text-muted"
             />
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-muted">
               <span>{chordCountLabel}</span>
@@ -99,7 +99,7 @@ export default function TranscriptionModule() {
               value={songArtist}
               onChange={(event) => setSongArtist(event.target.value)}
               placeholder="Artista"
-              className="min-w-[180px] flex-1 rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              className="min-w-[180px] flex-1 rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted"
             />
             <span className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs font-mono text-text-secondary">
               {keyDisplay}

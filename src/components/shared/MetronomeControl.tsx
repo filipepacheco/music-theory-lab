@@ -1,5 +1,6 @@
 import { useMetronome } from "@/hooks/useMetronome";
 import { useAppStore } from "@/store/useAppStore";
+import Button from "@/components/shared/Button";
 
 export default function MetronomeControl() {
   const { toggle, isMetronomeOn } = useMetronome();
@@ -9,51 +10,39 @@ export default function MetronomeControl() {
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">
-      <button
-        onClick={toggle}
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-button text-sm font-medium transition-colors cursor-pointer border ${
-          isMetronomeOn
-            ? "border-accent bg-accent/15 text-accent"
-            : "border-border-default bg-bg-tertiary text-text-secondary hover:text-text-primary"
-        }`}
-      >
-        {/* Beat dots */}
-        <div className="flex gap-1">
+      <Button onClick={toggle} pressed={isMetronomeOn} live={isMetronomeOn}>
+        <span className="lh-pips mr-[1ch]" aria-hidden>
           {[0, 1, 2, 3].map((i) => (
-            <div
+            <span
               key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-colors duration-75 ${
-                isMetronomeOn && currentBeat === i
-                  ? i === 0
-                    ? "bg-accent"
-                    : "bg-text-primary"
-                  : "bg-text-muted/40"
+              className={`lh-pip ${
+                isMetronomeOn && currentBeat === i ? "is-active" : ""
               }`}
             />
           ))}
-        </div>
-        <span className="hidden sm:inline">{isMetronomeOn ? "Parar" : "Metronomo"}</span>
+        </span>
+        <span className="hidden sm:inline">
+          {isMetronomeOn ? "Parar" : "Metrônomo"}
+        </span>
         <span className="sm:hidden">{isMetronomeOn ? "Stop" : "BPM"}</span>
-      </button>
+      </Button>
 
-      <div className="flex items-center gap-1.5">
-        <button
+      <div className="flex items-center">
+        <Button
           onClick={() => setBpm(Math.max(40, bpm - 5))}
           aria-label="Diminuir BPM"
-          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-button bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
         >
           -
-        </button>
-        <span className="text-xs font-mono text-text-secondary w-12 sm:w-14 text-center">
+        </Button>
+        <span className="w-[7ch] text-center text-meta text-text-secondary">
           {bpm} bpm
         </span>
-        <button
+        <Button
           onClick={() => setBpm(Math.min(200, bpm + 5))}
           aria-label="Aumentar BPM"
-          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-button bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
         >
           +
-        </button>
+        </Button>
       </div>
     </div>
   );
