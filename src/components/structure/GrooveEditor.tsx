@@ -17,6 +17,7 @@ import type {
   GrooveSubdivision,
   StructureSection,
 } from '@/types';
+import Button from '@/components/shared/Button';
 
 function hasAnyHit(groove: GroovePattern): boolean {
   return DRUM_PIECES.some((piece) => groove[piece.id].some(Boolean));
@@ -69,8 +70,7 @@ export function GrooveEditor({
     <div className="flex flex-col gap-2 border-t border-border-default pt-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
             disabled={!hasGrooveHits && !isPlaying}
             onClick={(e) => {
               e.stopPropagation();
@@ -81,18 +81,14 @@ export function GrooveEditor({
                 void groovePlayer.play(section.groove, structureBpm);
               }
             }}
-            className={`text-[10px] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-              isPlaying
-                ? 'text-danger hover:text-danger'
-                : 'text-accent hover:text-accent/80'
-            }`}
+            size="sm"
+            pressed={isPlaying}
+            live={isPlaying}
             aria-label={isPlaying ? 'Parar groove' : 'Ouvir groove'}
           >
             {isPlaying ? 'Parar' : 'Ouvir groove'}
-          </button>
-          <span className="text-[10px] uppercase tracking-wider text-text-muted">
-            Groove
-          </span>
+          </Button>
+          <span className="lh-label">Groove</span>
           <select
             value={subdivision}
             aria-label="Resolução do groove"
@@ -105,7 +101,7 @@ export function GrooveEditor({
                 e.target.value as GrooveSubdivision,
               );
             }}
-            className="bg-bg-tertiary/70 border border-border-default px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
+            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
           >
             {GROOVE_SUBDIVISIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -125,7 +121,7 @@ export function GrooveEditor({
                 Number(e.target.value) as GrooveMeasureCount,
               );
             }}
-            className="bg-bg-tertiary/70 border border-border-default px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
+            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
           >
             {GROOVE_MEASURE_COUNTS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -135,17 +131,16 @@ export function GrooveEditor({
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               if (isPlaying) groovePlayer.stop();
               clearGroove(section.id);
             }}
-            className="text-[10px] text-text-muted hover:text-danger cursor-pointer"
+            size="sm"
           >
             Limpar
-          </button>
+          </Button>
         </div>
       </div>
 

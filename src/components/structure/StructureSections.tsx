@@ -8,6 +8,7 @@ import ColorPicker from './ColorPicker';
 import { GrooveEditor, GroovePreview } from './GrooveEditor';
 import { getSectionBars } from '@/utils/structureLayout';
 import type { StructureBar, StructureSection } from '@/types';
+import Button from '@/components/shared/Button';
 
 function SectionComment({
   comment,
@@ -41,7 +42,7 @@ function SectionComment({
         }}
         onPointerDown={(e) => e.stopPropagation()}
         placeholder="Notas sobre esta seção..."
-        className="w-full h-full min-h-[4rem] px-2 py-1 bg-bg-tertiary border border-border-default text-xs text-text-primary placeholder:text-text-muted resize-y"
+        className="lh-input w-full h-full min-h-[4rem] text-xs"
       />
     );
   }
@@ -100,7 +101,7 @@ function InlineSectionName({
           if (e.key === 'Escape') setEditing(false);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="px-2 py-0.5 text-xs font-medium bg-bg-tertiary border border-border-default text-text-primary w-28"
+        className="lh-input w-28 flex-none py-0.5 text-xs"
       />
     );
   }
@@ -242,7 +243,7 @@ function DroppableSection({
               setSectionBarsPerRow(section.id, val ? Number(val) : undefined);
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="text-[10px] sm:text-xs bg-bg-tertiary/50 border border-border-default px-1 py-0.5 text-text-muted hover:text-text-secondary cursor-pointer w-full"
+            className="text-[10px] sm:text-xs bg-bg-tertiary border border-border-strong px-1 py-0.5 text-text-secondary cursor-pointer w-full"
             aria-label="Compassos por linha"
           >
             <option value="">Auto</option>
@@ -257,22 +258,18 @@ function DroppableSection({
           </select>
 
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
+            <Button
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 setGrooveOpen((open) => !open);
               }}
-              className={`text-[10px] sm:text-xs cursor-pointer ${
-                grooveOpen || section.groove
-                  ? 'text-accent'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
+              size="sm"
+              pressed={grooveOpen}
               title="Editar groove"
             >
               Groove
-            </button>
+            </Button>
 
             <button
               type="button"
@@ -299,19 +296,19 @@ function DroppableSection({
               </svg>
             </button>
 
-            <motion.button
+            <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 addBarToSection(section.id);
               }}
-              className="w-5 h-5 flex items-center justify-center border border-dashed text-text-muted hover:text-accent hover:border-accent/50 cursor-pointer text-xs"
+              className="w-5 h-5 flex items-center justify-center border border-dashed text-text-muted hover:bg-accent hover:text-on-accent cursor-pointer text-xs"
               style={{ borderColor: color + '30' }}
               aria-label="Adicionar compasso"
             >
               +
-            </motion.button>
+            </button>
           </div>
         </div>
 

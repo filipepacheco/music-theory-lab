@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   DndContext,
   DragOverlay,
@@ -24,6 +23,9 @@ import StructureList from './StructureList';
 import { exportStructurePdf, type PdfFormat } from '@/utils/exportStructurePdf';
 import type { StructureBar, StructureSection } from '@/types';
 import Frame from '@/components/shared/Frame';
+import Button from '@/components/shared/Button';
+import Field from '@/components/shared/Field';
+import Select from '@/components/shared/Select';
 
 type DragItem =
   | { type: 'bar'; bar: StructureBar; displayIndex?: number }
@@ -134,15 +136,16 @@ export default function StructureModule() {
           {/* New section creation */}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <input
+              <Field
                 type="text"
+                aria-label="Nome da seção"
                 value={newSectionName}
                 onChange={(e) => setNewSectionName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAddSection();
                 }}
                 placeholder="Nome da seção..."
-                className="bg-bg-tertiary/50 border border-border-default px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted w-40"
+                className="w-40 flex-none"
               />
 
               <button
@@ -158,13 +161,12 @@ export default function StructureModule() {
                 aria-label="Mudar cor"
               />
 
-              <motion.button
+              <Button
                 onClick={handleAddSection}
                 disabled={!newSectionName.trim()}
-                className="px-5 py-2.5 text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + Seção
-              </motion.button>
+              </Button>
             </div>
 
             {/* Quick suggestion chips */}
@@ -216,8 +218,8 @@ export default function StructureModule() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
           <SaveStructureButton />
           {structureBars.length > 0 && (
-            <div className="flex items-center gap-0">
-              <button
+            <div className="flex items-center gap-[1ch]">
+              <Button
                 onClick={() =>
                   exportStructurePdf({
                     title: structureTitle,
@@ -228,13 +230,12 @@ export default function StructureModule() {
                     format: pdfFormat,
                   })
                 }
-                className="text-center px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary border border-border-default hover:border-accent/50 cursor-pointer flex items-center justify-center gap-2"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  className="w-4 h-4"
+                  className="w-4 h-4 mr-[1ch]"
                 >
                   <path
                     fillRule="evenodd"
@@ -243,24 +244,24 @@ export default function StructureModule() {
                   />
                 </svg>
                 PDF
-              </button>
-              <select
+              </Button>
+              <Select
+                aria-label="Formato do PDF"
                 value={pdfFormat}
                 onChange={(e) => setPdfFormat(e.target.value as PdfFormat)}
-                className="py-2.5 px-2 text-sm text-text-secondary bg-transparent border border-l-0 border-border-default cursor-pointer hover:border-accent/50"
               >
                 <option value="ipad-air">iPad Air</option>
                 <option value="a4">A4</option>
-              </select>
+              </Select>
             </div>
           )}
           {(activeStructureId || structureBars.length > 0) && (
-            <button
+            <Button
               onClick={clearStructure}
-              className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-danger border border-border-default hover:border-danger/50 cursor-pointer"
+              className="text-danger"
             >
               Limpar estrutura
-            </button>
+            </Button>
           )}
         </div>
       </Frame>

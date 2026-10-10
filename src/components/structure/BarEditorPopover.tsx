@@ -117,7 +117,7 @@ export default function BarEditorPopover({
                     {isAccent && (
                       <div
                         className="w-2 h-2"
-                        style={{ backgroundColor: 'white' }}
+                        style={{ backgroundColor: 'var(--color-on-accent)' }}
                       />
                     )}
                   </button>
