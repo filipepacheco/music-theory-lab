@@ -74,7 +74,7 @@ export default function ScaleComparison() {
                           ? "var(--color-scale-shared)"
                           : "var(--color-scale-a)"
                         : "var(--color-bg-tertiary)",
-                      color: inA ? "#0f1219" : "var(--color-text-muted)",
+                      color: inA ? "var(--color-on-accent)" : "var(--color-text-muted)",
                     }}
                   >
                     {inA ? getNoteName(noteIdx, rootName) : ""}
@@ -105,7 +105,7 @@ export default function ScaleComparison() {
                           ? "var(--color-scale-shared)"
                           : "var(--color-scale-b)"
                         : "var(--color-bg-tertiary)",
-                      color: inB ? "#0f1219" : "var(--color-text-muted)",
+                      color: inB ? "var(--color-on-accent)" : "var(--color-text-muted)",
                     }}
                   >
                     {inB ? getNoteName(noteIdx, rootName) : ""}

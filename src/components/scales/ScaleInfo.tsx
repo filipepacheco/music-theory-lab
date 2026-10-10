@@ -5,6 +5,7 @@ import { SCALE_DESCRIPTIONS } from "@/constants/scaleDescriptions";
 import { getScaleNotes } from "@/utils/musicTheory";
 import { getNoteName } from "@/utils/noteHelpers";
 import { useSynth } from "@/hooks/useSynth";
+import Button from "@/components/shared/Button";
 
 const INTERVAL_LABELS: Record<number, string> = {
   0: "U",
@@ -67,12 +68,9 @@ function ScaleDetail({
           {pattern.label}
         </h3>
         {showPlayButton && (
-          <button
-            onClick={handlePlay}
-            className="ml-auto px-3 py-2 text-xs font-medium bg-bg-tertiary border border-border-default hover:bg-bg-hover transition-colors cursor-pointer"
-          >
+          <Button onClick={handlePlay} className="ml-auto">
             Ouvir escala
-          </button>
+          </Button>
         )}
       </div>
 
@@ -81,7 +79,7 @@ function ScaleDetail({
           <span
             key={i}
             className="px-2 py-0.5 text-xs font-mono font-medium"
-            style={{ background: color, color: "#0f1219" }}
+            style={{ background: color, color: "var(--color-on-accent)" }}
           >
             {name}
           </span>
