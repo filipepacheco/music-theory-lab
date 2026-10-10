@@ -41,7 +41,7 @@ export default function QuizModeView({ quiz, config }: QuizModeViewProps) {
             <p className="text-xs text-text-muted">{config.description(ctx)}</p>
             <button
               onClick={quiz.toggleKeyLimited}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer border ${
+              className={`px-3 py-1 text-xs font-medium transition-all cursor-pointer border ${
                 keyLimited
                   ? 'border-accent bg-accent/15 text-accent'
                   : 'border-border-default bg-bg-card text-text-muted hover:text-text-secondary hover:border-accent/30'
@@ -65,7 +65,7 @@ export default function QuizModeView({ quiz, config }: QuizModeViewProps) {
           )}
           <button
             onClick={quiz.newQuestion}
-            className="px-6 py-2.5 rounded-button text-sm font-semibold bg-accent text-on-accent cursor-pointer"
+            className="px-6 py-2.5 text-sm font-semibold bg-accent text-on-accent cursor-pointer"
           >
             Começar
           </button>

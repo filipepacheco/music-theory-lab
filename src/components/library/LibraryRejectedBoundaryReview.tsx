@@ -54,7 +54,7 @@ export default function LibraryRejectedBoundaryReview({
             aria-expanded={visible}
             aria-controls={regionId}
             onClick={() => onVisibleChange(!visible)}
-            className="cursor-pointer rounded-button border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-amber-300/50"
+            className="cursor-pointer border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-amber-300/50"
           >
             {visible
               ? 'Ocultar sugestões rejeitadas'
@@ -68,7 +68,7 @@ export default function LibraryRejectedBoundaryReview({
           id={regionId}
           role="note"
           aria-label="Sugestões rejeitadas da análise estrutural"
-          className="rounded-button border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[11px] text-text-secondary"
+          className="border border-amber-400/25 bg-amber-400/5 px-3 py-2 text-[11px] text-text-secondary"
         >
           Estas divisões falharam no teste de estabilidade. São pistas para
           revisão manual, não resultados automáticos aceitos.
@@ -100,7 +100,7 @@ export default function LibraryRejectedBoundaryReview({
                   type="button"
                   disabled
                   aria-label={`Sugestão rejeitada indisponível, ${support}% de apoio. Motivo registrado: ${recordedReason}. ${reason}`}
-                  className="w-full cursor-not-allowed rounded-control border border-dashed border-border-default bg-bg-card px-2 py-1.5 text-left text-[10px] text-text-muted opacity-70"
+                  className="w-full cursor-not-allowed border border-dashed border-border-default bg-bg-card px-2 py-1.5 text-left text-[10px] text-text-muted opacity-70"
                 >
                   <span className="font-medium text-text-secondary">
                     Sugestão rejeitada indisponível · {support}% de apoio

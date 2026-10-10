@@ -92,7 +92,7 @@ export default function ProgressionChordStrip() {
           return (
             <div
               key={idx}
-              className="flex-1 min-w-0 rounded-control px-2 py-1.5 transition-colors duration-100"
+              className="flex-1 min-w-0 px-2 py-1.5 transition-colors duration-100"
               style={{
                 backgroundColor: bg,
                 borderLeft: isActive ? `3px solid ${borderColor}` : "3px solid transparent",

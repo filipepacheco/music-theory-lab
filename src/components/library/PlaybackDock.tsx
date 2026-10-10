@@ -77,7 +77,7 @@ export default function PlaybackDock({
             onClick={onTogglePlay}
             disabled={!canPlay}
             aria-label={playing ? 'Pausar' : 'Tocar'}
-            className="w-8 h-8 shrink-0 rounded-full bg-accent text-on-accent flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            className="w-8 h-8 shrink-0 bg-accent text-on-accent flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-default"
           >
             {playing ? (
               <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
@@ -104,7 +104,7 @@ export default function PlaybackDock({
               writeCollapsed(!collapsed);
             }}
             aria-expanded={!collapsed}
-            className="shrink-0 px-2 py-1 rounded-control border border-border-default text-[11px] text-text-muted hover:text-text-primary cursor-pointer"
+            className="shrink-0 px-2 py-1 border border-border-default text-[11px] text-text-muted hover:text-text-primary cursor-pointer"
           >
             {collapsed ? 'Mostrar braço' : 'Recolher braço'}
           </button>

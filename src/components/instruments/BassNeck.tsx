@@ -99,7 +99,7 @@ export default function BassNeck({ highlight }: Props = {}) {
         </h3>
         <button
           onClick={() => setShowAllNotes(!showAllNotes)}
-          className={`text-xs font-medium px-2.5 py-1 rounded-control border transition-colors cursor-pointer ${
+          className={`text-xs font-medium px-2.5 py-1 border transition-colors cursor-pointer ${
             showAllNotes
               ? 'border-accent bg-accent/15 text-accent'
               : 'border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary'

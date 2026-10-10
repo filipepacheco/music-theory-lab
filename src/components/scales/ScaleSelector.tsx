@@ -46,7 +46,7 @@ export default function ScaleSelector() {
           id="scale-select"
           value={selectedScaleId ?? ""}
           onChange={(e) => selectScale(e.target.value || null)}
-          className="min-w-0 bg-bg-tertiary text-text-primary border border-border-default rounded-control px-3 py-2 text-sm font-mono cursor-pointer"
+          className="min-w-0 bg-bg-tertiary text-text-primary border border-border-default px-3 py-2 text-sm font-mono cursor-pointer"
         >
           <option value="">Selecione...</option>
           {SCALE_GROUPS.map((group) => (
@@ -68,7 +68,7 @@ export default function ScaleSelector() {
           value={comparisonScaleId ?? ""}
           onChange={(e) => setComparisonScale(e.target.value || null)}
           disabled={!selectedScaleId}
-          className="min-w-0 bg-bg-tertiary text-text-primary border border-border-default rounded-control px-3 py-2 text-sm font-mono cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="min-w-0 bg-bg-tertiary text-text-primary border border-border-default px-3 py-2 text-sm font-mono cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option value="">Nenhuma</option>
           {SCALE_GROUPS.map((group) => (

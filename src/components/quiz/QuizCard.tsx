@@ -34,7 +34,7 @@ export default function QuizCard({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onReplay}
-          className="px-3 py-2 rounded-control text-sm bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer shrink-0"
+          className="px-3 py-2 text-sm bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer shrink-0"
         >
           Ouvir novamente
         </motion.button>
@@ -59,7 +59,7 @@ export default function QuizCard({
             className="space-y-3"
           >
             <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-button text-sm font-medium ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${
                 isCorrect
                   ? "bg-green-500/10 text-green-400 border border-green-500/30"
                   : "bg-red-500/10 text-red-400 border border-red-500/30"
@@ -83,7 +83,7 @@ export default function QuizCard({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={onNext}
-              className="px-6 py-2.5 rounded-button text-sm font-semibold bg-accent text-on-accent cursor-pointer"
+              className="px-6 py-2.5 text-sm font-semibold bg-accent text-on-accent cursor-pointer"
             >
               Próxima pergunta
             </motion.button>

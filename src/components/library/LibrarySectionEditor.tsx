@@ -38,7 +38,7 @@ export default function LibrarySectionEditor({
         {document.sections.map((section, sectionIndex) => (
           <div key={section.id} className="flex items-stretch">
             <div
-              className={`min-w-48 rounded-button border p-2 ${
+              className={`min-w-48 border p-2 ${
                 sectionIndex === activeSectionIndex
                   ? 'border-accent bg-accent/10'
                   : 'border-border-default bg-bg-card'
@@ -91,7 +91,7 @@ export default function LibrarySectionEditor({
                           }
                           className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-55"
                         >
-                          <span className="block min-w-8 rounded-control border border-border-default bg-bg-primary px-1.5 py-1 text-center font-heading text-[10px] text-text-primary">
+                          <span className="block min-w-8 border border-border-default bg-bg-primary px-1.5 py-1 text-center font-heading text-[10px] text-text-primary">
                             <span className="block text-[8px] text-text-muted">
                               {bar.index + 1}
                             </span>
@@ -148,7 +148,7 @@ function RejectedBoundaryMarker({
         aria-label={`Sugestão rejeitada antes do compasso ${barNumber}, ${support}% de apoio. Motivo: ${reason}. Usar como divisão manual`}
         title={`${support}% de apoio · ${reason}`}
         onClick={() => onAdopt?.(suggestion)}
-        className="mt-1 cursor-pointer rounded-control border border-dashed border-amber-300/40 bg-bg-primary px-1.5 py-1 text-[8px] text-amber-100/80 hover:border-amber-200"
+        className="mt-1 cursor-pointer border border-dashed border-amber-300/40 bg-bg-primary px-1.5 py-1 text-[8px] text-amber-100/80 hover:border-amber-200"
       >
         usar divisão
       </button>
@@ -188,7 +188,7 @@ function SectionNameInput({
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur();
       }}
-      className="mb-2 w-full rounded-control bg-bg-primary px-2 py-1 font-heading text-xs text-text-primary outline-none"
+      className="mb-2 w-full bg-bg-primary px-2 py-1 font-heading text-xs text-text-primary outline-none"
     />
   );
 }
@@ -213,7 +213,7 @@ function BoundaryControls({
   ].filter((message): message is string => message !== null);
 
   return (
-    <div className="mx-1 flex w-24 flex-col items-center justify-center gap-1 rounded-control border border-dashed border-accent/60 bg-accent/10 px-1">
+    <div className="mx-1 flex w-24 flex-col items-center justify-center gap-1 border border-dashed border-accent/60 bg-accent/10 px-1">
       <span className="text-[9px] uppercase text-text-muted">fronteira</span>
       <div className="flex gap-1">
         <BoundaryButton
@@ -277,7 +277,7 @@ function BoundaryButton({
       disabled={error !== null}
       title={error ?? label}
       onClick={onClick}
-      className="cursor-pointer rounded-control border border-border-default bg-bg-card px-1.5 py-1 text-[9px] text-text-secondary hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-45"
+      className="cursor-pointer border border-border-default bg-bg-card px-1.5 py-1 text-[9px] text-text-secondary hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-45"
     >
       {children}
     </button>

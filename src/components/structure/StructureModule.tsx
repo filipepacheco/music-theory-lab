@@ -142,7 +142,7 @@ export default function StructureModule() {
                   if (e.key === 'Enter') handleAddSection();
                 }}
                 placeholder="Nome da seção..."
-                className="bg-bg-tertiary/50 border border-border-default rounded-button px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted transition-colors w-40"
+                className="bg-bg-tertiary/50 border border-border-default px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted transition-colors w-40"
               />
 
               <button
@@ -153,7 +153,7 @@ export default function StructureModule() {
                     STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length],
                   );
                 }}
-                className="w-8 h-8 rounded-full border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0"
+                className="w-8 h-8 border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0"
                 style={{ backgroundColor: newSectionColor }}
                 aria-label="Mudar cor"
               />
@@ -163,7 +163,7 @@ export default function StructureModule() {
                 whileTap={{ scale: 0.97 }}
                 onClick={handleAddSection}
                 disabled={!newSectionName.trim()}
-                className="px-5 py-2.5 rounded-button text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 text-sm font-medium border border-accent/40 text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + Seção
               </motion.button>
@@ -176,7 +176,7 @@ export default function StructureModule() {
                   key={s.name}
                   type="button"
                   onClick={() => handleSuggestionClick(s)}
-                  className="px-2.5 py-1 rounded-control text-[11px] font-medium border transition-colors cursor-pointer hover:brightness-110"
+                  className="px-2.5 py-1 text-[11px] font-medium border transition-colors cursor-pointer hover:brightness-110"
                   style={{
                     backgroundColor: STRUCTURE_PALETTE[s.colorIndex] + '15',
                     borderColor: STRUCTURE_PALETTE[s.colorIndex] + '30',
@@ -230,7 +230,7 @@ export default function StructureModule() {
                     format: pdfFormat,
                   })
                 }
-                className="text-center px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary border border-border-default hover:border-accent/50 rounded-l-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+                className="text-center px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary border border-border-default hover:border-accent/50 transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -249,7 +249,7 @@ export default function StructureModule() {
               <select
                 value={pdfFormat}
                 onChange={(e) => setPdfFormat(e.target.value as PdfFormat)}
-                className="py-2.5 px-2 text-sm text-text-secondary bg-transparent border border-l-0 border-border-default rounded-r-lg cursor-pointer hover:border-accent/50 transition-colors"
+                className="py-2.5 px-2 text-sm text-text-secondary bg-transparent border border-l-0 border-border-default cursor-pointer hover:border-accent/50 transition-colors"
               >
                 <option value="ipad-air">iPad Air</option>
                 <option value="a4">A4</option>
@@ -259,7 +259,7 @@ export default function StructureModule() {
           {(activeStructureId || structureBars.length > 0) && (
             <button
               onClick={clearStructure}
-              className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-red-400 border border-border-default hover:border-red-400/50 rounded-button transition-colors cursor-pointer"
+              className="w-full sm:w-auto text-center px-4 py-2.5 text-sm text-text-muted hover:text-red-400 border border-border-default hover:border-red-400/50 transition-colors cursor-pointer"
             >
               Limpar estrutura
             </button>

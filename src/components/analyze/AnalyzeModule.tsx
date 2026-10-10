@@ -104,7 +104,7 @@ export default function AnalyzeModule() {
       {offline && <OfflineNotice />}
 
       {!offline && health && !health.ok && (
-        <p className="text-sm text-amber-400 rounded-button border border-amber-400/30 bg-amber-400/10 px-3 py-2">
+        <p className="text-sm text-amber-400 border border-amber-400/30 bg-amber-400/10 px-3 py-2">
           Checkpoints ausentes: {health.missing_checkpoints.join(', ')}. Rode{' '}
           <code className="font-mono text-xs">
             scripts/fetch_checkpoints.py
@@ -131,7 +131,7 @@ export default function AnalyzeModule() {
               accept=".mp3,.m4a,.wav,.flac,.ogg,audio/*"
               disabled={blocked || busy}
               onChange={(event) => pickFile(event.target.files?.[0] ?? null)}
-              className="text-xs text-text-secondary file:mr-2 file:rounded-button file:border-0 file:bg-bg-elevated file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-bg-hover file:cursor-pointer disabled:opacity-50"
+              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-elevated file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-bg-hover file:cursor-pointer disabled:opacity-50"
             />
           </label>
 
@@ -151,7 +151,7 @@ export default function AnalyzeModule() {
           <button
             type="submit"
             disabled={!file || blocked || busy}
-            className="font-heading text-sm rounded-button bg-accent px-3 py-2 text-on-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="font-heading text-sm bg-accent px-3 py-2 text-on-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {busy ? 'Enviando…' : 'Analisar'}
           </button>
@@ -187,7 +187,7 @@ export default function AnalyzeModule() {
 
 function OfflineNotice() {
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
       <p className="text-sm text-text-secondary">
         O serviço de análise não está rodando.
       </p>
@@ -196,7 +196,7 @@ function OfflineNotice() {
         precisa da GPU e dos checkpoints. Em outro terminal, dentro de{' '}
         <code className="font-mono">research/audio-library-poc</code>:
       </p>
-      <pre className="text-[11px] font-mono text-text-secondary bg-bg-elevated rounded-button px-2 py-1.5 overflow-x-auto">
+      <pre className="text-[11px] font-mono text-text-secondary bg-bg-elevated px-2 py-1.5 overflow-x-auto">
         .venv\Scripts\audio-library-intake.exe --workspace workspace --public
         ..\..\public
       </pre>
@@ -229,7 +229,7 @@ function Field({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-button border border-border-default bg-bg-card px-2 py-1.5 text-sm text-text-primary disabled:opacity-50"
+        className="border border-border-default bg-bg-card px-2 py-1.5 text-sm text-text-primary disabled:opacity-50"
       />
     </label>
   );
@@ -244,7 +244,7 @@ const JOB_STATUS_LABEL: Record<IntakeJob['status'], string> = {
 
 function JobCard({ job }: { job: IntakeJob }) {
   return (
-    <li className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
+    <li className="border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <span className="font-medium text-text-primary truncate">
           {job.title || job.filename}
@@ -290,7 +290,7 @@ function StageChip({ stage }: { stage: StageProgress }) {
   return (
     <li
       title={stage.detail ?? undefined}
-      className={`rounded-button border px-2 py-0.5 text-[10px] font-heading ${
+      className={`border px-2 py-0.5 text-[10px] font-heading ${
         STAGE_TONE[stage.status]
       }`}
     >

@@ -124,7 +124,7 @@ function InlineSectionName({
 /** Lightweight overlay shown while dragging a section */
 export function SectionOverlay({ section }: { section: StructureSection }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-button border-2 border-accent bg-bg-card shadow-lg opacity-90">
+    <div className="flex items-center gap-2 px-3 py-2 border-2 border-accent bg-bg-card shadow-lg opacity-90">
       <span className="text-text-muted text-xs cursor-grabbing">&#9776;</span>
       <span
         className="text-xs font-medium px-2 py-0.5"
@@ -197,7 +197,7 @@ function DroppableSection({
       ref={mergedRef}
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 rounded-button border transition-all ${
+      className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 border transition-all ${
         isOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''
       } ${isFocused ? 'ring-2 ring-accent/60 shadow-[0_0_12px_var(--color-accent)/15]' : ''}`}
       style={{
@@ -401,7 +401,7 @@ function DroppableSection({
           e.stopPropagation();
           onRemove(section.id);
         }}
-        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
+        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
       >
         X
       </button>

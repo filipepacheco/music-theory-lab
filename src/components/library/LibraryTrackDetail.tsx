@@ -250,7 +250,7 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {data && (
         <div className="flex flex-col gap-5">
-          <div className="rounded-card border border-border-default bg-bg-card p-3 sm:p-4">
+          <div className="border border-border-default bg-bg-card p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <h4 className="font-heading text-sm text-text-secondary">
                 Braço sincronizado
@@ -379,7 +379,7 @@ function LocalAudioAttachment({
     status === 'storage-error';
 
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
       <div>
         <p className="text-xs text-text-secondary">
           {fileName
@@ -393,7 +393,7 @@ function LocalAudioAttachment({
       </div>
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
       >
         {fileName ? 'Trocar arquivo local' : 'Vincular áudio original'}
       </label>
@@ -499,7 +499,7 @@ function ChordCells({
         const isActive = cell.bars.some((b) => b.index === activeBarIndex);
         const widthUnits = Math.min(cell.span, MAX_COLLAPSED_SPAN);
         const className = [
-          'rounded-button border px-2 py-1 flex flex-col items-start justify-center',
+          'border px-2 py-1 flex flex-col items-start justify-center',
           'text-left leading-tight transition-colors',
           isActive
             ? 'border-text-primary bg-bg-hover'
@@ -551,7 +551,7 @@ function ChordCells({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-button bg-bg-card border border-border-default px-3 py-2">
+    <div className="bg-bg-card border border-border-default px-3 py-2">
       <dt className="text-[10px] uppercase tracking-wide text-text-muted">
         {label}
       </dt>

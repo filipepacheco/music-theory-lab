@@ -17,7 +17,7 @@ export default function FunctionLegend({ compact }: FunctionLegendProps) {
       <div className="flex items-center gap-3">
         {LEGEND_ITEMS.map(({ fn, label, colorClass }) => (
           <div key={fn} className="flex items-center gap-1">
-            <div className={`w-2 h-2 rounded-full ${colorClass}`} />
+            <div className={`w-2 h-2 ${colorClass}`} />
             <span className="text-[10px] text-text-muted">{label}</span>
           </div>
         ))}
@@ -29,7 +29,7 @@ export default function FunctionLegend({ compact }: FunctionLegendProps) {
     <div className="flex gap-4 mb-4">
       {LEGEND_ITEMS.map(({ fn, fullLabel, colorClass }) => (
         <div key={fn} className="flex items-center gap-1.5">
-          <div className={`w-3 h-3 rounded-full ${colorClass}`} />
+          <div className={`w-3 h-3 ${colorClass}`} />
           <span className="text-xs text-text-secondary">
             {fullLabel}
           </span>

@@ -17,12 +17,12 @@ export default function LibraryPlayer({ audio }: Props) {
   };
 
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex items-center gap-3">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex items-center gap-3">
       <button
         type="button"
         onClick={togglePlay}
         disabled={disabled}
-        className="font-heading text-sm px-3 py-1 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover disabled:opacity-50 disabled:cursor-not-allowed"
+        className="font-heading text-sm px-3 py-1 bg-bg-elevated text-text-primary hover:bg-bg-hover disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label={audio.playing ? 'Pausar' : 'Tocar'}
       >
         {audio.playing ? 'Pausar' : 'Tocar'}

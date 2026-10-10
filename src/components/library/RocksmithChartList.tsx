@@ -28,7 +28,7 @@ export default function RocksmithChartList({
         <label
           htmlFor={inputId}
           aria-disabled={importing}
-          className={`font-heading text-xs px-3 py-1.5 rounded-button bg-bg-elevated text-text-primary ${
+          className={`font-heading text-xs px-3 py-1.5 bg-bg-elevated text-text-primary ${
             importing
               ? 'opacity-50 cursor-wait'
               : 'hover:bg-bg-hover cursor-pointer'
@@ -82,7 +82,7 @@ export default function RocksmithChartList({
                   type="button"
                   onClick={() => onSelect(chart)}
                   aria-current={isActive ? 'true' : undefined}
-                  className={`w-full text-left px-3 py-2 rounded-button transition-colors cursor-pointer border ${
+                  className={`w-full text-left px-3 py-2 transition-colors cursor-pointer border ${
                     isActive
                       ? 'bg-accent/15 border-accent/40 text-text-primary'
                       : 'bg-bg-card border-border-default hover:bg-bg-hover'

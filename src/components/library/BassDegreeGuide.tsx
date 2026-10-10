@@ -111,7 +111,7 @@ const CADENCES: [string, string][] = [
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-button border border-border-default bg-bg-card p-3 flex flex-col gap-1.5">
+    <div className="border border-border-default bg-bg-card p-3 flex flex-col gap-1.5">
       <h5 className="font-heading text-xs text-text-primary">{title}</h5>
       <div className="flex flex-col gap-1 text-[11px] leading-snug text-text-secondary">
         {children}
@@ -138,7 +138,7 @@ export default function BassDegreeGuide({
         setOpen(next);
         writeOpen(next);
       }}
-      className="rounded-card border border-border-default bg-bg-section"
+      className="border border-border-default bg-bg-section"
     >
       <summary className="cursor-pointer select-none px-3 py-2 font-heading text-xs text-text-primary">
         Como ler esta análise — guia para iniciantes

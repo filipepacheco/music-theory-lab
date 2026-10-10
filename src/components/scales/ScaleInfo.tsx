@@ -62,14 +62,14 @@ function ScaleDetail({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <div className="w-3 h-3 rounded-full" style={{ background: color }} />
+        <div className="w-3 h-3" style={{ background: color }} />
         <h3 className="font-heading text-sm text-text-primary">
           {pattern.label}
         </h3>
         {showPlayButton && (
           <button
             onClick={handlePlay}
-            className="ml-auto px-3 py-2 text-xs font-medium bg-bg-tertiary border border-border-default rounded-control hover:bg-bg-hover transition-colors cursor-pointer"
+            className="ml-auto px-3 py-2 text-xs font-medium bg-bg-tertiary border border-border-default hover:bg-bg-hover transition-colors cursor-pointer"
           >
             Ouvir escala
           </button>
@@ -139,7 +139,7 @@ export default function ScaleInfo() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
+          className="bg-bg-card border border-border-default p-4 space-y-4"
         >
           <ScaleDetail
             scaleId={selectedScaleId}

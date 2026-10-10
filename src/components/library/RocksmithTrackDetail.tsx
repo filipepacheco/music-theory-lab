@@ -502,7 +502,7 @@ export default function RocksmithTrackDetail({
               onRemove();
             }
           }}
-          className="font-heading text-xs px-3 py-1.5 rounded-button border border-border-default text-text-muted hover:text-text-error hover:border-text-error cursor-pointer"
+          className="font-heading text-xs px-3 py-1.5 border border-border-default text-text-muted hover:text-text-error hover:border-text-error cursor-pointer"
         >
           Remover
         </button>
@@ -539,7 +539,7 @@ export default function RocksmithTrackDetail({
               }
               disabled={!originalFingeringAvailable || fingeringRecalculated}
               onChange={(event) => setFingering(event.target.value)}
-              className="rounded-button border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+              className="border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
             >
               <option value="original">Original do GP</option>
               <option value="suggested">Sugerida pelo Music Lab</option>
@@ -568,7 +568,7 @@ export default function RocksmithTrackDetail({
               aria-label="Diminuir meio tom"
               disabled={!canTranspose || !canLower}
               onClick={() => setSemitones((value) => value - 1)}
-              className="rounded-button border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               −½ tom
             </button>
@@ -585,7 +585,7 @@ export default function RocksmithTrackDetail({
               aria-label="Aumentar meio tom"
               disabled={!canTranspose || !canRaise}
               onClick={() => setSemitones((value) => value + 1)}
-              className="rounded-button border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               +½ tom
             </button>
@@ -608,7 +608,7 @@ export default function RocksmithTrackDetail({
               value={canTranspose ? practiceTuning : 'original'}
               disabled={!canTranspose}
               onChange={(event) => setPracticeTuning(event.target.value)}
-              className="rounded-button border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+              className="border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
             >
               <option
                 value="original"
@@ -872,7 +872,7 @@ export default function RocksmithTrackDetail({
             type="button"
             onClick={toggleCircle}
             aria-pressed={circleOpen}
-            className={`shrink-0 px-2 py-1 rounded-control border text-[11px] cursor-pointer ${
+            className={`shrink-0 px-2 py-1 border text-[11px] cursor-pointer ${
               circleOpen
                 ? 'border-accent bg-accent/15 text-accent'
                 : 'border-border-default text-text-muted hover:text-text-primary'
@@ -1005,7 +1005,7 @@ function SectionBlock({
           onSeek ? () => onSeek(chart.bars[item.startBar].startTime) : undefined
         }
         disabled={onSeek === null}
-        className={`rounded-button border border-border-default bg-bg-card px-3 py-1 flex flex-col items-start justify-center text-left ${
+        className={`border border-border-default bg-bg-card px-3 py-1 flex flex-col items-start justify-center text-left ${
           onSeek ? 'cursor-pointer hover:border-text-primary' : 'cursor-default'
         }`}
       >
@@ -1053,7 +1053,7 @@ function SectionBlock({
             }
             aria-label={`Compassos por linha em ${sectionLabel(section.name)}`}
             title="Quantos compassos cabem em cada linha desta seção"
-            className="rounded-control border border-border-default bg-bg-card px-1 py-0.5 font-heading text-[11px] text-text-secondary cursor-pointer"
+            className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-[11px] text-text-secondary cursor-pointer"
           >
             <option value="">auto</option>
             {BARS_PER_ROW_OPTIONS.map((count) => (
@@ -1156,7 +1156,7 @@ function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
           {harmony.events.map((event) => (
             <span
               key={`${event.kind}-${event.startBar}`}
-              className="rounded-control border border-border-default bg-bg-card px-1.5 py-0.5 text-[10px] text-text-secondary"
+              className="border border-border-default bg-bg-card px-1.5 py-0.5 text-[10px] text-text-secondary"
             >
               {event.label}
               <span className="text-text-muted tabular-nums">
@@ -1193,7 +1193,7 @@ function KeyPicker({
             const key = ALL_KEYS.find((k) => keyValue(k) === e.target.value);
             if (key) onChange(key);
           }}
-          className="rounded-control border border-border-default bg-bg-card px-2 py-1 font-heading text-xs text-text-primary cursor-pointer"
+          className="border border-border-default bg-bg-card px-2 py-1 font-heading text-xs text-text-primary cursor-pointer"
         >
           <optgroup label="Sugeridos pelo baixo">
             {suggestions.map((key) => (
@@ -1253,7 +1253,7 @@ function AudioSource({
   const inputId = 'rocksmith-local-audio';
   const ready = state.status === 'ready' ? state : null;
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
       <div>
         <p className="text-xs text-text-secondary">
           {state.status === 'loading'
@@ -1276,7 +1276,7 @@ function AudioSource({
       )}
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
       >
         {ready ? 'Trocar áudio' : 'Vincular áudio'}
       </label>
@@ -1326,7 +1326,7 @@ function BassMixPicker({
               role="radio"
               aria-checked={selected}
               onClick={() => onChange(option)}
-              className={`font-heading text-xs px-3 py-1.5 rounded-button border cursor-pointer ${
+              className={`font-heading text-xs px-3 py-1.5 border cursor-pointer ${
                 selected
                   ? 'border-text-primary bg-bg-elevated text-text-primary'
                   : 'border-border-default text-text-muted hover:text-text-primary'
@@ -1350,7 +1350,7 @@ function BassMixPicker({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-button bg-bg-card border border-border-default px-3 py-2 min-w-0">
+    <div className="bg-bg-card border border-border-default px-3 py-2 min-w-0">
       <dt className="text-[10px] uppercase tracking-wide text-text-muted">
         {label}
       </dt>

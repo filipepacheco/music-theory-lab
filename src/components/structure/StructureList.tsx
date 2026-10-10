@@ -33,7 +33,7 @@ export default function StructureList() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => loadStructure(structure)}
-              className={`group relative text-left px-4 py-3 rounded-button border transition-all cursor-pointer ${
+              className={`group relative text-left px-4 py-3 border transition-all cursor-pointer ${
                 isActive
                   ? 'border-accent bg-accent/10'
                   : 'border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)]'
@@ -80,7 +80,7 @@ export default function StructureList() {
                   )
                     void remove(structure.id);
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>

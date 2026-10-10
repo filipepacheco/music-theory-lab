@@ -88,7 +88,7 @@ export default function ProgressionAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-button p-3 sm:p-4 space-y-3"
+        className="bg-bg-card border border-border-default p-3 sm:p-4 space-y-3"
       >
         <div className="flex items-center gap-2">
           <h4 className="font-heading text-sm text-text-primary">Análise</h4>
@@ -118,9 +118,9 @@ export default function ProgressionAnalysis() {
               <span className="text-xs text-text-secondary w-20 sm:w-24 shrink-0">
                 {FUNCTION_LABELS[fn]}
               </span>
-              <div className="flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-bg-tertiary overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full"
+                  className="h-full"
                   style={{ background: FUNCTION_COLORS[fn] }}
                   initial={{ width: 0 }}
                   animate={{

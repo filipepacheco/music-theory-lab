@@ -47,7 +47,7 @@ export default function ScaleComparison() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
+        className="bg-bg-card border border-border-default p-4 space-y-4"
       >
         <h4 className="font-heading text-sm text-text-primary">Comparação</h4>
 
@@ -67,7 +67,7 @@ export default function ScaleComparison() {
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: n * 0.03 }}
-                    className="flex-1 h-7 rounded-sm flex items-center justify-center text-[10px] font-mono font-medium"
+                    className="flex-1 h-7 flex items-center justify-center text-[10px] font-mono font-medium"
                     style={{
                       background: inA
                         ? notesB.has(noteIdx)
@@ -98,7 +98,7 @@ export default function ScaleComparison() {
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: n * 0.03 }}
-                    className="flex-1 h-7 rounded-sm flex items-center justify-center text-[10px] font-mono font-medium"
+                    className="flex-1 h-7 flex items-center justify-center text-[10px] font-mono font-medium"
                     style={{
                       background: inB
                         ? notesA.has(noteIdx)
@@ -120,21 +120,21 @@ export default function ScaleComparison() {
         <div className="flex gap-4 text-xs text-text-secondary">
           <span className="flex items-center gap-1.5">
             <span
-              className="w-2.5 h-2.5 rounded-full"
+              className="w-2.5 h-2.5"
               style={{ background: "var(--color-scale-shared)" }}
             />
             Em comum ({shared.length})
           </span>
           <span className="flex items-center gap-1.5">
             <span
-              className="w-2.5 h-2.5 rounded-full"
+              className="w-2.5 h-2.5"
               style={{ background: "var(--color-scale-a)" }}
             />
             Apenas {patternA.label.split(" ")[0]} ({onlyA.length})
           </span>
           <span className="flex items-center gap-1.5">
             <span
-              className="w-2.5 h-2.5 rounded-full"
+              className="w-2.5 h-2.5"
               style={{ background: "var(--color-scale-b)" }}
             />
             Apenas {patternB.label.split(" ")[0]} ({onlyB.length})

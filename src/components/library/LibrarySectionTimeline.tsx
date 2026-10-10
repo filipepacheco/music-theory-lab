@@ -41,7 +41,7 @@ export default function LibrarySectionTimeline({
       : Math.min(100, Math.max(0, (progressSeconds / total) * 100));
 
   return (
-    <div className="relative flex gap-0.5 overflow-hidden rounded-button">
+    <div className="relative flex gap-0.5 overflow-hidden">
       {sections.map((section, index) => {
         const color = sectionColorVar(colorIndexes.get(section.label) ?? 0);
         const isActive = index === activeIndex;
