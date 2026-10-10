@@ -17,7 +17,7 @@ export default function SectionTimeline() {
 
   if (!section || steps.length === 0) {
     return (
-      <div className="border border-dashed border-border-default p-8 text-center">
+      <div className="border border-dashed border-border-strong p-8 text-center">
         <div className="text-2xl text-text-muted/40 mb-2">+</div>
         <p className="text-sm text-text-secondary">
           Adicione acordes acima para esta seção
@@ -74,7 +74,7 @@ export default function SectionTimeline() {
                   }
                   className={`absolute top-1 left-1 w-5 h-5 cursor-pointer flex items-center justify-center ${
                     isUnsure
-                      ? 'bg-warning/80 shadow-[0_0_4px_rgba(251,191,36,0.4)]'
+                      ? 'bg-warning'
                       : 'bg-transparent border border-border-default opacity-40 hover:opacity-100'
                   }`}
                   title={isUnsure ? 'Marcar como certo' : 'Marcar como incerto'}
@@ -112,7 +112,7 @@ export default function SectionTimeline() {
                     }
                     disabled={beats <= 0.5}
                     aria-label="Diminuir tempos"
-                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     -
                   </button>
@@ -128,7 +128,7 @@ export default function SectionTimeline() {
                     }
                     disabled={beats >= 8}
                     aria-label="Aumentar tempos"
-                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>

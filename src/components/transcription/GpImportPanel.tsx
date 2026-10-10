@@ -23,6 +23,9 @@ import {
   summarise,
   type ImportedBar,
 } from '@/services/gpImport';
+import Button from '@/components/shared/Button';
+import Select from '@/components/shared/Select';
+import { confirmDialog } from '@/services/confirm';
 
 export default function GpImportPanel() {
   const rootNote = useAppStore((s) => s.rootNote);
@@ -126,9 +129,13 @@ export default function GpImportPanel() {
     if (!gp || bars.length === 0 || importing) return;
     if (
       dirty &&
-      !window.confirm(
-        'A transcrição aberta tem alterações não salvas. Importar cria uma música nova e substitui a que está aberta. Continuar?',
-      )
+      !(await confirmDialog({
+        title: 'Substituir a transcrição aberta?',
+        message:
+          'A transcrição aberta tem alterações não salvas. Importar cria uma música nova e substitui a que está aberta.',
+        confirmLabel: 'Importar',
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -271,7 +278,7 @@ export default function GpImportPanel() {
                         {summary.diatonic}
                       </span>{' '}
                       no campo{' '}
-                      <span className="text-sky-400">{summary.chromatic}</span>{' '}
+                      <span className="text-accent">{summary.chromatic}</span>{' '}
                       cromáticos{' '}
                       <span className="text-warning">{summary.unclear}</span>{' '}
                       incertos{' '}
@@ -287,15 +294,15 @@ export default function GpImportPanel() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
                       onClick={handleImport}
                       disabled={importing}
-                      className="px-4 py-2 bg-accent text-on-accent text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      variant="primary"
                     >
                       {importing
                         ? 'Importando...'
                         : `Importar ${bars.length} compassos`}
-                    </button>
+                    </Button>
                     <span className="text-[10px] text-text-muted">
                       Cria uma música nova em partes de 64 compassos.
                     </span>
@@ -318,7 +325,7 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
         ? 'bg-bg-tertiary'
         : bar.step.degree !== null
           ? 'bg-success/15'
-          : 'bg-sky-500/15';
+          : 'bg-accent/15';
 
   return (
     <div
@@ -353,11 +360,8 @@ function PillButton({
   return (
     <button
       onClick={onClick}
-      className={`cursor-pointer ${
-        active
-          ? 'bg-accent text-on-accent'
-          : 'bg-bg-card text-text-secondary hover:text-text-primary'
-      } ${className}`}
+      aria-pressed={active}
+      className={`lh-tab justify-center ${className}`}
     >
       {children}
     </button>
@@ -373,9 +377,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-text-muted">
-        {label}
-      </span>
+      <span className="lh-label">{label}</span>
       {children}
     </div>
   );
@@ -391,17 +393,13 @@ function TrackSelect({
   onChange: (t: string) => void;
 }) {
   return (
-    <select
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-      className="px-2 py-1.5 bg-bg-card border border-border-default text-xs text-text-primary"
-    >
+    <Select value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
       <option value="">Selecione...</option>
       {tracks.map((t) => (
         <option key={t} value={t}>
           {t}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

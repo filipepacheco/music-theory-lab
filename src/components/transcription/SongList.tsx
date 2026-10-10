@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useSongs } from '@/hooks/useSongs';
 import { SECTION_COLORS } from '@/constants/songSections';
+import { confirmDialog } from '@/services/confirm';
 
 export default function SongList() {
   const loadSong = useAppStore((s) => s.loadSong);
@@ -29,16 +29,16 @@ export default function SongList() {
         {songs.map((song) => {
           const isActive = song.id === activeSongId;
           return (
-            <motion.button
+            <button
               key={song.id}
               onClick={() => loadSong(song)}
               className={`group relative text-left px-4 py-3 border cursor-pointer ${
                 isActive
                   ? 'border-accent bg-accent/10'
-                  : 'border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)]'
+                  : 'border-border-default bg-bg-card hover:border-accent hover:shadow-lift'
               }`}
             >
-              <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent">
+              <span className="font-heading text-xs text-text-primary block pr-6">
                 {song.title}
               </span>
               {song.artist && (
@@ -66,16 +66,20 @@ export default function SongList() {
               <button
                 type="button"
                 aria-label={`Remover ${song.title}`}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Remover "${song.title}"?`))
-                    remove(song.id);
+                  const confirmed = await confirmDialog({
+                    title: `Remover "${song.title}"?`,
+                    confirmLabel: 'Remover',
+                    danger: true,
+                  });
+                  if (confirmed) remove(song.id);
                 }}
                 className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>
-            </motion.button>
+            </button>
           );
         })}
       </div>

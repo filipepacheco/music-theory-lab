@@ -12,6 +12,9 @@ import HearKeyButton from './HearKeyButton';
 import BeatTimeline from '@/components/harmonicField/BeatTimeline';
 import ProgressionChordStrip from '@/components/harmonicField/ProgressionChordStrip';
 import Frame from '@/components/shared/Frame';
+import Button from '@/components/shared/Button';
+import Field from '@/components/shared/Field';
+import Tag from '@/components/shared/Tag';
 
 export default function TranscriptionModule() {
   const songSections = useAppStore((state) => state.songSections);
@@ -50,9 +53,7 @@ export default function TranscriptionModule() {
       <div>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-accent">
-              Revisão focada
-            </p>
+            <p className="lh-label">Revisão focada</p>
             <input
               type="text"
               value={songTitle}
@@ -77,13 +78,12 @@ export default function TranscriptionModule() {
           <div className="flex shrink-0 items-center gap-2">
             <SaveSongButton />
             {(activeSongId || songSections.length > 0) && (
-              <button
-                type="button"
+              <Button
                 onClick={clearSong}
-                className="text-xs text-text-muted hover:text-text-primary"
+                size="sm"
               >
                 Nova transcrição
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -94,16 +94,15 @@ export default function TranscriptionModule() {
           className="flex flex-col gap-4"
         >
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4">
-            <input
+            <Field
               type="text"
               value={songArtist}
               onChange={(event) => setSongArtist(event.target.value)}
               placeholder="Artista"
-              className="min-w-[180px] flex-1 border border-border-default bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted"
+              aria-label="Artista"
+              className="min-w-[180px]"
             />
-            <span className="border border-border-default bg-bg-tertiary px-3 py-2 text-xs font-mono text-text-secondary">
-              {keyDisplay}
-            </span>
+            <Tag tone="bright">{keyDisplay}</Tag>
             <HearKeyButton />
           </div>
 
@@ -141,26 +140,25 @@ export default function TranscriptionModule() {
           )}
 
           {hasSteps && (
-            <div className="border border-border-default bg-bg-tertiary/20 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-medium text-text-primary">
-                    Prática
-                  </h3>
-                  <p className="mt-1 text-[10px] text-text-muted">
-                    Ouça a seção atual ou a música inteira.
-                  </p>
-                </div>
-                <span className="text-xs text-text-muted">
-                  {playingSectionIndex !== undefined
-                    ? 'Tocando seção'
-                    : 'Pronto para tocar'}
-                </span>
-              </div>
+            <Frame
+              title="Prática"
+              titleAs="h3"
+              variant="double"
+              live={playingSectionIndex !== undefined}
+              foot={
+                playingSectionIndex !== undefined
+                  ? 'tocando seção'
+                  : 'pronto para tocar'
+              }
+              className="flex flex-col gap-3"
+            >
+              <p className="lh-meta-text">
+                Ouça a seção atual ou a música inteira.
+              </p>
               <SongPlaybackControls
                 onPlayingSectionChange={setPlayingSectionIndex}
               />
-            </div>
+            </Frame>
           )}
 
           <AnimatePresence>

@@ -5,6 +5,9 @@ import type { ProgressionStep } from '@/constants/progressions';
 import { useAppStore } from '@/store/useAppStore';
 import { resolveStep } from '@/domain/stepResolution';
 import { FUNCTION_COLORS } from '@/constants/functionColors';
+import Button from '@/components/shared/Button';
+import Select from '@/components/shared/Select';
+import Tag from '@/components/shared/Tag';
 
 interface SelectedStep {
   sectionIndex: number;
@@ -68,14 +71,14 @@ function ReviewChordCard({
       } ${
         isUnsure
           ? 'border-warning/70 bg-warning/10'
-          : 'border-border-default bg-bg-card hover:border-accent/50'
+          : 'border-border-default bg-bg-card hover:border-accent'
       }`}
       style={{ borderLeftColor: isUnsure ? undefined : borderColor }}
       aria-pressed={selected}
     >
       <div className="flex items-center justify-between gap-2">
         <span
-          className={`text-[9px] uppercase tracking-[0.12em] ${
+          className={`lh-label ${
             isUnsure ? 'text-warning' : 'text-text-muted'
           }`}
         >
@@ -117,15 +120,14 @@ function AddSectionControl({ className = '' }: { className?: string }) {
 
   return (
     <label className={`inline-flex items-center gap-2 ${className}`}>
-      <span className="text-xs text-text-muted">Adicionar seção</span>
-      <select
+      <span className="lh-label">Adicionar seção</span>
+      <Select
         value=""
         onChange={(event) => {
           if (event.target.value) {
             addSection(event.target.value as (typeof SECTION_TYPES)[number]);
           }
         }}
-        className="border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary"
         aria-label="Adicionar seção"
       >
         <option value="">Escolher</option>
@@ -134,7 +136,7 @@ function AddSectionControl({ className = '' }: { className?: string }) {
             {SECTION_LABELS[type]}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }
@@ -245,7 +247,7 @@ export default function TranscriptionReviewWorkspace() {
       <main className="min-w-0 border border-border-default bg-bg-tertiary/20 p-4 sm:p-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-accent">
+            <p className="lh-label">
               Revisão focada
             </p>
             <h3 className="mt-2 font-heading text-2xl text-text-primary">
@@ -325,7 +327,7 @@ export default function TranscriptionReviewWorkspace() {
           <>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-warning">
+                <p className="lh-label text-warning">
                   Acorde selecionado
                 </p>
                 <h3
@@ -344,22 +346,22 @@ export default function TranscriptionReviewWorkspace() {
                   ] ?? 'Seção'}
                 </p>
               </div>
-              <span
-                className={`px-2 py-1 text-[10px] ${
+              <Tag
+                tone={
                   selectedItem.step.confidence === 'unsure'
-                    ? 'bg-warning/10 text-warning'
-                    : 'bg-success/10 text-success'
-                }`}
+                    ? 'warning'
+                    : 'success'
+                }
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Incerto'
                   : 'Confirmado'}
-              </span>
+              </Tag>
             </div>
 
             <div className="mt-6 space-y-4 border-y border-border-default py-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-text-muted">
+                <p className="lh-label">
                   Notas detectadas
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -382,8 +384,7 @@ export default function TranscriptionReviewWorkspace() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-secondary">Duração</span>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <Button
                     onClick={() =>
                       setSongStepBeats(
                         selectedItem.sectionIndex,
@@ -391,16 +392,15 @@ export default function TranscriptionReviewWorkspace() {
                         (selectedItem.step.beats ?? 4) - 0.5,
                       )
                     }
-                    className="h-7 w-7 bg-bg-tertiary text-text-secondary"
+                    size="sm"
                     aria-label="Diminuir duração"
                   >
                     −
-                  </button>
+                  </Button>
                   <span className="min-w-[48px] text-center font-mono text-text-primary">
                     {selectedItem.step.beats ?? 4}t
                   </span>
-                  <button
-                    type="button"
+                  <Button
                     onClick={() =>
                       setSongStepBeats(
                         selectedItem.sectionIndex,
@@ -408,11 +408,11 @@ export default function TranscriptionReviewWorkspace() {
                         (selectedItem.step.beats ?? 4) + 0.5,
                       )
                     }
-                    className="h-7 w-7 bg-bg-tertiary text-text-secondary"
+                    size="sm"
                     aria-label="Aumentar duração"
                   >
                     +
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -422,54 +422,51 @@ export default function TranscriptionReviewWorkspace() {
               estiver satisfeito.
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button
-                type="button"
+              <Button
                 onClick={toggleConfidence}
-                className="border border-border-default px-3 py-2.5 text-xs text-text-secondary"
+                className="justify-center"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Manter incerto'
                   : 'Marcar incerto'}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={toggleConfidence}
-                className="bg-accent px-3 py-2.5 text-xs font-semibold text-on-accent"
+                variant="primary"
+                className="justify-center"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Confirmar'
                   : 'Confirmado'}
-              </button>
+              </Button>
             </div>
-            <button
-              type="button"
+            <Button
               onClick={() =>
                 removeSongStep(
                   selectedItem.sectionIndex,
                   selectedItem.stepIndex,
                 )
               }
-              className="mt-3 text-xs text-danger/80 hover:text-danger"
+              size="sm"
+              className="mt-3 self-start text-danger"
             >
               Remover acorde
-            </button>
+            </Button>
             <div className="mt-5 flex gap-2">
-              <button
-                type="button"
+              <Button
                 onClick={() => moveSelection(-1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) - 1]}
-                className="flex-1 border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
+                className="flex-1 justify-center"
               >
                 ← Anterior
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={() => moveSelection(1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) + 1]}
-                className="flex-1 border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
+                className="flex-1 justify-center"
               >
                 Próximo →
-              </button>
+              </Button>
             </div>
           </>
         ) : (
