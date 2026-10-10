@@ -11,6 +11,7 @@ import TranscriptionModule from "@/components/transcription/TranscriptionModule"
 import StructureModule from "@/components/structure/StructureModule";
 import LibraryModule from "@/components/library/LibraryModule";
 import AnalyzeModule from "@/components/analyze/AnalyzeModule";
+import Frame from "@/components/shared/Frame";
 import Piano from "@/components/instruments/Piano";
 import BassNeck from "@/components/instruments/BassNeck";
 import { useAppStore } from "@/store/useAppStore";
@@ -43,24 +44,19 @@ export default function App() {
         {activeModule === "library" && <LibraryModule />}
         {activeModule === "analyze" && import.meta.env.DEV && <AnalyzeModule />}
 
-        <div className="section-panel">
-          <button
-            onClick={() => setInstrumentsPanelOpen(!instrumentsPanelOpen)}
-            aria-expanded={instrumentsPanelOpen}
-            className="flex items-center justify-between w-full cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <h3 className="font-heading text-sm text-text-secondary">
-              Instrumentos
-            </h3>
-            <motion.span
-              animate={{ rotate: instrumentsPanelOpen ? 0 : -90 }}
-              transition={{ duration: 0.2 }}
-              className="text-text-muted text-sm"
+        <Frame
+          collapsed={!instrumentsPanelOpen}
+          titleAs="h3"
+          title={
+            <button
+              onClick={() => setInstrumentsPanelOpen(!instrumentsPanelOpen)}
+              aria-expanded={instrumentsPanelOpen}
+              className="cursor-pointer uppercase hover:text-text-primary focus-visible:bg-accent focus-visible:text-on-accent focus-visible:outline-none"
             >
-              &#9660;
-            </motion.span>
-          </button>
-
+              {instrumentsPanelOpen ? "[-]" : "[+]"} Instrumentos
+            </button>
+          }
+        >
           <AnimatePresence initial={false}>
             {instrumentsPanelOpen && (
               <motion.div
@@ -70,7 +66,7 @@ export default function App() {
                 transition={{ duration: 0.25, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Piano />
                   <div className="min-w-0 overflow-hidden">
                     <BassNeck />
@@ -79,7 +75,7 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </Frame>
       </main>
 
       <BottomNav />

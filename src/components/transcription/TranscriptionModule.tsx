@@ -11,6 +11,7 @@ import SongList from './SongList';
 import HearKeyButton from './HearKeyButton';
 import BeatTimeline from '@/components/harmonicField/BeatTimeline';
 import ProgressionChordStrip from '@/components/harmonicField/ProgressionChordStrip';
+import Frame from '@/components/shared/Frame';
 
 export default function TranscriptionModule() {
   const songSections = useAppStore((state) => state.songSections);
@@ -87,7 +88,11 @@ export default function TranscriptionModule() {
           </div>
         </div>
 
-        <div className="section-panel flex flex-col gap-4">
+        <Frame
+          title="Transcrição"
+          titleAs="h2"
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4">
             <input
               type="text"
@@ -166,7 +171,7 @@ export default function TranscriptionModule() {
               <ProgressionChordStrip key="chord-strip" />
             )}
           </AnimatePresence>
-        </div>
+        </Frame>
       </div>
 
       <SongList />

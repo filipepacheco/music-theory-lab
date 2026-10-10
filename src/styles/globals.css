@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './lighthouse.css' layer(components);
 
 @font-face {
   font-family: 'JetBrains Mono';
@@ -216,14 +217,41 @@
   --font-weight-medium: 400;
   --font-weight-bold: 600;
   --font-weight-extrabold: 600;
+
+  /* The Lighthouse type scale: text-title, text-heading, text-ui, text-label,
+     text-meta, text-prose. A label is upper case only. */
+  --text-display: 28px;
+  --text-display--line-height: 34px;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.01em;
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-title--font-weight: 600;
+  --text-heading: 16px;
+  --text-heading--line-height: 24px;
+  --text-heading--font-weight: 600;
+  --text-ui: 13px;
+  --text-ui--line-height: 20px;
+  --text-label: 11px;
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.08em;
+  --text-meta: 12px;
+  --text-meta--line-height: 18px;
+  --text-prose: 14px;
+  --text-prose--line-height: 24px;
 }
 
 html {
   scrollbar-color: var(--rule-strong) transparent;
 }
 
+/* The Lighthouse ui size. The line height has no unit, so smaller text keeps
+   its ratio. */
 body {
   font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.54;
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   min-height: 100vh;
@@ -243,19 +271,6 @@ h4,
 h5,
 h6 {
   font-family: var(--font-heading);
-}
-
-/* Section panel - visual grouping for content zones */
-.section-panel {
-  background: var(--color-bg-section);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-section);
-  padding: 0.75rem;
-}
-@media (min-width: 640px) {
-  .section-panel {
-    padding: 1.25rem;
-  }
 }
 
 /* Hide scrollbar but keep scrollable */

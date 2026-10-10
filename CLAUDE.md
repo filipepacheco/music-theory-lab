@@ -65,7 +65,7 @@ src/
     quiz/           Four exercise types with quiz cards and scoreboard
     transcription/  Song sections, chord picking, playback controls, save/load
     structure/      Song structure recorder: DraggableBar, StructureSections, ColorPicker, drag-and-drop
-    shared/         Badge, MetronomeControl, SpeedControl, TeacherTip
+    shared/         Lighthouse primitives (Frame, Button, Tag, Field, Callout), Badge, MetronomeControl, SpeedControl, TeacherTip
 ```
 
 ### Module System
@@ -158,7 +158,11 @@ Client-side sync lives in `src/services/sync.ts`. `syncAll()` runs on first libr
 
 All colors, shadows, radii, and fonts are defined as CSS variables inside `@theme {}` in `src/styles/globals.css`. Tailwind v4 auto-generates utility classes from `@theme` variables - e.g., `--color-bg-card` becomes `bg-bg-card`, `--color-text-primary` becomes `text-text-primary`. To add a new token, add it inside the `@theme {}` block (not in a tailwind.config file, which does not exist).
 
-The look is the Lighthouse design system (see `docs/adr/0001-adopt-lighthouse-design-system.md`). Its primitives (`--sea-950/900/800`, `--rule`, `--rule-strong`, `--fog`, `--fog-bright`, `--fog-dim`, `--beam`, `--buoy`, `--flare`, `--wreck`, `--sky`, `--heather`) are declared on `:root` (night) and `:root.light` (day). Every `@theme` token is an alias of a primitive: never use a primitive, a hex value, or a Tailwind palette class (`text-red-400`) in a component. Rules: all text is JetBrains Mono (`font-heading`, `font-body`, and `font-mono` are the same stack) in weights 400 and 600 only; every corner is square (the radius scale is 0; `rounded-full` is only for dots and pips); shadows are hard (`shadow-lift`, `shadow-window`), never blurred; a selected or primary control is `bg-accent text-on-accent`; `--color-live` (the amber `--beam`) marks only a live state such as playing, recording, or the current beat. Instrument tokens: `--color-octave-1/2/3` (+ `-dim` variants, `--color-octave-fallback`), `--color-bass-highlight`, `--color-key-black-border`, `--shadow-key`.
+The look is the Lighthouse design system (see `docs/adr/0001-adopt-lighthouse-design-system.md`). Its primitives (`--sea-950/900/800`, `--rule`, `--rule-strong`, `--fog`, `--fog-bright`, `--fog-dim`, `--beam`, `--buoy`, `--flare`, `--wreck`, `--sky`, `--heather`) are declared on `:root` (night) and `:root.light` (day). Every `@theme` token is an alias of a primitive: never use a primitive, a hex value, or a Tailwind palette class (`text-red-400`) in a component. Rules: all text is JetBrains Mono (`font-heading`, `font-body`, and `font-mono` are the same stack) in weights 400 and 600 only; every corner is square (the radius scale is 0; `rounded-full` is only for dots and pips); shadows are hard (`shadow-lift`, `shadow-window`), never blurred; a selected or primary control is `bg-accent text-on-accent`; `--color-live` (the amber `--beam`) marks only a live state such as playing, recording, or the current beat.
+
+The Lighthouse components are the `lh-*` classes in `src/styles/lighthouse.css`, loaded into the Tailwind `components` layer so a utility on the same element wins. Use them through the wrappers in `src/components/shared/`: `Frame` (a box with its title in the top border; every module sits in one, with `titleAs="h2"`), `Button` (`[ label ]`; `variant="primary"` for the one filled action), `Tag` (`<WORD>`), `Field` (text input with an optional prompt glyph), and `Callout` (a note with a glyph in its gutter). A floating window uses the `lh-dialog` classes. Only the components with a consumer are ported; port another from the Lighthouse source when it is needed. The type scale is `text-title`, `text-heading`, `text-ui`, `text-label`, `text-meta`, and `text-prose`.
+
+Instrument tokens: `--color-octave-1/2/3` (+ `-dim` variants, `--color-octave-fallback`), `--color-bass-highlight`, `--color-key-black-border`, `--shadow-key`.
 
 ### Theme
 

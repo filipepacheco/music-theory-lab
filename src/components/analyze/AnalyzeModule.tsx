@@ -10,6 +10,7 @@ import {
   type IntakeJob,
   type StageProgress,
 } from './intakeClient';
+import Frame from '@/components/shared/Frame';
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -88,17 +89,17 @@ export default function AnalyzeModule() {
   const blocked = offline || health?.ok === false;
 
   return (
-    <section className="section-panel flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-lg text-text-primary">
-          Analisar faixa
-        </h2>
-        <p className="text-xs text-text-muted">
-          Envia um arquivo de áudio para o pipeline local (compassos, acordes,
-          tom e trechos) e publica o resultado na Biblioteca. Roda na sua
-          máquina — nada é enviado para a internet.
-        </p>
-      </div>
+    <Frame
+      as="section"
+      title="Analisar faixa"
+      titleAs="h2"
+      className="flex flex-col gap-4"
+    >
+      <p className="text-xs text-text-muted">
+        Envia um arquivo de áudio para o pipeline local (compassos, acordes,
+        tom e trechos) e publica o resultado na Biblioteca. Roda na sua
+        máquina — nada é enviado para a internet.
+      </p>
 
       {offline && <OfflineNotice />}
 
@@ -180,7 +181,7 @@ export default function AnalyzeModule() {
           )}
         </div>
       </div>
-    </section>
+    </Frame>
   );
 }
 

@@ -5,6 +5,7 @@ import RocksmithChartList from './RocksmithChartList';
 import RocksmithTrackDetail from './RocksmithTrackDetail';
 import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
+import Frame from '@/components/shared/Frame';
 
 type Selection =
   | { kind: 'analysis'; sha: string }
@@ -51,15 +52,17 @@ export default function LibraryModule() {
   };
 
   return (
-    <section className="section-panel flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-lg text-text-primary">Biblioteca</h2>
-        <p className="text-xs text-text-muted">
-          Análise automática de cifra, tom e andamento das faixas processadas
-          pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
-          de arquivos MIDI e Guitar Pro (.gp).
-        </p>
-      </div>
+    <Frame
+      as="section"
+      title="Biblioteca"
+      titleAs="h2"
+      className="flex flex-col gap-4"
+    >
+      <p className="text-xs text-text-muted">
+        Análise automática de cifra, tom e andamento das faixas processadas
+        pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
+        de arquivos MIDI e Guitar Pro (.gp).
+      </p>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4 min-w-0">
@@ -133,6 +136,6 @@ export default function LibraryModule() {
           </p>
         )}
       </div>
-    </section>
+    </Frame>
   );
 }

@@ -1,16 +1,19 @@
 import ScaleSelector from "./ScaleSelector";
 import ScaleInfo from "./ScaleInfo";
 import ScaleComparison from "./ScaleComparison";
+import Frame from "@/components/shared/Frame";
 
 export default function ScalesModule() {
   return (
-    <section className="section-panel flex flex-col gap-4">
-      <h2 className="font-heading text-lg text-text-primary">
-        Escalas e Modos
-      </h2>
+    <Frame
+      as="section"
+      title="Escalas e Modos"
+      titleAs="h2"
+      className="flex flex-col gap-4"
+    >
       <ScaleSelector />
       <ScaleInfo />
       <ScaleComparison />
-    </section>
+    </Frame>
   );
 }

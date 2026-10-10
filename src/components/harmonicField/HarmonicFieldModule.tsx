@@ -6,33 +6,26 @@ import BeatTimeline from "./BeatTimeline";
 import ProgressionChordStrip from "./ProgressionChordStrip";
 import TeacherTip from "@/components/shared/TeacherTip";
 import { useAppStore } from "@/store/useAppStore";
+import Frame from "@/components/shared/Frame";
 
 export default function HarmonicFieldModule() {
   const playingProgression = useAppStore((s) => s.playingProgression);
 
   return (
     <section className="flex flex-col gap-5 sm:gap-8">
-      <div>
-        {/* Mobile: title + compact legend on same line */}
-        <div className="flex items-center justify-between mb-3 sm:hidden">
-          <h2 className="font-heading text-lg font-bold text-text-primary">
-            Campo Harmônico
-          </h2>
+      <Frame
+        title="Campo Harmônico"
+        titleAs="h2"
+        className="flex flex-col gap-4"
+      >
+        <div className="flex justify-end sm:hidden">
           <FunctionLegend compact />
         </div>
-
-        {/* Desktop: separate title and full legend */}
-        <h2 className="hidden sm:block font-heading text-lg text-text-primary mb-4">
-          Campo Harmonico
-        </h2>
-
-        <div className="section-panel flex flex-col gap-4">
-          <div className="hidden sm:block">
-            <FunctionLegend />
-          </div>
-          <ChordGrid />
+        <div className="hidden sm:block">
+          <FunctionLegend />
         </div>
-      </div>
+        <ChordGrid />
+      </Frame>
       <TeacherTip />
       <ProgressionExamples />
       <AnimatePresence>

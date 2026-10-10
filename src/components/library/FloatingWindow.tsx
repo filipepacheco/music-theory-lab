@@ -117,7 +117,7 @@ export default function FloatingWindow({
       ref={windowRef}
       role="dialog"
       aria-label={title}
-      className="fixed z-[25] rounded-card border border-border-default bg-bg-secondary/95 backdrop-blur-sm shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+      className="lh-dialog fixed z-[25] w-auto max-h-none"
       style={
         position
           ? { left: position.x, top: position.y }
@@ -134,19 +134,19 @@ export default function FloatingWindow({
           writePosition(storageKey, null);
         }}
         title="Arraste para mover; clique duas vezes para voltar ao canto"
-        className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default cursor-move select-none touch-none"
+        className="lh-dialog-head cursor-move select-none touch-none"
       >
         <span aria-hidden className="text-text-muted text-xs leading-none">
           ⠿
         </span>
-        <span className="font-heading text-xs text-text-primary flex-1">
+        <span className="lh-dialog-title">
           {title}
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label={`Fechar ${title.toLowerCase()}`}
-          className="w-6 h-6 rounded-control text-text-muted hover:text-text-primary hover:bg-bg-hover cursor-pointer"
+          className="w-6 h-6 text-text-muted hover:bg-accent hover:text-on-accent cursor-pointer"
         >
           ×
         </button>
