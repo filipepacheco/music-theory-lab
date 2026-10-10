@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { PROGRESSION_EXAMPLES } from '@/constants/progressions';
 import { PRESET_MAP } from '@/constants/tonePresets';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
@@ -28,10 +27,9 @@ export default function ProgressionExamples() {
           const isPlaying = currentId === prog.id;
           const preset = PRESET_MAP[prog.presetId];
           return (
-            <motion.button
+            <button
               key={prog.id}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
+              aria-pressed={isPlaying}
               onClick={() =>
                 isPlaying
                   ? stop()
@@ -43,44 +41,29 @@ export default function ProgressionExamples() {
                       bpm: prog.bpm,
                     })
               }
-              className={`text-left p-3 sm:p-5 border transition-all cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink ${
+              className={`text-left p-3 sm:p-5 border cursor-pointer min-w-40 sm:min-w-0 shrink-0 sm:shrink active:translate-x-px active:translate-y-px ${
                 isPlaying
-                  ? 'border-accent bg-accent/10'
-                  : 'bg-bg-card hover:border-border-focus'
+                  ? 'border-dashed border-live bg-live-tint'
+                  : 'border-border-default bg-bg-card hover:border-accent hover:shadow-lift'
               }`}
-              style={{
-                boxShadow: isPlaying
-                  ? '0 0 16px var(--color-tonic-glow)'
-                  : 'var(--shadow-card)',
-                borderColor: isPlaying ? undefined : 'rgba(255,255,255,0.1)',
-              }}
             >
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2 sm:gap-2">
                 <span className="font-heading text-sm text-text-primary truncate min-w-0">
                   {prog.name}
                 </span>
-                <div className="flex gap-1 shrink-0">
-                  {preset && (
-                    <span className="text-[10px] font-mono text-accent px-1.5 py-0.5 bg-accent/10">
-                      {preset.name}
-                    </span>
-                  )}
-                  <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 bg-bg-tertiary">
-                    {prog.bpm} bpm
-                  </span>
-                  <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 bg-bg-tertiary">
-                    {prog.mode === 'minor' ? 'menor' : 'maior'}
-                  </span>
-                </div>
+                <span className="lh-meta-text shrink-0">
+                  {preset && `${preset.name} · `}
+                  {prog.bpm} bpm · {prog.mode === 'minor' ? 'menor' : 'maior'}
+                </span>
               </div>
 
               <div className="flex gap-1 mb-2 sm:mb-3 flex-wrap">
                 {prog.steps.map((step, i) => (
                   <span
                     key={i}
-                    className={`text-xs font-mono px-1.5 py-0.5 transition-colors ${
+                    className={`text-xs px-1.5 py-0.5 ${
                       isPlaying && currentStep === i
-                        ? 'bg-accent text-on-accent'
+                        ? 'bg-live text-on-accent'
                         : step.degree === null
                           ? 'bg-accent/20 text-accent'
                           : 'bg-bg-tertiary text-text-secondary'
@@ -113,11 +96,11 @@ export default function ProgressionExamples() {
               </p>
 
               {isPlaying && (
-                <div className="mt-2 text-[10px] text-accent font-medium">
+                <div className="mt-2 text-meta text-live">
                   Tocando... (clique para parar)
                 </div>
               )}
-            </motion.button>
+            </button>
           );
         })}
       </div>

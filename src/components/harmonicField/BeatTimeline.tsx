@@ -2,18 +2,7 @@ import { useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import type { HarmonicFunction } from "@/constants/harmonicFields";
-
-const FUNCTION_COLORS: Record<string, { bg: string; active: string }> = {
-  T: { bg: "rgba(59, 130, 246, 0.15)", active: "rgba(59, 130, 246, 0.45)" },
-  SD: { bg: "rgba(34, 197, 94, 0.15)", active: "rgba(34, 197, 94, 0.45)" },
-  D: { bg: "rgba(249, 115, 22, 0.15)", active: "rgba(249, 115, 22, 0.45)" },
-};
-
-const FUNCTION_BORDER_COLORS: Record<string, string> = {
-  T: "var(--color-tonic)",
-  SD: "var(--color-subdominant)",
-  D: "var(--color-dominant)",
-};
+import { functionColor, functionTint } from "@/constants/functionColors";
 
 interface TimelineCell {
   stepIdx: number;
@@ -117,11 +106,7 @@ export default function BeatTimeline() {
               {cell.isChordStart && (
                 <span
                   className="text-[10px] font-mono font-medium leading-none whitespace-nowrap absolute bottom-0"
-                  style={{
-                    color: cell.harmonicFunction
-                      ? FUNCTION_BORDER_COLORS[cell.harmonicFunction]
-                      : "var(--color-accent)",
-                  }}
+                  style={{ color: functionColor(cell.harmonicFunction) }}
                 >
                   {cell.label}
                 </span>
@@ -132,15 +117,6 @@ export default function BeatTimeline() {
           {/* Row 2: Cell bars */}
           {cells.map((cell, idx) => {
             const isActive = currentEighth === idx;
-            const colors = cell.harmonicFunction
-              ? FUNCTION_COLORS[cell.harmonicFunction]
-              : {
-                  bg: "color-mix(in srgb, var(--color-accent) 15%, transparent)",
-                  active: "color-mix(in srgb, var(--color-accent) 45%, transparent)",
-                };
-            const accentColor = cell.harmonicFunction
-              ? FUNCTION_BORDER_COLORS[cell.harmonicFunction]
-              : "var(--color-accent)";
 
             return (
               <div
@@ -150,18 +126,16 @@ export default function BeatTimeline() {
                 style={{
                   gridRow: 2,
                   gridColumn: idx + 1,
-                  backgroundColor: isActive ? colors.active : colors.bg,
+                  // The cell that sounds now is the lamp; the others keep
+                  // the colour of their function.
+                  backgroundColor: isActive
+                    ? "var(--color-live)"
+                    : functionTint(cell.harmonicFunction, 15),
                   borderLeft: cell.isMeasureStart
                     ? "2px solid var(--color-text-muted)"
                     : cell.isDownbeat
                       ? "1px solid var(--color-border-default)"
                       : "1px solid transparent",
-                  borderTop: isActive
-                    ? `2px solid ${accentColor}`
-                    : "2px solid transparent",
-                  borderBottom: isActive
-                    ? `2px solid ${accentColor}`
-                    : "2px solid transparent",
                 }}
               />
             );
