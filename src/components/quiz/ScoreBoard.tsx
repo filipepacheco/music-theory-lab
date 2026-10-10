@@ -1,4 +1,5 @@
 import type { QuizScore } from "@/hooks/useQuiz";
+import Button from "@/components/shared/Button";
 
 interface ScoreBoardProps {
   score: QuizScore;
@@ -16,17 +17,17 @@ export default function ScoreBoard({ score, onReset }: ScoreBoardProps) {
           <span className="text-base sm:text-lg font-heading text-text-primary">
             {score.correct}/{score.total}
           </span>
-          <span className="text-[10px] text-text-muted">Acertos</span>
+          <span className="lh-label">Acertos</span>
         </div>
 
         {score.total > 0 && (
           <div className="flex flex-col items-center">
             <span
-              className={`text-lg font-heading ${pct >= 70 ? "text-subdominant" : pct >= 40 ? "text-dominant" : "text-red-400"}`}
+              className={`text-lg font-heading ${pct >= 70 ? "text-success" : pct >= 40 ? "text-warning" : "text-danger"}`}
             >
               {pct}%
             </span>
-            <span className="text-[10px] text-text-muted">Taxa</span>
+            <span className="lh-label">Taxa</span>
           </div>
         )}
 
@@ -34,7 +35,7 @@ export default function ScoreBoard({ score, onReset }: ScoreBoardProps) {
           <span className="text-base sm:text-lg font-heading text-accent">
             {score.streak}
           </span>
-          <span className="text-[10px] text-text-muted">Sequencia</span>
+          <span className="lh-label">Sequência</span>
         </div>
 
         {score.bestStreak > 0 && (
@@ -42,18 +43,15 @@ export default function ScoreBoard({ score, onReset }: ScoreBoardProps) {
             <span className="text-base sm:text-lg font-heading text-text-secondary">
               {score.bestStreak}
             </span>
-            <span className="text-[10px] text-text-muted">Melhor</span>
+            <span className="lh-label">Melhor</span>
           </div>
         )}
       </div>
 
       {score.total > 0 && (
-        <button
-          onClick={onReset}
-          className="text-[10px] text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-        >
+        <Button size="sm" onClick={onReset}>
           Resetar
-        </button>
+        </Button>
       )}
     </div>
   );

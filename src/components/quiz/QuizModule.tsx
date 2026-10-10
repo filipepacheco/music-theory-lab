@@ -2,6 +2,7 @@ import { useQuiz } from '@/hooks/useQuiz';
 import { QUIZ_MODE_CONFIGS } from './quizModes';
 import QuizModeView from './QuizModeView';
 import Frame from '@/components/shared/Frame';
+import Segmented from '@/components/shared/Segmented';
 
 const QUIZ_MODES = Object.entries(QUIZ_MODE_CONFIGS).map(([id, config]) => ({
   id: id as keyof typeof QUIZ_MODE_CONFIGS,
@@ -20,20 +21,17 @@ export default function QuizModule() {
         titleAs="h2"
         className="flex flex-col gap-4"
       >
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {QUIZ_MODES.map((qm) => (
-            <button
-              key={qm.id}
-              onClick={() => quiz.changeMode(qm.id)}
-              className={`px-3 sm:px-4 py-2 text-sm font-medium transition-all cursor-pointer border shrink-0 ${
-                quiz.mode === qm.id
-                  ? 'border-accent bg-accent/15 text-accent'
-                  : 'border-border-default bg-bg-card text-text-secondary hover:text-text-primary hover:border-accent/30'
-              }`}
-            >
-              {qm.label}
-            </button>
-          ))}
+        <div className="overflow-x-auto scrollbar-none">
+          <Segmented
+            label="Tipo de exercício"
+            className="w-max"
+            value={quiz.mode}
+            onChange={quiz.changeMode}
+            options={QUIZ_MODES.map((qm) => ({
+              value: qm.id,
+              label: qm.label,
+            }))}
+          />
         </div>
 
         {/* Active quiz */}

@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import QuizOptions from "./QuizOptions";
 import type { QuizQuestion } from "@/utils/quizGenerator";
+import Button from "@/components/shared/Button";
+import Callout from "@/components/shared/Callout";
 
 interface QuizCardProps {
   question: QuizQuestion;
@@ -30,14 +32,9 @@ export default function QuizCard({
       {/* Prompt */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-sm text-text-secondary">{prompt}</p>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onReplay}
-          className="px-3 py-2 text-sm bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-default transition-colors cursor-pointer shrink-0"
-        >
+        <Button onClick={onReplay} className="shrink-0 self-start">
           Ouvir novamente
-        </motion.button>
+        </Button>
       </div>
 
       {/* Options */}
@@ -58,35 +55,18 @@ export default function QuizCard({
             exit={{ opacity: 0, y: -8 }}
             className="space-y-3"
           >
-            <div
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${
-                isCorrect
-                  ? "bg-green-500/10 text-green-400 border border-green-500/30"
-                  : "bg-red-500/10 text-red-400 border border-red-500/30"
-              }`}
+            <Callout
+              tone={isCorrect ? "success" : "danger"}
+              title={isCorrect ? "Correto!" : "Incorreto."}
+              className="my-0"
             >
-              <span>{isCorrect ? "Correto!" : "Incorreto."}</span>
-              {!isCorrect && (
-                <span className="text-text-secondary">
-                  Resposta: {question.correctAnswer}
-                </span>
-              )}
-            </div>
+              {!isCorrect && <p>Resposta: {question.correctAnswer}</p>}
+              {tip && <p className="text-text-muted">{tip}</p>}
+            </Callout>
 
-            {tip && (
-              <p className="text-sm text-text-secondary leading-relaxed border-l-2 border-accent/40 pl-3">
-                {tip}
-              </p>
-            )}
-
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={onNext}
-              className="px-6 py-2.5 text-sm font-semibold bg-accent text-on-accent cursor-pointer"
-            >
+            <Button variant="primary" onClick={onNext}>
               Próxima pergunta
-            </motion.button>
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { getPreferredRootName } from '@/utils/noteHelpers';
 import QuizCard from './QuizCard';
 import ScoreBoard from './ScoreBoard';
+import Button from '@/components/shared/Button';
 import type { QuizModeConfig } from './quizModes';
 
 interface QuizModeViewProps {
@@ -39,16 +40,13 @@ export default function QuizModeView({ quiz, config }: QuizModeViewProps) {
         {config.showKeyToggle ? (
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <p className="text-xs text-text-muted">{config.description(ctx)}</p>
-            <button
+            <Button
+              size="sm"
+              pressed={keyLimited}
               onClick={quiz.toggleKeyLimited}
-              className={`px-3 py-1 text-xs font-medium transition-all cursor-pointer border ${
-                keyLimited
-                  ? 'border-accent bg-accent/15 text-accent'
-                  : 'border-border-default bg-bg-card text-text-muted hover:text-text-secondary hover:border-accent/30'
-              }`}
             >
               {keyLimited ? `Tom: ${keyLabel}` : 'Limitar ao tom'}
-            </button>
+            </Button>
           </div>
         ) : (
           <p className="text-xs text-text-muted">{config.description(ctx)}</p>
@@ -63,12 +61,9 @@ export default function QuizModeView({ quiz, config }: QuizModeViewProps) {
               {config.startHint}
             </p>
           )}
-          <button
-            onClick={quiz.newQuestion}
-            className="px-6 py-2.5 text-sm font-semibold bg-accent text-on-accent cursor-pointer"
-          >
+          <Button variant="primary" onClick={quiz.newQuestion}>
             Começar
-          </button>
+          </Button>
         </div>
       ) : (
         <QuizCard
