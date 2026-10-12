@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   chartReads: 0,
   listReads: 0,
   sync: vi.fn(),
+  syncSettings: vi.fn(),
   importGp: vi.fn(),
 }));
 vi.mock('@/services/rocksmithLibrary', () => ({
@@ -34,6 +35,9 @@ vi.mock('@/services/rocksmithLibrary', () => ({
   },
 }));
 vi.mock('@/services/bassChartSync', () => ({ syncBassCharts: state.sync }));
+vi.mock('@/services/chartSettingsSync', () => ({
+  syncChartSettings: state.syncSettings,
+}));
 vi.mock('@/services/gp/importGpChart', () => ({
   importGpChart: state.importGp,
   gpChartImportErrorMessage: () => 'Erro Guitar Pro',
@@ -47,6 +51,7 @@ const chart = {
 beforeEach(() => {
   state.charts = [];
   state.sync.mockReset().mockResolvedValue(undefined);
+  state.syncSettings.mockReset().mockResolvedValue(undefined);
   state.importGp.mockReset().mockResolvedValue({ chart, audio: null });
 });
 afterEach(cleanup);
@@ -154,5 +159,57 @@ describe('Biblioteca import and refresh', () => {
     });
     expect(result.current.summaries[0]).toBe(row);
     expect(result.current.openChart).toBe(openChart);
+  });
+});
+
+describe('Biblioteca synchronization status', () => {
+  it('synchronizes the chart settings together with the charts', async () => {
+    const { result } = renderHook(useRocksmithCharts);
+    await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+    expect(state.sync).toHaveBeenCalledTimes(1);
+    expect(state.syncSettings).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await result.current.synchronize();
+    });
+    expect(state.sync).toHaveBeenCalledTimes(2);
+    expect(state.syncSettings).toHaveBeenCalledTimes(2);
+  });
+
+  it('stays in progress until the chart settings end', async () => {
+    let finish = () => {};
+    state.syncSettings.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const { result } = renderHook(useRocksmithCharts);
+    await waitFor(() => expect(state.sync).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(result.current.syncStatus).toBe('syncing');
+    await act(async () => finish());
+    await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+  });
+
+  it('reports no synchronization when only the chart settings fail', async () => {
+    state.syncSettings.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(useRocksmithCharts);
+    await waitFor(() => expect(result.current.syncStatus).toBe('offline'));
+    expect(state.sync).toHaveBeenCalled();
+
+    // The retry of the status line runs the two again.
+    state.syncSettings.mockResolvedValue(undefined);
+    await act(async () => {
+      await result.current.synchronize();
+    });
+    expect(result.current.syncStatus).toBe('synced');
+  });
+
+  it('synchronizes the chart settings when the charts fail', async () => {
+    state.sync.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(useRocksmithCharts);
+    await waitFor(() => expect(result.current.syncStatus).toBe('offline'));
+    expect(state.syncSettings).toHaveBeenCalledTimes(1);
   });
 });

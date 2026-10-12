@@ -11,6 +11,7 @@ import {
   type RocksmithLibraryRepository,
 } from '@/services/rocksmithLibrary';
 import {
+  CHART_SYNC_FORMAT,
   createChartSyncStore,
   synchronizeBassCharts,
   chartCloud,
@@ -97,7 +98,10 @@ function sync(local: RocksmithLibraryRepository, remote: ChartCloud) {
   return synchronizeBassCharts(local, remote, storeOf(local));
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
 describe('bass chart persistence and sync', () => {
   it('makes a GP import available on a second device without its audio', async () => {
@@ -556,6 +560,121 @@ describe('incremental chart synchronization', () => {
     await synchronizeBassCharts(local, remote, blocked);
     expect(await local.listCharts()).toHaveLength(3);
     expect(remote.writes).toEqual([]);
+  });
+
+  it('a slow-clock deletion of a synchronized chart converges to the cloud record on both devices', async () => {
+    const remote = cloud();
+    const [first, slow] = [device(), device()];
+    const kept = numbered(1);
+    // The cloud holds the chart with an update time that the clock of the
+    // second device has not reached.
+    const record = {
+      id: kept.id,
+      updatedAt: '2099-01-01T00:00:00.000Z',
+      chart: kept,
+    };
+    await first.applyRecord(record);
+    await first.save(numbered(2), null);
+    await sync(first, remote);
+    await sync(slow, remote);
+
+    await slow.remove(kept.id);
+    expect(await slow.getChart(kept.id)).toBeNull();
+    remote.reads.length = 0;
+    remote.writes.length = 0;
+    await sync(slow, remote);
+    await sync(first, remote);
+
+    for (const local of [first, slow]) {
+      expect(await local.getChart(kept.id)).toEqual(kept);
+      expect(await local.listRecords()).toContainEqual(record);
+      expect(
+        (await local.listSummaries()).map((summary) => summary.id).sort(),
+      ).toEqual([kept.id, numbered(2).id]);
+    }
+    expect(remote.record(kept.id)).toEqual(record);
+    // The device read from the start, and it sent no record.
+    expect(remote.reads.map((read) => read.after)).toEqual([2, 0, 2]);
+    expect(remote.writes).toEqual([]);
+
+    // The two agree, so the next read starts at the last counter.
+    remote.reads.length = 0;
+    await sync(slow, remote);
+    expect(remote.reads).toEqual([{ after: 2, ids: [] }]);
+  });
+
+  it('applies a deletion record of the cloud again when a local chart has its update time', async () => {
+    const remote = cloud();
+    const [first, second] = [device(), device()];
+    const time = '2026-10-05T10:00:00.000Z';
+    await first.applyRecord({ id: chart.id, updatedAt: time, chart: null });
+    await sync(first, remote);
+    await sync(second, remote);
+    // An import on the second device in the same millisecond.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(time));
+    await second.save(chart, null);
+    vi.useRealTimers();
+    expect(await second.listCharts()).toHaveLength(1);
+
+    await sync(second, remote);
+    expect(await second.listCharts()).toEqual([]);
+    expect(await second.listSummaries()).toEqual([]);
+    expect(remote.record(chart.id)?.chart).toBeNull();
+  });
+
+  it('reads from counter 0 when the format version of the client changes', async () => {
+    const { remote } = await library(3);
+    const storage = memoryStorage();
+    const local = device();
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect(
+      JSON.parse(storage.items.get('music-theory-lab-chart-sync')!),
+    ).toMatchObject({ format: CHART_SYNC_FORMAT, counter: 3 });
+
+    remote.reads.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage, CHART_SYNC_FORMAT + 1),
+    );
+    expect(remote.reads.map((read) => read.after)).toEqual([3, 0]);
+    expect(remote.writes).toEqual([]);
+    expect(
+      JSON.parse(storage.items.get('music-theory-lab-chart-sync')!),
+    ).toMatchObject({ format: CHART_SYNC_FORMAT + 1, counter: 3 });
+  });
+
+  it('reads from counter 0 with the state that the client stored before the format version', async () => {
+    const { remote } = await library(3);
+    const storage = memoryStorage();
+    const local = device();
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    const stored = JSON.parse(
+      storage.items.get('music-theory-lab-chart-sync')!,
+    );
+    delete stored.format;
+    storage.items.set('music-theory-lab-chart-sync', JSON.stringify(stored));
+    remote.reads.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect(remote.reads[0].after).toBe(0);
   });
 
   it('sends the last counter and reads a page of the chart route', async () => {
