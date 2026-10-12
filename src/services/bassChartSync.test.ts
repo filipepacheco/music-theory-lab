@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { fixtureChart } from '@/domain/bassChartFixture';
+import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import {
   isNewerChartRecord,
   parseBassChartRecord,
@@ -677,16 +678,22 @@ describe('incremental chart synchronization', () => {
     expect(remote.reads[0].after).toBe(0);
   });
 
-  /** A record of a later client: a drum chart names its part. */
-  const drums = {
+  /** A record of a later client: a chart of a part that this client does not know. */
+  const unread = {
     id: numbered(7).id,
     updatedAt: '2026-10-05T10:00:00.000Z',
-    chart: { ...numbered(7), part: 'drums' },
-  } as BassChartRecord;
+    chart: { ...numbered(7), part: 'keys' },
+  } as unknown as BassChartRecord;
+
+  const drumChart = fixtureDrumChart(2, [
+    { bar: 0, beat: 0, midi: 36 },
+    { bar: 0, beat: 1, midi: 38, dynamic: 'ghost', intensity: 79 },
+    { bar: 1, beat: 0, midi: 46, dynamic: 'accent', intensity: 111 },
+  ]);
 
   it('a record that the client cannot read is not skipped for ever: the client with the next format version downloads it again', async () => {
     const { remote } = await library(2);
-    await remote.push(drums);
+    await remote.push(unread);
     await remote.push({
       id: numbered(8).id,
       updatedAt: '2026-10-05T10:00:00.000Z',
@@ -732,14 +739,79 @@ describe('incremental chart synchronization', () => {
     expect(remote.writes).toEqual([]);
   });
 
-  it('keeps format version 1 only while the client reads no drum chart record', () => {
-    // This test fails when the client starts to read a drum chart record.
-    // Then raise CHART_SYNC_FORMAT in the same change, and change the two
-    // values here: a device that skipped the record must read it again.
+  it('keeps format version 2 only while the client reads no record of a third chart type', () => {
+    // Format version 2 came with the drum chart records. This test fails
+    // when the client starts to read a record that it skips now. Then raise
+    // CHART_SYNC_FORMAT in the same change, and change the values here: a
+    // device that skipped the record must read it again.
     expect({
       format: CHART_SYNC_FORMAT,
-      readsDrumCharts: parseBassChartRecord(drums) !== null,
-    }).toEqual({ format: 1, readsDrumCharts: false });
+      readsDrumCharts:
+        parseBassChartRecord({
+          id: drumChart.id,
+          updatedAt: '2026-10-05T10:00:00.000Z',
+          chart: drumChart,
+        }) !== null,
+      readsOtherParts: parseBassChartRecord(unread) !== null,
+    }).toEqual({ format: 2, readsDrumCharts: true, readsOtherParts: false });
+  });
+
+  it('a drum chart reaches a second device through the chart route', async () => {
+    const { remote, first } = await library(2);
+    const second = device();
+    await sync(second, remote);
+    expect(await second.getChart(drumChart.id)).toBeNull();
+
+    await first.save(drumChart, null);
+    await sync(first, remote);
+    expect(remote.record(drumChart.id)?.chart).toEqual(drumChart);
+    remote.reads.length = 0;
+    await sync(second, remote);
+    // The second device downloads the drum record alone.
+    expect(remote.reads).toEqual([{ after: 2, ids: [drumChart.id] }]);
+    expect(await second.getChart(drumChart.id)).toEqual(drumChart);
+    expect(
+      (await second.listSummaries()).find((item) => item.id === drumChart.id),
+    ).toMatchObject({ part: 'drums', noteCount: 3, tuning: null });
+    expect(await second.listCharts()).toHaveLength(3);
+
+    // The deletion of the drum chart moves in the same way.
+    await second.remove(drumChart.id);
+    await sync(second, remote);
+    await sync(first, remote);
+    expect(await first.getChart(drumChart.id)).toBeNull();
+    expect(await first.listCharts()).toHaveLength(2);
+  });
+
+  it('a device that skipped a drum record with format version 1 reads it after the update', async () => {
+    const { remote, first } = await library(2);
+    const storage = memoryStorage();
+    const local = device();
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage, 1),
+    );
+    await first.save(drumChart, null);
+    await sync(first, remote);
+    // The earlier client skipped the record, and its counter moved past it.
+    const key = 'music-theory-lab-chart-sync';
+    const stored = JSON.parse(storage.items.get(key)!);
+    expect(stored).toMatchObject({ format: 1, counter: 2 });
+    storage.items.set(key, JSON.stringify({ ...stored, counter: 3 }));
+
+    remote.reads.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect(remote.reads[0].after).toBe(0);
+    expect(await local.getChart(drumChart.id)).toEqual(drumChart);
+    expect(JSON.parse(storage.items.get(key)!)).toMatchObject({
+      format: 2,
+      counter: 3,
+    });
   });
 
   it('sends the last counter and reads a page of the chart route', async () => {

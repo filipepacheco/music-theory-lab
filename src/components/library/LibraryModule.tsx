@@ -13,6 +13,7 @@ import { DEFAULT_LIST_VIEW, type ListView } from '@/domain/libraryListView';
 import { useLinkedRecordings } from '@/components/library/useLinkedRecordings';
 import { useListScroll } from '@/components/library/useListScroll';
 import { summarizeChart } from '@/domain/chartSummary';
+import { isDrumChart } from '@/domain/drumChart';
 import Frame from '@/components/shared/Frame';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
 import {
@@ -202,7 +203,12 @@ export default function LibraryModule() {
               className="self-start"
             />
           )}
-          {selectedChart ? (
+          {selectedChart && isDrumChart(selectedChart) ? (
+            <p role="status" className="text-sm text-text-muted">
+              Esta parte é de bateria. A visualização da bateria ainda não está
+              disponível.
+            </p>
+          ) : selectedChart ? (
             <RocksmithTrackDetail
               key={selectedChart.id}
               chart={selectedChart}

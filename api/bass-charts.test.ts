@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Client } from '@libsql/client';
 import { fixtureChart } from '@/domain/bassChartFixture';
+import { fixtureDrumChart } from '@/domain/drumChartFixture';
 
 const state = vi.hoisted(() => ({ client: null as Client | null }));
 vi.mock('@libsql/client', async (importOriginal) => {
@@ -24,6 +25,15 @@ const chart = {
   originalFingering: [{ string: 1, fret: 0 }],
 };
 const record = { id: chart.id, updatedAt: '2026-10-05T10:00:00.000Z', chart };
+const drums = fixtureDrumChart(1, [
+  { bar: 0, beat: 0, midi: 36 },
+  { bar: 0, beat: 1, midi: 38, dynamic: 'ghost', intensity: 79 },
+]);
+const drumRecord = {
+  id: drums.id,
+  updatedAt: '2026-10-05T10:00:00.000Z',
+  chart: drums,
+};
 
 /** A valid record with its own id; `minute` orders the update times. */
 function numbered(index: number, minute = index) {
@@ -163,6 +173,64 @@ describe('bass chart API', () => {
     });
     expect(result.status).toBe(400);
     expect((await request('GET')).body).toEqual([]);
+  });
+});
+
+describe('drum chart on the chart route', () => {
+  it('gives a drum chart of one device to a second device, in the table of the bass charts', async () => {
+    expect((await write([record, drumRecord], 'first')).status).toBe(200);
+    expect((await request('GET')).body).toEqual([record, drumRecord]);
+    // The read of a second device, with a counter.
+    const page = await readAfter(0);
+    expect(page.records).toEqual([record, drumRecord]);
+    expect(page.counter).toBe(2);
+    const stored = (await rows()).find((row) => row.id === drums.id)!;
+    expect(JSON.parse(String(stored.chart))).toEqual(drums);
+  });
+
+  it('keeps a deletion record of a drum chart against a stale upload', async () => {
+    await write([drumRecord]);
+    const deletion = { ...drumRecord, chart: null };
+    await write([deletion], 'second');
+    await write([drumRecord], 'offline');
+    expect((await request('GET')).body).toEqual([deletion]);
+  });
+
+  it('refuses a bad drum chart and writes nothing', async () => {
+    const hit = drums.hits[0];
+    const bad: unknown[] = [
+      // A bass chart that names the part.
+      { ...chart, id: drums.id, part: 'drums' },
+      { ...drums, tuning: [0, 0, 0, 0] },
+      { ...drums, notes: chart.notes },
+      { ...drums, audio: 'binary' },
+      { ...drums, part: 'keys' },
+      { ...drums, hits: [] },
+      { ...drums, hits: [{ ...hit, piece: 'cowbell' }] },
+      { ...drums, hits: [{ ...hit, articulation: 'rimshot' }] },
+      { ...drums, hits: [{ ...hit, dynamic: 'loud' }] },
+      { ...drums, hits: [{ ...hit, intensity: 200 }] },
+      { ...drums, hits: [{ ...hit, midi: 128 }] },
+      { ...drums, hits: [{ ...hit, bar: 5 }] },
+      { ...drums, hits: [{ ...hit, sample: 'binary' }] },
+      { ...drums, hits: [...drums.hits].reverse() },
+      { ...drums, bars: [] },
+    ];
+    for (const [index, item] of bad.entries()) {
+      const result = await write([{ ...drumRecord, chart: item }]);
+      expect([index, result.status]).toEqual([index, 400]);
+    }
+    // A good record in the same write is not written.
+    expect(
+      (await write([record, { ...drumRecord, chart: bad[1] }])).status,
+    ).toBe(400);
+    expect((await request('GET')).body).toEqual([]);
+  });
+
+  it('refuses a drum chart with the id of a different record', async () => {
+    const result = await write([{ ...drumRecord, id: 'b'.repeat(64) }]);
+    expect(result.status).toBe(400);
+    expect(await rows()).toEqual([]);
   });
 });
 

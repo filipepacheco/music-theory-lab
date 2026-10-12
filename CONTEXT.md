@@ -106,10 +106,29 @@ The section preview renders a compact standard-style percussion chart.
 _Avoid_: beat, rhythm
 
 **Drum piece**:
-One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`
-(hi-hat). The piece list is a constant, so new pieces are an addition rather
-than a redesign.
+One element of the drum kit, and one row of a drum grid or a [[groove]] grid.
+The groove grid has three: `bumbo` (kick), `caixa` (snare), and `chimbal`
+(hi-hat). A [[drum-chart]] has nine: those three, `tomAgudo` (high tom),
+`tomMedio` (mid tom), `surdo` (floor tom), `pratoAtaque` (crash),
+`pratoConducao` (ride), and `outros` (all other [[general-midi]] numbers). A
+piece can have an articulation: cross-stick on the snare; closed, open, or
+pedal on the hi-hat; china or splash on the crash; bell on the ride. Each
+piece list is a constant, so new pieces are an addition rather than a
+redesign.
 _Avoid_: drum, instrument, track
+
+**General MIDI**:
+The standard that gives each percussion sound a number on the percussion
+channel of a MIDI file (36 is a kick, 38 a snare, 42 a closed hi-hat). A hit
+of a [[drum-chart]] keeps its number, and its [[drum-piece]] and articulation
+come from the number, so a better map of drum pieces needs no new import.
+_Avoid_: GM number, drum note, pitch
+
+**Ghost note**:
+A very soft hit of a [[drum-chart]]. Its opposite is the accent, a hit that
+stands out. For a Guitar Pro file the two come from the score, not from the
+intensity of the hit: the intensity also follows the dynamic of the passage.
+_Avoid_: soft note, quiet hit
 
 **Bar root**:
 The pitch class a bass chart's bar is heard over: the bass note on the
@@ -172,11 +191,28 @@ It appears in the Biblioteca list through its [[library-song]].
 _Avoid_: library track, analysis
 
 **Chart**:
-One [[part]] of one imported file, bar by bar. Its id comes from the hash of
-the file, so the same file always gives the same chart. A change to a chart
-sends the full chart to the shared library again. A deletion leaves a deletion
-record, so a device that was offline cannot bring the chart back.
+One [[part]] of one imported file, bar by bar: a [[bass-chart]] or a
+[[drum-chart]]. Its id comes from the hash of the file, so the same file
+always gives the same chart. The two charts of one file share the metadata,
+the bars, and the sections, and they use one table and one synchronization.
+A change to a chart sends the full chart to the shared library again. A
+deletion leaves a deletion record, so a device that was offline cannot bring
+the chart back.
 _Avoid_: song, tab, arrangement
+
+**Bass chart**:
+A [[chart]] of a bass line: notes with a string and a fret, and a tuning. It
+has no part field, and its id is the hash of the file, so the charts from
+before the drum charts stay valid.
+_Avoid_: bass tab, bass line, Rocksmith chart
+
+**Drum chart**:
+A [[chart]] of a drum part: hits, each with its time, bar, position in the
+bar, [[drum-piece]], articulation, intensity, and [[general-midi]] number,
+and a mark for a [[ghost-note]] or an accent. It has no tuning and no frets.
+Its part field is "drums", and its id is a hash of the file hash and the part
+name. All percussion tracks of a file make one drum chart.
+_Avoid_: drum tab, drum track, groove
 
 **Chart settings**:
 The synchronized view choices of one [[chart]]: the song line length, the

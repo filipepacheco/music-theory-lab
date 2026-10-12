@@ -1,27 +1,38 @@
-import { importer, midi, Settings } from '@coderline/alphatab';
+import { importer, midi, model, Settings } from '@coderline/alphatab';
 import {
   buildBassChart,
   STANDARD_OPEN_MIDI,
   type BassChart,
   type BassFretPosition,
 } from '@/domain/bassChart';
+import type { Chart, DrumDynamic } from '@/domain/drumChart';
 import {
   midiToArrangement,
   pickBassChannel,
   tickToSeconds,
 } from '@/domain/midiBassChart';
 import {
+  DRUM_CHANNEL,
+  hasDrumNotes,
+  midiToDrumChart,
+} from '@/domain/midiDrumChart';
+import { partChartId, sha256Hex } from '@/services/chartId';
+import {
   parseGpFile,
   gpParseErrorMessage,
   GpParseError,
 } from '@/services/gpFile';
 import { metadataFromFileName } from '@/services/midi/importMidi';
-import { parseMidi, type MidiFile } from '@/services/midi/midiFile';
+import {
+  parseMidi,
+  type MidiFile,
+  type MidiNote,
+} from '@/services/midi/midiFile';
 
 export function gpChartImportErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) return gpParseErrorMessage(error);
-  if (error instanceof Error && error.message === 'no-bass') {
-    return 'Este arquivo Guitar Pro não tem notas além da bateria.';
+  if (error instanceof Error && error.message === 'no-parts') {
+    return 'Este arquivo Guitar Pro não tem baixo nem bateria.';
   }
   return 'Não foi possível importar este arquivo Guitar Pro.';
 }
@@ -32,11 +43,15 @@ export function gpChartImportErrorMessage(error: unknown): string {
  * the same BassChart drives analysis and playback for every import format.
  * Keep the MIDI adapter's fingering and recover the score's original positions
  * on the same expanded playback timeline as an alternative practice view.
+ *
+ * The percussion channel of the same export gives the drum chart. A file gives
+ * one chart for each part that it has, the bass chart first, and it asks no
+ * question about tracks. A file with no bass and no drums is an error.
  */
 export async function importGpChart(
   file: Blob & { name: string },
   now: Date = new Date(),
-): Promise<{ chart: BassChart; audio: null }> {
+): Promise<{ charts: Chart[]; audio: null }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   // Keep Biblioteca's .gp support aligned with the GP7/8 transcription flow.
   parseGpFile(bytes);
@@ -55,8 +70,50 @@ export async function importGpChart(
     return text ? [{ tick: played.start, text }] : [];
   });
   const channel = pickBassChannel(parsed);
-  if (channel === null) throw new Error('no-bass');
+  if (channel === null && !hasDrumNotes(parsed)) throw new Error('no-parts');
 
+  const fileHash = await sha256Hex(bytes);
+  const fallback = metadataFromFileName(file.name);
+  const shared = {
+    source: 'gp' as const,
+    sourceFileName: file.name,
+    importedAt: now.toISOString(),
+    metadata: {
+      ...fallback,
+      title: score.title.trim() || fallback.title,
+      artist: score.artist.trim() || fallback.artist,
+      album: score.album.trim(),
+    },
+  };
+
+  const charts: Chart[] = [];
+  if (channel !== null) {
+    charts.push(
+      bassChartOf(score, parsed, generator, channel, {
+        ...shared,
+        // The id of the bass chart stays the hash of the file.
+        id: await partChartId(fileHash, 'bass'),
+      }),
+    );
+  }
+  // The two charts read one export, so they have one bar grid.
+  const drums = midiToDrumChart({
+    ...shared,
+    id: await partChartId(fileHash, 'drums'),
+    midi: parsed,
+    dynamicOf: scoreDynamics(generator),
+  });
+  if (drums) charts.push(drums);
+  return { charts, audio: null };
+}
+
+function bassChartOf(
+  score: model.Score,
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  channel: number,
+  input: Omit<Parameters<typeof buildBassChart>[0], 'arrangement'>,
+): BassChart {
   // Guitar Pro puts bends on a secondary channel. Keep those notes with the
   // selected bass part instead of silently losing them during channel choice.
   const track = score.tracks.find(
@@ -64,21 +121,21 @@ export async function importGpChart(
       candidate.playbackInfo.primaryChannel === channel ||
       candidate.playbackInfo.secondaryChannel === channel,
   );
+  // The drum chart reads the same export after this: change a copy.
+  let bass = parsed;
   if (track) {
     const channels = new Set([
       track.playbackInfo.primaryChannel,
       track.playbackInfo.secondaryChannel,
     ]);
-    parsed.notes = parsed.notes.map((note) =>
-      channels.has(note.channel) ? { ...note, channel } : note,
-    );
+    bass = {
+      ...parsed,
+      notes: parsed.notes.map((note) =>
+        channels.has(note.channel) ? { ...note, channel } : note,
+      ),
+    };
   }
 
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  const id = Array.from(new Uint8Array(digest), (b) =>
-    b.toString(16).padStart(2, '0'),
-  ).join('');
-  const fallback = metadataFromFileName(file.name);
   const staff = track?.staves.find(
     (candidate) => candidate.tuning.length === 4,
   );
@@ -92,30 +149,62 @@ export async function importGpChart(
           )
       : undefined;
   const chart = buildBassChart({
-    id,
-    source: 'gp',
-    sourceFileName: file.name,
-    importedAt: now.toISOString(),
-    metadata: {
-      ...fallback,
-      title: score.title.trim() || fallback.title,
-      artist: score.artist.trim() || fallback.artist,
-      album: score.album.trim(),
-    },
-    arrangement: midiToArrangement(parsed, channel, importedTuning),
+    ...input,
+    arrangement: midiToArrangement(bass, channel, importedTuning),
   });
   if (staff && importedTuning) {
     chart.originalFingering = recoverOriginalFingering(
       chart,
-      parsed,
+      bass,
       generator,
       staff,
     );
   }
-  return {
-    chart,
-    audio: null,
-  };
+  return chart;
+}
+
+/**
+ * The ghost note or the accent of each percussion note of the score, on the
+ * playback timeline. The export shows them only as a step in velocity from
+ * the dynamic of the passage, so the velocity cannot tell a ghost note from a
+ * soft passage.
+ */
+function scoreDynamics(
+  generator: midi.MidiFileGenerator,
+): (note: MidiNote) => DrumDynamic {
+  const marked = new Map<string, DrumDynamic[]>();
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        const staff = item.beat.voice.bar.staff;
+        if (!staff.isPercussion || seen.has(item.beat.id)) continue;
+        seen.add(item.beat.id);
+        const tick = Math.round(played.start + item.playbackStart);
+        for (const note of item.beat.notes) {
+          // A Guitar Pro 7 or 8 track lists the articulations that it uses.
+          const articulation =
+            staff.track.percussionArticulations[note.percussionArticulation];
+          if (!note.isPercussion || !articulation) continue;
+          const key = `${tick}:${articulation.outputMidiNumber}`;
+          const dynamics = marked.get(key) ?? [];
+          dynamics.push(
+            note.isGhost
+              ? 'ghost'
+              : note.accentuated === model.AccentuationType.Normal ||
+                  note.accentuated === model.AccentuationType.Heavy
+                ? 'accent'
+                : 'normal',
+          );
+          marked.set(key, dynamics);
+        }
+      }
+    }
+  }
+  return (note) =>
+    note.channel === DRUM_CHANNEL
+      ? (marked.get(`${note.startTick}:${note.pitch}`)?.shift() ?? 'normal')
+      : 'normal';
 }
 
 /** Match by sounding pitch and playback onset, never by written bar number. */
