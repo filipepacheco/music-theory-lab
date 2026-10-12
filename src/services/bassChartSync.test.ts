@@ -2,14 +2,20 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import {
+  isNewerChartRecord,
   parseBassChartRecord,
   type BassChartRecord,
 } from '@/domain/bassChartRecord';
-import { createIndexedDbRocksmithLibrary } from '@/services/rocksmithLibrary';
 import {
+  createIndexedDbRocksmithLibrary,
+  type RocksmithLibraryRepository,
+} from '@/services/rocksmithLibrary';
+import {
+  createChartSyncStore,
   synchronizeBassCharts,
   chartCloud,
   type ChartCloud,
+  type ChartSyncStore,
 } from '@/services/bassChartSync';
 
 const chart = {
@@ -19,17 +25,76 @@ const chart = {
   originalFingering: [{ string: 1, fret: 0 }],
 };
 
-function cloud(
-  records: BassChartRecord[] = [],
-): ChartCloud & { records: Map<string, BassChartRecord> } {
-  const stored = new Map(records.map((r) => [r.id, r]));
-  return {
-    records: stored,
-    pull: async () => [...stored.values()],
-    push: async (record) => {
-      stored.set(record.id, record);
+/** A valid chart with its own id. */
+function numbered(index: number) {
+  const id = index.toString(16).padStart(64, '0');
+  return { ...chart, id, title: `Chart ${index}` };
+}
+
+/**
+ * A cloud that follows the chart route: each write that it accepts gets the
+ * next counter, a write that loses changes nothing, and a read returns one
+ * page of the records after a counter.
+ */
+function cloud(pageLimit = 10) {
+  const rows = new Map<string, { record: BassChartRecord; counter: number }>();
+  let last = 0;
+  const fake = {
+    /** Each read: the counter that it sent and the ids that it downloaded. */
+    reads: [] as { after: number; ids: string[] }[],
+    /** The id of each record that a device sent. */
+    writes: [] as string[],
+    record: (id: string) => rows.get(id)?.record,
+    async pull(after: number) {
+      const page = [...rows.values()]
+        .filter((row) => row.counter > after)
+        .sort((a, b) => a.counter - b.counter)
+        .slice(0, pageLimit);
+      fake.reads.push({ after, ids: page.map((row) => row.record.id) });
+      return {
+        records: page.map((row) => row.record) as unknown[],
+        counter: page.length > 0 ? page[page.length - 1].counter : after,
+        more: page.length === pageLimit,
+      };
+    },
+    async push(record: BassChartRecord): Promise<number | null> {
+      fake.writes.push(record.id);
+      if (isNewerChartRecord(record, rows.get(record.id)?.record)) {
+        rows.set(record.id, { record, counter: ++last });
+      }
+      const row = rows.get(record.id)!;
+      return row.record.updatedAt === record.updatedAt &&
+        (row.record.chart === null) === (record.chart === null)
+        ? row.counter
+        : null;
     },
   };
+  return fake satisfies ChartCloud;
+}
+
+function memoryStorage() {
+  const items = new Map<string, string>();
+  return {
+    items,
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => void items.set(key, value),
+  };
+}
+
+// Each device keeps its own last counter, as each browser does.
+const stores = new WeakMap<object, ChartSyncStore>();
+function storeOf(local: RocksmithLibraryRepository): ChartSyncStore {
+  let store = stores.get(local);
+  if (!store) {
+    const storage = memoryStorage();
+    store = createChartSyncStore(() => storage);
+    stores.set(local, store);
+  }
+  return store;
+}
+
+function sync(local: RocksmithLibraryRepository, remote: ChartCloud) {
+  return synchronizeBassCharts(local, remote, storeOf(local));
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -45,8 +110,8 @@ describe('bass chart persistence and sync', () => {
       blob: new Blob(['audio']),
       origin: 'local',
     });
-    await synchronizeBassCharts(first, remote);
-    await synchronizeBassCharts(second, remote);
+    await sync(first, remote);
+    await sync(second, remote);
     expect(await second.listCharts()).toEqual([chart]);
     expect(await second.getAudio(chart.id)).toBeNull();
     expect(await first.getAudio(chart.id)).not.toBeNull();
@@ -57,13 +122,13 @@ describe('bass chart persistence and sync', () => {
     const second = createIndexedDbRocksmithLibrary(new IDBFactory());
     const remote = cloud();
     await first.save(chart, null);
-    await synchronizeBassCharts(first, remote);
-    await synchronizeBassCharts(second, remote);
+    await sync(first, remote);
+    await sync(second, remote);
     await first.remove(chart.id);
-    await synchronizeBassCharts(first, remote);
-    await synchronizeBassCharts(second, remote);
+    await sync(first, remote);
+    await sync(second, remote);
     expect(await second.listCharts()).toEqual([]);
-    expect(remote.records.get(chart.id)?.chart).toBeNull();
+    expect(remote.record(chart.id)?.chart).toBeNull();
   });
 
   it('retries failed uploads while keeping the local import', async () => {
@@ -71,7 +136,7 @@ describe('bass chart persistence and sync', () => {
     const remote = cloud();
     await local.save(chart, null);
     await expect(
-      synchronizeBassCharts(local, {
+      sync(local, {
         ...remote,
         push: async () => {
           throw new Error('offline');
@@ -79,8 +144,8 @@ describe('bass chart persistence and sync', () => {
       }),
     ).rejects.toThrow('offline');
     expect(await local.listCharts()).toEqual([chart]);
-    await synchronizeBassCharts(local, remote);
-    expect(remote.records.get(chart.id)?.chart).toEqual(chart);
+    await sync(local, remote);
+    expect(remote.record(chart.id)?.chart).toEqual(chart);
   });
 
   it('does not overwrite a deletion made while the cloud pull is in flight', async () => {
@@ -90,15 +155,17 @@ describe('bass chart persistence and sync', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
       chart,
     };
-    const remote = cloud([older]);
+    const remote = cloud();
+    await remote.push(older);
     await local.save(chart, null);
-    remote.pull = async () => {
+    const pull = remote.pull;
+    remote.pull = async (after) => {
       await local.remove(chart.id);
-      return [older];
+      return pull(after);
     };
-    await synchronizeBassCharts(local, remote);
+    await sync(local, remote);
     expect(await local.listCharts()).toEqual([]);
-    expect(remote.records.get(chart.id)?.chart).toBeNull();
+    expect(remote.record(chart.id)?.chart).toBeNull();
   });
 
   it('migrates existing v1 browser imports into the synchronization journal', async () => {
@@ -205,15 +272,15 @@ describe('bass chart persistence and sync', () => {
       expect.objectContaining({ id: chart.id, title: 'Renamed' }),
     ]);
 
-    await synchronizeBassCharts(first, remote);
-    await synchronizeBassCharts(second, remote);
+    await sync(first, remote);
+    await sync(second, remote);
     expect(await summaryIds(second)).toEqual(await chartIds(second));
     expect(await second.listSummaries()).toEqual(await first.listSummaries());
 
     await first.remove(chart.id);
     expect(await summaryIds(first)).toEqual([]);
-    await synchronizeBassCharts(first, remote);
-    await synchronizeBassCharts(second, remote);
+    await sync(first, remote);
+    await sync(second, remote);
     expect(await chartIds(second)).toEqual([]);
     expect(await summaryIds(second)).toEqual([]);
   });
@@ -283,9 +350,254 @@ describe('bass chart persistence and sync', () => {
       vi.fn().mockResolvedValue({ ok: false, status: 500 }),
     );
     vi.stubGlobal('localStorage', { getItem: () => 'device' });
-    await expect(chartCloud.pull()).rejects.toThrow('500');
+    await expect(chartCloud.pull(0)).rejects.toThrow('500');
     await expect(
       chartCloud.push({ id: chart.id, updatedAt: chart.importedAt, chart }),
     ).rejects.toThrow('500');
+  });
+});
+
+describe('incremental chart synchronization', () => {
+  const device = () => createIndexedDbRocksmithLibrary(new IDBFactory());
+
+  /** A library of `count` charts in the cloud, from one device. */
+  async function library(count: number, pageLimit?: number) {
+    const remote = cloud(pageLimit);
+    const first = device();
+    for (let index = 1; index <= count; index++) {
+      await first.save(numbered(index), null);
+    }
+    await sync(first, remote);
+    remote.reads.length = 0;
+    remote.writes.length = 0;
+    return { remote, first };
+  }
+
+  const pages = (remote: ReturnType<typeof cloud>) =>
+    remote.reads.map((read) => [read.after, read.ids.length]);
+
+  it('reads page after page until a page is not full, then stores the last counter', async () => {
+    const { remote } = await library(25);
+    const second = device();
+    await sync(second, remote);
+    expect(pages(remote)).toEqual([
+      [0, 10],
+      [10, 10],
+      [20, 5],
+    ]);
+    expect(await second.listCharts()).toHaveLength(25);
+    expect(storeOf(second).read().counter).toBe(25);
+  });
+
+  it('reads one more page when the last page is full', async () => {
+    const { remote } = await library(4, 2);
+    const second = device();
+    await sync(second, remote);
+    expect(pages(remote)).toEqual([
+      [0, 2],
+      [2, 2],
+      [4, 0],
+    ]);
+    expect(storeOf(second).read().counter).toBe(4);
+  });
+
+  it('stores no counter when a page fails, and reads again from the last one', async () => {
+    const { remote } = await library(5, 2);
+    const second = device();
+    const pull = remote.pull;
+    await expect(
+      sync(second, {
+        ...remote,
+        pull: async (after) => {
+          if (after > 0) throw new Error('offline');
+          return pull(after);
+        },
+      }),
+    ).rejects.toThrow('offline');
+    expect(storeOf(second).read().counter).toBe(0);
+    await sync(second, remote);
+    expect(await second.listCharts()).toHaveLength(5);
+    expect(storeOf(second).read().counter).toBe(5);
+  });
+
+  it('downloads no chart and sends none in a second synchronization with no change', async () => {
+    const { remote, first } = await library(3);
+    const second = device();
+    await sync(second, remote);
+    remote.reads.length = 0;
+
+    // The device that got the charts, and the device that sent them.
+    await sync(second, remote);
+    await sync(first, remote);
+    expect(remote.reads).toEqual([
+      { after: 3, ids: [] },
+      { after: 3, ids: [] },
+    ]);
+    expect(remote.writes).toEqual([]);
+  });
+
+  it('downloads only the record that changed', async () => {
+    const { remote, first } = await library(3);
+    const second = device();
+    await sync(second, remote);
+    remote.reads.length = 0;
+
+    const renamed = { ...numbered(2), title: 'Renamed' };
+    await first.save(renamed, null);
+    await sync(first, remote);
+    await sync(second, remote);
+    expect(remote.writes).toEqual([renamed.id]);
+    expect(remote.reads).toEqual([
+      { after: 3, ids: [] },
+      { after: 3, ids: [renamed.id] },
+    ]);
+    expect(await second.getChart(renamed.id)).toEqual(renamed);
+  });
+
+  it('moves a deletion record through the incremental read as a chart record', async () => {
+    const { remote, first } = await library(3);
+    const second = device();
+    await sync(second, remote);
+    remote.reads.length = 0;
+
+    const removed = numbered(2).id;
+    await first.remove(removed);
+    await sync(first, remote);
+    await sync(second, remote);
+    expect(remote.reads[1]).toEqual({ after: 3, ids: [removed] });
+    expect(remote.record(removed)?.chart).toBeNull();
+    const kept = (await second.listCharts()).map((stored) => stored.id);
+    expect(kept.sort()).toEqual([numbered(1).id, numbered(3).id]);
+    expect(storeOf(second).read().counter).toBe(4);
+  });
+
+  it('brings a chart from a device with a slow clock to a second device', async () => {
+    const { remote } = await library(3);
+    const second = device();
+    await sync(second, remote);
+
+    // The clock of this device is years late: its record looks older than
+    // each record of the cloud and than the last read of the second device.
+    const slow = device();
+    const late = numbered(9);
+    await slow.applyRecord({
+      id: late.id,
+      updatedAt: '2019-01-01T00:00:00.000Z',
+      chart: late,
+    });
+    await sync(slow, remote);
+    remote.reads.length = 0;
+
+    await sync(second, remote);
+    expect(remote.reads).toEqual([{ after: 3, ids: [late.id] }]);
+    expect(await second.getChart(late.id)).toEqual(late);
+  });
+
+  it('reads its own record again only when a second device wrote before it', async () => {
+    const { remote, first } = await library(2);
+    const second = device();
+    await sync(second, remote);
+    // The second device writes. Then the first device reads, and the second
+    // device writes again before the first device sends its own record.
+    await second.save(numbered(3), null);
+    await sync(second, remote);
+    await first.save(numbered(5), null);
+    const pull = remote.pull;
+    await sync(first, {
+      ...remote,
+      pull: async (after) => {
+        const page = await pull(after);
+        if (!page.more) {
+          await second.save(numbered(4), null);
+          await sync(second, { ...remote, pull });
+        }
+        return page;
+      },
+    });
+    // The counter of the first device stays before the write that it did
+    // not read, so the next read gets it.
+    expect(storeOf(first).read().counter).toBe(3);
+    await sync(first, remote);
+    expect(await first.listCharts()).toHaveLength(5);
+    expect(storeOf(first).read().counter).toBe(5);
+  });
+
+  it('reads all records again when the local database was emptied', async () => {
+    const { remote } = await library(3);
+    const storage = memoryStorage();
+    const store = createChartSyncStore(() => storage);
+    await synchronizeBassCharts(device(), remote, store);
+    expect(store.read().counter).toBe(3);
+
+    const emptied = device();
+    await synchronizeBassCharts(emptied, remote, store);
+    expect(await emptied.listCharts()).toHaveLength(3);
+    expect(store.read().counter).toBe(3);
+  });
+
+  it('reads all records again when the stored counter is not valid', async () => {
+    const { remote } = await library(3);
+    for (const stored of ['{broken', '{"counter":-1,"cloud":{}}', '[]']) {
+      const storage = memoryStorage();
+      storage.items.set('music-theory-lab-chart-sync', stored);
+      const local = device();
+      await synchronizeBassCharts(
+        local,
+        remote,
+        createChartSyncStore(() => storage),
+      );
+      expect(await local.listCharts()).toHaveLength(3);
+    }
+    const blocked = createChartSyncStore(() => {
+      throw new Error('blocked storage');
+    });
+    const local = device();
+    await synchronizeBassCharts(local, remote, blocked);
+    await synchronizeBassCharts(local, remote, blocked);
+    expect(await local.listCharts()).toHaveLength(3);
+    expect(remote.writes).toEqual([]);
+  });
+
+  it('sends the last counter and reads a page of the chart route', async () => {
+    const record = { id: chart.id, updatedAt: chart.importedAt, chart };
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ records: [record], counter: 8, more: true }),
+    });
+    vi.stubGlobal('fetch', fetch);
+    expect(await chartCloud.pull(7)).toEqual({
+      records: [record],
+      counter: 8,
+      more: true,
+    });
+    expect(fetch).toHaveBeenCalledWith('/api/bass-charts?after=7');
+
+    for (const body of [{ records: [record] }, { counter: 8, more: false }]) {
+      fetch.mockResolvedValue({ ok: true, json: async () => body });
+      await expect(chartCloud.pull(7)).rejects.toThrow('Invalid');
+    }
+  });
+
+  it('reads the full response of an earlier chart route as one last page', async () => {
+    const record = { id: chart.id, updatedAt: chart.importedAt, chart };
+    vi.stubGlobal('localStorage', { getItem: () => 'device' });
+    const fetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => [record] });
+    vi.stubGlobal('fetch', fetch);
+    expect(await chartCloud.pull(7)).toEqual({
+      records: [record],
+      counter: 7,
+      more: false,
+    });
+
+    // The earlier route does not give the counter of a write.
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    expect(await chartCloud.push(record)).toBeNull();
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, counters: [12] }),
+    });
+    expect(await chartCloud.push(record)).toBe(12);
   });
 });
