@@ -56,6 +56,16 @@ export interface BassChartSection {
   endBar: number;
 }
 
+/**
+ * What the layout of the song screen reads of a chart: its bars and its
+ * sections. A chart of any part has them, so the layout functions take this
+ * and not a bass chart.
+ */
+export interface ChartBars {
+  bars: BassChartBar[];
+  sections: BassChartSection[];
+}
+
 export type BassTechnique =
   | 'mute'
   | 'accent'
@@ -375,7 +385,10 @@ export function sectionLabel(name: string): string {
 }
 
 /** Index of the bar containing `seconds`, or -1 outside the chart. */
-export function barIndexAt(chart: BassChart, seconds: number): number {
+export function barIndexAt(
+  chart: Pick<ChartBars, 'bars'>,
+  seconds: number,
+): number {
   if (!Number.isFinite(seconds) || seconds < chart.bars[0].startTime) return -1;
   const index = lastIndexAtOrBefore(
     chart.bars.map((b) => b.startTime),
@@ -385,7 +398,10 @@ export function barIndexAt(chart: BassChart, seconds: number): number {
 }
 
 /** Index of the section containing bar `barIndex`, or -1. */
-export function sectionIndexOfBar(chart: BassChart, barIndex: number): number {
+export function sectionIndexOfBar(
+  chart: Pick<ChartBars, 'sections'>,
+  barIndex: number,
+): number {
   return chart.sections.findIndex(
     (s) => barIndex >= s.startBar && barIndex < s.endBar,
   );
@@ -416,7 +432,7 @@ export function activeNoteIndexes(
  * Distinct time signatures in order of first appearance, e.g. `['7/4']`.
  * Charts end on a lone closing beat, which is not a real 1/4 bar.
  */
-export function timeSignatures(chart: BassChart): string[] {
+export function timeSignatures(chart: Pick<ChartBars, 'bars'>): string[] {
   const bars = chart.bars.filter(
     (bar, i) => !(i === chart.bars.length - 1 && bar.beatCount === 1),
   );
@@ -472,10 +488,16 @@ export interface BassChartSectionBlock {
 /**
  * Lay the chart out section by section. A run of two or more bars without
  * notes collapses into one rest item, so a long count-in or a tacet stretch
- * does not push the bass line off screen; bars with notes are never merged.
+ * does not push the line off screen; bars with notes are never merged.
+ * `barsWithNotes` names the bars that a part fills; by default they are the
+ * bars of the chart's bass notes, and none for a chart that has no notes.
  */
-export function sectionBlocks(chart: BassChart): BassChartSectionBlock[] {
-  const barsWithNotes = new Set(chart.notes.map((n) => n.bar));
+export function sectionBlocks(
+  chart: Pick<ChartBars, 'sections'> & { notes?: readonly { bar: number }[] },
+  barsWithNotes: ReadonlySet<number> = new Set(
+    (chart.notes ?? []).map((n) => n.bar),
+  ),
+): BassChartSectionBlock[] {
   const colorIndexes = new Map<string, number>();
   const totals = new Map<string, number>();
   for (const section of chart.sections) {
@@ -660,22 +682,40 @@ export function degreeLanePlaces(
 }
 
 /**
- * Bars that show the same tab as the bar right above them when a section
- * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
- * means the same meter and the same notes at the same beats, strings and
- * frets, with the same slides and techniques; sustain is not drawn, so it
- * is not compared. Bars without notes never count as repeats.
+ * Bars that draw the same as the bar right above them when a section is
+ * drawn `barsPerRow` to a line, each mapped to that bar. `drawing` gives
+ * what a bar draws, as a text that is equal for two bars that look the same,
+ * or null for a bar that draws nothing: such a bar never counts as a repeat.
+ * Each part gives its own `drawing`, so this reads no notes.
  */
-export function barsRepeatingAbove(
-  chart: BassChart,
+export function repeatsAbove(
   block: BassChartSectionBlock,
   barsPerRow: number,
-  notes: { note: BassChartNote }[][] = notesByBar(chart),
+  drawing: (bar: number) => string | null,
 ): Map<number, number> {
   const shown = new Set(
     block.items.flatMap((item) => (item.kind === 'bar' ? [item.bar] : [])),
   );
-  const tab = (bar: number): string | null => {
+  const repeats = new Map<number, number>();
+  for (const bar of shown) {
+    const above = bar - barsPerRow;
+    if (!shown.has(above)) continue;
+    const drawn = drawing(bar);
+    if (drawn !== null && drawn === drawing(above)) repeats.set(bar, above);
+  }
+  return repeats;
+}
+
+/**
+ * What a bar of the bass tab draws, for `repeatsAbove`: its meter and its
+ * notes at their beats, strings and frets, with their slides and techniques;
+ * sustain is not drawn, so it is not compared. Null for a bar without notes.
+ */
+export function bassBarDrawing(
+  chart: Pick<ChartBars, 'bars'>,
+  notes: { note: BassChartNote }[][],
+): (bar: number) => string | null {
+  return (bar) => {
     const cells = (notes[bar] ?? [])
       .map(({ note }) =>
         [
@@ -691,14 +731,22 @@ export function barsRepeatingAbove(
       ? `${chart.bars[bar].beatCount}|${cells.join(',')}`
       : null;
   };
-  const repeats = new Map<number, number>();
-  for (const bar of shown) {
-    const above = bar - barsPerRow;
-    if (!shown.has(above)) continue;
-    const drawn = tab(bar);
-    if (drawn !== null && drawn === tab(above)) repeats.set(bar, above);
-  }
-  return repeats;
+}
+
+/**
+ * Bars that show the same tab as the bar right above them when a section
+ * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
+ * means the same meter and the same notes at the same beats, strings and
+ * frets, with the same slides and techniques; sustain is not drawn, so it
+ * is not compared. Bars without notes never count as repeats.
+ */
+export function barsRepeatingAbove(
+  chart: BassChart,
+  block: BassChartSectionBlock,
+  barsPerRow: number,
+  notes: { note: BassChartNote }[][] = notesByBar(chart),
+): Map<number, number> {
+  return repeatsAbove(block, barsPerRow, bassBarDrawing(chart, notes));
 }
 
 /** The chart's notes bucketed by bar, each paired with its chart index. */

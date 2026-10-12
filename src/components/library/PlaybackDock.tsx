@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 
+// The key keeps its first name, so a stored choice still holds.
 const STORAGE_KEY = 'music-theory-lab:bass-dock-collapsed';
 
 function readCollapsed(): boolean {
@@ -20,6 +21,8 @@ function writeCollapsed(collapsed: boolean): void {
 
 interface Props {
   dockRef: RefObject<HTMLDivElement | null>;
+  /** Names the dock for assistive technology, e.g. "Braço do baixo". */
+  label: string;
   /** Reports the dock's height so the page can leave room under it. */
   onHeightChange: (height: number) => void;
   title: ReactNode;
@@ -29,16 +32,21 @@ interface Props {
   onTogglePlay: () => void;
   /** Extra header buttons, e.g. the circle of fifths toggle. */
   actions: ReactNode;
-  neck: ReactNode;
+  /** The part's panel under the header, e.g. the fretboard. */
+  panel: ReactNode;
+  /** The text of the button that opens the panel, and that closes it. */
+  showLabel: string;
+  hideLabel: string;
 }
 
 /**
- * The fretboard panel, fixed to the bottom of the screen above the mobile
- * navigation, with play/pause and what is sounding now. It can be
- * collapsed to its header.
+ * The dock of the song screen, fixed to the bottom of the screen above the
+ * mobile navigation, with play/pause, what is sounding now, and the panel of
+ * the part (the fretboard, for the bass). It can be collapsed to its header.
  */
 export default function PlaybackDock({
   dockRef,
+  label,
   onHeightChange,
   title,
   status,
@@ -46,7 +54,9 @@ export default function PlaybackDock({
   canPlay,
   onTogglePlay,
   actions,
-  neck,
+  panel,
+  showLabel,
+  hideLabel,
 }: Props) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
 
@@ -67,7 +77,7 @@ export default function PlaybackDock({
     <div
       ref={dockRef}
       role="region"
-      aria-label="Braço do baixo"
+      aria-label={label}
       className="fixed inset-x-0 bottom-20 sm:bottom-0 z-20 border-t border-border-strong bg-bg-secondary"
     >
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-6 py-2 flex flex-col gap-2">
@@ -108,10 +118,10 @@ export default function PlaybackDock({
             aria-expanded={!collapsed}
             className="shrink-0 px-2 py-1 border border-border-strong text-small text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
           >
-            {collapsed ? 'Mostrar braço' : 'Recolher braço'}
+            {collapsed ? showLabel : hideLabel}
           </button>
         </div>
-        {!collapsed && neck}
+        {!collapsed && panel}
       </div>
     </div>
   );
