@@ -143,12 +143,15 @@ export function useRocksmithCharts() {
         setSettingsRevision((revision) => revision + 1),
       ),
     ]);
+    // The list is read before the status leaves 'syncing': a screen that
+    // waits for the end of a pass then sees the charts that the pass brought.
+    // `refresh` catches its own errors, so the status always changes.
+    await refresh();
     setSyncStatus(
       results.every((result) => result.status === 'fulfilled')
         ? 'synced'
         : 'offline',
     );
-    await refresh();
   }, [refresh]);
 
   useEffect(() => {

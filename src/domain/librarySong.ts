@@ -212,17 +212,42 @@ export function groupLibrarySongs(
 
 /**
  * The song that an imported chart joins, or null when it makes a song of its
- * own (or only replaces a chart that was already there).
+ * own (or only replaces a chart that was already there). The group overrides
+ * count: a chart that was moved or separated is not in its calculated song.
  */
 export function songJoinedByImport(
   charts: ChartSummary[],
   tracks: AnalysedTrackRef[],
   added: ChartSummary,
+  overrides: Record<string, string | null | undefined> = {},
 ): LibrarySong | null {
   if (charts.some((chart) => chart.id === added.id)) return null;
-  const song = groupLibrarySongs([...charts, added], tracks).find((item) =>
-    item.charts.some((chart) => chart.id === added.id),
+  const song = groupLibrarySongs([...charts, added], tracks, overrides).find(
+    (item) => item.charts.some((chart) => chart.id === added.id),
   );
   if (!song) return null;
   return song.charts.length + song.analysed.length > 1 ? song : null;
+}
+
+/**
+ * The songs that can take a chart by a move: not the song that holds it, not a
+ * separated song, and not a song that already holds a chart of the same source
+ * and part (the address would name two charts).
+ */
+export function moveTargets(
+  songs: LibrarySong[],
+  chart: ChartSummary,
+  currentKey: string,
+): LibrarySong[] {
+  return songs.filter(
+    (song) =>
+      song.key !== currentKey &&
+      !song.key.startsWith('separate:') &&
+      !song.charts.some(
+        (item) =>
+          item.id !== chart.id &&
+          item.source === chart.source &&
+          item.part === chart.part,
+      ),
+  );
 }

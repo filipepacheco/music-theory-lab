@@ -5,6 +5,7 @@ import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 import type { ChartSettings } from '@/domain/chartSettings';
 import {
   groupLibrarySongs,
+  moveTargets,
   songJoinedByImport,
   songKey,
 } from '@/domain/librarySong';
@@ -232,5 +233,35 @@ describe('songJoinedByImport', () => {
     const other = summary('x', 'Something', 'George', 'midi');
     expect(songJoinedByImport([gp], [], other)).toBeNull();
     expect(songJoinedByImport([gp], [], gp)).toBeNull();
+  });
+  it('is null when the only chart of the calculated song was separated', () => {
+    const added = summary('m', 'Come Together', 'The Beatles', 'midi');
+    expect(songJoinedByImport([gp], [], added, { gp1: 'separate' })).toBeNull();
+  });
+  it('names the song that a group override moves the new file to', () => {
+    const other = summary('x', 'Something', 'George', 'midi');
+    expect(
+      songJoinedByImport([gp], [], other, { x: 'come together|the beatles' })
+        ?.title,
+    ).toBe('Come Together');
+  });
+});
+
+describe('moveTargets', () => {
+  it('leaves out the own song, separated songs, and songs with the same source and part', () => {
+    const open = summary('m2', 'Come Togther', 'The Beatles', 'midi');
+    const songs = groupLibrarySongs(
+      [
+        summary('m1', 'Come Together', 'The Beatles', 'midi'),
+        summary('g1', 'Imagine', 'John Lennon', 'gp'),
+        open,
+      ],
+      [],
+      {},
+    );
+    const keys = moveTargets(songs, open, 'come togther|the beatles').map(
+      (song) => song.key,
+    );
+    expect(keys).toEqual(['imagine|john lennon']);
   });
 });

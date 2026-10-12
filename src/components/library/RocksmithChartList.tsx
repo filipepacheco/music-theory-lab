@@ -11,6 +11,7 @@ import {
 import type { LibrarySong } from '@/domain/librarySong';
 import { formatLibraryRoute, routeOfSong } from '@/domain/libraryRoute';
 import { formatDuration } from '@/components/library/libraryData';
+import { readLastSource } from '@/components/library/lastSource';
 import type { RocksmithImportStatus } from '@/hooks/useRocksmithCharts';
 
 const SOURCE_LABEL = { gp: 'GP', rocksmith: 'Rocksmith', midi: 'MIDI' };
@@ -242,7 +243,9 @@ export default function RocksmithChartList({
               >
                 <td className="w-full min-w-0 sm:table-cell sm:w-auto sm:px-3 sm:py-2">
                   <a
-                    href={formatLibraryRoute(routeOfSong(song))}
+                    href={formatLibraryRoute(
+                      routeOfSong(song, readLastSource(song.key)),
+                    )}
                     className="font-medium text-text-primary hover:underline"
                   >
                     {song.title}
