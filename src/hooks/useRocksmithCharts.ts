@@ -28,10 +28,7 @@ async function loadImporter(file: File) {
     const { importMidi, midiImportErrorMessage } =
       await import('@/services/midi/importMidi');
     return {
-      importCharts: async (source: File) => {
-        const { chart, audio } = await importMidi(source);
-        return { charts: [chart], audio };
-      },
+      importCharts: importMidi,
       importErrorMessage: midiImportErrorMessage,
     };
   }
