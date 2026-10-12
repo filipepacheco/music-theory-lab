@@ -233,4 +233,15 @@ describe('songJoinedByImport', () => {
     expect(songJoinedByImport([gp], [], other)).toBeNull();
     expect(songJoinedByImport([gp], [], gp)).toBeNull();
   });
+  it('is null when the only chart of the calculated song was separated', () => {
+    const added = summary('m', 'Come Together', 'The Beatles', 'midi');
+    expect(songJoinedByImport([gp], [], added, { gp1: 'separate' })).toBeNull();
+  });
+  it('names the song that a group override moves the new file to', () => {
+    const other = summary('x', 'Something', 'George', 'midi');
+    expect(
+      songJoinedByImport([gp], [], other, { x: 'come together|the beatles' })
+        ?.title,
+    ).toBe('Come Together');
+  });
 });

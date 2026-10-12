@@ -14,6 +14,8 @@ const state = vi.hoisted(() => ({
   saves: [] as string[],
   chartReads: 0,
   listReads: 0,
+  /** The time that the local list takes to answer, in ms. */
+  listDelayMs: 0,
   sync: vi.fn(),
   syncSettings: vi.fn(),
   importGp: vi.fn(),
@@ -24,7 +26,12 @@ vi.mock('@/services/rocksmithLibrary', () => ({
       state.listReads += 1;
       return structuredClone(state.charts);
     },
-    listSummaries: async () => state.charts.map(summarizeChart),
+    listSummaries: async () => {
+      if (state.listDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, state.listDelayMs));
+      }
+      return state.charts.map(summarizeChart);
+    },
     getChart: async (id: string) => {
       state.chartReads += 1;
       const found = state.charts.find((item) => item.id === id);
@@ -63,6 +70,7 @@ beforeEach(() => {
   // An import reads the stored chart of each id, so each test counts anew.
   state.chartReads = 0;
   state.listReads = 0;
+  state.listDelayMs = 0;
   state.sync.mockReset().mockResolvedValue(undefined);
   state.syncSettings.mockReset().mockResolvedValue(undefined);
   state.importGp
@@ -290,5 +298,37 @@ describe('Biblioteca synchronization status', () => {
     const { result } = renderHook(useRocksmithCharts);
     await waitFor(() => expect(result.current.syncStatus).toBe('offline'));
     expect(state.syncSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists the charts that a synchronization brought before it reports the end', async () => {
+    // The pass stores a chart that this device did not hold, and the local
+    // list takes a moment to answer.
+    state.listDelayMs = 20;
+    state.sync.mockImplementation(async () => {
+      state.charts = [chart as BassChart];
+    });
+    const seen: string[] = [];
+    renderHook(() => {
+      const value = useRocksmithCharts();
+      seen.push(`${value.syncStatus}:${value.summaries.length}`);
+      return value;
+    });
+    await waitFor(() => expect(seen[seen.length - 1]).toBe('synced:1'));
+    // No render shows an ended pass with the list of before it.
+    expect(seen).not.toContain('synced:0');
+  });
+
+  it('reports the end of a failed pass after the local list, which still loads', async () => {
+    state.charts = [chart as BassChart];
+    state.listDelayMs = 20;
+    state.sync.mockRejectedValue(new Error('offline'));
+    const seen: string[] = [];
+    renderHook(() => {
+      const value = useRocksmithCharts();
+      seen.push(`${value.syncStatus}:${value.summaries.length}`);
+      return value;
+    });
+    await waitFor(() => expect(seen[seen.length - 1]).toBe('offline:1'));
+    expect(seen).not.toContain('offline:0');
   });
 });

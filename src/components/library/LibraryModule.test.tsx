@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -10,6 +11,8 @@ import {
   within,
 } from '@testing-library/react';
 import LibraryModule from '@/components/library/LibraryModule';
+import { useAppStore } from '@/store/useAppStore';
+import { withGroupOverride } from '@/domain/chartSettings';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 import type { ChartSettings } from '@/domain/chartSettings';
@@ -429,6 +432,66 @@ describe('Biblioteca screens and addresses', () => {
   });
 });
 
+/** The app shell in small: the Biblioteca shows when it is the module. */
+function Shell() {
+  const activeModule = useAppStore((s) => s.activeModule);
+  return activeModule === 'library' ? <LibraryModule /> : <p>Outro módulo</p>;
+}
+
+describe('Biblioteca address and the other modules', () => {
+  beforeEach(() => {
+    state.summaries = [
+      chartOf('midi1', 'Come Together', 'The Beatles', 'midi'),
+      chartOf('x', 'Other Song', 'Someone', 'rocksmith'),
+    ];
+    useAppStore.setState({ activeModule: 'library' });
+  });
+
+  it('clears the address when the user leaves the Biblioteca on a song', async () => {
+    window.history.replaceState(null, '', `#/biblioteca/${KEY}/midi/bass`);
+    render(<Shell />);
+    await screen.findByTestId('chart');
+    act(() => useAppStore.getState().setActiveModule('scales'));
+    expect(window.location.hash).toBe('');
+    expect(screen.getByText('Outro módulo')).toBeTruthy();
+    expect(screen.queryByTestId('chart')).toBeNull();
+  });
+
+  it('clears the address of the list too, and keeps the address of a different module', () => {
+    render(<Shell />);
+    expect(window.location.hash).toBe('#/biblioteca');
+    act(() => useAppStore.getState().setActiveModule('scales'));
+    expect(window.location.hash).toBe('');
+    window.history.replaceState(null, '', '#outro');
+    act(() => useAppStore.getState().setActiveModule('quiz'));
+    expect(window.location.hash).toBe('#outro');
+  });
+
+  it('opens the Biblioteca when Back reaches one of its addresses from a different module', async () => {
+    render(<Shell />);
+    fireEvent.click(row('Other Song'));
+    await screen.findByTestId('chart');
+    // The song entry of the history loses its address here.
+    act(() => useAppStore.getState().setActiveModule('scales'));
+    expect(window.location.hash).toBe('');
+    // The entry before it is the list of the Biblioteca.
+    window.history.back();
+    await waitFor(() =>
+      expect(screen.getAllByRole('columnheader')).toHaveLength(6),
+    );
+    expect(useAppStore.getState().activeModule).toBe('library');
+    expect(window.location.hash).toBe('#/biblioteca');
+  });
+
+  it('puts the list address back when the address leaves the Biblioteca and the module stays', async () => {
+    render(<Shell />);
+    window.location.hash = '#outro';
+    await waitFor(() => expect(window.location.hash).toBe('#/biblioteca'));
+    expect(useAppStore.getState().activeModule).toBe('library');
+    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
+  });
+});
+
 function rowTitles() {
   return screen
     .queryAllByRole('row')
@@ -594,6 +657,40 @@ describe('Correct the group of a chart', () => {
     // The song screen now holds both sources.
     expect(await screen.findByText('Guitar Pro')).toBeTruthy();
     expect(screen.getByText('MIDI')).toBeTruthy();
+  });
+
+  it('opens the song that holds a moved chart after a new import of its file', async () => {
+    state.summaries = songs();
+    state.settings.set(
+      'b1',
+      withGroupOverride(
+        null,
+        'b1',
+        'come together|the beatles',
+        '2026-01-01T00:00:00.000Z',
+      ),
+    );
+    state.importFile.mockResolvedValue({
+      ...fixtureChart(1, [{ bar: 0, beat: 0, midi: 33 }]),
+      id: 'b1',
+      title: 'Come Togther',
+      artist: 'The Beatles',
+      source: 'midi',
+    });
+    const { container } = render(<LibraryModule />);
+    // The override is loaded: the two charts make one row.
+    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2));
+    fireEvent.change(
+      container.querySelector('input[type=file]') as HTMLElement,
+      { target: { files: [new File(['x'], 'b.mid')] } },
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        `#/biblioteca/${encodeURIComponent('come together|the beatles')}/midi/bass`,
+      ),
+    );
+    expect((await screen.findByTestId('chart')).textContent).toBe('b1');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('separates the chart, then removes the override', async () => {
