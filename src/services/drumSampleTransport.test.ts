@@ -100,6 +100,18 @@ describe('createDrumSampleTransport', () => {
     expect(voice.stop).not.toHaveBeenCalled();
   });
 
+  it('silences a ringing hit on dispose or seek after the end', async () => {
+    for (const leave of ['dispose', 'seek'] as const) {
+      const { transport, voice, advance } = harness();
+      await transport.play();
+      advance(5);
+      expect(voice.stop).not.toHaveBeenCalled();
+      if (leave === 'dispose') transport.dispose();
+      else transport.seek(1);
+      expect(voice.stop).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it('a seek while playing stops the voice, then schedules only the hits from the seek', async () => {
     const { transport, voice, scheduled, advance } = harness();
     await transport.play();

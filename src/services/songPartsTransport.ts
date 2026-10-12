@@ -76,6 +76,8 @@ export function createSongPartsTransport(
   let stopTimer: (() => void) | null = null;
   let anchor = { audioTime: 0, position: 0 };
   let next = 0;
+  // Hits may still ring after the end of the chart, when playing is false.
+  let ringing = false;
 
   const update = (change: Partial<LibraryAudioState>) => {
     if (disposed) return;
@@ -96,6 +98,7 @@ export function createSongPartsTransport(
     next = index < 0 ? events.length : index;
   };
   const halt = () => {
+    ringing = false;
     stopTimer?.();
     stopTimer = null;
     voice.stop();
@@ -118,9 +121,10 @@ export function createSongPartsTransport(
     }
     if (current >= duration) {
       // The end of the chart lets the scheduled hits ring out: only the timer
-      // stops. Pause, seek, and dispose still silence the voice.
+      // stops. Pause, seek, and dispose silence the voice, also after the end.
       stopTimer?.();
       stopTimer = null;
+      ringing = true;
       update({ playing: false, currentSeconds: duration });
       return;
     }
@@ -152,10 +156,11 @@ export function createSongPartsTransport(
     },
     seek: (seconds) => {
       const clamped = Math.max(0, Math.min(seconds, duration));
-      if (state.playing) {
+      if (state.playing || ringing) {
         voice.stop();
-        startFrom(clamped);
+        ringing = false;
       }
+      if (state.playing) startFrom(clamped);
       update({ currentSeconds: clamped });
     },
     muteChanged: (part) => {
@@ -163,7 +168,7 @@ export function createSongPartsTransport(
     },
     dispose: () => {
       if (disposed) return;
-      if (state.playing) halt();
+      if (state.playing || ringing) halt();
       disposed = true;
     },
   };

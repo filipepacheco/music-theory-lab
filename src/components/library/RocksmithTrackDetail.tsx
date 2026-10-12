@@ -178,9 +178,12 @@ export default function RocksmithTrackDetail({
   const reportRecording = parts?.reportRecording;
   const reportBass = parts?.reportBass;
   const recordingLinked = audioState.status !== 'missing';
+  const recordingKnown = audioState.status !== 'loading';
   useEffect(() => {
-    reportRecording?.(originalChart.id, recordingLinked);
-  }, [reportRecording, originalChart.id, recordingLinked]);
+    // A part that was just opened has not read its storage: keep the answer
+    // of the part before it, so a change of part does not stop the playback.
+    if (recordingKnown) reportRecording?.(originalChart.id, recordingLinked);
+  }, [reportRecording, originalChart.id, recordingLinked, recordingKnown]);
   useEffect(() => {
     reportBass?.(chart, shift);
   }, [reportBass, chart, shift]);

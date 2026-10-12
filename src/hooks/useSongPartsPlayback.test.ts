@@ -160,4 +160,90 @@ describe('useSongPartsPlayback', () => {
     });
     expect(engine.scheduleDrumHit).not.toHaveBeenCalled();
   });
+
+  async function playingPair(extra: ReturnType<typeof summarizeChart>[] = []) {
+    const song = await songOf('same');
+    const all = [...song.summaries, ...extra];
+    const hook = renderHook(
+      (p: { id: string; part: 'bass' | 'drums' }) =>
+        useSongPartsPlayback(p.id, p.part, all),
+      { initialProps: { id: song.bass.id, part: 'bass' as 'bass' | 'drums' } },
+    );
+    act(() => {
+      hook.result.current.reportRecording(song.bass.id, false);
+    });
+    await waitFor(() => expect(hook.result.current.active).toBe(true));
+    await act(async () => {
+      await hook.result.current.audio.play();
+    });
+    expect(hook.result.current.audio.playing).toBe(true);
+    return { ...song, hook };
+  }
+
+  it('keeps playing across a change of part: the new part reports only after its storage answers', async () => {
+    const { drums, hook } = await playingPair();
+    // The new detail mounts with its audio still loading and reports nothing;
+    // then its storage answers "missing".
+    hook.rerender({ id: drums.id, part: 'drums' });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 60));
+    });
+    act(() => {
+      hook.result.current.reportRecording(drums.id, false);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 60));
+    });
+    expect(hook.result.current.active).toBe(true);
+    expect(hook.result.current.audio.playing).toBe(true);
+    expect(hook.result.current.audio.currentSeconds).toBeGreaterThan(0);
+    expect(engine.stopBassNotes).not.toHaveBeenCalled();
+    expect(engine.stopDrumHits).not.toHaveBeenCalled();
+    act(() => hook.result.current.audio.pause());
+  });
+
+  it('stops cleanly when the new part turns out to have a linked recording', async () => {
+    const { drums, hook } = await playingPair();
+    hook.rerender({ id: drums.id, part: 'drums' });
+    act(() => {
+      hook.result.current.reportRecording(drums.id, true);
+    });
+    expect(hook.result.current.active).toBe(false);
+    expect(hook.result.current.audio.playing).toBe(false);
+    expect(engine.stopBassNotes).toHaveBeenCalled();
+  });
+
+  it('is inactive at once for a part of another song, before the new pair resolves', async () => {
+    const { hook } = await playingPair();
+    hook.rerender({ id: 'e'.repeat(64), part: 'bass' });
+    expect(hook.result.current.active).toBe(false);
+  });
+
+  it('resets the mutes on a new song and keeps them on a change of part', async () => {
+    const otherId = 'f'.repeat(64);
+    const otherBass = {
+      ...fixtureChart(2, walking([[36, 40, 43, 47]])),
+      id: otherId,
+    };
+    const otherDrums = {
+      ...fixtureDrumChart(2, [{ bar: 0, beat: 0, midi: 36 }]),
+      id: await partChartId(otherId, 'drums'),
+    };
+    library.charts.set(otherBass.id, otherBass);
+    library.charts.set(otherDrums.id, otherDrums);
+    const { drums, hook } = await playingPair([
+      summarizeChart(otherBass),
+      summarizeChart(otherDrums),
+    ]);
+    act(() => hook.result.current.toggleMute('drums'));
+    expect(hook.result.current.mutes.drums).toBe(true);
+    hook.rerender({ id: drums.id, part: 'drums' });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(hook.result.current.mutes.drums).toBe(true);
+
+    hook.rerender({ id: otherId, part: 'bass' });
+    await waitFor(() => expect(hook.result.current.mutes.drums).toBe(false));
+  });
 });
