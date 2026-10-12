@@ -1,17 +1,29 @@
-// Local chart cache and deletion journal. Only derived charts synchronize;
-// original packages and audio blobs remain in this browser.
+// Local chart cache, deletion journal, chart summaries and chart settings.
+// Only derived charts synchronize; original packages and audio blobs remain
+// in this browser.
 
 import type { BassChart } from '@/domain/bassChart';
 import {
   isNewerChartRecord,
   type BassChartRecord,
 } from '@/domain/bassChartRecord';
+import type { ChartSettings } from '@/domain/chartSettings';
+import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 
 const DATABASE_NAME = 'music-theory-lab-rocksmith';
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 const CHART_STORE = 'charts';
 const AUDIO_STORE = 'audio';
 const RECORD_STORE = 'records';
+const SUMMARY_STORE = 'summaries';
+const SETTINGS_STORE = 'settings';
+/** Every store a chart write touches, so the summary can never drift. */
+const CHART_WRITE_STORES = [
+  CHART_STORE,
+  AUDIO_STORE,
+  RECORD_STORE,
+  SUMMARY_STORE,
+];
 
 export interface StoredChartAudio {
   chartId: string;
@@ -29,6 +41,11 @@ export interface RocksmithLibraryRepository {
   remove(chartId: string): Promise<void>;
   listRecords(): Promise<BassChartRecord[]>;
   applyRecord(record: BassChartRecord): Promise<void>;
+  /** One summary for each stored chart, newest import first. */
+  listSummaries(): Promise<ChartSummary[]>;
+  getSettings(chartId: string): Promise<ChartSettings | null>;
+  saveSettings(settings: ChartSettings): Promise<void>;
+  listSettings(): Promise<ChartSettings[]>;
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -77,6 +94,23 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
           current.continue();
         };
       }
+      if (!database.objectStoreNames.contains(SETTINGS_STORE)) {
+        database.createObjectStore(SETTINGS_STORE, { keyPath: 'chartId' });
+      }
+      if (!database.objectStoreNames.contains(SUMMARY_STORE)) {
+        const summaries = database.createObjectStore(SUMMARY_STORE, {
+          keyPath: 'id',
+        });
+        const cursor = request
+          .transaction!.objectStore(CHART_STORE)
+          .openCursor();
+        cursor.onsuccess = () => {
+          const current = cursor.result;
+          if (!current) return;
+          summaries.put(summarizeChart(current.value as BassChart));
+          current.continue();
+        };
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -121,10 +155,11 @@ export function createIndexedDbRocksmithLibrary(
     save: (chart, audio) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(
-          [CHART_STORE, AUDIO_STORE, RECORD_STORE],
+          CHART_WRITE_STORES,
           'readwrite',
         );
         transaction.objectStore(CHART_STORE).put(chart);
+        transaction.objectStore(SUMMARY_STORE).put(summarizeChart(chart));
         transaction.objectStore(RECORD_STORE).put({
           id: chart.id,
           updatedAt: new Date().toISOString(),
@@ -144,10 +179,11 @@ export function createIndexedDbRocksmithLibrary(
     remove: (chartId) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(
-          [CHART_STORE, AUDIO_STORE, RECORD_STORE],
+          CHART_WRITE_STORES,
           'readwrite',
         );
         transaction.objectStore(CHART_STORE).delete(chartId);
+        transaction.objectStore(SUMMARY_STORE).delete(chartId);
         transaction.objectStore(AUDIO_STORE).delete(chartId);
         transaction.objectStore(RECORD_STORE).put({
           id: chartId,
@@ -168,7 +204,7 @@ export function createIndexedDbRocksmithLibrary(
     applyRecord: (record) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(
-          [CHART_STORE, AUDIO_STORE, RECORD_STORE],
+          CHART_WRITE_STORES,
           'readwrite',
         );
         const done = transactionComplete(transaction);
@@ -177,14 +213,53 @@ export function createIndexedDbRocksmithLibrary(
         request.onsuccess = () => {
           if (!isNewerChartRecord(record, request.result)) return;
           records.put(record);
-          if (record.chart)
+          if (record.chart) {
             transaction.objectStore(CHART_STORE).put(record.chart);
-          else {
+            transaction
+              .objectStore(SUMMARY_STORE)
+              .put(summarizeChart(record.chart));
+          } else {
             transaction.objectStore(CHART_STORE).delete(record.id);
+            transaction.objectStore(SUMMARY_STORE).delete(record.id);
             transaction.objectStore(AUDIO_STORE).delete(record.id);
           }
         };
         await done;
+      }),
+
+    listSummaries: () =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(SUMMARY_STORE, 'readonly');
+        const summaries = await requestResult<ChartSummary[]>(
+          transaction.objectStore(SUMMARY_STORE).getAll(),
+        );
+        return summaries.sort((a, b) =>
+          b.importedAt.localeCompare(a.importedAt),
+        );
+      }),
+
+    getSettings: (chartId) =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(SETTINGS_STORE, 'readonly');
+        const settings = await requestResult<ChartSettings | undefined>(
+          transaction.objectStore(SETTINGS_STORE).get(chartId),
+        );
+        return settings ?? null;
+      }),
+
+    saveSettings: (settings) =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(SETTINGS_STORE, 'readwrite');
+        transaction.objectStore(SETTINGS_STORE).put(settings);
+        await transactionComplete(transaction);
+      }),
+
+    listSettings: () =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(SETTINGS_STORE, 'readonly');
+        return requestResult<ChartSettings[]>(
+          transaction.objectStore(SETTINGS_STORE).getAll(),
+        );
       }),
   };
 }
@@ -200,4 +275,11 @@ export const rocksmithLibrary: RocksmithLibraryRepository = {
   listRecords: () => createIndexedDbRocksmithLibrary(indexedDB).listRecords(),
   applyRecord: (record) =>
     createIndexedDbRocksmithLibrary(indexedDB).applyRecord(record),
+  listSummaries: () =>
+    createIndexedDbRocksmithLibrary(indexedDB).listSummaries(),
+  getSettings: (chartId) =>
+    createIndexedDbRocksmithLibrary(indexedDB).getSettings(chartId),
+  saveSettings: (settings) =>
+    createIndexedDbRocksmithLibrary(indexedDB).saveSettings(settings),
+  listSettings: () => createIndexedDbRocksmithLibrary(indexedDB).listSettings(),
 };
