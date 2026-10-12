@@ -175,7 +175,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               updated_at = excluded.updated_at
             WHERE excluded.updated_at > bass_charts.updated_at
                OR (excluded.updated_at = bass_charts.updated_at
-                   AND excluded.chart IS NULL)`,
+                   AND excluded.chart IS NULL
+                   AND bass_charts.chart IS NOT NULL)`,
             args: [
               record.id,
               body.device_id,

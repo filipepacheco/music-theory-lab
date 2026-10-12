@@ -4,18 +4,23 @@ import {
 } from '@/domain/bassChartRecord';
 import { getDeviceId } from '@/services/deviceId';
 import {
+  createSyncStore,
+  isCounter,
+  isObject,
+  parseSyncPage,
+  synchronizeRecords,
+  type SyncPage,
+  type SyncRecords,
+  type SyncState,
+  type SyncStore,
+} from '@/services/counterSync';
+import {
   rocksmithLibrary,
   type RocksmithLibraryRepository,
 } from '@/services/rocksmithLibrary';
 
 /** One page of a read with a counter. */
-export interface ChartPage {
-  records: unknown[];
-  /** The counter of the last record of the page, for the next read. */
-  counter: number;
-  /** True when the page is full, so a next page can exist. */
-  more: boolean;
-}
+export type ChartPage = SyncPage;
 
 export interface ChartCloud {
   /** The records with a counter larger than `after`, in counter order. */
@@ -34,74 +39,31 @@ interface ChartVersion {
 }
 
 /** What this device knows of the cloud, between two synchronizations. */
-export interface ChartSyncState {
-  /** The last counter that this device got. */
-  counter: number;
-  /** For each chart id, the newest record that the cloud got or gave. */
-  cloud: Record<string, ChartVersion>;
-}
-
-export interface ChartSyncStore {
-  read(): ChartSyncState;
-  write(state: ChartSyncState): void;
-}
+export type ChartSyncState = SyncState<ChartVersion>;
+export type ChartSyncStore = SyncStore<ChartVersion>;
 
 const SYNC_STATE_KEY = 'music-theory-lab-chart-sync';
-
-function isCounter(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function parseSyncState(text: string | null): ChartSyncState | null {
-  const value: unknown = text === null ? null : JSON.parse(text);
-  if (!isObject(value) || !isCounter(value.counter) || !isObject(value.cloud)) {
-    return null;
-  }
-  const valid = Object.values(value.cloud).every(
-    (version) =>
-      isObject(version) &&
-      typeof version.updatedAt === 'string' &&
-      typeof version.deleted === 'boolean',
-  );
-  return valid ? (value as unknown as ChartSyncState) : null;
-}
-
 /**
- * Keeps the last counter in the storage of the browser. It is a small value
- * beside the local database, so the local database keeps its version. When
- * the storage holds no valid value, the device reads all records again.
+ * The version of the chart records that this client can read. Raise it when
+ * the client starts to read a record that an earlier client skipped (a new
+ * chart type, a new field): each device then reads from counter 0 one time.
  */
+export const CHART_SYNC_FORMAT = 1;
+
+function isChartVersion(value: unknown): boolean {
+  return (
+    isObject(value) &&
+    typeof value.updatedAt === 'string' &&
+    typeof value.deleted === 'boolean'
+  );
+}
+
+/** The last counter of the chart route, in the storage of the browser. */
 export function createChartSyncStore(
   storage: () => Pick<Storage, 'getItem' | 'setItem'>,
+  format = CHART_SYNC_FORMAT,
 ): ChartSyncStore {
-  // With blocked or full storage, the state lasts until the page closes.
-  let unsaved: ChartSyncState | null = null;
-  return {
-    read() {
-      try {
-        const state = parseSyncState(storage().getItem(SYNC_STATE_KEY));
-        if (state) return state;
-      } catch {
-        // Blocked storage or a corrupt value.
-      }
-      return unsaved ?? { counter: 0, cloud: {} };
-    },
-    write(state) {
-      try {
-        const text = JSON.stringify(state);
-        if (storage().getItem(SYNC_STATE_KEY) !== text) {
-          storage().setItem(SYNC_STATE_KEY, text);
-        }
-        unsaved = null;
-      } catch {
-        unsaved = state;
-      }
-    },
-  };
+  return createSyncStore(storage, SYNC_STATE_KEY, format, isChartVersion);
 }
 
 export const chartCloud: ChartCloud = {
@@ -114,15 +76,9 @@ export const chartCloud: ChartCloud = {
     if (Array.isArray(page)) {
       return { records: page, counter: after, more: false };
     }
-    if (
-      !isObject(page) ||
-      !Array.isArray(page.records) ||
-      !isCounter(page.counter) ||
-      typeof page.more !== 'boolean'
-    ) {
-      throw new Error('Invalid chart sync response');
-    }
-    return { records: page.records, counter: page.counter, more: page.more };
+    const parsed = parseSyncPage(page);
+    if (!parsed) throw new Error('Invalid chart sync response');
+    return parsed;
   },
   async push(record) {
     const response = await fetch('/api/bass-charts', {
@@ -140,91 +96,48 @@ export const chartCloud: ChartCloud = {
   },
 };
 
-function versionOf(record: BassChartRecord): ChartVersion {
-  return { updatedAt: record.updatedAt, deleted: record.chart === null };
-}
-
-/** The order of `isNewerChartRecord`, against the record that the cloud has. */
-function isAheadOfCloud(
-  record: BassChartRecord,
-  cloud: ChartVersion | undefined,
-): boolean {
-  return (
-    !cloud ||
-    record.updatedAt > cloud.updatedAt ||
-    (record.updatedAt === cloud.updatedAt &&
-      record.chart === null &&
-      !cloud.deleted)
-  );
-}
+const chartRecords: SyncRecords<BassChartRecord, ChartVersion> = {
+  parse: parseBassChartRecord,
+  id: (record) => record.id,
+  version: (record) => ({
+    updatedAt: record.updatedAt,
+    deleted: record.chart === null,
+  }),
+  /** The order of `isNewerChartRecord`. */
+  isNewer: (incoming, current) =>
+    incoming.updatedAt > current.updatedAt ||
+    (incoming.updatedAt === current.updatedAt &&
+      incoming.deleted &&
+      !current.deleted),
+};
 
 type LocalRecords = Pick<
   RocksmithLibraryRepository,
   'listRecords' | 'applyRecord'
 >;
 
-/** Read page after page from `from.counter` until a page is not full. */
-async function readChanges(
-  local: LocalRecords,
-  cloud: ChartCloud,
-  from: ChartSyncState,
-): Promise<ChartSyncState> {
-  const state = { counter: from.counter, cloud: { ...from.cloud } };
-  for (;;) {
-    const page = await cloud.pull(state.counter);
-    for (const raw of page.records) {
-      const record = parseBassChartRecord(raw);
-      if (!record) continue;
-      // applyRecord compares inside the IndexedDB transaction, protecting
-      // edits or deletions made while the network request was in flight.
-      await local.applyRecord(record);
-      state.cloud[record.id] = versionOf(record);
-    }
-    // A full page must move the counter, or the read would never end.
-    if (page.counter < state.counter + (page.more ? 1 : 0)) {
-      throw new Error('Invalid chart sync response');
-    }
-    state.counter = page.counter;
-    if (!page.more) return state;
-  }
-}
-
 /**
- * Local-first, last-write-wins chart sync, including durable deletions. The
- * read moves only the records that the cloud got after the last counter of
- * this device. The write moves only the local records that are newer than the
- * record that the cloud has.
+ * Local-first, last-write-wins chart sync, including durable deletions. A
+ * chart is large, so each write holds one record.
  */
-export async function synchronizeBassCharts(
+export function synchronizeBassCharts(
   local: LocalRecords,
   cloud: ChartCloud,
   store: ChartSyncStore,
 ): Promise<void> {
-  const stored = store.read();
-  let state = await readChanges(local, cloud, stored);
-  let records = await local.listRecords();
-  const localIds = new Set(records.map((record) => record.id));
-  if (Object.keys(stored.cloud).some((id) => !localIds.has(id))) {
-    // The local database lost records that the cloud has, for example after
-    // a deletion of the browser data. The stored counter is then too far.
-    state = await readChanges(local, cloud, { counter: 0, cloud: {} });
-    records = await local.listRecords();
-  }
-  store.write(state);
-  try {
-    for (const raw of records) {
-      const record = parseBassChartRecord(raw);
-      if (!record || !isAheadOfCloud(record, state.cloud[record.id])) continue;
-      const counter = await cloud.push(record);
-      state.cloud[record.id] = versionOf(record);
-      // Counters have no equal values. When this write got the next one, no
-      // write of a different device is before it, and the device does not
-      // read its own record again.
-      if (counter === state.counter + 1) state.counter = counter;
-    }
-  } finally {
-    store.write(state);
-  }
+  return synchronizeRecords(
+    chartRecords,
+    {
+      list: () => local.listRecords(),
+      apply: (record) => local.applyRecord(record),
+    },
+    {
+      pull: (after) => cloud.pull(after),
+      writeLimit: 1,
+      push: async ([record]) => [await cloud.push(record)],
+    },
+    store,
+  );
 }
 
 const syncStore = createChartSyncStore(() => localStorage);

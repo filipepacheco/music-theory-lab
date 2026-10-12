@@ -218,6 +218,29 @@ describe('bass chart counter', () => {
     expect((await readAfter(2)).records).toEqual([]);
   });
 
+  it('changes no row and no counter for a deletion record that arrives again', async () => {
+    const deletion = { ...record, chart: null };
+    await write([record, numbered(1)]);
+    expect((await write([deletion], 'second')).body).toEqual({
+      ok: true,
+      counters: [3],
+    });
+    const before = await rows();
+    // The same deletion again, from the same device and from a different one.
+    for (const device of ['second', 'third']) {
+      expect((await write([deletion], device)).body).toEqual({
+        ok: true,
+        counters: [3],
+      });
+    }
+    expect(await rows()).toEqual(before);
+    expect(await readAfter(3)).toEqual({
+      records: [],
+      counter: 3,
+      more: false,
+    });
+  });
+
   it('reads only the records with a larger counter, in counter order, 10 at most', async () => {
     const items = Array.from({ length: 12 }, (_, index) => numbered(index + 1));
     // The update times run against the write order: the read follows the

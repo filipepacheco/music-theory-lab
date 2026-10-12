@@ -7,7 +7,12 @@ import {
   isNewerChartRecord,
   type BassChartRecord,
 } from '@/domain/bassChartRecord';
-import type { ChartSettings } from '@/domain/chartSettings';
+import {
+  isNewerChartSettings,
+  laterChartSettings,
+  parseChartSettings,
+  type ChartSettings,
+} from '@/domain/chartSettings';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 
 const DATABASE_NAME = 'music-theory-lab-rocksmith';
@@ -48,8 +53,15 @@ export interface RocksmithLibraryRepository {
   /** One summary for each stored chart, newest import first. */
   listSummaries(): Promise<ChartSummary[]>;
   getSettings(chartId: string): Promise<ChartSettings | null>;
+  /**
+   * Store a change that this device made. It refuses a value that the chart
+   * settings do not allow. The change wins over the stored record, also when
+   * the clock of this device is slow.
+   */
   saveSettings(settings: ChartSettings): Promise<void>;
   listSettings(): Promise<ChartSettings[]>;
+  /** Store a record from a different device when it is the newer one. */
+  applySettings(settings: ChartSettings): Promise<void>;
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -269,12 +281,20 @@ export function createIndexedDbRocksmithLibrary(
         return settings ?? null;
       }),
 
-    saveSettings: (settings) =>
-      withDatabase(factory, async (database) => {
+    saveSettings: async (settings) => {
+      const change = parseChartSettings(settings);
+      if (!change) throw new Error('Invalid chart settings');
+      await withDatabase(factory, async (database) => {
         const transaction = database.transaction(SETTINGS_STORE, 'readwrite');
-        transaction.objectStore(SETTINGS_STORE).put(settings);
-        await transactionComplete(transaction);
-      }),
+        const done = transactionComplete(transaction);
+        const store = transaction.objectStore(SETTINGS_STORE);
+        const request = store.get(change.chartId);
+        request.onsuccess = () => {
+          store.put(laterChartSettings(change, request.result));
+        };
+        await done;
+      });
+    },
 
     listSettings: () =>
       withDatabase(factory, async (database) => {
@@ -282,6 +302,22 @@ export function createIndexedDbRocksmithLibrary(
         return requestResult<ChartSettings[]>(
           transaction.objectStore(SETTINGS_STORE).getAll(),
         );
+      }),
+
+    applySettings: (settings) =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(SETTINGS_STORE, 'readwrite');
+        const done = transactionComplete(transaction);
+        const store = transaction.objectStore(SETTINGS_STORE);
+        const request = store.get(settings.chartId);
+        // The comparison is inside the transaction, so a change that this
+        // device made during the network request stays.
+        request.onsuccess = () => {
+          if (isNewerChartSettings(settings, request.result)) {
+            store.put(settings);
+          }
+        };
+        await done;
       }),
   };
 }
@@ -306,4 +342,6 @@ export const rocksmithLibrary: RocksmithLibraryRepository = {
   saveSettings: (settings) =>
     createIndexedDbRocksmithLibrary(indexedDB).saveSettings(settings),
   listSettings: () => createIndexedDbRocksmithLibrary(indexedDB).listSettings(),
+  applySettings: (settings) =>
+    createIndexedDbRocksmithLibrary(indexedDB).applySettings(settings),
 };

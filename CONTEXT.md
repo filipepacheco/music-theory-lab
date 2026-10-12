@@ -170,3 +170,20 @@ _Avoid_: track, instrument
 A recording that the offline pipeline analysed for chords, key, and tempo.
 It appears in the Biblioteca list through its [[library-song]].
 _Avoid_: library track, analysis
+
+**Chart**:
+One [[part]] of one imported file, bar by bar. Its id comes from the hash of
+the file, so the same file always gives the same chart. A change to a chart
+sends the full chart to the shared library again. A deletion leaves a deletion
+record, so a device that was offline cannot bring the chart back.
+_Avoid_: song, tab, arrangement
+
+**Chart settings**:
+The synchronized view choices of one [[chart]]: the song line length, the
+line length of each section (by its first bar), and the group override (a
+[[song-key]] or "separate"). They are a record apart from the chart, so a
+change sends no chart and does not restart playback. They use the model of
+the charts: one shared library, no login, and the last write wins. They stay
+after the deletion of their chart, on the device and in the cloud, and they
+apply again when the same file returns.
+_Avoid_: chart options, view state, preferences

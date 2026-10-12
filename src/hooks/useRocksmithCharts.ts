@@ -3,6 +3,7 @@ import type { BassChart } from '@/domain/bassChart';
 import type { ChartSummary } from '@/domain/chartSummary';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import { syncBassCharts } from '@/services/bassChartSync';
+import { syncChartSettings } from '@/services/chartSettingsSync';
 
 export type RocksmithImportStatus =
   | { state: 'idle' }
@@ -113,12 +114,17 @@ export function useRocksmithCharts() {
 
   const synchronize = useCallback(async () => {
     setSyncStatus('syncing');
-    try {
-      await syncBassCharts();
-      setSyncStatus('synced');
-    } catch {
-      setSyncStatus('offline');
-    }
+    // The status covers the charts and the chart settings. One that fails
+    // does not stop the other.
+    const results = await Promise.allSettled([
+      syncBassCharts(),
+      syncChartSettings(),
+    ]);
+    setSyncStatus(
+      results.every((result) => result.status === 'fulfilled')
+        ? 'synced'
+        : 'offline',
+    );
     await refresh();
   }, [refresh]);
 
