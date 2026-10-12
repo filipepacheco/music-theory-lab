@@ -11,18 +11,23 @@ import {
 } from '@/domain/librarySong';
 import { summarizeChart } from '@/domain/chartSummary';
 import Frame from '@/components/shared/Frame';
-
-type Selection =
-  | { kind: 'analysis'; sha: string }
-  | { kind: 'rocksmith'; id: string };
+import { useLibraryRoute } from '@/components/library/useLibraryRoute';
+import {
+  formatLibraryRoute,
+  resolveSongRoute,
+  routeOfChart,
+  routeOfSong,
+} from '@/domain/libraryRoute';
 
 export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
-  const [selection, setSelection] = useState<Selection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
+  const [settled, setSettled] = useState(false);
+  const { route, navigate } = useLibraryRoute();
   const {
     summaries,
+    openId,
     openChart,
     open,
     importStatus,
@@ -37,11 +42,6 @@ export default function LibraryModule() {
     fetchLibraryIndex(controller.signal)
       .then((index) => {
         setTracks(index.tracks);
-        setSelection((current) => {
-          if (current) return current;
-          const first = index.tracks[0]?.source_sha256;
-          return first ? { kind: 'analysis', sha: first } : null;
-        });
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
@@ -65,31 +65,35 @@ export default function LibraryModule() {
     () => groupLibrarySongs(summaries, analysedRefs),
     [summaries, analysedRefs],
   );
-  const selectedKey =
-    songs.find((song) =>
-      selection?.kind === 'analysis'
-        ? song.analysed.some((track) => track.sha === selection.sha)
-        : song.charts.some((chart) => chart.id === selection?.id),
-    )?.key ?? null;
+  const resolved = useMemo(
+    () => (route.screen === 'song' ? resolveSongRoute(songs, route) : null),
+    [songs, route],
+  );
+  const target = resolved?.target ?? null;
+  const targetChartId = target?.kind === 'chart' ? target.id : null;
+
+  // The first load is over when the index answered and one sync ended.
+  useEffect(() => {
+    if ((tracks !== null || error !== null) && syncStatus !== 'syncing') {
+      setSettled(true);
+    }
+  }, [tracks, error, syncStatus]);
+
+  useEffect(() => {
+    if (targetChartId && openId !== targetChartId) void open(targetChartId);
+  }, [targetChartId, openId, open]);
 
   const selectSong = (song: LibrarySong) => {
     setJoinMessage(null);
-    if (song.best.kind === 'chart') {
-      setSelection({ kind: 'rocksmith', id: song.best.id });
-      void open(song.best.id);
-    } else {
-      setSelection({ kind: 'analysis', sha: song.best.sha });
-    }
+    navigate(routeOfSong(song));
   };
 
   const selectedTrack =
-    selection?.kind === 'analysis'
-      ? (tracks?.find((t) => t.source_sha256 === selection.sha) ?? null)
+    target?.kind === 'analysis'
+      ? (tracks?.find((t) => t.source_sha256 === target.sha) ?? null)
       : null;
   const selectedChart =
-    selection?.kind === 'rocksmith' && openChart?.id === selection.id
-      ? openChart
-      : null;
+    targetChartId && openChart?.id === targetChartId ? openChart : null;
 
   const handleImport = async (file: File) => {
     setJoinMessage(null);
@@ -106,8 +110,12 @@ export default function LibraryModule() {
           `O arquivo entrou na música existente "${joined.title}".`,
         );
       }
-      setSelection({ kind: 'rocksmith', id: chart.id });
-      void open(chart.id);
+      const added = summarizeChart(chart);
+      const song = groupLibrarySongs(
+        [...before.filter((item) => item.id !== added.id), added],
+        analysedRefs,
+      ).find((item) => item.charts.some((c) => c.id === added.id));
+      if (song) navigate(routeOfChart(song.key, added.source, added.part));
     }
   };
 
@@ -124,11 +132,54 @@ export default function LibraryModule() {
         arquivos MIDI e Guitar Pro (.gp).
       </p>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4 min-w-0">
+      {resolved ? (
+        <div className="flex min-w-0 flex-col gap-4">
+          <a
+            href={formatLibraryRoute({ screen: 'list' })}
+            className="self-start text-small text-accent underline"
+          >
+            ← Voltar para a lista
+          </a>
+          {joinMessage && (
+            <p role="status" className="text-small text-text-muted">
+              {joinMessage}
+            </p>
+          )}
+          {selectedChart ? (
+            <RocksmithTrackDetail
+              key={selectedChart.id}
+              chart={selectedChart}
+              onRemove={() => {
+                navigate({ screen: 'list' });
+                void remove(selectedChart.id);
+              }}
+            />
+          ) : selectedTrack ? (
+            <LibraryTrackDetail
+              key={selectedTrack.source_sha256}
+              track={selectedTrack}
+            />
+          ) : (
+            <p role="status" className="text-sm text-text-muted">
+              Abrindo a música…
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-4">
+          {route.screen === 'song' && settled && (
+            <p role="alert" className="text-sm text-danger">
+              Nenhuma música da biblioteca tem este endereço. Escolha uma na
+              lista.
+            </p>
+          )}
+          {route.screen === 'song' && !settled && (
+            <p role="status" className="text-small text-text-muted">
+              Abrindo a música…
+            </p>
+          )}
           <RocksmithChartList
             songs={songs}
-            selectedKey={selectedKey}
             importStatus={importStatus}
             onSelect={selectSong}
             onImport={(file) => void handleImport(file)}
@@ -160,27 +211,7 @@ export default function LibraryModule() {
             )}
           </p>
         </div>
-
-        {selectedChart ? (
-          <RocksmithTrackDetail
-            key={selectedChart.id}
-            chart={selectedChart}
-            onRemove={() => {
-              setSelection(null);
-              void remove(selectedChart.id);
-            }}
-          />
-        ) : selectedTrack ? (
-          <LibraryTrackDetail
-            key={selectedTrack.source_sha256}
-            track={selectedTrack}
-          />
-        ) : (
-          <p className="text-sm text-text-muted">
-            Selecione uma faixa para ver a cifra detectada.
-          </p>
-        )}
-      </div>
+      )}
     </Frame>
   );
 }

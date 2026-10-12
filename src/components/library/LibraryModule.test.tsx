@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import {
   cleanup,
   fireEvent,
@@ -26,17 +27,23 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@/hooks/useRocksmithCharts', () => ({
-  useRocksmithCharts: () => ({
-    summaries: state.summaries,
-    openId: null,
-    openChart: null,
-    open: state.open,
-    importStatus: { state: 'idle' },
-    importFile: state.importFile,
-    remove: vi.fn(),
-    syncStatus: 'synced',
-    synchronize: vi.fn(),
-  }),
+  useRocksmithCharts: () => {
+    const [openId, setOpenId] = useState<string | null>(null);
+    return {
+      summaries: state.summaries,
+      openId,
+      openChart: openId ? { id: openId } : null,
+      open: async (id: string | null) => {
+        setOpenId(id);
+        await state.open(id);
+      },
+      importStatus: { state: 'idle' },
+      importFile: state.importFile,
+      remove: vi.fn(),
+      syncStatus: 'synced',
+      synchronize: vi.fn(),
+    };
+  },
 }));
 vi.mock('@/components/library/libraryData', async (original) => ({
   ...(await original<object>()),
@@ -71,7 +78,7 @@ function chartOf(
 }
 
 function row(title: string) {
-  return screen.getByText(title).closest('button') as HTMLElement;
+  return screen.getByText(title).closest('tr') as HTMLElement;
 }
 
 beforeEach(() => {
@@ -79,6 +86,7 @@ beforeEach(() => {
   state.tracks = [];
   state.open.mockReset().mockResolvedValue(undefined);
   state.importFile.mockReset();
+  window.history.replaceState(null, '', '#/biblioteca');
 });
 afterEach(cleanup);
 
@@ -108,7 +116,7 @@ describe('Biblioteca list', () => {
     ];
     render(<LibraryModule />);
     fireEvent.click(row('Come Together'));
-    expect(state.open).toHaveBeenCalledWith('gp1');
+    await waitFor(() => expect(state.open).toHaveBeenCalledWith('gp1'));
   });
 
   it('opens the analysis of a song with only an analysed track', async () => {
@@ -177,7 +185,134 @@ describe('import message', () => {
         target: { files: [new File(['x'], 'a.mid')] },
       },
     );
-    await waitFor(() => expect(state.open).toHaveBeenCalledWith('m2'));
+    await waitFor(() =>
+      expect(window.location.hash).toContain('come%20together'),
+    );
     expect(screen.queryByText(/entrou na música/)).toBeNull();
+  });
+});
+
+const KEY = encodeURIComponent('come together|the beatles');
+
+describe('Biblioteca screens and addresses', () => {
+  beforeEach(() => {
+    state.summaries = [
+      chartOf('midi1', 'Come Together', 'The Beatles', 'midi'),
+      chartOf('gp1', 'Come Together', 'The Beatles', 'gp'),
+      chartOf('x', 'Other Song', 'Someone', 'rocksmith'),
+    ];
+  });
+
+  it('shows the list as a table with six columns, import, and sync', () => {
+    render(<LibraryModule />);
+    const headings = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent);
+    expect(headings).toEqual([
+      'Título',
+      'Artista',
+      'Partes',
+      'Andamento',
+      'Duração',
+      'Importado em',
+    ]);
+    expect(document.querySelector('input[type=file]')).toBeTruthy();
+    expect(screen.getByText(/Linhas de baixo salvas on-line/)).toBeTruthy();
+    expect(screen.queryByTestId('chart')).toBeNull();
+    expect(window.location.hash).toBe('#/biblioteca');
+  });
+
+  it('opens the song screen on a click, with the song key, source and part in the address', async () => {
+    render(<LibraryModule />);
+    fireEvent.click(row('Come Together'));
+    await waitFor(() => screen.getByTestId('chart'));
+    expect(window.location.hash).toBe(`#/biblioteca/${KEY}/gp/bass`);
+    expect(screen.getByTestId('chart').textContent).toBe('gp1');
+    expect(screen.queryByRole('columnheader')).toBeNull();
+    const back = screen.getByText(/Voltar para a lista/);
+    expect(back.getAttribute('href')).toBe('#/biblioteca');
+  });
+
+  it('returns to the list on the browser Back button', async () => {
+    render(<LibraryModule />);
+    fireEvent.click(row('Other Song'));
+    await waitFor(() => screen.getByTestId('chart'));
+    window.history.back();
+    await waitFor(() => expect(screen.queryByTestId('chart')).toBeNull());
+    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
+    expect(window.location.hash).toBe('#/biblioteca');
+  });
+
+  it('opens the same song, source and part from a saved address', async () => {
+    window.history.replaceState(null, '', `#/biblioteca/${KEY}/midi/bass`);
+    render(<LibraryModule />);
+    await waitFor(() => screen.getByTestId('chart'));
+    expect(screen.getByTestId('chart').textContent).toBe('midi1');
+    expect(window.location.hash).toBe(`#/biblioteca/${KEY}/midi/bass`);
+  });
+
+  it('shows the list with a message for a song key that matches no song', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '#/biblioteca/nothing%7Cnobody/gp/bass',
+    );
+    render(<LibraryModule />);
+    await waitFor(() => screen.getByRole('alert'));
+    expect(screen.getByRole('alert').textContent).toMatch(/Nenhuma música/);
+    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
+    expect(screen.queryByTestId('chart')).toBeNull();
+  });
+
+  it('opens a song with only an analysed track on the song screen', async () => {
+    state.tracks = [
+      {
+        source_sha256: 'sha-9',
+        title: 'Lonely Track',
+        artist: 'Nobody',
+        duration_seconds: 100,
+      },
+    ];
+    render(<LibraryModule />);
+    await waitFor(() => screen.getByText('Lonely Track'));
+    fireEvent.click(row('Lonely Track'));
+    await waitFor(() => screen.getByTestId('analysis'));
+    expect(window.location.hash).toBe(
+      `#/biblioteca/${encodeURIComponent('lonely track|nobody')}/analise/analise`,
+    );
+  });
+
+  it('opens the song screen of the new chart after an import', async () => {
+    state.importFile.mockResolvedValue({
+      ...fixtureChart(1, [{ bar: 0, beat: 0, midi: 33 }]),
+      id: 'new1',
+      title: 'Brand New',
+      artist: 'Band',
+      source: 'gp',
+    });
+    const { container, rerender } = render(<LibraryModule />);
+    state.importFile.mockImplementation(async () => {
+      state.summaries = [
+        ...state.summaries,
+        chartOf('new1', 'Brand New', 'Band', 'gp'),
+      ];
+      return {
+        ...fixtureChart(1, [{ bar: 0, beat: 0, midi: 33 }]),
+        id: 'new1',
+        title: 'Brand New',
+        artist: 'Band',
+        source: 'gp',
+      };
+    });
+    fireEvent.change(
+      container.querySelector('input[type=file]') as HTMLElement,
+      { target: { files: [new File(['x'], 'a.gp')] } },
+    );
+    await waitFor(() => screen.getByTestId('chart'));
+    rerender(<LibraryModule />);
+    expect(screen.getByTestId('chart').textContent).toBe('new1');
+    expect(window.location.hash).toBe(
+      `#/biblioteca/${encodeURIComponent('brand new|band')}/gp/bass`,
+    );
   });
 });
