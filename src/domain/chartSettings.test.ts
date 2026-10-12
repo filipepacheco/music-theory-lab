@@ -8,7 +8,10 @@ import {
   parseChartSettings,
   sectionLineLength,
   withBrowserLineLengths,
+  hasOwnSectionLineLength,
   withSectionLineLength,
+  withSongLineLength,
+  withoutSectionLineLength,
   type ChartSettings,
 } from '@/domain/chartSettings';
 import { songKey } from '@/domain/librarySong';
@@ -181,6 +184,40 @@ describe('the last write of chart settings', () => {
 });
 
 describe('section line length', () => {
+  it('tells its own number, its own automatic, and no value', () => {
+    expect(sectionLineLength(settings, 8)).toBe(2);
+    expect(hasOwnSectionLineLength(settings, 8)).toBe(true);
+    expect(sectionLineLength(settings, 0)).toBe('auto');
+    expect(hasOwnSectionLineLength(settings, 0)).toBe(true);
+    expect(sectionLineLength(settings, 16)).toBe(settings.songLineLength);
+    expect(hasOwnSectionLineLength(settings, 16)).toBe(false);
+    expect(hasOwnSectionLineLength(null, 0)).toBe(false);
+  });
+
+  it('sets the song line length and removes all section values in one write', () => {
+    const now = '2026-10-06T10:00:00.000Z';
+    const next = withSongLineLength(settings, settings.chartId, 6, now);
+    expect(next).toEqual({
+      ...settings,
+      updatedAt: now,
+      songLineLength: 6,
+      sectionLineLengths: {},
+    });
+    expect(sectionLineLength(next, 8)).toBe(6);
+    expect(parseChartSettings(next)).toEqual(next);
+    const first = withSongLineLength(null, settings.chartId, 'auto', now);
+    expect(first.songLineLength).toBe('auto');
+    expect(first.sectionLineLengths).toEqual({});
+  });
+
+  it('removes the value of one section, which then follows the song', () => {
+    const now = '2026-10-06T10:00:00.000Z';
+    const next = withoutSectionLineLength(settings, settings.chartId, 8, now);
+    expect(next.sectionLineLengths).toEqual({ 0: 'auto' });
+    expect(sectionLineLength(next, 8)).toBe(4);
+    expect(settings.sectionLineLengths[8]).toBe(2);
+  });
+
   it('gives the choice of a section, else the song line length, else automatic', () => {
     expect(sectionLineLength(null, 0)).toBe('auto');
     expect(sectionLineLength(settings, 8)).toBe(2);

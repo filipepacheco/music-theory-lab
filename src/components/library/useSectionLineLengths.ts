@@ -4,6 +4,9 @@ import { syncChartSettings } from '@/services/chartSettingsSync';
 import {
   sectionLineLength,
   withSectionLineLength,
+  withSongLineLength,
+  withoutSectionLineLength,
+  hasOwnSectionLineLength,
   type ChartSettings,
   type LineLength,
 } from '@/domain/chartSettings';
@@ -38,18 +41,16 @@ export function useSectionLineLengths(chartId: string, refreshKey: unknown) {
     [settings],
   );
 
-  const setLength = useCallback(
-    async (startBar: number, length: LineLength) => {
+  /** Shows a change at once, stores it, then synchronizes without waiting. */
+  const write = useCallback(
+    async (
+      change: (shown: ChartSettings | null, now: string) => ChartSettings,
+    ) => {
       const now = new Date().toISOString();
-      // The screen shows the choice at once; the store confirms it below.
-      setSettings((shown) =>
-        withSectionLineLength(shown, chartId, startBar, length, now),
-      );
+      setSettings((shown) => change(shown, now));
       try {
         const current = await rocksmithLibrary.getSettings(chartId);
-        await rocksmithLibrary.saveSettings(
-          withSectionLineLength(current, chartId, startBar, length, now),
-        );
+        await rocksmithLibrary.saveSettings(change(current, now));
         setSettings(await rocksmithLibrary.getSettings(chartId));
       } catch {
         return;
@@ -59,5 +60,40 @@ export function useSectionLineLengths(chartId: string, refreshKey: unknown) {
     [chartId],
   );
 
-  return { lengthOf, setLength };
+  const setLength = useCallback(
+    (startBar: number, length: LineLength) =>
+      write((s, now) =>
+        withSectionLineLength(s, chartId, startBar, length, now),
+      ),
+    [chartId, write],
+  );
+
+  /** One write: the song line length, and no section line lengths. */
+  const setSongLength = useCallback(
+    (length: LineLength) =>
+      write((s, now) => withSongLineLength(s, chartId, length, now)),
+    [chartId, write],
+  );
+
+  const clearLength = useCallback(
+    (startBar: number) =>
+      write((s, now) => withoutSectionLineLength(s, chartId, startBar, now)),
+    [chartId, write],
+  );
+
+  const isOwn = useCallback(
+    (startBar: number) => hasOwnSectionLineLength(settings, startBar),
+    [settings],
+  );
+
+  return {
+    lengthOf,
+    setLength,
+    setSongLength,
+    clearLength,
+    isOwn,
+    songLength: (settings?.songLineLength ?? 'auto') as LineLength,
+    hasSectionLengths:
+      Object.keys(settings?.sectionLineLengths ?? {}).length > 0,
+  };
 }

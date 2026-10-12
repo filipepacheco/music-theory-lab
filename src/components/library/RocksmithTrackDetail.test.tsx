@@ -10,6 +10,7 @@ import {
 import { IDBFactory } from 'fake-indexeddb';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import { syncChartSettings } from '@/services/chartSettingsSync';
+import { confirmDialog } from '@/services/confirm';
 import { parseChartSettings } from '@/domain/chartSettings';
 import RocksmithTrackDetail from '@/components/library/RocksmithTrackDetail';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';
@@ -19,6 +20,9 @@ const state = vi.hoisted(() => ({
   audio: { status: 'missing' } as { status: string; url?: string },
   synthChart: null as BassChart | null,
   seeks: [] as number[],
+}));
+vi.mock('@/services/confirm', () => ({
+  confirmDialog: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock('@/services/chartSettingsSync', () => ({
   syncChartSettings: vi.fn(() => Promise.resolve()),
@@ -826,5 +830,86 @@ describe('Biblioteca section line length in the chart settings', () => {
     expect(state.synthChart).toBe(playing);
     expect(state.seeks).toEqual(seeks);
     expect(active()).toEqual(['5']);
+  });
+
+  describe('the control for all sections', () => {
+    const all = () =>
+      screen.getByLabelText('Compassos por linha de todas as seções');
+
+    beforeEach(() => vi.mocked(confirmDialog).mockClear());
+
+    it('offers 1 to 16 and automatic', () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      const values = [...(all() as HTMLSelectElement).options].map(
+        (o) => o.value,
+      );
+      expect(values).toEqual([
+        '',
+        ...Array.from({ length: 16 }, (_, i) => `${i + 1}`),
+      ]);
+    });
+
+    it('sets the song line length without a question when no section has a value', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(all(), { target: { value: '4' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      expect(confirmDialog).not.toHaveBeenCalled();
+      const saved = await rocksmithLibrary.getSettings(eight.id);
+      expect(saved?.songLineLength).toBe(4);
+      expect(saved?.sectionLineLengths).toEqual({});
+      // A section with no value shows the song line length.
+      expect((select() as HTMLSelectElement).value).toBe('4');
+      expect(lines()).toBe(2);
+      expect(document.querySelector('[data-own-length]')).toBeNull();
+    });
+
+    it('asks first when a section has a value, and a cancel changes nothing', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(select(), { target: { value: '2' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      const before = await rocksmithLibrary.getSettings(eight.id);
+      vi.mocked(confirmDialog).mockResolvedValueOnce(false);
+      fireEvent.change(all(), { target: { value: '6' } });
+      await waitFor(() => expect(confirmDialog).toHaveBeenCalledTimes(1));
+      await Promise.resolve();
+      expect(await rocksmithLibrary.getSettings(eight.id)).toEqual(before);
+      expect(syncChartSettings).toHaveBeenCalledTimes(1);
+      expect((all() as HTMLSelectElement).value).toBe('');
+      expect((select() as HTMLSelectElement).value).toBe('2');
+    });
+
+    it('on a yes writes one record with the song value and no section value', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(select(), { target: { value: '2' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      fireEvent.change(all(), { target: { value: '6' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
+      const saved = await rocksmithLibrary.getSettings(eight.id);
+      expect(saved?.songLineLength).toBe(6);
+      expect(saved?.sectionLineLengths).toEqual({});
+      expect(await rocksmithLibrary.listSettings()).toEqual([saved]);
+      expect((select() as HTMLSelectElement).value).toBe('6');
+    });
+
+    it('marks a section with its own value, and a control removes it', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(all(), { target: { value: '4' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      fireEvent.change(select(), { target: { value: '2' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
+      // The change applies to that section only.
+      expect(
+        (await rocksmithLibrary.getSettings(eight.id))?.songLineLength,
+      ).toBe(4);
+      expect(document.querySelector('[data-own-length]')).not.toBeNull();
+      fireEvent.click(
+        screen.getByLabelText(/^Usar o valor de todas as seções em/),
+      );
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(3));
+      expect(document.querySelector('[data-own-length]')).toBeNull();
+      const saved = await rocksmithLibrary.getSettings(eight.id);
+      expect(saved?.sectionLineLengths).toEqual({});
+      expect((select() as HTMLSelectElement).value).toBe('4');
+    });
   });
 });

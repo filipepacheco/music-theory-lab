@@ -262,6 +262,49 @@ export function withSectionLineLength(
 }
 
 /**
+ * The settings with a new song line length. The section line lengths are
+ * removed in the same write, so every section follows the song.
+ */
+export function withSongLineLength(
+  current: ChartSettings | null,
+  chartId: string,
+  length: LineLength,
+  now: string,
+): ChartSettings {
+  const base = current ?? defaultChartSettings(chartId, now);
+  return {
+    ...base,
+    updatedAt: now,
+    songLineLength: length,
+    sectionLineLengths: {},
+  };
+}
+
+/**
+ * The settings without the own line length of the section that starts at
+ * `startBar`: the section then uses the song line length.
+ */
+export function withoutSectionLineLength(
+  current: ChartSettings | null,
+  chartId: string,
+  startBar: number,
+  now: string,
+): ChartSettings {
+  const base = current ?? defaultChartSettings(chartId, now);
+  const rest = { ...base.sectionLineLengths };
+  delete rest[startBar];
+  return { ...base, updatedAt: now, sectionLineLengths: rest };
+}
+
+/** True when the section has its own line length (a number or automatic). */
+export function hasOwnSectionLineLength(
+  settings: ChartSettings | null,
+  startBar: number,
+): boolean {
+  return settings?.sectionLineLengths[startBar] !== undefined;
+}
+
+/**
  * The settings that copy the section line lengths of the old browser store
  * into `current`. A section that the settings already hold keeps its value,
  * and a value that is not allowed is left out. The copy has the import time
