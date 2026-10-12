@@ -1116,9 +1116,17 @@ function SectionBlock({
           {sectionRows(block, perLine).map((row) => {
             const first = row[0];
             return (
+              // The line length decides which bars a row holds, so a measured
+              // row does not wrap: a browser that rounds the bar widths up (a
+              // fraction of a pixel in Firefox) would send its last bar to
+              // the next line. Before the measure the bars have the base
+              // width and may not fit, so the row still wraps.
               <div
                 key={first.kind === 'bar' ? first.bar : first.startBar}
-                className="flex flex-wrap gap-1"
+                data-line
+                className={
+                  lineWidth === null ? 'flex flex-wrap gap-1' : 'flex gap-1'
+                }
               >
                 {row.map(renderItem)}
               </div>
