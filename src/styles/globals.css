@@ -80,7 +80,6 @@
   --color-bg-secondary: var(--sea-900);
   --color-bg-card: var(--sea-900);
   --color-bg-tertiary: var(--sea-800);
-  --color-bg-hover: var(--rule);
   --color-scrim: var(--scrim);
 
   --color-text-primary: var(--fog-bright);
@@ -90,11 +89,9 @@
 
   --color-border-default: var(--rule);
   --color-border-strong: var(--rule-strong);
-  --color-border-focus: var(--fog-bright);
 
   /* Selected and primary: inverted text, fog-bright fill with on-accent text. */
   --color-accent: var(--fog-bright);
-  --color-accent-hover: var(--fog);
   --color-on-accent: var(--sea-950);
 
   /* The lamp. Only for a live state: playing, recording, the current beat. */
@@ -108,11 +105,8 @@
 
   /* Harmonic function colors */
   --color-tonic: var(--sky);
-  --color-tonic-light: var(--sky);
   --color-subdominant: var(--buoy);
-  --color-subdominant-light: var(--buoy);
   --color-dominant: var(--flare);
-  --color-dominant-light: var(--flare);
 
   /* Scale comparison colors */
   --color-scale-a: var(--sky);
@@ -165,8 +159,6 @@
      float (window) or lift under the pointer (lift) cast one. */
   --shadow-window: 6px 6px 0 0 var(--shadow-ink);
   --shadow-lift: 4px 4px 0 0 var(--rule);
-  --shadow-card: 0 0 #0000;
-  --shadow-card-hover: 4px 4px 0 0 var(--rule);
   --shadow-2xs: 0 0 #0000;
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 0 #0000;
@@ -174,11 +166,6 @@
   --shadow-lg: 6px 6px 0 0 var(--shadow-ink);
   --shadow-xl: 6px 6px 0 0 var(--shadow-ink);
   --shadow-2xl: 6px 6px 0 0 var(--shadow-ink);
-
-  /* Harmonic function glows */
-  --color-tonic-glow: color-mix(in srgb, var(--sky) 25%, transparent);
-  --color-subdominant-glow: color-mix(in srgb, var(--buoy) 25%, transparent);
-  --color-dominant-glow: color-mix(in srgb, var(--flare) 25%, transparent);
 
   /* Radius: square, like a terminal grid. rounded-full is the one exception,
      for dots and pips. */
@@ -190,10 +177,6 @@
   --radius-2xl: 0;
   --radius-3xl: 0;
   --radius-4xl: 0;
-  --radius-card: 0;
-  --radius-section: 0;
-  --radius-button: 0;
-  --radius-control: 0;
 
   /* Font families: one mono for chrome and prose alike. */
   --font-mono:

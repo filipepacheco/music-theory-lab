@@ -33,3 +33,7 @@ a later version of Lighthouse without a change to the components.
   element as the aliases.
 - Lighthouse is dense and made for a desktop pointer. Touch targets on mobile
   are an app-level override.
+- Piano keys depict a physical object, so they do not follow the theme. A
+  white key pins the day primitives (`.ink-day`) and a black key the night
+  ones (`.ink-night`). A highlight then has the contrast of its own theme
+  against the keys beside it, in place of a pastel on a white key.
