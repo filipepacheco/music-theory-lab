@@ -20,7 +20,14 @@ export function useLibraryRoute() {
       window.history.replaceState(null, '', LIBRARY_HASH);
       setHash(LIBRARY_HASH);
     }
-    const onChange = () => setHash(window.location.hash);
+    const onChange = () => {
+      // Forward can reach an entry that a different module cleared. The
+      // Biblioteca is still on the screen, so its list address returns.
+      if (!isLibraryHash(window.location.hash)) {
+        window.history.replaceState(null, '', LIBRARY_HASH);
+      }
+      setHash(window.location.hash);
+    };
     window.addEventListener('hashchange', onChange);
     window.addEventListener('popstate', onChange);
     return () => {

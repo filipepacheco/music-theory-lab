@@ -173,10 +173,13 @@ export default function LibraryModule() {
     const before = summaries;
     const chart = await importFile(file);
     if (chart) {
+      // The group overrides count here too: a chart that was moved or
+      // separated opens on the song that holds it, not on the calculated one.
       const joined = songJoinedByImport(
         before,
         analysedRefs,
         summarizeChart(chart),
+        overrides,
       );
       if (joined) {
         setJoinMessage(
@@ -187,6 +190,7 @@ export default function LibraryModule() {
       const song = groupLibrarySongs(
         [...before.filter((item) => item.id !== added.id), added],
         analysedRefs,
+        overrides,
       ).find((item) => item.charts.some((c) => c.id === added.id));
       if (song) navigate(routeOfChart(song.key, added.source, added.part));
     }
