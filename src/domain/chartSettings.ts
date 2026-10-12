@@ -23,9 +23,10 @@ export const MAX_LINE_LENGTH = 16;
 /** A chart holds 100 000 bars at most, so a first bar has six digits. */
 const FIRST_BAR = /^(?:0|[1-9]\d{0,5})$/;
 const MAX_SECTION_LINE_LENGTHS = 1000;
+/** A word of a song key: letters, their marks, and digits of any script. */
+const KEY_WORDS = String.raw`(?:[\p{L}\p{M}\p{N}]+(?: [\p{L}\p{M}\p{N}]+)*)?`;
 /** The form that `songKey` gives: words of a title, `|`, words of an artist. */
-const SONG_KEY =
-  /^(?:[a-z0-9]+(?: [a-z0-9]+)*)?\|(?:[a-z0-9]+(?: [a-z0-9]+)*)?$/;
+const SONG_KEY = new RegExp(`^${KEY_WORDS}\\|${KEY_WORDS}$`, 'u');
 const MAX_SONG_KEY_LENGTH = 400;
 const FIELDS = [
   'chartId',
@@ -64,13 +65,30 @@ function lineLength(value: unknown): value is LineLength {
   );
 }
 
+/**
+ * True for a text that `songKey` can give: its words, in lower case, with no
+ * accents, and in the composed form (NFC). This follows the text rules of
+ * `normalizeText` in `librarySong.ts`; change the two together.
+ */
+function songKeyText(value: string): boolean {
+  return (
+    SONG_KEY.test(value) &&
+    value ===
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .normalize('NFC')
+  );
+}
+
 function groupOverride(value: unknown): value is string | null {
   return (
     value === null ||
     value === 'separate' ||
     (typeof value === 'string' &&
       value.length <= MAX_SONG_KEY_LENGTH &&
-      SONG_KEY.test(value))
+      songKeyText(value))
   );
 }
 
@@ -118,14 +136,18 @@ export function parseChartSettings(value: unknown): ChartSettings | null {
 /**
  * The three view choices as one text. Two valid records with equal choices
  * give equal text. The text holds only ASCII, so its order is the same in the
- * browser and in the database of the server.
+ * browser and in the database of the server: a song key in another script is
+ * written with `\u` escapes, and `JSON.parse` reads it back.
  */
 export function chartSettingsBody(settings: ChartSettings): string {
   return JSON.stringify({
     songLineLength: settings.songLineLength,
     sectionLineLengths: settings.sectionLineLengths,
     groupOverride: settings.groupOverride,
-  });
+  }).replace(
+    /[\u0080-\uffff]/g,
+    (unit) => `\\u${unit.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  );
 }
 
 /** What orders two records of one chart: the update time, then the text. */

@@ -115,6 +115,69 @@ describe('chart settings record', () => {
     }
   });
 
+  it('accepts a song key with letters of another script as group override', () => {
+    const keys = [
+      songKey('夜に駆ける', 'YOASOBI'),
+      songKey('群青', ''),
+      songKey('ありがとう', 'いきものがかり'),
+      songKey('Группа Крови (Live)', 'КИНО'),
+      songKey('Ζορμπάς', 'Θεοδωράκης'),
+      songKey('ירושלים של זהב', 'נעמי שמר'),
+      songKey('दिल से', 'ए आर रहमान'),
+      songKey('사랑', '아이유'),
+      songKey('Señorita №5', 'Ünder ½'),
+    ];
+    expect(keys).toContain('夜に駆ける|yoasobi');
+    for (const groupOverride of keys) {
+      const record = { ...settings, groupOverride };
+      expect(parseChartSettings(record), groupOverride).toEqual(record);
+    }
+  });
+
+  it('refuses a text in another script that `songKey` does not give', () => {
+    const refused = [
+      // Upper case, an accent, and the decomposed form.
+      'Группа крови|кино',
+      'ζορμπάς|',
+      'ありがとう|'.normalize('NFD'),
+      '사랑|'.normalize('NFD'),
+      // Punctuation, a symbol, a control, and a second separator.
+      '夜に駆ける!|yoasobi',
+      '夜に、駆ける|yoasobi',
+      '群青 |yoasobi',
+      '群青\u200b|yoasobi',
+      '群青\u202e|yoasobi',
+      '群青\n|yoasobi',
+      '群青|yoasobi|',
+      '群青',
+      '🎸|yoasobi',
+      `${'夜'.repeat(400)}|b`,
+    ];
+    for (const groupOverride of refused) {
+      expect(
+        parseChartSettings({ ...settings, groupOverride }),
+        JSON.stringify(groupOverride).slice(0, 80),
+      ).toBeNull();
+    }
+  });
+
+  it('writes a song key of another script in ASCII, and reads it back', () => {
+    // 𠀀 goes before ｶ in the browser and after it in the database, so the
+    // text of a record never holds such a letter itself.
+    const astral = { ...settings, groupOverride: '\u{20000}|' };
+    const halfWidth = { ...settings, groupOverride: '\uff76|' };
+    for (const record of [astral, halfWidth]) {
+      expect(parseChartSettings(record)).toEqual(record);
+      const body = chartSettingsBody(record);
+      expect(body).toMatch(/^[\x20-\x7e]+$/);
+      expect(JSON.parse(body).groupOverride).toBe(record.groupOverride);
+    }
+    expect(chartSettingsBody(astral)).toContain('"\\ud840\\udc00|"');
+    expect(chartSettingsBody(astral)).not.toBe(chartSettingsBody(halfWidth));
+    expect(isNewerChartSettings(halfWidth, astral)).toBe(true);
+    expect(isNewerChartSettings(astral, halfWidth)).toBe(false);
+  });
+
   it('gives each update time one form, so text order is time order', () => {
     const record = parseChartSettings({
       ...settings,
