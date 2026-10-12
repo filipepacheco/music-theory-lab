@@ -1,0 +1,33 @@
+# Audio and playback
+
+## Playback engine (`src/services/playbackEngine.ts`)
+
+The engine owns the Tone.js effects, the sampler cache, the fallback synths, the voicing, and the lifecycle cleanup. `useSynth` only supplies the active preset and exposes React callbacks.
+
+| Item | Behaviour |
+|---|---|
+| Effects chain | Limiter (-6 dB) -> Reverb -> Destination, global. |
+| `playNote()` | One note. |
+| `playChord()` | Simultaneous notes. Creates a fresh `PolySynth` for each call, to avoid polyphony issues, and disposes it after 2 s. |
+| `playScale()` | Sequential notes. |
+| `ensureAudio()` | Calls `Tone.start()`. The browser allows it only on a user gesture. |
+| Chord voicing | Notes ascend by octave, so low-register chords do not sound muddy. |
+
+## Tone presets (`src/constants/tonePresets`)
+
+| Type | Behaviour |
+|---|---|
+| `SynthPreset` | Oscillator-based, ready at once. |
+| `SamplerPreset` | Real audio samples, loaded async, with a synth fallback while they load. |
+
+Samplers are cached globally and loaded eagerly at module init. Never dispose a cached sampler.
+
+## Metronome and progression playback
+
+- `useMetronome` runs a `Tone.Loop` on the audio thread for exact quarter-note timing.
+- It fires `onBeat` callbacks. `ProgressionExamples` registers with `onBeat(callback)`.
+- `ProgressionExamples` tracks the beat position, maps it to progression steps, and schedules ahead for steps with a negative `offsetEighths`.
+- The store fields `currentEighth` and `playingProgression` drive the `BeatTimeline` view.
+- `useSynth` supports scheduled playback through `Tone.Transport`.
+
+**Critical pattern:** an audio callback must not set React state directly. Schedule each UI update with `Tone.getDraw().schedule()`.
