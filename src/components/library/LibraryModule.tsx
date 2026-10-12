@@ -1,33 +1,89 @@
-import { useEffect, useState } from 'react';
-import LibraryTrackList from './LibraryTrackList';
+import { useEffect, useMemo, useState } from 'react';
 import LibraryTrackDetail from './LibraryTrackDetail';
 import RocksmithChartList from './RocksmithChartList';
 import RocksmithTrackDetail from './RocksmithTrackDetail';
+import DrumPartDetail from '@/components/library/DrumPartDetail';
 import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
+import { useSongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
+import {
+  groupLibrarySongs,
+  moveTargets,
+  songJoinedByImport,
+  type LibrarySong,
+} from '@/domain/librarySong';
+import { DEFAULT_LIST_VIEW, type ListView } from '@/domain/libraryListView';
+import { useLinkedRecordings } from '@/components/library/useLinkedRecordings';
+import { useListScroll } from '@/components/library/useListScroll';
+import {
+  summarizeChart,
+  type ChartPart,
+  type ChartSummary,
+} from '@/domain/chartSummary';
+import { isDrumChart } from '@/domain/drumChart';
 import Frame from '@/components/shared/Frame';
+import { useLibraryRoute } from '@/components/library/useLibraryRoute';
+import {
+  choiceOfTarget,
+  formatLibraryRoute,
+  resolveSongRoute,
+  routeOfChart,
+  routeOfSong,
+  routeOfSource,
+  songPartChoices,
+  songSourceChoices,
+  type SourceChoice,
+} from '@/domain/libraryRoute';
+import GroupOverrideControl from '@/components/library/GroupOverrideControl';
+import { useGroupOverrides } from '@/components/library/useGroupOverrides';
+import { useLineLengthMigration } from '@/components/library/useLineLengthMigration';
+import Segmented from '@/components/shared/Segmented';
+import {
+  readLastSource,
+  writeLastSource,
+} from '@/components/library/lastSource';
 
-type Selection =
-  | { kind: 'analysis'; sha: string }
-  | { kind: 'rocksmith'; id: string };
+const NO_SONG_CHARTS: readonly ChartSummary[] = [];
+
+const SOURCE_CHOICE_LABEL: Record<SourceChoice, string> = {
+  gp: 'Guitar Pro',
+  rocksmith: 'Rocksmith',
+  midi: 'MIDI',
+  analise: 'Análise',
+};
+
+const PART_CHOICE_LABEL: Record<ChartPart, string> = {
+  bass: 'Baixo',
+  drums: 'Bateria',
+};
 
 export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
-  const [selection, setSelection] = useState<Selection | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { charts, importStatus, importFile, remove, syncStatus, synchronize } =
-    useRocksmithCharts();
+  const [joinMessage, setJoinMessage] = useState<string | null>(null);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
+  const [settled, setSettled] = useState(false);
+  const { route, navigate } = useLibraryRoute();
+  // Lives here, not in the list, so it survives a visit to a song screen.
+  const [listView, setListView] = useState<ListView>(DEFAULT_LIST_VIEW);
+  const {
+    summaries,
+    openId,
+    openChart,
+    open,
+    importStatus,
+    importFile,
+    remove,
+    syncStatus,
+    synchronize,
+    settingsRevision,
+  } = useRocksmithCharts();
 
   useEffect(() => {
     const controller = new AbortController();
     fetchLibraryIndex(controller.signal)
       .then((index) => {
         setTracks(index.tracks);
-        setSelection((current) => {
-          if (current) return current;
-          const first = index.tracks[0]?.source_sha256;
-          return first ? { kind: 'analysis', sha: first } : null;
-        });
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
@@ -37,18 +93,156 @@ export default function LibraryModule() {
     return () => controller.abort();
   }, []);
 
+  const analysedRefs = useMemo(
+    () =>
+      (tracks ?? []).map((track) => ({
+        sha: track.source_sha256,
+        title: track.title,
+        artist: track.artist,
+        durationSeconds: track.duration_seconds,
+      })),
+    [tracks],
+  );
+  const lineLengthCopies = useLineLengthMigration();
+  // The chart settings reload after each synchronization of them: one can
+  // bring settings of a different device and leave `summaries` as it is.
+  const settingsKey = useMemo(
+    () => [summaries, lineLengthCopies, settingsRevision],
+    [summaries, lineLengthCopies, settingsRevision],
+  );
+  const { overrides, setOverride } = useGroupOverrides(settingsKey);
+  const songs = useMemo(
+    () => groupLibrarySongs(summaries, analysedRefs, overrides),
+    [summaries, analysedRefs, overrides],
+  );
+  const resolved = useMemo(
+    () => (route.screen === 'song' ? resolveSongRoute(songs, route) : null),
+    [songs, route],
+  );
+  const target = resolved?.target ?? null;
+  const currentChoice =
+    resolved && target ? choiceOfTarget(resolved.song, target) : null;
+  const choices = resolved ? songSourceChoices(resolved.song) : [];
+  const songKeyOpen = resolved?.song.key ?? null;
+  const targetChartId = target?.kind === 'chart' ? target.id : null;
+  // The parts of the open source, and the one that the song screen shows.
+  const parts =
+    resolved && currentChoice
+      ? songPartChoices(resolved.song, currentChoice)
+      : [];
+  const currentPart =
+    resolved?.song.charts.find((chart) => chart.id === targetChartId)?.part ??
+    null;
+  const listShown = !resolved;
+  const linkedChartIds = useLinkedRecordings(listShown);
+  useListScroll(listShown);
+
+  // The first load is over when the index answered and one sync ended.
+  useEffect(() => {
+    if ((tracks !== null || error !== null) && syncStatus !== 'syncing') {
+      setSettled(true);
+    }
+  }, [tracks, error, syncStatus]);
+
+  useEffect(() => {
+    if (targetChartId && openId !== targetChartId) void open(targetChartId);
+  }, [targetChartId, openId, open]);
+
+  // The device keeps the source that the song screen shows, for each song.
+  useEffect(() => {
+    if (songKeyOpen && currentChoice)
+      writeLastSource(songKeyOpen, currentChoice);
+  }, [songKeyOpen, currentChoice]);
+
+  const selectSong = (song: LibrarySong) => {
+    setJoinMessage(null);
+    navigate(routeOfSong(song, readLastSource(song.key)));
+  };
+
+  const selectSource = (choice: SourceChoice) => {
+    if (!resolved) return;
+    navigate(
+      routeOfSource(
+        resolved.song,
+        choice,
+        route.screen === 'song' ? route.part : undefined,
+      ),
+    );
+  };
+
+  const selectPart = (part: ChartPart) => {
+    const chart = resolved?.song.charts.find(
+      (item) => item.source === currentChoice && item.part === part,
+    );
+    if (resolved && chart)
+      navigate(routeOfChart(resolved.song.key, chart.source, chart.part));
+  };
+
   const selectedTrack =
-    selection?.kind === 'analysis'
-      ? (tracks?.find((t) => t.source_sha256 === selection.sha) ?? null)
+    target?.kind === 'analysis'
+      ? (tracks?.find((t) => t.source_sha256 === target.sha) ?? null)
       : null;
   const selectedChart =
-    selection?.kind === 'rocksmith'
-      ? (charts.find((c) => c.id === selection.id) ?? null)
-      : null;
+    targetChartId && openChart?.id === targetChartId ? openChart : null;
+  const selectedSummary =
+    summaries.find((item) => item.id === targetChartId) ?? null;
+  // The clock of the two parts of one file lives here, above the detail that
+  // a change of part remounts, so the playback goes on.
+  // It reads the summary of the target, not the open chart: the chart loads
+  // after the address changes, and that gap must not look like a closed song.
+  const songParts = useSongPartsPlayback(
+    selectedSummary?.id ?? null,
+    selectedSummary?.part ?? null,
+    resolved?.song.charts ?? NO_SONG_CHARTS,
+  );
+
+  /** Store a group override, then show the song that now holds the chart. */
+  const correctGroup = async (chartId: string, override: string | null) => {
+    setJoinMessage(null);
+    setCorrectionError(null);
+    try {
+      await setOverride(chartId, override);
+    } catch {
+      setCorrectionError('Não foi possível salvar a correção. Tente de novo.');
+      return;
+    }
+    const next = { ...overrides };
+    if (override) next[chartId] = override;
+    else delete next[chartId];
+    const chart = summaries.find((item) => item.id === chartId);
+    const song = groupLibrarySongs(summaries, analysedRefs, next).find((item) =>
+      item.charts.some((c) => c.id === chartId),
+    );
+    if (song && chart)
+      navigate(routeOfChart(song.key, chart.source, chart.part));
+  };
 
   const handleImport = async (file: File) => {
+    setJoinMessage(null);
+    const before = summaries;
     const chart = await importFile(file);
-    if (chart) setSelection({ kind: 'rocksmith', id: chart.id });
+    if (chart) {
+      // The group overrides count here too: a chart that was moved or
+      // separated opens on the song that holds it, not on the calculated one.
+      const joined = songJoinedByImport(
+        before,
+        analysedRefs,
+        summarizeChart(chart),
+        overrides,
+      );
+      if (joined) {
+        setJoinMessage(
+          `O arquivo entrou na música existente "${joined.title}".`,
+        );
+      }
+      const added = summarizeChart(chart);
+      const song = groupLibrarySongs(
+        [...before.filter((item) => item.id !== added.id), added],
+        analysedRefs,
+        overrides,
+      ).find((item) => item.charts.some((c) => c.id === added.id));
+      if (song) navigate(routeOfChart(song.key, added.source, added.part));
+    }
   };
 
   return (
@@ -59,20 +253,133 @@ export default function LibraryModule() {
       className="flex flex-col gap-4"
     >
       <p className="text-xs text-text-muted">
-        Análise automática de cifra, tom e andamento das faixas processadas
-        pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
-        de arquivos MIDI e Guitar Pro (.gp).
+        Análise automática de cifra, tom e andamento das faixas processadas pelo
+        pipeline off-line, e linhas de baixo importadas do Rocksmith ou de
+        arquivos MIDI e Guitar Pro (.gp).
       </p>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4 min-w-0">
+      {resolved ? (
+        <div className="flex min-w-0 flex-col gap-4">
+          <a
+            href={formatLibraryRoute({ screen: 'list' })}
+            className="self-start text-small text-accent underline"
+          >
+            ← Voltar para a lista
+          </a>
+          {joinMessage && (
+            <p role="status" className="text-small text-text-muted">
+              {joinMessage}
+            </p>
+          )}
+          {correctionError && (
+            <p role="alert" className="text-sm text-danger">
+              {correctionError}
+            </p>
+          )}
+          {choices.length > 1 && currentChoice && (
+            <Segmented<SourceChoice>
+              label="Fonte"
+              value={currentChoice}
+              onChange={selectSource}
+              options={choices.map((choice) => ({
+                value: choice,
+                label: SOURCE_CHOICE_LABEL[choice],
+              }))}
+              className="self-start"
+            />
+          )}
+          {parts.length > 1 && currentPart && (
+            <Segmented<ChartPart>
+              label="Parte"
+              value={currentPart}
+              onChange={selectPart}
+              options={parts.map((part) => ({
+                value: part,
+                label: PART_CHOICE_LABEL[part],
+              }))}
+              className="self-start"
+            />
+          )}
+          {targetChartId && resolved && (
+            <GroupOverrideControl
+              song={resolved.song}
+              targets={
+                selectedSummary
+                  ? moveTargets(songs, selectedSummary, resolved.song.key)
+                  : []
+              }
+              overridden={targetChartId in overrides}
+              onMove={(key) => void correctGroup(targetChartId, key)}
+              onSeparate={() => void correctGroup(targetChartId, 'separate')}
+              onRemove={() => void correctGroup(targetChartId, null)}
+            />
+          )}
+          {selectedChart && isDrumChart(selectedChart) ? (
+            <DrumPartDetail
+              key={selectedChart.id}
+              settingsKey={settingsKey}
+              chart={selectedChart}
+              parts={songParts}
+              onRemove={() => {
+                navigate({ screen: 'list' });
+                void remove(selectedChart.id);
+              }}
+            />
+          ) : selectedChart ? (
+            <RocksmithTrackDetail
+              key={selectedChart.id}
+              settingsKey={settingsKey}
+              chart={selectedChart}
+              songCharts={resolved?.song.charts}
+              parts={songParts}
+              onRemove={() => {
+                navigate({ screen: 'list' });
+                void remove(selectedChart.id);
+              }}
+            />
+          ) : selectedTrack ? (
+            <LibraryTrackDetail
+              key={selectedTrack.source_sha256}
+              track={selectedTrack}
+            />
+          ) : (
+            <p role="status" className="text-sm text-text-muted">
+              Abrindo a música…
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col gap-4">
+          {route.screen === 'song' && settled && (
+            <p role="alert" className="text-sm text-danger">
+              Nenhuma música da biblioteca tem este endereço. Escolha uma na
+              lista.
+            </p>
+          )}
+          {route.screen === 'song' && !settled && (
+            <p role="status" className="text-small text-text-muted">
+              Abrindo a música…
+            </p>
+          )}
           <RocksmithChartList
-            charts={charts}
-            selectedId={selection?.kind === 'rocksmith' ? selection.id : null}
+            songs={songs}
+            view={listView}
+            onViewChange={setListView}
+            linkedChartIds={linkedChartIds}
             importStatus={importStatus}
-            onSelect={(c) => setSelection({ kind: 'rocksmith', id: c.id })}
+            onSelect={selectSong}
             onImport={(file) => void handleImport(file)}
           />
+          {error && (
+            <p className="text-sm text-danger">
+              Falha ao carregar o índice da biblioteca: {error}
+            </p>
+          )}
+          {joinMessage && (
+            <p role="status" className="text-small text-text-muted">
+              {joinMessage}
+            </p>
+          )}
           <p role="status" className="text-small text-text-muted">
             {syncStatus === 'syncing'
               ? 'Sincronizando linhas de baixo…'
@@ -89,53 +396,8 @@ export default function LibraryModule() {
               </button>
             )}
           </p>
-
-          <div className="flex flex-col gap-2">
-            <h3 className="lh-label">
-              Faixas analisadas
-            </h3>
-            {error && (
-              <p className="text-sm text-danger">
-                Falha ao carregar o índice da biblioteca: {error}
-              </p>
-            )}
-            {!tracks && !error && (
-              <p className="text-sm text-text-muted">Carregando biblioteca…</p>
-            )}
-            {tracks && (
-              <LibraryTrackList
-                tracks={tracks}
-                selectedSha={
-                  selection?.kind === 'analysis' ? selection.sha : null
-                }
-                onSelect={(t) =>
-                  setSelection({ kind: 'analysis', sha: t.source_sha256 })
-                }
-              />
-            )}
-          </div>
         </div>
-
-        {selectedChart ? (
-          <RocksmithTrackDetail
-            key={selectedChart.id}
-            chart={selectedChart}
-            onRemove={() => {
-              setSelection(null);
-              void remove(selectedChart.id);
-            }}
-          />
-        ) : selectedTrack ? (
-          <LibraryTrackDetail
-            key={selectedTrack.source_sha256}
-            track={selectedTrack}
-          />
-        ) : (
-          <p className="text-sm text-text-muted">
-            Selecione uma faixa para ver a cifra detectada.
-          </p>
-        )}
-      </div>
+      )}
     </Frame>
   );
 }

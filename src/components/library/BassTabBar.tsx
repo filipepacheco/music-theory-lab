@@ -7,7 +7,14 @@ import {
   type BarAnalysis,
   type DegreeCategory,
 } from '@/domain/bassAnalysis';
-import type { BassChartBar, BassChartNote } from '@/domain/bassChart';
+import {
+  degreeLanePlaces,
+  MAX_BEAT_WIDTH_SCALE,
+  type BassChartBar,
+  type BassChartNote,
+  type LabelLane,
+} from '@/domain/bassChart';
+import { BAR_PAD_X, beatMarkX } from '@/domain/drumGrid';
 import type { HarmonicSegment } from '@/domain/bassHarmony';
 import type { HarmonicFunction } from '@/constants/harmonicFields';
 
@@ -37,16 +44,26 @@ interface Props {
   /** Note names for chord symbols, spelled for the key in use. */
   noteNames: readonly string[];
   /**
-   * The bar's share of its line as a CSS width, when the section is laid
-   * out a fixed number of bars per line. The bar then shrinks to fit, down
-   * to `MIN_FIT_SCALE` of its size, and never grows past it.
+   * Pixels per beat, when the section's bars share a line of a set length.
+   * The bar is drawn at that real size: only the spacing grows, never the
+   * text. Defaults to `BEAT_WIDTH`.
    */
-  fitWidth?: string;
+  beatWidth?: number;
   /**
    * The bar drawn right above this one when it shows the same tab: the bar
    * is then left empty under a repeat sign.
    */
   repeatOf?: number;
+  /**
+   * How many levels the degree lane keeps room for, so the bars of a section
+   * share one height. Defaults to the levels this bar's labels use.
+   */
+  degreeLevels?: number;
+  /**
+   * Beats of the kick hits in this bar, from the drum chart of the same file.
+   * When set (even empty), a kick row sits under the strings.
+   */
+  kickBeats?: readonly number[];
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -91,28 +108,39 @@ function barTitle(
     .join(' · ');
 }
 
+/** The base beat width, in pixels: the one the automatic layout uses. */
 export const BEAT_WIDTH = 34;
-const PAD_X = 7;
+/** The largest beat width: only there may a degree label move right. */
+const MAX_SHIFT_WIDTH = BEAT_WIDTH * MAX_BEAT_WIDTH_SCALE;
+const PAD_X = BAR_PAD_X;
+/** The pixels of a bar that do not grow with its beats: padding and border. */
+export const BAR_CHROME = PAD_X * 2 + 2;
+/** Type sizes in a bar; none goes under the design system's 10 px floor. */
+const FRET_FONT_SIZE = 11;
+const DEGREE_FONT_SIZE = 10;
 const PAD_TOP = 9;
 const LINE_GAP = 12;
 const STRING_COUNT = 4;
 const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
-/** Height of the degree lane drawn under the strings. */
+/** Height of one level of the degree lane drawn under the strings. */
 const DEGREE_LANE = 12;
-const DEGREE_Y = HEIGHT + DEGREE_LANE / 2 - 2;
-/** How far a bar may shrink to keep a chosen line length before wrapping. */
-export const MIN_FIT_SCALE = 0.8;
+/** Height of the kick row drawn under the strings. */
+const KICK_LANE = 14;
+const KICK_RADIUS = 3.5;
 
 /** A bar's drawn width in pixels, border included. */
-export function tabBarWidth(beatCount: number): number {
-  return PAD_X * 2 + beatCount * BEAT_WIDTH + 2;
+export function tabBarWidth(
+  beatCount: number,
+  beatWidth: number = BEAT_WIDTH,
+): number {
+  return BAR_CHROME + beatCount * beatWidth;
 }
 
 /**
  * The bar-repeat sign (a slash between two dots, like %), centred on
  * `x`, `y`: play the bar above again.
  */
-function RepeatSign({ x, y }: { x: number; y: number }) {
+export function RepeatSign({ x, y }: { x: number; y: number }) {
   return (
     <g aria-hidden fill="var(--color-text-secondary)">
       <line
@@ -131,15 +159,105 @@ function RepeatSign({ x, y }: { x: number; y: number }) {
 }
 
 /** Tab label for one note: fret, `x` for a dead note, slide direction. */
-function noteLabel(note: BassChartNote): string {
+export function noteLabel(note: BassChartNote): string {
   const base = note.techniques.includes('mute') ? 'x' : String(note.fret);
   if (note.slideToFret === null) return base;
   return `${base}${note.slideToFret > note.fret ? '/' : '\\'}`;
 }
 
+/** Character width of the heading font (monospace), in em. */
+const CHAR_EM = 0.6;
+/** Clear space kept between two labels of a lane, in pixels. */
+export const LABEL_GAP = 4;
+
+/**
+ * The label lanes of a bar: one for the fret numbers of each string, and
+ * the degree lane (one label per onset) when degrees are shown.
+ */
+export function barLabelLanes(
+  notes: IndexedNote[],
+  analysis: BarAnalysis | null,
+): LabelLane[] {
+  const lanes: LabelLane[] = [];
+  for (let string = 0; string < STRING_COUNT; string += 1) {
+    lanes.push({
+      charWidth: FRET_FONT_SIZE * CHAR_EM,
+      labels: notes
+        .filter(({ note }) => note.string === string)
+        .map(({ note }) => ({
+          beat: note.beatInBar,
+          chars: noteLabel(note).length,
+        })),
+    });
+  }
+  if (analysis) lanes.push(degreeLane(degreeOnsets(notes, analysis)));
+  return lanes;
+}
+
+/** An onset of the degree lane: its beat and the degrees that sound there. */
+type DegreeOnset = [beatInBar: number, degrees: AnalyzedNote[]];
+
+/**
+ * The entries of a bar's degree lane, one per onset; a double stop lists its
+ * degrees low to high. Notes without a degree get no entry.
+ */
+function degreeOnsets(
+  notes: IndexedNote[],
+  analysis: BarAnalysis | null,
+): DegreeOnset[] {
+  if (!analysis) return [];
+  const degrees = new Map(analysis.notes.map((n) => [n.index, n]));
+  const onsets = new Map<number, AnalyzedNote[]>();
+  for (const { note, index } of notes) {
+    const degree = degrees.get(index);
+    if (!degree || !degreeLabel(degree)) continue;
+    onsets.set(note.beatInBar, [...(onsets.get(note.beatInBar) ?? []), degree]);
+  }
+  return [...onsets].map(([beat, atOnset]) => [
+    beat,
+    atOnset.sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0)),
+  ]);
+}
+
+/** The degree lane as labels: a double stop is one label, `b3/5`. */
+function degreeLane(onsets: DegreeOnset[]): LabelLane {
+  return {
+    charWidth: DEGREE_FONT_SIZE * CHAR_EM,
+    labels: onsets.map(([beat, atOnset]) => ({
+      beat,
+      chars: atOnset.map(degreeLabel).join('/').length,
+    })),
+  };
+}
+
+/**
+ * How many levels a bar's degree lane uses at `beatWidth` pixels a beat: 1,
+ * or 2 when a label touches the label before it.
+ */
+export function barDegreeLevels(
+  notes: IndexedNote[],
+  analysis: BarAnalysis | null,
+  beatWidth: number,
+): number {
+  const lane = degreeLane(degreeOnsets(notes, analysis));
+  return Math.max(
+    1,
+    ...degreeLanePlaces(lane, beatWidth, LABEL_GAP, MAX_SHIFT_WIDTH).map(
+      (p) => p.level + 1,
+    ),
+  );
+}
+
 /** Y of a string; the highest string (G) is drawn on top, as in tab. */
 function stringY(string: number): number {
   return PAD_TOP + (STRING_COUNT - 1 - string) * LINE_GAP;
+}
+
+/** The kick hits of a bar, for the label that a screen reader reads. */
+function spokenKicks(beats: readonly number[]): string {
+  return beats.length === 0
+    ? 'Bumbo: nenhum'
+    : `Bumbo no tempo ${beats.map((beat) => beat + 1).join(', ')}`;
 }
 
 function BassTabBar({
@@ -152,38 +270,38 @@ function BassTabBar({
   segment,
   avoidNotes,
   noteNames,
-  fitWidth,
+  beatWidth = BEAT_WIDTH,
   repeatOf,
+  degreeLevels,
+  kickBeats,
 }: Props) {
   const repeat = repeatOf !== undefined;
-  const width = PAD_X * 2 + bar.beatCount * BEAT_WIDTH;
-  const outer = tabBarWidth(bar.beatCount);
-  const fitStyle = fitWidth
-    ? {
-        width: fitWidth,
-        maxWidth: outer,
-        minWidth: Math.round(outer * MIN_FIT_SCALE),
-      }
-    : undefined;
+  const width = PAD_X * 2 + bar.beatCount * beatWidth;
   const isActive = playhead !== null;
   const degrees = new Map<number, AnalyzedNote>(
     analysis?.notes.map((n) => [n.index, n]),
   );
   const symbol = analysis ? barChordSymbol(analysis, noteNames) : null;
-  const svgHeight = analysis ? HEIGHT + DEGREE_LANE : HEIGHT;
   const degreeOf = (index: number): AnalyzedNote | null => {
     const degree = degrees.get(index);
     return degree && degreeLabel(degree) ? degree : null;
   };
-  // One lane entry per onset; a double stop lists its degrees low to high.
-  const onsets = new Map<number, AnalyzedNote[]>();
-  for (const { note, index } of notes) {
-    const degree = degreeOf(index);
-    if (!degree) continue;
-    const atOnset = onsets.get(note.beatInBar) ?? [];
-    atOnset.push(degree);
-    onsets.set(note.beatInBar, atOnset);
-  }
+  // One lane entry per onset, on the level and at the x where it is clear
+  // of the entries before it.
+  const onsets = degreeOnsets(notes, analysis);
+  const places = degreeLanePlaces(
+    degreeLane(onsets),
+    beatWidth,
+    LABEL_GAP,
+    MAX_SHIFT_WIDTH,
+  );
+  const levels = Math.max(
+    degreeLevels ?? 1,
+    ...places.map((place) => place.level + 1),
+  );
+  const kickLane = kickBeats ? KICK_LANE : 0;
+  const degreeY = HEIGHT + kickLane + DEGREE_LANE / 2 - 2;
+  const svgHeight = HEIGHT + kickLane + (analysis ? DEGREE_LANE * levels : 0);
   const spoken = ({ note, index }: IndexedNote): string => {
     const degree = degreeOf(index);
     return degree
@@ -201,7 +319,8 @@ function BassTabBar({
           : barTitle(bar, analysis, segment)
       }
       data-bar={bar.index}
-      style={fitStyle}
+      data-beat-width={beatWidth}
+      style={{ width: tabBarWidth(bar.beatCount, beatWidth) }}
       className={`relative shrink-0 border text-left ${
         isActive
           ? 'border-live bg-live-tint'
@@ -245,23 +364,23 @@ function BassTabBar({
         width={width}
         height={svgHeight}
         viewBox={`0 0 ${width} ${svgHeight}`}
-        style={fitWidth ? { width: '100%', height: 'auto' } : undefined}
+        className="block"
         role="img"
-        aria-label={
+        aria-label={`${
           repeat
             ? `Compasso ${bar.index + 1}: igual ao compasso ${repeatOf + 1}`
             : `Compasso ${bar.index + 1}${symbol ? ` (${symbol})` : ''}: ${
                 notes.length === 0 ? 'pausa' : notes.map(spoken).join(' ')
               }`
-        }
+        }${kickBeats ? `. ${spokenKicks(kickBeats)}` : ''}`}
       >
         {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
           <line
             key={`beat-${beat}`}
-            x1={PAD_X + (beat + 1) * BEAT_WIDTH}
-            x2={PAD_X + (beat + 1) * BEAT_WIDTH}
+            x1={PAD_X + (beat + 1) * beatWidth}
+            x2={PAD_X + (beat + 1) * beatWidth}
             y1={PAD_TOP - 3}
-            y2={analysis ? svgHeight - 2 : HEIGHT - PAD_TOP + 3}
+            y2={analysis || kickBeats ? svgHeight - 2 : HEIGHT - PAD_TOP + 3}
             stroke="var(--color-border-default)"
             strokeDasharray="1 3"
           />
@@ -280,13 +399,27 @@ function BassTabBar({
         {repeat && <RepeatSign x={width / 2} y={HEIGHT / 2} />}
         {playhead !== null && (
           <line
-            x1={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
-            x2={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
+            x1={PAD_X + playhead * bar.beatCount * beatWidth}
+            x2={PAD_X + playhead * bar.beatCount * beatWidth}
             y1={2}
             y2={svgHeight - 2}
             stroke="var(--color-accent)"
             strokeWidth={1.5}
           />
+        )}
+        {kickBeats && (
+          <g data-kick-row aria-hidden>
+            {kickBeats.map((beat) => (
+              <circle
+                key={beat}
+                data-kick-beat={beat}
+                cx={beatMarkX(beat, beatWidth)}
+                cy={HEIGHT + KICK_LANE / 2 - 2}
+                r={KICK_RADIUS}
+                fill="var(--color-text-primary)"
+              />
+            ))}
+          </g>
         )}
         {!repeat &&
           notes.map(({ note, index }) => {
@@ -295,10 +428,10 @@ function BassTabBar({
             return (
               <text
                 key={index}
-                x={PAD_X + note.beatInBar * BEAT_WIDTH + 1}
+                x={PAD_X + note.beatInBar * beatWidth + 1}
                 y={stringY(note.string)}
                 dominantBaseline="central"
-                fontSize={11}
+                fontSize={FRET_FONT_SIZE}
                 fontWeight={
                   active || note.techniques.includes('accent') ? 700 : 500
                 }
@@ -321,40 +454,39 @@ function BassTabBar({
             );
           })}
         {!repeat &&
-          [...onsets].map(([beatInBar, atOnset]) => (
+          onsets.map(([beatInBar, atOnset], onset) => (
             <text
               key={`degree-${beatInBar}`}
-              x={PAD_X + beatInBar * BEAT_WIDTH + 1}
-              y={DEGREE_Y}
+              x={PAD_X + places[onset].x + 1}
+              y={degreeY + places[onset].level * DEGREE_LANE}
               dominantBaseline="central"
-              fontSize={9}
+              fontSize={DEGREE_FONT_SIZE}
               className="font-heading"
+              data-degree-level={places[onset].level + 1}
             >
-              {[...atOnset]
-                .sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0))
-                .map((degree, i) => {
-                  const avoid = avoidNotes?.has(degree.index) ?? false;
-                  return (
-                    <tspan
-                      key={degree.index}
-                      fill={
-                        degree.category
-                          ? DEGREE_COLORS[degree.category]
-                          : 'var(--color-text-primary)'
-                      }
-                      fontWeight={degree.category === 'root' ? 700 : 500}
-                      textDecoration={avoid ? 'underline' : undefined}
-                    >
-                      {i > 0 ? '/' : ''}
-                      {degreeLabel(degree)}
-                      {avoid && (
-                        <title>
-                          Nota evitada: forma b9 com uma nota do acorde
-                        </title>
-                      )}
-                    </tspan>
-                  );
-                })}
+              {atOnset.map((degree, i) => {
+                const avoid = avoidNotes?.has(degree.index) ?? false;
+                return (
+                  <tspan
+                    key={degree.index}
+                    fill={
+                      degree.category
+                        ? DEGREE_COLORS[degree.category]
+                        : 'var(--color-text-primary)'
+                    }
+                    fontWeight={degree.category === 'root' ? 700 : 500}
+                    textDecoration={avoid ? 'underline' : undefined}
+                  >
+                    {i > 0 ? '/' : ''}
+                    {degreeLabel(degree)}
+                    {avoid && (
+                      <title>
+                        Nota evitada: forma b9 com uma nota do acorde
+                      </title>
+                    )}
+                  </tspan>
+                );
+              })}
             </text>
           ))}
       </svg>

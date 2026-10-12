@@ -4,7 +4,10 @@ import {
   barIndexAt,
   barsRepeatingAbove,
   buildBassChart,
-  fittedBarsPerRow,
+  degreeLanePlaces,
+  lineBeatWidth,
+  neededBeatWidth,
+  sectionBeatWidth,
   hardestNotes,
   midiNoteName,
   sectionBlocks,
@@ -15,6 +18,7 @@ import {
   tuningLabel,
   type BassChart,
   type BassChartSectionBlock,
+  type LabelLane,
 } from '@/domain/bassChart';
 import { fixtureChart, type NoteSpec } from '@/domain/bassChartFixture';
 import type { SngArrangement, SngNote } from '@/services/rocksmith/sng';
@@ -263,13 +267,358 @@ describe('queries', () => {
     ]);
   });
 
-  it('halves a line length that does not fit the screen', () => {
-    expect(fittedBarsPerRow(8, 9)).toBe(8);
-    expect(fittedBarsPerRow(8, 7)).toBe(4);
-    expect(fittedBarsPerRow(8, 3)).toBe(2);
-    expect(fittedBarsPerRow(12, 7)).toBe(6);
-    expect(fittedBarsPerRow(7, 6)).toBe(6);
-    expect(fittedBarsPerRow(8, 0)).toBe(1);
+  describe('beat width of a line', () => {
+    const line = {
+      lineWidth: 1000,
+      barsPerLine: 4,
+      beatCount: 4,
+      barChrome: 16,
+      gap: 4,
+      baseBeatWidth: 34,
+    };
+    const lineUsed = (l: typeof line) =>
+      l.barsPerLine * (l.barChrome + l.beatCount * lineBeatWidth(l)) +
+      (l.barsPerLine - 1) * l.gap;
+
+    it('shares the full width of the line between its bars', () => {
+      // 1000 - 3 gaps - 4 × 16 of chrome = 924 over 16 beats.
+      expect(lineBeatWidth(line)).toBe(57.75);
+      expect(lineUsed(line)).toBe(1000);
+    });
+
+    it('gives narrower beats to a longer line length', () => {
+      const five = { ...line, barsPerLine: 5 };
+      // 904 / 20 = 45.2, rounded down to 1/64 px.
+      expect(lineBeatWidth(five)).toBe(45.1875);
+      expect(lineUsed(five)).toBeLessThanOrEqual(1000);
+      expect(lineUsed(five)).toBeGreaterThan(999);
+    });
+
+    it('follows the line width', () => {
+      expect(lineBeatWidth({ ...line, lineWidth: 800 })).toBe(45.25);
+    });
+
+    it('never overflows the line when the share is not exact', () => {
+      const odd = { ...line, lineWidth: 997, barsPerLine: 3, beatCount: 7 };
+      expect(lineUsed(odd)).toBeLessThanOrEqual(997);
+      expect(lineUsed(odd)).toBeGreaterThan(996);
+    });
+
+    it('stops at three times the base width, leaving the line free space', () => {
+      const short = { ...line, barsPerLine: 1 };
+      expect(lineBeatWidth(short)).toBe(102);
+      expect(lineUsed(short)).toBeLessThan(1000);
+    });
+
+    it('narrows the beats to keep the line length', () => {
+      const tight = { ...line, lineWidth: 600 };
+      // 600 - 12 - 64 = 524 over 16 beats, under the base 34.
+      expect(lineBeatWidth(tight)).toBe(32.75);
+      expect(lineUsed(tight)).toBe(600);
+    });
+
+    it('has no lower limit for a dense section: the line length holds', () => {
+      // 375 px, 8 bars of 4 beats: (375 - 28 - 128) / 32 beats = 6.84 px.
+      const dense = { ...line, lineWidth: 375, barsPerLine: 8 };
+      expect(lineBeatWidth(dense)).toBe(6.84375);
+      expect(lineBeatWidth(dense)).toBeLessThan(34 * 0.8);
+      expect(lineUsed(dense)).toBeLessThanOrEqual(375);
+      expect(lineUsed(dense)).toBeGreaterThan(374);
+    });
+
+    it('widens each beat when the widest bar has fewer beats', () => {
+      expect(lineBeatWidth({ ...line, beatCount: 3 })).toBe(77);
+    });
+  });
+
+  describe('needed beat width', () => {
+    const lane = (labels: [number, number][]) => ({
+      charWidth: 6,
+      labels: labels.map(([beat, chars]) => ({ beat, chars })),
+    });
+
+    it('is zero without two labels in a lane', () => {
+      expect(neededBeatWidth([], 4)).toBe(0);
+      expect(neededBeatWidth([lane([[0, 2]])], 4)).toBe(0);
+    });
+
+    it('keeps the nearest pair of one lane clear of touching', () => {
+      // Two digits (12 px) + 4 px gap over a third of a beat.
+      const needed = neededBeatWidth(
+        [
+          lane([
+            [0, 1],
+            [1, 2],
+            [1 + 1 / 3, 2],
+          ]),
+        ],
+        4,
+      );
+      expect(needed).toBeCloseTo(48);
+      // The first label ends before the next one starts.
+      expect(1 * 6 <= (1 / 3) * needed).toBe(true);
+      expect(2 * 6 + 4 <= (1 / 3) * needed + 1e-9).toBe(true);
+    });
+
+    it('takes the widest need of all lanes and ignores one beat', () => {
+      const sparse = lane([
+        [0, 1],
+        [2, 1],
+      ]);
+      const dense = lane([
+        [0, 2],
+        [0.5, 1],
+      ]);
+      expect(neededBeatWidth([sparse, dense], 4)).toBe(32);
+      expect(
+        neededBeatWidth(
+          [
+            lane([
+              [1, 1],
+              [1, 2],
+            ]),
+          ],
+          4,
+        ),
+      ).toBe(0);
+    });
+
+    it('sizes a section from base and need, to three times the base', () => {
+      expect(sectionBeatWidth(34, 0)).toBe(34);
+      expect(sectionBeatWidth(34, 20)).toBe(34);
+      expect(sectionBeatWidth(34, 50)).toBe(50);
+      expect(sectionBeatWidth(34, 500)).toBe(102);
+    });
+
+    it('ignores the need of a section when a line length is set', () => {
+      const line = {
+        lineWidth: 600,
+        barsPerLine: 4,
+        beatCount: 4,
+        barChrome: 16,
+        gap: 4,
+        baseBeatWidth: 34,
+      };
+      expect(lineBeatWidth(line)).toBe(32.75);
+    });
+  });
+
+  describe('degree lane levels', () => {
+    const CHAR = 6;
+    const GAP = 4;
+    const BASE = 34;
+    const lane = (labels: [number, number][]): LabelLane => ({
+      charWidth: CHAR,
+      labels: labels.map(([beat, chars]) => ({ beat, chars })),
+    });
+    /** Pairs of labels on one level whose boxes overlap. */
+    const overlaps = (l: LabelLane, beatWidth: number): number => {
+      const places = degreeLanePlaces(l, beatWidth, GAP, BASE * 3);
+      let count = 0;
+      for (let a = 0; a < places.length; a += 1) {
+        for (let b = a + 1; b < places.length; b += 1) {
+          if (places[a].level !== places[b].level) continue;
+          const [left, right] = places[a].x <= places[b].x ? [a, b] : [b, a];
+          const leftEnd = places[left].x + l.labels[left].chars * CHAR;
+          if (leftEnd > places[right].x + 1e-9) count += 1;
+        }
+      }
+      return count;
+    };
+
+    it('keeps a label with enough space on the first level, at its note', () => {
+      // Two characters (12 px) and the 4 px gap fit in half a beat of 34 px.
+      const places = degreeLanePlaces(
+        lane([
+          [0, 1],
+          [0.5, 2],
+          [1, 2],
+          [3, 3],
+        ]),
+        BASE,
+        GAP,
+      );
+      expect(places).toEqual([
+        { level: 0, x: 0, shift: 0 },
+        { level: 0, x: 17, shift: 0 },
+        { level: 0, x: 34, shift: 0 },
+        { level: 0, x: 102, shift: 0 },
+      ]);
+    });
+
+    it('moves a label that touches the label before it to the second level', () => {
+      // Sixteenths at 34 px a beat are 8.5 px apart: a 12 px label touches.
+      const places = degreeLanePlaces(
+        lane([
+          [0, 2],
+          [0.25, 2],
+          [0.5, 2],
+          [0.75, 2],
+          [2, 2],
+        ]),
+        BASE,
+        GAP,
+      );
+      expect(places.map((p) => p.level)).toEqual([0, 1, 0, 1, 0]);
+      // A second level is enough: no label moves.
+      expect(places.map((p) => p.shift)).toEqual([0, 0, 0, 0, 0]);
+      expect(places.map((p) => p.x)).toEqual([0, 8.5, 17, 25.5, 68]);
+    });
+
+    it('counts a label under the gap away as touching', () => {
+      // A 12 px label then 3 px of space: closer than the 4 px gap.
+      const near = lane([
+        [0, 2],
+        [15 / BASE, 1],
+      ]);
+      expect(degreeLanePlaces(near, BASE, GAP)[1].level).toBe(1);
+      const clear = lane([
+        [0, 2],
+        [16 / BASE, 1],
+      ]);
+      expect(degreeLanePlaces(clear, BASE, GAP)[1].level).toBe(0);
+    });
+
+    it('moves a label right by the missing distance at the largest width', () => {
+      // Three characters (18 px + 4 px) at twelfths of a 102 px beat: the
+      // third label is 17 px after the first, 5 px short of the 22 it needs.
+      const places = degreeLanePlaces(
+        lane([
+          [0, 3],
+          [1 / 12, 3],
+          [2 / 12, 3],
+          [3 / 12, 3],
+          [2, 3],
+        ]),
+        BASE * 3,
+        GAP,
+        BASE * 3,
+      );
+      expect(places[0]).toEqual({ level: 0, x: 0, shift: 0 });
+      expect(places[1]).toEqual({ level: 1, x: 8.5, shift: 0 });
+      expect(places[2].level).toBe(0);
+      expect(places[2].shift).toBeCloseTo(5);
+      expect(places[2].x).toBeCloseTo(22);
+      // The move carries on: the fourth label clears the second by 22 px.
+      expect(places[3].level).toBe(1);
+      expect(places[3].x).toBeCloseTo(30.5);
+      expect(places[3].shift).toBeCloseTo(5);
+      // A label with space is back at its note.
+      expect(places[4]).toEqual({ level: 0, x: 204, shift: 0 });
+    });
+
+    it('moves on the level where the missing distance is smaller', () => {
+      const places = degreeLanePlaces(
+        lane([
+          [0, 5],
+          [0.1, 1],
+          [0.15, 2],
+        ]),
+        BASE * 3,
+        GAP,
+        BASE * 3,
+      );
+      // Level 1 is free again at 34 px, level 2 at 20.2 px; the note is at
+      // 15.3 px.
+      expect(places[2].level).toBe(1);
+      expect(places[2].x).toBeCloseTo(20.2);
+    });
+
+    it('answers in the order of the labels, whatever their order in time', () => {
+      const places = degreeLanePlaces(
+        lane([
+          [0.25, 2],
+          [0, 2],
+        ]),
+        BASE,
+        GAP,
+      );
+      expect(places).toEqual([
+        { level: 1, x: 8.5, shift: 0 },
+        { level: 0, x: 0, shift: 0 },
+      ]);
+    });
+
+    it('keeps every label inside its bar at a set line length', () => {
+      // 16 sixteenths of 3 characters over a 4-beat bar at 5.8 px a beat.
+      const dense = lane(
+        Array.from({ length: 16 }, (_, i) => [i / 4, 1 + (i % 3)]),
+      );
+      for (const width of [1, 2, 5.8, 20, 60, 101]) {
+        const places = degreeLanePlaces(dense, width, GAP, BASE * 3);
+        expect(places.every((p) => p.shift === 0)).toBe(true);
+        expect(places.every((p) => p.level < 2)).toBe(true);
+        places.forEach((p, i) => {
+          expect(p.x).toBeCloseTo(dense.labels[i].beat * width);
+        });
+      }
+    });
+
+    describe('at the needed beat width of a section', () => {
+      const sixteenths = lane(
+        Array.from({ length: 16 }, (_, i) => [i / 4, 1 + (i % 3)]),
+      );
+      const thirtySeconds = lane(
+        Array.from({ length: 32 }, (_, i) => [i / 8, 1 + (i % 3)]),
+      );
+      // The finest grid of a chart: twelfths of a beat, with double stops.
+      const twelfths = lane(
+        Array.from({ length: 48 }, (_, i) => [i / 12, 1 + ((i * 7) % 5)]),
+      );
+      const dense = { sixteenths, thirtySeconds, twelfths };
+
+      it.each(Object.entries(dense))(
+        'no two label boxes of the degree lane overlap: %s',
+        (_, l) => {
+          const needed = neededBeatWidth([l], GAP);
+          const line = {
+            lineWidth: 375,
+            barsPerLine: 2,
+            beatCount: 4,
+            barChrome: 16,
+            gap: 4,
+            baseBeatWidth: BASE,
+          };
+          // The widths where labels never touch: the automatic layout, and a
+          // line length with room to spare (a tighter one may touch).
+          const widths = [
+            sectionBeatWidth(BASE, needed),
+            lineBeatWidth({ ...line, lineWidth: 1600, barsPerLine: 1 }),
+          ];
+          for (const width of widths) expect(overlaps(l, width)).toBe(0);
+        },
+      );
+
+      it('uses one level, with no move, when the width is not capped', () => {
+        const needed = neededBeatWidth([sixteenths], GAP);
+        // Three characters and the gap over a quarter beat: 88 px, under 102.
+        expect(needed).toBe(88);
+        const places = degreeLanePlaces(
+          sixteenths,
+          sectionBeatWidth(BASE, needed),
+          GAP,
+        );
+        expect(places.every((p) => p.level === 0 && p.shift === 0)).toBe(true);
+      });
+
+      it('uses the second level when the need is over the largest width', () => {
+        const needed = neededBeatWidth([thirtySeconds], GAP);
+        expect(needed).toBeGreaterThan(BASE * 3);
+        const width = sectionBeatWidth(BASE, needed);
+        expect(width).toBe(BASE * 3);
+        const places = degreeLanePlaces(thirtySeconds, width, GAP);
+        expect(new Set(places.map((p) => p.level))).toEqual(new Set([0, 1]));
+        // Two levels are enough for thirty-seconds: no label moves.
+        expect(places.every((p) => p.shift === 0)).toBe(true);
+      });
+
+      it('moves labels only when two levels are not enough', () => {
+        const width = sectionBeatWidth(BASE, neededBeatWidth([twelfths], GAP));
+        const places = degreeLanePlaces(twelfths, width, GAP, BASE * 3);
+        expect(places.some((p) => p.shift > 0)).toBe(true);
+        expect(overlaps(twelfths, width)).toBe(0);
+      });
+    });
   });
 
   it('finds bars that repeat the one above them', () => {

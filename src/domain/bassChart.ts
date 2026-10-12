@@ -56,6 +56,16 @@ export interface BassChartSection {
   endBar: number;
 }
 
+/**
+ * What the layout of the song screen reads of a chart: its bars and its
+ * sections. A chart of any part has them, so the layout functions take this
+ * and not a bass chart.
+ */
+export interface ChartBars {
+  bars: BassChartBar[];
+  sections: BassChartSection[];
+}
+
 export type BassTechnique =
   | 'mute'
   | 'accent'
@@ -375,7 +385,10 @@ export function sectionLabel(name: string): string {
 }
 
 /** Index of the bar containing `seconds`, or -1 outside the chart. */
-export function barIndexAt(chart: BassChart, seconds: number): number {
+export function barIndexAt(
+  chart: Pick<ChartBars, 'bars'>,
+  seconds: number,
+): number {
   if (!Number.isFinite(seconds) || seconds < chart.bars[0].startTime) return -1;
   const index = lastIndexAtOrBefore(
     chart.bars.map((b) => b.startTime),
@@ -385,7 +398,10 @@ export function barIndexAt(chart: BassChart, seconds: number): number {
 }
 
 /** Index of the section containing bar `barIndex`, or -1. */
-export function sectionIndexOfBar(chart: BassChart, barIndex: number): number {
+export function sectionIndexOfBar(
+  chart: Pick<ChartBars, 'sections'>,
+  barIndex: number,
+): number {
   return chart.sections.findIndex(
     (s) => barIndex >= s.startBar && barIndex < s.endBar,
   );
@@ -416,7 +432,7 @@ export function activeNoteIndexes(
  * Distinct time signatures in order of first appearance, e.g. `['7/4']`.
  * Charts end on a lone closing beat, which is not a real 1/4 bar.
  */
-export function timeSignatures(chart: BassChart): string[] {
+export function timeSignatures(chart: Pick<ChartBars, 'bars'>): string[] {
   const bars = chart.bars.filter(
     (bar, i) => !(i === chart.bars.length - 1 && bar.beatCount === 1),
   );
@@ -472,10 +488,16 @@ export interface BassChartSectionBlock {
 /**
  * Lay the chart out section by section. A run of two or more bars without
  * notes collapses into one rest item, so a long count-in or a tacet stretch
- * does not push the bass line off screen; bars with notes are never merged.
+ * does not push the line off screen; bars with notes are never merged.
+ * `barsWithNotes` names the bars that a part fills; by default they are the
+ * bars of the chart's bass notes, and none for a chart that has no notes.
  */
-export function sectionBlocks(chart: BassChart): BassChartSectionBlock[] {
-  const barsWithNotes = new Set(chart.notes.map((n) => n.bar));
+export function sectionBlocks(
+  chart: Pick<ChartBars, 'sections'> & { notes?: readonly { bar: number }[] },
+  barsWithNotes: ReadonlySet<number> = new Set(
+    (chart.notes ?? []).map((n) => n.bar),
+  ),
+): BassChartSectionBlock[] {
   const colorIndexes = new Map<string, number>();
   const totals = new Map<string, number>();
   for (const section of chart.sections) {
@@ -532,38 +554,172 @@ export function sectionRows(
   return rows.filter((row) => row !== undefined);
 }
 
+/** How many times its base width a beat may grow to fill a line. */
+export const MAX_BEAT_WIDTH_SCALE = 3;
 /**
- * The line length to draw when only `fits` bars fit on screen: the chosen
- * one when it fits, else its largest divisor that does (8 → 4 → 2), so the
- * lines still start on the same bars of each phrase. A length with no such
- * divisor (7 with room for 6) falls back to as many as fit.
+ * The beat width, in pixels, that makes `barsPerLine` bars of `beatCount`
+ * beats share a line `lineWidth` wide. Each bar also takes `barChrome`
+ * pixels that do not grow (padding and border), and `gap` separates the
+ * bars. A set line length always wins: there is no lower limit, so labels
+ * may touch. Past three times `baseBeatWidth` the line keeps free space at
+ * its end. It is rounded down to 1/64 px, the layout unit of Chromium, so
+ * the bars do not overflow the line there. Firefox lays out in 1/60 px and
+ * can round a bar up by a fraction: the caller's rows must not wrap.
  */
-export function fittedBarsPerRow(chosen: number, fits: number): number {
-  if (fits >= chosen) return chosen;
-  const room = Math.max(1, fits);
-  for (let length = room; length > 1; length -= 1) {
-    if (chosen % length === 0) return length;
-  }
-  return room;
+export function lineBeatWidth(line: {
+  lineWidth: number;
+  barsPerLine: number;
+  beatCount: number;
+  barChrome: number;
+  gap: number;
+  baseBeatWidth: number;
+}): number {
+  const bars = Math.max(1, Math.floor(line.barsPerLine));
+  const beats = bars * Math.max(1, line.beatCount);
+  const room = line.lineWidth - (bars - 1) * line.gap - bars * line.barChrome;
+  const shared = Math.floor((room / beats) * 64) / 64;
+  return Math.min(
+    line.baseBeatWidth * MAX_BEAT_WIDTH_SCALE,
+    Math.max(1, shared),
+  );
 }
 
 /**
- * Bars that show the same tab as the bar right above them when a section
- * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
- * means the same meter and the same notes at the same beats, strings and
- * frets, with the same slides and techniques; sustain is not drawn, so it
- * is not compared. Bars without notes never count as repeats.
+ * The beat width of a section in the automatic layout: the larger of the
+ * base width and the width its labels need, up to three times the base.
  */
-export function barsRepeatingAbove(
-  chart: BassChart,
+export function sectionBeatWidth(base: number, needed: number): number {
+  return Math.min(base * MAX_BEAT_WIDTH_SCALE, Math.max(base, needed));
+}
+
+/** A label in a lane: where it starts, in beats, and its character count. */
+export interface LaneLabel {
+  beat: number;
+  chars: number;
+}
+
+/**
+ * Labels that share a row, such as the fret numbers of one string or the
+ * degree lane. The font has one character width, so a label is as wide as
+ * `chars * charWidth`.
+ */
+export interface LabelLane {
+  charWidth: number;
+  labels: LaneLabel[];
+}
+
+/**
+ * The beat width, in pixels, at which no two neighbouring labels of any
+ * lane touch: the label before the nearest pair is `gap` pixels clear of the
+ * next one. Labels at the same beat are ignored (a double stop is one
+ * label). Zero when no lane has two labels.
+ */
+export function neededBeatWidth(lanes: LabelLane[], gap: number): number {
+  let needed = 0;
+  for (const { charWidth, labels } of lanes) {
+    const sorted = [...labels].sort((a, b) => a.beat - b.beat);
+    for (let i = 1; i < sorted.length; i += 1) {
+      const distance = sorted[i].beat - sorted[i - 1].beat;
+      if (distance <= 0) continue;
+      needed = Math.max(
+        needed,
+        (sorted[i - 1].chars * charWidth + gap) / distance,
+      );
+    }
+  }
+  return needed;
+}
+
+/** Where the degree lane draws one of its labels. */
+export interface LaneLabelPlace {
+  /** 0 for the first level, 1 for the second. */
+  level: number;
+  /** The label's left edge, in pixels from the bar's first beat. */
+  x: number;
+  /** How far right of its note the label moved, in pixels; mostly 0. */
+  shift: number;
+}
+
+/** How many levels the degree lane has. */
+export const DEGREE_LANE_LEVELS = 2;
+/** Rounding slack, in pixels, when a label is exactly `gap` clear. */
+const TOUCH_SLACK = 1e-6;
+
+/**
+ * Where the degree lane draws each of its labels at `beatWidth` pixels a
+ * beat, in the order of `lane.labels`. A label touches another when it is
+ * less than `gap` pixels clear of it. A label stays on the first level when
+ * it has the space; when it touches the label before it, it goes to the
+ * second level. When it touches on both levels, it moves right by the
+ * missing distance, on the level where that distance is smaller, but only
+ * when `beatWidth` is at least `shiftFrom`, the largest width of a beat
+ * (`neededBeatWidth` keeps one level clear below that in the automatic
+ * layout). Below `shiftFrom` (a set line length that squeezes the beats) the
+ * labels never move: they stay at their notes on two levels and may touch,
+ * so none leaves its bar. `shiftFrom` defaults to never.
+ */
+export function degreeLanePlaces(
+  lane: LabelLane,
+  beatWidth: number,
+  gap: number,
+  shiftFrom: number = Infinity,
+): LaneLabelPlace[] {
+  const order = lane.labels
+    .map((_, index) => index)
+    .sort((a, b) => lane.labels[a].beat - lane.labels[b].beat);
+  // Per level, the leftmost x where its next label is clear of the last one.
+  const free = Array.from({ length: DEGREE_LANE_LEVELS }, () => -Infinity);
+  const places: LaneLabelPlace[] = [];
+  for (const index of order) {
+    const label = lane.labels[index];
+    const noteX = label.beat * beatWidth;
+    let level = free.findIndex((x) => noteX + TOUCH_SLACK >= x);
+    let shift = 0;
+    if (level < 0) {
+      level = free.indexOf(Math.min(...free));
+      if (beatWidth + TOUCH_SLACK >= shiftFrom) shift = free[level] - noteX;
+    }
+    places[index] = { level, x: noteX + shift, shift };
+    free[level] = noteX + shift + label.chars * lane.charWidth + gap;
+  }
+  return places;
+}
+
+/**
+ * Bars that draw the same as the bar right above them when a section is
+ * drawn `barsPerRow` to a line, each mapped to that bar. `drawing` gives
+ * what a bar draws, as a text that is equal for two bars that look the same,
+ * or null for a bar that draws nothing: such a bar never counts as a repeat.
+ * Each part gives its own `drawing`, so this reads no notes.
+ */
+export function repeatsAbove(
   block: BassChartSectionBlock,
   barsPerRow: number,
-  notes: { note: BassChartNote }[][] = notesByBar(chart),
+  drawing: (bar: number) => string | null,
 ): Map<number, number> {
   const shown = new Set(
     block.items.flatMap((item) => (item.kind === 'bar' ? [item.bar] : [])),
   );
-  const tab = (bar: number): string | null => {
+  const repeats = new Map<number, number>();
+  for (const bar of shown) {
+    const above = bar - barsPerRow;
+    if (!shown.has(above)) continue;
+    const drawn = drawing(bar);
+    if (drawn !== null && drawn === drawing(above)) repeats.set(bar, above);
+  }
+  return repeats;
+}
+
+/**
+ * What a bar of the bass tab draws, for `repeatsAbove`: its meter and its
+ * notes at their beats, strings and frets, with their slides and techniques;
+ * sustain is not drawn, so it is not compared. Null for a bar without notes.
+ */
+export function bassBarDrawing(
+  chart: Pick<ChartBars, 'bars'>,
+  notes: { note: BassChartNote }[][],
+): (bar: number) => string | null {
+  return (bar) => {
     const cells = (notes[bar] ?? [])
       .map(({ note }) =>
         [
@@ -579,14 +735,22 @@ export function barsRepeatingAbove(
       ? `${chart.bars[bar].beatCount}|${cells.join(',')}`
       : null;
   };
-  const repeats = new Map<number, number>();
-  for (const bar of shown) {
-    const above = bar - barsPerRow;
-    if (!shown.has(above)) continue;
-    const drawn = tab(bar);
-    if (drawn !== null && drawn === tab(above)) repeats.set(bar, above);
-  }
-  return repeats;
+}
+
+/**
+ * Bars that show the same tab as the bar right above them when a section
+ * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
+ * means the same meter and the same notes at the same beats, strings and
+ * frets, with the same slides and techniques; sustain is not drawn, so it
+ * is not compared. Bars without notes never count as repeats.
+ */
+export function barsRepeatingAbove(
+  chart: BassChart,
+  block: BassChartSectionBlock,
+  barsPerRow: number,
+  notes: { note: BassChartNote }[][] = notesByBar(chart),
+): Map<number, number> {
+  return repeatsAbove(block, barsPerRow, bassBarDrawing(chart, notes));
 }
 
 /** The chart's notes bucketed by bar, each paired with its chart index. */

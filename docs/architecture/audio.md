@@ -31,3 +31,9 @@ Samplers are cached globally and loaded eagerly at module init. Never dispose a 
 - `useSynth` supports scheduled playback through `Tone.Transport`.
 
 **Critical pattern:** an audio callback must not set React state directly. Schedule each UI update with `Tone.getDraw().schedule()`.
+
+## Drum samples
+
+`public/drum-samples/` holds the Virtuosity Drums one-shots (CC0, FLAC; see its `README.md`). The groove player of Estrutura loads three of them at module init. A drum chart without a linked recording plays through `useDrumSamplePlayback` -> `drumSampleTransport` (hit schedule from `domain/drumPlaybackSchedule.ts`); its buffers load on first play, are cached, and are never disposed. A hit with no loaded sample is skipped.
+
+When a song has the bass chart and the drum chart of one file (`partChartId(bassId, 'drums')`), and neither has a linked recording, `useSongPartsPlayback` (held by `LibraryModule`, above the part, so a change of part keeps playing) runs both on one clock through `songPartsTransport`. The rules (which parts sound, given the mutes, the recording, the same-file test) are in `domain/songPartsPlayback.ts`. A mute is read at each scheduling and stops only its part. Parts of different files play alone.

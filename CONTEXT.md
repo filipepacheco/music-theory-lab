@@ -103,13 +103,42 @@ sixteenth, and thirty-second notes across one or two 4/4 measures. One groove
 per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
 The section preview renders a compact standard-style percussion chart.
+A [[drum-chart]] section has a groove too, worked out and not stored: the
+section groove is the kick, snare, and hi-hat bar pattern that the section
+repeats most (the first one on a tie). The section header draws it with the same
+chart.
 _Avoid_: beat, rhythm
 
+**Fill**:
+A bar of a [[drum-chart]] section whose kick, snare, or hi-hat pattern differs
+from the section [[groove]]. The grid marks it. A bar that differs only in
+other [[drum-piece]]s, or that has none of the three, is not a fill.
+_Avoid_: break, variation
+
 **Drum piece**:
-One row of the [[groove]] grid: `bumbo` (kick), `caixa` (snare), or `chimbal`
-(hi-hat). The piece list is a constant, so new pieces are an addition rather
-than a redesign.
+One element of the drum kit, and one row of a drum grid or a [[groove]] grid.
+The groove grid has three: `bumbo` (kick), `caixa` (snare), and `chimbal`
+(hi-hat). A [[drum-chart]] has nine: those three, `tomAgudo` (high tom),
+`tomMedio` (mid tom), `surdo` (floor tom), `pratoAtaque` (crash),
+`pratoConducao` (ride), and `outros` (all other [[general-midi]] numbers). A
+piece can have an articulation: cross-stick on the snare; closed, open, or
+pedal on the hi-hat; china or splash on the crash; bell on the ride. Each
+piece list is a constant, so new pieces are an addition rather than a
+redesign.
 _Avoid_: drum, instrument, track
+
+**General MIDI**:
+The standard that gives each percussion sound a number on the percussion
+channel of a MIDI file (36 is a kick, 38 a snare, 42 a closed hi-hat). A hit
+of a [[drum-chart]] keeps its number, and its [[drum-piece]] and articulation
+come from the number, so a better map of drum pieces needs no new import.
+_Avoid_: GM number, drum note, pitch
+
+**Ghost note**:
+A very soft hit of a [[drum-chart]]. Its opposite is the accent, a hit that
+stands out. For a Guitar Pro file the two come from the score, not from the
+intensity of the hit: the intensity also follows the dynamic of the passage.
+_Avoid_: soft note, quiet hit
 
 **Bar root**:
 The pitch class a bass chart's bar is heard over: the bass note on the
@@ -119,6 +148,16 @@ bass note. A bar's chord type is named from the bass only when its played
 third, fifth and seventh leave a single reading; otherwise only the root is
 shown.
 _Avoid_: chord, detected chord
+
+**Degree lane**:
+The row under the bass tab that names the degree of each note over the
+[[bar-root]]. A double stop is one label. The lane has two levels: a label
+that touches the label before it shows on the second level, and a label with
+enough space stays on the first. When the bars are at their largest width and
+a label still touches the label before it on its level, it moves right by the
+missing distance. Below the largest width (a set line length) no label moves:
+labels may touch, but each stays at its note, inside its bar.
+_Avoid_: degree row, interval line
 
 **Suggested key**:
 A ranked guess at a bass chart's [[tonal-center]], from where the bass rests
@@ -131,3 +170,76 @@ _Avoid_: detected key, the key
 **Quiz session**:
 One active run of music-theory questions, including its current question, answer result, score, streak, and replay state.
 _Avoid_: quiz state, quiz screen
+
+**Library song**:
+One row of the Biblioteca list: the charts and [[analysed-track]]s that share
+one [[song-key]]. It is a view calculated when the list loads; it merges and
+deletes nothing, and each chart keeps its own settings and linked recording.
+Its title and artist come from its best [[source]]: Guitar Pro, then
+Rocksmith, then MIDI. A click opens the chart of the best source, or the
+analysis when the song has only an analysed track.
+_Avoid_: merged chart, song record
+
+**Song key**:
+The normalized title and artist that group charts into a [[library-song]]:
+lower case, no accents, no punctuation, no text in brackets, and without
+words that name the file ("bass", "tab", a version number). A chart without
+an artist joins by title when only one song has that title. It is not a
+musical key.
+_Avoid_: key, tonal center
+
+**Source**:
+The file format of a chart: Rocksmith, MIDI, or Guitar Pro.
+_Avoid_: origin, format
+
+**Part**:
+The instrument of a chart: bass or drums.
+_Avoid_: track, instrument
+
+**Analysed track**:
+A recording that the offline pipeline analysed for chords, key, and tempo.
+It appears in the Biblioteca list through its [[library-song]].
+_Avoid_: library track, analysis
+
+**Chart**:
+One [[part]] of one imported file, bar by bar: a [[bass-chart]] or a
+[[drum-chart]]. Its id comes from the hash of the file, so the same file
+always gives the same chart. The two charts of one file share the metadata,
+the bars, and the sections, and they use one table and one synchronization.
+A change to a chart sends the full chart to the shared library again. A
+deletion leaves a deletion record, so a device that was offline cannot bring
+the chart back.
+_Avoid_: song, tab, arrangement
+
+**Bass chart**:
+A [[chart]] of a bass line: notes with a string and a fret, and a tuning. It
+has no part field, and its id is the hash of the file, so the charts from
+before the drum charts stay valid.
+_Avoid_: bass tab, bass line, Rocksmith chart
+
+**Drum chart**:
+A [[chart]] of a drum part: hits, each with its time, bar, position in the
+bar, [[drum-piece]], articulation, intensity, and [[general-midi]] number,
+and a mark for a [[ghost-note]] or an accent. It has no tuning and no frets.
+Its part field is "drums", and its id is a hash of the file hash and the part
+name. All percussion tracks of a file make one drum chart.
+_Avoid_: drum tab, drum track, groove
+
+**Line length**:
+The number of bars in each line of a section of a [[chart]], from 1 to 16, or
+"automatic" (the layout wraps the bars as they fit). The musician sets it for
+a section, by its first bar, or for the whole song; a section with no choice
+uses the song line length. A set number always holds: each line shows exactly
+that many bars, and the layout never lowers it to a divisor. It lives in the
+[[chart-settings]], so it shows on all devices. A new import starts automatic.
+_Avoid_: bars per row, bars per line
+
+**Chart settings**:
+The synchronized view choices of one [[chart]]: the song line length, the
+line length of each section (by its first bar), and the group override (a
+[[song-key]] or "separate"). They are a record apart from the chart, so a
+change sends no chart and does not restart playback. They use the model of
+the charts: one shared library, no login, and the last write wins. They stay
+after the deletion of their chart, on the device and in the cloud, and they
+apply again when the same file returns.
+_Avoid_: chart options, view state, preferences

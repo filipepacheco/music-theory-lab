@@ -17,6 +17,7 @@ import {
   type ScaleHighlightKind,
 } from '@/domain/scaleHighlights';
 import { FUNCTION_COLORS } from '@/constants/functionColors';
+import { isLibraryHash } from '@/domain/libraryRoute';
 
 const SCALE_HIGHLIGHT_COLORS: Record<ScaleHighlightKind, string> = {
   a: 'var(--color-scale-a)',
@@ -60,7 +61,9 @@ function applySongState(song: {
 export const useAppStore = create<AppState>((set, get) => ({
   rootNote: 0, // C
   isMinor: false,
-  activeModule: 'harmonicField',
+  activeModule: isLibraryHash(window.location.hash)
+    ? 'library'
+    : 'harmonicField',
   harmonicField: getHarmonicField(0, false),
   selectedChordIndex: null,
   highlightedNotes: [],
@@ -124,7 +127,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  setActiveModule: (module) =>
+  setActiveModule: (module) => {
+    // An address of the Biblioteca belongs to that module alone. A different
+    // module takes it out of the current history entry, so a reload or a
+    // copied link does not open a library song.
+    if (module !== 'library' && isLibraryHash(window.location.hash)) {
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search,
+      );
+    }
     set({
       activeModule: module,
       selectedChordIndex: null,
@@ -132,7 +145,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       highlightColors: {},
       selectedScaleId: null,
       comparisonScaleId: null,
-    }),
+    });
+  },
 
   selectChord: (index) => {
     if (index === null) {
@@ -621,3 +635,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 }));
+
+// The module follows the address: Back or Forward to a history entry of the
+// Biblioteca, from a different module, opens the Biblioteca on that address.
+function followLibraryAddress() {
+  const { activeModule, setActiveModule } = useAppStore.getState();
+  if (activeModule !== 'library' && isLibraryHash(window.location.hash)) {
+    setActiveModule('library');
+  }
+}
+window.addEventListener('hashchange', followLibraryAddress);
+window.addEventListener('popstate', followLibraryAddress);
