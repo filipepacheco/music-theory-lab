@@ -563,8 +563,10 @@ export const MIN_BEAT_WIDTH_SCALE = 0.8;
  * bars. The width stays between `MIN_BEAT_WIDTH_SCALE` and
  * `MAX_BEAT_WIDTH_SCALE` times `baseBeatWidth`: past the largest, the line
  * keeps free space at its end; under the smallest, the bars do not fit and
- * the caller must draw fewer of them to a line (`fittedBarsPerRow`). It is rounded down to the browser's layout unit, 1/64 px, so the
- * bars never overflow the line.
+ * the caller must draw fewer of them to a line (`fittedBarsPerRow`). It is
+ * rounded down to 1/64 px, the layout unit of Chromium, so the bars do not
+ * overflow the line there. Firefox lays out in 1/60 px and can round a bar
+ * up by a fraction: the caller's rows must not wrap.
  */
 export function lineBeatWidth(line: {
   lineWidth: number;

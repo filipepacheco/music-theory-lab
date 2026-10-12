@@ -8,6 +8,7 @@ import type { BassChart } from '@/domain/bassChart';
 const state = vi.hoisted(() => ({
   audio: { status: 'missing' } as { status: string; url?: string },
   synthChart: null as BassChart | null,
+  seeks: [] as number[],
 }));
 vi.mock('@/hooks/useRocksmithAudio', () => ({
   useRocksmithAudio: () => ({
@@ -19,21 +20,29 @@ vi.mock('@/hooks/useRocksmithAudio', () => ({
 vi.mock('@/hooks/useBassSynth', () => ({
   useBassSynth: () => ({ playBassNote: vi.fn() }),
 }));
-vi.mock('@/hooks/useBassSynthPlayback', () => ({
-  useBassSynthPlayback: (chart: BassChart) => {
-    state.synthChart = chart;
-    return {
-      ready: true,
-      playing: false,
-      duration: 2,
-      currentSeconds: 0,
-      failed: false,
-      play: vi.fn(),
-      pause: vi.fn(),
-      seek: vi.fn(),
-    };
-  },
-}));
+vi.mock('@/hooks/useBassSynthPlayback', async () => {
+  const { useState } = await import('react');
+  return {
+    useBassSynthPlayback: (chart: BassChart) => {
+      state.synthChart = chart;
+      // A seek moves the clock, as the transport of the real player does.
+      const [currentSeconds, setCurrentSeconds] = useState(0);
+      return {
+        ready: true,
+        playing: false,
+        duration: 2,
+        currentSeconds,
+        failed: false,
+        play: vi.fn(),
+        pause: vi.fn(),
+        seek: (seconds: number) => {
+          state.seeks.push(seconds);
+          setCurrentSeconds(seconds);
+        },
+      };
+    },
+  };
+});
 vi.mock('@/components/library/useLibraryAudio', () => ({
   useLibraryAudio: () => ({
     ready: true,
@@ -52,6 +61,7 @@ const chart = {
 };
 beforeEach(() => {
   state.audio = { status: 'missing' };
+  state.seeks = [];
   localStorage.clear();
   localStorage.setItem('music-theory-lab:fifths-window-open', 'false');
   vi.stubGlobal(
@@ -372,6 +382,10 @@ describe('Biblioteca bar layout', () => {
     ...document.querySelectorAll<HTMLButtonElement>('button[data-bar]'),
   ];
   const widths = () => bars().map((bar) => parseFloat(bar.style.width));
+  /** The rows of a section with a set line length. */
+  const lines = () => [
+    ...document.querySelectorAll<HTMLElement>('[data-line]'),
+  ];
   const typeSizes = () =>
     [...document.querySelectorAll('button[data-bar] svg text')].map((text) =>
       Number(text.getAttribute('font-size')),
@@ -436,7 +450,90 @@ describe('Biblioteca bar layout', () => {
     }
   });
 
-  it('keeps the bars clickable and the repeat marks under a line length', () => {
+  it('keeps a line of a set length on one row, with exactly its bars', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    // The automatic layout has no lines: its bars wrap where they must.
+    expect(lines()).toEqual([]);
+    expect(bars()[0].parentElement?.classList.contains('flex-wrap')).toBe(true);
+    const barsOfLines = () =>
+      lines().map((line) =>
+        [...line.querySelectorAll<HTMLElement>('button[data-bar]')].map((bar) =>
+          Number(bar.dataset.bar),
+        ),
+      );
+    const wrapping = () =>
+      lines().filter((line) => line.classList.contains('flex-wrap'));
+    setLineLength('4');
+    expect(barsOfLines()).toEqual([
+      [0, 1, 2, 3],
+      [4, 5, 6, 7],
+    ]);
+    expect(wrapping()).toEqual([]);
+    // The bars keep their width: none shrinks to make room.
+    expect(bars().every((bar) => bar.classList.contains('shrink-0'))).toBe(
+      true,
+    );
+    setLineLength('7');
+    expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6], [7]]);
+    expect(wrapping()).toEqual([]);
+    // 8 bars do not fit: the line length falls to 4, and still does not wrap.
+    setLineLength('8');
+    expect(barsOfLines()).toEqual([
+      [0, 1, 2, 3],
+      [4, 5, 6, 7],
+    ]);
+    expect(wrapping()).toEqual([]);
+  });
+
+  it('wraps a line of a set length until the line is measured', () => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    setLineLength('4');
+    // The bars still have the base width, which may not fit the line.
+    expect(widths()[0]).toBe(152);
+    expect(lines().length).toBe(2);
+    expect(lines().every((line) => line.classList.contains('flex-wrap'))).toBe(
+      true,
+    );
+  });
+
+  it('seeks to a clicked bar under a line length, and moves the cursor', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    setLineLength('4');
+    const activeBars = () =>
+      bars()
+        .filter((bar) => bar.classList.contains('border-live'))
+        .map((bar) => Number(bar.dataset.bar));
+    expect(activeBars()).toEqual([]);
+    // Bar 6 is the second bar of the second line.
+    fireEvent.click(bars()[5]);
+    expect(state.seeks).toEqual([mixed.bars[5].startTime]);
+    expect(activeBars()).toEqual([5]);
+    // The playhead is the only line the cursor adds, at the start of the bar.
+    const playhead = bars()[5].querySelector(
+      'line[stroke="var(--color-accent)"]',
+    );
+    expect(playhead?.getAttribute('x1')).toBe(playhead?.getAttribute('x2'));
+    expect(
+      document.querySelectorAll(
+        'button[data-bar] line[stroke="var(--color-accent)"]',
+      ).length,
+    ).toBe(1);
+    fireEvent.click(bars()[2]);
+    expect(state.seeks).toEqual([
+      mixed.bars[5].startTime,
+      mixed.bars[2].startTime,
+    ]);
+    expect(activeBars()).toEqual([2]);
+  });
+
+  it('keeps the repeat marks under a line length', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     fireEvent.click(screen.getByLabelText('Marcar repetições'));
     setLineLength('4');
