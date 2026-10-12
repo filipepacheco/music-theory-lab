@@ -21,6 +21,8 @@ const state = vi.hoisted(() => ({
   /** The file name of the linked recording, or null with none. */
   recording: null as string | null,
   seeks: [] as number[],
+  /** The seeks of the sample player, which sounds when no recording links. */
+  sampleSeeks: [] as number[],
 }));
 vi.mock('@/services/confirm', () => ({
   confirmDialog: vi.fn(() => Promise.resolve(true)),
@@ -56,6 +58,25 @@ vi.mock('@/components/library/useLibraryAudio', () => ({
       pause: () => {},
       seek: (seconds: number) => {
         state.seeks.push(seconds);
+        setCurrentSeconds(seconds);
+      },
+    };
+  },
+}));
+
+// The sample player moves the clock, as its transport does, and sounds nothing.
+vi.mock('@/hooks/useDrumSamplePlayback', () => ({
+  useDrumSamplePlayback: (_chart: unknown, enabled: boolean) => {
+    const [currentSeconds, setCurrentSeconds] = useState(0);
+    return {
+      ready: enabled,
+      playing: false,
+      duration: 20,
+      currentSeconds,
+      play: () => Promise.resolve(),
+      pause: () => {},
+      seek: (seconds: number) => {
+        state.sampleSeeks.push(seconds);
         setCurrentSeconds(seconds);
       },
     };
@@ -144,6 +165,7 @@ const allLengths = () =>
 beforeEach(() => {
   state.recording = null;
   state.seeks = [];
+  state.sampleSeeks = [];
   localStorage.clear();
   vi.stubGlobal('indexedDB', new IDBFactory());
   // A line that the frame can measure: 1000 pixels wide.
@@ -478,19 +500,20 @@ describe('drum part of the song detail', () => {
     expect(bar(3).querySelectorAll('[data-mark]')).toHaveLength(12);
   });
 
-  it('has no player and no cursor without a linked recording', () => {
+  it('plays the chart with the drum samples without a linked recording', () => {
     renderPart();
     expect(
-      screen.getByText(/Vincule a gravação para o cursor acompanhar a bateria/),
+      screen.getByText(/a bateria toca com as amostras do app/),
     ).toBeTruthy();
-    expect(bars().every((item) => item.disabled)).toBe(true);
+    expect(bars().every((item) => !item.disabled)).toBe(true);
+    // A click on a bar moves the sample player, not the recording.
     fireEvent.click(bar(4));
+    expect(state.sampleSeeks).toEqual([chart.bars[4].startTime]);
     expect(state.seeks).toEqual([]);
-    expect(document.querySelector('[data-playhead]')).toBeNull();
     const dock = screen.getByRole('region', { name: 'Bateria' });
     expect(
       (within(dock).getByLabelText('Tocar') as HTMLButtonElement).disabled,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('moves the cursor with a linked recording, and jumps to a clicked bar', () => {
