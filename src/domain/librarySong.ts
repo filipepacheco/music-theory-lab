@@ -228,3 +228,26 @@ export function songJoinedByImport(
   if (!song) return null;
   return song.charts.length + song.analysed.length > 1 ? song : null;
 }
+
+/**
+ * The songs that can take a chart by a move: not the song that holds it, not a
+ * separated song, and not a song that already holds a chart of the same source
+ * and part (the address would name two charts).
+ */
+export function moveTargets(
+  songs: LibrarySong[],
+  chart: ChartSummary,
+  currentKey: string,
+): LibrarySong[] {
+  return songs.filter(
+    (song) =>
+      song.key !== currentKey &&
+      !song.key.startsWith('separate:') &&
+      !song.charts.some(
+        (item) =>
+          item.id !== chart.id &&
+          item.source === chart.source &&
+          item.part === chart.part,
+      ),
+  );
+}

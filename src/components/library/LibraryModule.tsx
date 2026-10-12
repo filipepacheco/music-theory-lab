@@ -6,6 +6,7 @@ import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
 import {
   groupLibrarySongs,
+  moveTargets,
   songJoinedByImport,
   type LibrarySong,
 } from '@/domain/librarySong';
@@ -46,6 +47,7 @@ export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const { route, navigate } = useLibraryRoute();
   // Lives here, not in the list, so it survives a visit to a song screen.
@@ -152,11 +154,19 @@ export default function LibraryModule() {
       : null;
   const selectedChart =
     targetChartId && openChart?.id === targetChartId ? openChart : null;
+  const selectedSummary =
+    summaries.find((item) => item.id === targetChartId) ?? null;
 
   /** Store a group override, then show the song that now holds the chart. */
   const correctGroup = async (chartId: string, override: string | null) => {
     setJoinMessage(null);
-    await setOverride(chartId, override);
+    setCorrectionError(null);
+    try {
+      await setOverride(chartId, override);
+    } catch {
+      setCorrectionError('Não foi possível salvar a correção. Tente de novo.');
+      return;
+    }
     const next = { ...overrides };
     if (override) next[chartId] = override;
     else delete next[chartId];
@@ -222,6 +232,11 @@ export default function LibraryModule() {
               {joinMessage}
             </p>
           )}
+          {correctionError && (
+            <p role="alert" className="text-sm text-danger">
+              {correctionError}
+            </p>
+          )}
           {choices.length > 1 && currentChoice && (
             <Segmented<SourceChoice>
               label="Fonte"
@@ -237,11 +252,11 @@ export default function LibraryModule() {
           {targetChartId && resolved && (
             <GroupOverrideControl
               song={resolved.song}
-              targets={songs.filter(
-                (item) =>
-                  item.key !== resolved.song.key &&
-                  !item.key.startsWith('separate:'),
-              )}
+              targets={
+                selectedSummary
+                  ? moveTargets(songs, selectedSummary, resolved.song.key)
+                  : []
+              }
               overridden={targetChartId in overrides}
               onMove={(key) => void correctGroup(targetChartId, key)}
               onSeparate={() => void correctGroup(targetChartId, 'separate')}
