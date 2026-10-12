@@ -12,6 +12,8 @@ import BassTabBar, {
   FUNCTION_COLORS,
   BAR_CHROME,
   BEAT_WIDTH,
+  LABEL_GAP,
+  barLabelLanes,
   tabBarWidth,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
@@ -42,9 +44,11 @@ import {
   barIndexAt,
   barsRepeatingAbove,
   fittedBarsPerRow,
+  minBeatWidth,
+  neededBeatWidth,
+  sectionBeatWidth,
   isStandardTuning,
   lineBeatWidth,
-  MIN_BEAT_WIDTH_SCALE,
   notesByBar,
   sectionBlocks,
   sectionIndexOfBar,
@@ -771,6 +775,7 @@ export default function RocksmithTrackDetail({
                 changeBarsPerRow(block.section.startBar, count)
               }
               barNotes={barNotes}
+              analysis={showDegrees ? analysis : null}
               markRepeats={markRepeats}
               renderBar={(barIndex, beatWidth, repeatOf) => (
                 <BassTabBar
@@ -937,6 +942,7 @@ function SectionBlock({
   barsPerRow,
   onBarsPerRowChange,
   barNotes,
+  analysis,
   markRepeats,
   renderBar,
   onSeek,
@@ -950,6 +956,8 @@ function SectionBlock({
   barsPerRow: number | null;
   onBarsPerRowChange: (count: number | null) => void;
   barNotes: IndexedNote[][];
+  /** Per-bar analysis when degrees are shown: the degree lane has labels. */
+  analysis: readonly BarAnalysis[] | null;
   /** Leave a bar that repeats the one above empty, under a repeat sign. */
   markRepeats: boolean;
   renderBar: (
@@ -980,7 +988,24 @@ function SectionBlock({
       .slice(section.startBar, section.endBar)
       .map((b) => b.beatCount),
   );
-  const smallestBar = tabBarWidth(mostBeats, BEAT_WIDTH * MIN_BEAT_WIDTH_SCALE);
+  // The widest beat any bar of the section needs, so that no two labels
+  // touch; all bars of the section share it.
+  const needed = useMemo(
+    () =>
+      neededBeatWidth(
+        chart.bars
+          .slice(section.startBar, section.endBar)
+          .flatMap((_, i) =>
+            barLabelLanes(
+              barNotes[section.startBar + i] ?? [],
+              analysis?.[section.startBar + i] ?? null,
+            ),
+          ),
+        LABEL_GAP,
+      ),
+    [chart, section, barNotes, analysis],
+  );
+  const smallestBar = tabBarWidth(mostBeats, minBeatWidth(BEAT_WIDTH, needed));
   const perLine =
     barsPerRow === null || lineWidth === null
       ? barsPerRow
@@ -992,7 +1017,7 @@ function SectionBlock({
   // line: the one that makes a line of its widest bars fill the line.
   const beatWidth =
     perLine === null || lineWidth === null
-      ? undefined
+      ? sectionBeatWidth(BEAT_WIDTH, needed)
       : lineBeatWidth({
           lineWidth,
           barsPerLine: perLine,
@@ -1000,6 +1025,7 @@ function SectionBlock({
           barChrome: BAR_CHROME,
           gap: BAR_GAP,
           baseBeatWidth: BEAT_WIDTH,
+          neededBeatWidth: needed,
         });
   // "Above" only means something once the lines have a set length.
   const repeats: ReadonlyMap<number, number> = useMemo(

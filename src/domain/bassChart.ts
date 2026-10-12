@@ -573,6 +573,8 @@ export function lineBeatWidth(line: {
   barChrome: number;
   gap: number;
   baseBeatWidth: number;
+  /** The beat width the section's labels need; see `neededBeatWidth`. */
+  neededBeatWidth?: number;
 }): number {
   const bars = Math.max(1, Math.floor(line.barsPerLine));
   const beats = bars * Math.max(1, line.beatCount);
@@ -580,8 +582,66 @@ export function lineBeatWidth(line: {
   const shared = Math.floor((room / beats) * 64) / 64;
   return Math.min(
     line.baseBeatWidth * MAX_BEAT_WIDTH_SCALE,
-    Math.max(line.baseBeatWidth * MIN_BEAT_WIDTH_SCALE, shared),
+    Math.max(minBeatWidth(line.baseBeatWidth, line.neededBeatWidth), shared),
   );
+}
+
+/**
+ * The narrowest beat a line may use: 0.8 of the base width, but never under
+ * what the section's labels need (up to three times the base width), so
+ * narrowing to keep a line length never makes labels touch.
+ */
+export function minBeatWidth(base: number, needed = 0): number {
+  return Math.max(
+    base * MIN_BEAT_WIDTH_SCALE,
+    Math.min(needed, base * MAX_BEAT_WIDTH_SCALE),
+  );
+}
+
+/**
+ * The beat width of a section in the automatic layout: the larger of the
+ * base width and the width its labels need, up to three times the base.
+ */
+export function sectionBeatWidth(base: number, needed: number): number {
+  return Math.min(base * MAX_BEAT_WIDTH_SCALE, Math.max(base, needed));
+}
+
+/** A label in a lane: where it starts, in beats, and its character count. */
+export interface LaneLabel {
+  beat: number;
+  chars: number;
+}
+
+/**
+ * Labels that share a row, such as the fret numbers of one string or the
+ * degree lane. The font has one character width, so a label is as wide as
+ * `chars * charWidth`.
+ */
+export interface LabelLane {
+  charWidth: number;
+  labels: LaneLabel[];
+}
+
+/**
+ * The beat width, in pixels, at which no two neighbouring labels of any
+ * lane touch: the label before the nearest pair is `gap` pixels clear of the
+ * next one. Labels at the same beat are ignored (a double stop is one
+ * label). Zero when no lane has two labels.
+ */
+export function neededBeatWidth(lanes: LabelLane[], gap: number): number {
+  let needed = 0;
+  for (const { charWidth, labels } of lanes) {
+    const sorted = [...labels].sort((a, b) => a.beat - b.beat);
+    for (let i = 1; i < sorted.length; i += 1) {
+      const distance = sorted[i].beat - sorted[i - 1].beat;
+      if (distance <= 0) continue;
+      needed = Math.max(
+        needed,
+        (sorted[i - 1].chars * charWidth + gap) / distance,
+      );
+    }
+  }
+  return needed;
 }
 
 /**

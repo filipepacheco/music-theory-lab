@@ -447,3 +447,86 @@ describe('Biblioteca bar layout', () => {
     ).toBe(3);
   });
 });
+
+describe('Biblioteca dense sections', () => {
+  const LINE_WIDTH = 1000;
+  /** Bars 1-2 hold quarter notes; bars 3-4 hold sixteenths on frets 12-14. */
+  const dense = fixtureChart(
+    4,
+    [
+      ...walking([
+        [48, 52, 55, 59],
+        [48, 52, 55, 59],
+      ]),
+      ...[2, 3].flatMap((bar) =>
+        Array.from({ length: 16 }, (_, i) => ({
+          bar,
+          beat: i / 4,
+          string: 1,
+          fret: 12 + (i % 3),
+        })),
+      ),
+    ],
+    [
+      { name: 'verse', parts: 1, startBar: 0, endBar: 2 },
+      { name: 'chorus', parts: 1, startBar: 2, endBar: 4 },
+    ],
+  );
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly onResize: () => void) {}
+        observe(element: Element) {
+          element.getBoundingClientRect = () =>
+            ({ width: LINE_WIDTH }) as DOMRect;
+          this.onResize();
+        }
+        disconnect() {}
+      },
+    );
+  });
+
+  const beatWidths = () =>
+    [...document.querySelectorAll<HTMLButtonElement>('button[data-bar]')].map(
+      (bar) => Number(bar.dataset.beatWidth),
+    );
+  const setLineLength = (section: number, value: string) =>
+    fireEvent.change(
+      screen.getAllByLabelText(/^Compassos por linha em/)[section],
+      {
+        target: { value },
+      },
+    );
+
+  it('gives a dense section wider bars and a sparse one the base width', () => {
+    render(<RocksmithTrackDetail chart={dense} onRemove={vi.fn()} />);
+    const [a, b, c, d] = beatWidths();
+    expect(a).toBe(34);
+    expect(b).toBe(34);
+    // Two digits (13.2 px) and 4 px over a quarter beat: 68.8 px.
+    expect(c).toBeCloseTo(68.8);
+    expect(d).toBe(c);
+  });
+
+  it('falls to a divisor of the line length when the need does not fit', () => {
+    const sixDense = fixtureChart(
+      6,
+      Array.from({ length: 6 }, (_, bar) =>
+        Array.from({ length: 16 }, (_, i) => ({
+          bar,
+          beat: i / 4,
+          string: 1,
+          fret: 12 + (i % 3),
+        })),
+      ).flat(),
+    );
+    render(<RocksmithTrackDetail chart={sixDense} onRemove={vi.fn()} />);
+    setLineLength(0, '6');
+    // 6 bars of 68.8 px beats need 6 × 291 px: only 3 fit. 6 falls to 3, and
+    // the 3 bars share the line: (1000 - 8 - 48) / 12 beats.
+    expect(new Set(beatWidths())).toEqual(new Set([78.65625]));
+    expect(78.65625).toBeGreaterThanOrEqual(68.8);
+  });
+});
