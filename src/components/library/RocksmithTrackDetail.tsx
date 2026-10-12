@@ -44,6 +44,7 @@ import {
   fittedBarsPerRow,
   isStandardTuning,
   lineBeatWidth,
+  MIN_BEAT_WIDTH_SCALE,
   notesByBar,
   sectionBlocks,
   sectionIndexOfBar,
@@ -972,21 +973,20 @@ function SectionBlock({
     observer.observe(element);
     return () => observer.disconnect();
   }, [barsPerRow]);
-  // How many bars fit a line at the base width, the smallest a bar takes;
-  // when the chosen length does not, a divisor of it keeps the phrases
-  // aligned.
+  // How many bars fit a line at the smallest beat width; when the chosen
+  // length does not, a divisor of it keeps the phrases aligned.
   const mostBeats = Math.max(
     ...chart.bars
       .slice(section.startBar, section.endBar)
       .map((b) => b.beatCount),
   );
-  const baseBar = tabBarWidth(mostBeats);
+  const smallestBar = tabBarWidth(mostBeats, BEAT_WIDTH * MIN_BEAT_WIDTH_SCALE);
   const perLine =
     barsPerRow === null || lineWidth === null
       ? barsPerRow
       : fittedBarsPerRow(
           barsPerRow,
-          Math.floor((lineWidth + BAR_GAP) / (baseBar + BAR_GAP)),
+          Math.floor((lineWidth + BAR_GAP) / (smallestBar + BAR_GAP)),
         );
   // One beat width for the whole section, so the beats align from line to
   // line: the one that makes a line of its widest bars fill the line.
@@ -1366,9 +1366,7 @@ function BassMixPicker({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-bg-card border border-border-default px-3 py-2 min-w-0">
-      <dt className="lh-label">
-        {label}
-      </dt>
+      <dt className="lh-label">{label}</dt>
       <dd className="font-heading text-sm text-text-primary mt-0.5 truncate">
         {value}
       </dd>

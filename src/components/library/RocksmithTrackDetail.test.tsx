@@ -368,8 +368,9 @@ describe('Biblioteca bar layout', () => {
     );
   });
 
-  const bars = () =>
-    [...document.querySelectorAll<HTMLButtonElement>('button[data-bar]')];
+  const bars = () => [
+    ...document.querySelectorAll<HTMLButtonElement>('button[data-bar]'),
+  ];
   const widths = () => bars().map((bar) => parseFloat(bar.style.width));
   const typeSizes = () =>
     [...document.querySelectorAll('button[data-bar] svg text')].map((text) =>
@@ -394,6 +395,20 @@ describe('Biblioteca bar layout', () => {
     expect(new Set(bars().map((bar) => bar.dataset.beatWidth))).toEqual(
       new Set(['57.75']),
     );
+  });
+
+  it('narrows the beats before it shortens the line, at one type size', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    const automatic = typeSizes();
+    // 7 bars do not fit at the base width (152 px), but do at 0.8 of it.
+    setLineLength('7');
+    expect(widths().slice(0, 3)).toEqual([139.375, 139.375, 139.375]);
+    expect(139.375 * 7 + 4 * 6).toBeLessThanOrEqual(LINE_WIDTH);
+    expect(139.375 * 7 + 4 * 6).toBeGreaterThan(LINE_WIDTH - 1);
+    expect(typeSizes()).toEqual(automatic);
+    // 8 do not: the line length falls to 4.
+    setLineLength('8');
+    expect(widths()[0]).toBe(247);
   });
 
   it('stops a bar at three times the base beat width', () => {

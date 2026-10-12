@@ -316,8 +316,15 @@ describe('queries', () => {
       expect(lineUsed(short)).toBeLessThan(1000);
     });
 
-    it('keeps the base width when the line is too narrow', () => {
-      expect(lineBeatWidth({ ...line, lineWidth: 300 })).toBe(34);
+    it('narrows the beats a little to keep the line length', () => {
+      const tight = { ...line, lineWidth: 600 };
+      // 600 - 12 - 64 = 524 over 16 beats, under the base 34.
+      expect(lineBeatWidth(tight)).toBe(32.75);
+      expect(lineUsed(tight)).toBe(600);
+    });
+
+    it('never narrows a beat under 0.8 of the base width', () => {
+      expect(lineBeatWidth({ ...line, lineWidth: 300 })).toBeCloseTo(27.2);
     });
 
     it('widens each beat when the widest bar has fewer beats', () => {

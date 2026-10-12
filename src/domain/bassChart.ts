@@ -549,14 +549,21 @@ export function fittedBarsPerRow(chosen: number, fits: number): number {
 
 /** How many times its base width a beat may grow to fill a line. */
 export const MAX_BEAT_WIDTH_SCALE = 3;
+/**
+ * How far a beat may narrow to keep a chosen line length, before the line
+ * length falls to a divisor. Only the spacing narrows: the text keeps its
+ * size.
+ */
+export const MIN_BEAT_WIDTH_SCALE = 0.8;
 
 /**
  * The beat width, in pixels, that makes `barsPerLine` bars of `beatCount`
  * beats share a line `lineWidth` wide. Each bar also takes `barChrome`
  * pixels that do not grow (padding and border), and `gap` separates the
- * bars. The width never goes under `baseBeatWidth` nor over
- * `MAX_BEAT_WIDTH_SCALE` times it: past that, the line keeps free space at
- * its end. It is rounded down to the browser's layout unit, 1/64 px, so the
+ * bars. The width stays between `MIN_BEAT_WIDTH_SCALE` and
+ * `MAX_BEAT_WIDTH_SCALE` times `baseBeatWidth`: past the largest, the line
+ * keeps free space at its end; under the smallest, the bars do not fit and
+ * the caller must draw fewer of them to a line (`fittedBarsPerRow`). It is rounded down to the browser's layout unit, 1/64 px, so the
  * bars never overflow the line.
  */
 export function lineBeatWidth(line: {
@@ -573,7 +580,7 @@ export function lineBeatWidth(line: {
   const shared = Math.floor((room / beats) * 64) / 64;
   return Math.min(
     line.baseBeatWidth * MAX_BEAT_WIDTH_SCALE,
-    Math.max(line.baseBeatWidth, shared),
+    Math.max(line.baseBeatWidth * MIN_BEAT_WIDTH_SCALE, shared),
   );
 }
 
