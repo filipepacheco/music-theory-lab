@@ -238,6 +238,17 @@ describe('source selector of the song screen', () => {
     expect(window.location.hash).toBe(`#/biblioteca/${KEY}/midi/bass`);
   });
 
+  it('links the title of a row to the source used last', async () => {
+    window.history.replaceState(null, '', `#/biblioteca/${KEY}/midi/bass`);
+    const first = render(<LibraryModule />);
+    await waitFor(() => expect(pressed('MIDI')).toBe('true'));
+    first.unmount();
+    window.history.replaceState(null, '', '#/biblioteca');
+    render(<LibraryModule />);
+    const link = (await screen.findByText('Come Together')).closest('a');
+    expect(link?.getAttribute('href')).toBe(`#/biblioteca/${KEY}/midi/bass`);
+  });
+
   it('opens Guitar Pro, then Rocksmith, then MIDI without a last source', async () => {
     const first = render(<LibraryModule />);
     openSong();
