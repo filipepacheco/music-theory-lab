@@ -17,6 +17,7 @@ import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import type { BassChart } from '@/domain/bassChart';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { partChartId } from '@/services/chartId';
+import { beatMarkX, drumGridMarksByBar } from '@/domain/drumGrid';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 import type { Chart } from '@/domain/drumChart';
 
@@ -949,12 +950,12 @@ describe('Biblioteca kick row under the bass tab', () => {
       (c) => [c.getAttribute('data-kick-beat'), c.getAttribute('cx')],
     );
     expect(beats).toEqual([
-      ['0', '10'],
-      ['2', '78'],
+      ['0', String(beatMarkX(0, 34))],
+      ['2', String(beatMarkX(2, 34))],
     ]);
   });
 
-  it('shows no kick row without a drum chart or with one from another file', async () => {
+  it('shows no kick row with a drum chart from another file', async () => {
     const other = await drums(chart.id, 'another-file-drums');
     await rocksmithLibrary.save(other, null);
     const { container } = render(
@@ -966,22 +967,38 @@ describe('Biblioteca kick row under the bass tab', () => {
     );
     await new Promise((r) => setTimeout(r, 30));
     expect(container.querySelector('[data-kick-row]')).toBeNull();
-    cleanup();
-    const plain = render(
+  });
+
+  it('shows no kick row in the bass part of a file with no drums', async () => {
+    const { container } = render(
       <RocksmithTrackDetail chart={chart} onRemove={vi.fn()} />,
     );
     await new Promise((r) => setTimeout(r, 30));
-    expect(plain.container.querySelector('[data-kick-row]')).toBeNull();
+    expect(container.querySelector('[data-bar]')).toBeTruthy();
+    expect(container.querySelector('[data-kick-row]')).toBeNull();
   });
 
-  it('keeps an empty kick row in a bar with no kick hit, at one height', async () => {
+  it('puts each kick at the beat of the bumbo mark of the drum grid, in each bar', async () => {
     const two = {
-      ...fixtureChart(2, walking([[48, 52, 55, 59]])),
+      ...fixtureChart(
+        2,
+        walking([
+          [48, 52, 55, 59],
+          [43, 47, 50, 55],
+        ]),
+      ),
       source: 'gp' as const,
     };
     const drum = {
-      ...(await drums(two.id)),
-      hits: [],
+      ...fixtureDrumChart(2, [
+        { bar: 0, beat: 0, midi: 36 },
+        { bar: 0, beat: 2, midi: 36 },
+        { bar: 0, beat: 2.5, midi: 36 },
+        { bar: 0, beat: 1, midi: 38 },
+        { bar: 1, beat: 1, midi: 36 },
+        { bar: 1, beat: 3, midi: 36 },
+      ]),
+      id: await partChartId(two.id, 'drums'),
     };
     await rocksmithLibrary.save(drum, null);
     const { container } = render(
@@ -994,6 +1011,164 @@ describe('Biblioteca kick row under the bass tab', () => {
     await waitFor(() =>
       expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
     );
-    expect(container.querySelectorAll('[data-kick-beat]').length).toBe(0);
+    const grid = drumGridMarksByBar(drum).map((marks) =>
+      marks.filter((m) => m.row === 'bumbo').map((m) => m.beat),
+    );
+    expect(grid).toEqual([
+      [0, 2, 2.5],
+      [1, 3],
+    ]);
+    grid.forEach((beats, bar) => {
+      const circles = [
+        ...container.querySelectorAll(`[data-bar="${bar}"] [data-kick-beat]`),
+      ];
+      expect(
+        circles.map((c) => Number(c.getAttribute('data-kick-beat'))),
+      ).toEqual(beats);
+      const width = Number(
+        container
+          .querySelector(`[data-bar="${bar}"]`)
+          ?.getAttribute('data-beat-width'),
+      );
+      expect(circles.map((c) => Number(c.getAttribute('cx')))).toEqual(
+        beats.map((beat) => beatMarkX(beat, width)),
+      );
+    });
+  });
+
+  it('draws the kicks of a repeat bar, each bar with its own', async () => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly onResize: () => void) {}
+        observe(element: Element) {
+          element.getBoundingClientRect = () => ({ width: 1000 }) as DOMRect;
+          this.onResize();
+        }
+        disconnect() {}
+      },
+    );
+    const A = [48, 52, 55, 59];
+    const B = [43, 47, 50, 55];
+    const same = {
+      ...fixtureChart(4, walking([A, B, A, B])),
+      source: 'gp' as const,
+    };
+    const drum = {
+      ...fixtureDrumChart(4, [
+        { bar: 0, beat: 0, midi: 36 },
+        { bar: 1, beat: 0, midi: 36 },
+        { bar: 2, beat: 1, midi: 36 },
+        { bar: 2, beat: 3, midi: 36 },
+        { bar: 3, beat: 2, midi: 36 },
+      ]),
+      id: await partChartId(same.id, 'drums'),
+    };
+    await rocksmithLibrary.save(drum, null);
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={same}
+        songCharts={[summary(drum)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    const marks = screen.getByLabelText(
+      'Marcar repetições',
+    ) as HTMLInputElement;
+    if (!marks.checked) fireEvent.click(marks);
+    // Let the stored settings load first, or they replace the change.
+    await new Promise((r) => setTimeout(r, 30));
+    fireEvent.change(screen.getByLabelText(/^Compassos por linha em/), {
+      target: { value: '2' },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+    await waitFor(() =>
+      expect(
+        (container.querySelector('[data-bar="2"]') as HTMLElement).title,
+      ).toContain('igual ao compasso'),
+    );
+    expect(
+      (container.querySelector('[data-bar="3"]') as HTMLElement).title,
+    ).toContain('igual ao compasso');
+    const beatsOf = (bar: number) =>
+      [
+        ...container.querySelectorAll(`[data-bar="${bar}"] [data-kick-beat]`),
+      ].map((c) => Number(c.getAttribute('data-kick-beat')));
+    expect([0, 1, 2, 3].map(beatsOf)).toEqual([[0], [0], [1, 3], [2]]);
+  });
+
+  it('names the kicks in the label of the bar', async () => {
+    const drum = await drums(chart.id);
+    await rocksmithLibrary.save(drum, null);
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={chart}
+        songCharts={[summary(drum)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+    expect(
+      container.querySelector('[data-bar="0"] svg')?.getAttribute('aria-label'),
+    ).toContain('Bumbo no tempo 1, 3');
+  });
+
+  it('shows the kick row although the song grouping lists no drum chart of the file', async () => {
+    const drum = await drums(chart.id);
+    await rocksmithLibrary.save(drum, null);
+    const other = await drums(chart.id, 'other-song-drums');
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={chart}
+        songCharts={[summary(other)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+  });
+
+  it('keeps a kick row in every bar, at one height, when only one bar has a kick', async () => {
+    const two = {
+      ...fixtureChart(
+        2,
+        walking([
+          [48, 52, 55, 59],
+          [43, 47, 50, 55],
+        ]),
+      ),
+      source: 'gp' as const,
+    };
+    const drum = {
+      ...fixtureDrumChart(2, [{ bar: 0, beat: 0, midi: 36 }]),
+      id: await partChartId(two.id, 'drums'),
+    };
+    await rocksmithLibrary.save(drum, null);
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={two}
+        songCharts={[summary(drum)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+    const bars = [...container.querySelectorAll('[data-bar]')];
+    expect(bars.length).toBe(2);
+    bars.forEach((bar) =>
+      expect(bar.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+    expect(container.querySelectorAll('[data-kick-beat]').length).toBe(1);
+    const heights = bars.map((bar) =>
+      bar.querySelector('svg')?.getAttribute('height'),
+    );
+    expect(heights[0]).toBeTruthy();
+    expect(heights[1]).toBe(heights[0]);
   });
 });
