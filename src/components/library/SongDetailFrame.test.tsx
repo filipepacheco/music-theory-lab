@@ -12,6 +12,7 @@ import {
 import { IDBFactory } from 'fake-indexeddb';
 import SongDetailFrame, {
   songStats,
+  type LineStart,
 } from '@/components/library/SongDetailFrame';
 import { useSongCursor } from '@/components/library/useSongCursor';
 import { confirmDialog } from '@/services/confirm';
@@ -60,13 +61,27 @@ const barDrawing = (bar: number): string | null => {
   return cells.length > 0 ? cells.join(',') : null;
 };
 const sectionLayout = () => null;
+const LINE_START_WIDTH = 50;
+/** What a part with rows draws at the start of each line of bars. */
+const rowLabels: LineStart<null> = {
+  width: LINE_START_WIDTH,
+  render: () => <span data-row-names>Peças</span>,
+};
 
-function Part({ settingsKey }: { settingsKey?: unknown }) {
+function Part({
+  settingsKey,
+  playing = false,
+  lineStart,
+}: {
+  settingsKey?: unknown;
+  playing?: boolean;
+  lineStart?: LineStart<null>;
+}) {
   // A seek moves the clock, as the transport of a real player does.
   const [currentSeconds, setCurrentSeconds] = useState(0);
   const audio = {
     ready: true,
-    playing: false,
+    playing,
     duration: chart.songLengthSeconds,
     currentSeconds,
     play: () => Promise.resolve(),
@@ -116,6 +131,7 @@ function Part({ settingsKey }: { settingsKey?: unknown }) {
           {barIndex + 1}
         </button>
       )}
+      lineStart={lineStart}
       legend="Cada linha é uma peça."
       dock={{
         label: 'Painel da parte',
@@ -405,5 +421,116 @@ describe('frame of the song detail', () => {
     expect(
       screen.getByText(/Clique num compasso para saltar a reprodução/),
     ).toBeTruthy();
+  });
+
+  it('scrolls to the bar under the playhead while the song plays', () => {
+    // The bar is 100 px tall at 600 px; the dock starts at 700 px, and the
+    // page has no header. The middle of the bar goes to the middle of the
+    // room above the dock: 650 - 350.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.dataset.bar !== undefined)
+          return { top: 600, height: 100 } as DOMRect;
+        return { top: 700, height: 0, width: 0 } as DOMRect;
+      });
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    try {
+      const { unmount } = render(<Part playing />);
+      // The playhead starts in the rest of the intro, which is not a bar.
+      expect(scrollTo).not.toHaveBeenCalled();
+      fireEvent.click(bars()[2]);
+      expect(state.seeks).toEqual([chart.bars[4].startTime]);
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      expect(scrollTo).toHaveBeenLastCalledWith({
+        top: 300,
+        behavior: 'smooth',
+      });
+      // The musician turns the follow off: the page stays where it is.
+      fireEvent.click(screen.getByLabelText('Acompanhar a reprodução'));
+      fireEvent.click(bars()[5]);
+      expect(state.seeks).toHaveLength(2);
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      unmount();
+
+      // A song that does not play does not move the page.
+      state.seeks = [];
+      render(<Part />);
+      fireEvent.click(bars()[2]);
+      expect(state.seeks).toEqual([chart.bars[4].startTime]);
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+    } finally {
+      rect.mockRestore();
+      scrollTo.mockRestore();
+    }
+  });
+
+  it('draws nothing at the start of a line for a part that gives no line start', () => {
+    render(<Part />);
+    fireEvent.change(verseLength(), { target: { value: '4' } });
+    expect(document.querySelector('[data-line-start]')).toBeNull();
+    expect(lines().every((line) => line.style.paddingLeft === '')).toBe(true);
+  });
+
+  it('draws the line start of the part at the start of each line of a set length', async () => {
+    render(<Part lineStart={rowLabels} />);
+    fireEvent.change(allLengths(), { target: { value: '4' } });
+    await waitFor(() => expect(lines()).toHaveLength(3));
+    const starts = lines().map((line) => line.firstElementChild as HTMLElement);
+    expect(starts.every((start) => 'lineStart' in start.dataset)).toBe(true);
+    expect(starts.map((start) => start.style.width)).toEqual([
+      '50px',
+      '50px',
+      '50px',
+    ]);
+    // The line of the intro holds only a rest: it keeps the room, so its
+    // rest starts where the bars start, and it has nothing to name.
+    expect(starts.map((start) => start.textContent)).toEqual([
+      '',
+      'Peças',
+      'Peças',
+    ]);
+    expect(barsOfLines()).toEqual([[], [2, 3, 4, 5], [6, 7, 8, 9]]);
+    // The bars share what the line start leaves:
+    // (1000 - 50 - 4 - 3 gaps of 4 - 4 × 10 of chrome) / 16 beats.
+    expect(new Set(bars().map((bar) => bar.dataset.beatWidth))).toEqual(
+      new Set(['55.875']),
+    );
+  });
+
+  it('draws the line start of the part at each line that the browser wraps', () => {
+    // The browser puts bars 3 to 6 on a first line and 7 to 10 on a second.
+    const offsetTop = vi
+      .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return Number(this.dataset.bar) >= 6 ? 80 : 0;
+      });
+    try {
+      render(<Part lineStart={rowLabels} />);
+      expect(lines()).toEqual([]);
+      const starts = [
+        ...document.querySelectorAll<HTMLElement>('[data-line-start]'),
+      ];
+      // The intro is one rest, with no bar: it has no line start.
+      expect(starts.map((start) => start.style.top)).toEqual(['0px', '80px']);
+      expect(starts.map((start) => start.textContent)).toEqual([
+        'Peças',
+        'Peças',
+      ]);
+      const wrap = bars()[0].parentElement as HTMLElement;
+      expect(starts.every((start) => start.parentElement === wrap)).toBe(true);
+      // The bars start after the room of the line start and one gap.
+      expect(wrap.style.paddingLeft).toBe('54px');
+      expect(wrap.classList.contains('flex-wrap')).toBe(true);
+    } finally {
+      offsetTop.mockRestore();
+    }
   });
 });

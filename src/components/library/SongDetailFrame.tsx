@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
 import PlaybackDock from '@/components/library/PlaybackDock';
 import {
@@ -62,6 +70,17 @@ export interface BarLayout<L> {
   section: L;
 }
 
+/**
+ * What a part draws at the start of each line of bars, such as the labels
+ * of the rows of a grid. The frame keeps `width` pixels for it at the start
+ * of each line, so the bars of all lines start at the same place.
+ */
+export interface LineStart<L> {
+  width: number;
+  /** As tall as a bar of the section. Keep it stable. */
+  render: (section: L) => ReactNode;
+}
+
 /** Where a floating panel of a part has room. */
 export interface FloatingRoom {
   /** Pixels from the bottom of the viewport to just above the dock. */
@@ -122,7 +141,18 @@ interface Props<L> {
   barDrawing: (barIndex: number) => string | null;
   /** Worked out one time for a section at its beat width. Keep it stable. */
   sectionLayout: (section: BassChartSection, beatWidth: number) => L;
+  /**
+   * The bar of the part. The frame relies on the element that this returns:
+   * - it carries `data-bar={barIndex}`, or the scroll that follows the
+   *   playback does nothing;
+   * - a click on it calls `cursor.seek` with the start time of the bar, and
+   *   it is disabled while `cursor.seek` is null;
+   * - it draws the repeat mark for `layout.repeatOf`, and the playhead of
+   *   `cursor.playhead(barIndex)`. The frame draws neither.
+   */
   renderBar: (barIndex: number, layout: BarLayout<L>) => ReactNode;
+  /** What the part draws at the start of each line of bars. */
+  lineStart?: LineStart<L>;
   /** How to read a bar of the part, in the note under the chart. */
   legend: string;
   dock: {
@@ -187,6 +217,7 @@ export default function SongDetailFrame<L>({
   barDrawing,
   sectionLayout,
   renderBar,
+  lineStart,
   legend,
   dock,
   floating,
@@ -389,6 +420,7 @@ export default function SongDetailFrame<L>({
                 barDrawing={barDrawing}
                 sectionLayout={sectionLayout}
                 renderBar={renderBar}
+                lineStart={lineStart}
                 onSeek={seek}
               />
             );
@@ -446,6 +478,7 @@ function FrameSection<L>({
   barDrawing,
   sectionLayout,
   renderBar,
+  lineStart,
   onSeek,
 }: {
   chart: ChartBars;
@@ -466,6 +499,7 @@ function FrameSection<L>({
   barDrawing: (barIndex: number) => string | null;
   sectionLayout: (section: BassChartSection, beatWidth: number) => L;
   renderBar: (barIndex: number, layout: BarLayout<L>) => ReactNode;
+  lineStart: LineStart<L> | undefined;
   onSeek: ((seconds: number) => void) | null;
 }) {
   const { section } = block;
@@ -503,11 +537,13 @@ function FrameSection<L>({
   // One beat width for the whole section, so the beats align from line to
   // line: the one that makes a line of its widest bars fill the line. A set
   // line length always holds: the bars take the width that fits.
+  // The start of a line takes its width, and one gap, from the bars.
+  const startWidth = lineStart ? lineStart.width + BAR_GAP : 0;
   const beatWidth =
     lineLength === null || lineWidth === null
       ? sectionBeatWidth(baseBeatWidth, needed)
       : lineBeatWidth({
-          lineWidth,
+          lineWidth: lineWidth - startWidth,
           barsPerLine: lineLength,
           beatCount: mostBeats,
           barChrome,
@@ -526,13 +562,43 @@ function FrameSection<L>({
         : NO_REPEATS,
     [markRepeats, lineLength, block, barDrawing],
   );
+  // In the automatic layout the browser wraps the bars, so the frame reads
+  // where each line of bars starts: the top of each line that holds a bar.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [lineTops, setLineTops] = useState<number[]>([]);
+  const hasLineStart = lineStart !== undefined;
+  useLayoutEffect(() => {
+    const element = wrapRef.current;
+    if (!hasLineStart || lineLength !== null || !element) return;
+    const measure = () => {
+      const tops = [
+        ...new Set(
+          [...element.children]
+            .filter((child) => child.hasAttribute('data-bar'))
+            .map((child) => (child as HTMLElement).offsetTop),
+        ),
+      ];
+      setLineTops((before) =>
+        before.length === tops.length &&
+        before.every((top, i) => top === tops[i])
+          ? before
+          : tops,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [hasLineStart, lineLength, block, beatWidth, layout]);
   const renderItem = (item: SectionBlockItem) =>
     item.kind === 'bar' ? (
-      renderBar(item.bar, {
-        beatWidth,
-        repeatOf: repeats.get(item.bar),
-        section: layout,
-      })
+      <Fragment key={item.bar}>
+        {renderBar(item.bar, {
+          beatWidth,
+          repeatOf: repeats.get(item.bar),
+          section: layout,
+        })}
+      </Fragment>
     ) : (
       <button
         key={`rest-${item.startBar}`}
@@ -620,7 +686,25 @@ function FrameSection<L>({
         )}
       </div>
       {panels}
-      {lineLength === null ? (
+      {lineLength === null && lineStart ? (
+        <div
+          ref={wrapRef}
+          className="relative flex flex-wrap gap-1"
+          style={{ paddingLeft: startWidth }}
+        >
+          {lineTops.map((top) => (
+            <div
+              key={top}
+              data-line-start
+              className="absolute left-0"
+              style={{ top, width: lineStart.width }}
+            >
+              {lineStart.render(layout)}
+            </div>
+          ))}
+          {block.items.map(renderItem)}
+        </div>
+      ) : lineLength === null ? (
         <div className="flex flex-wrap gap-1">
           {block.items.map(renderItem)}
         </div>
@@ -641,6 +725,17 @@ function FrameSection<L>({
                   lineWidth === null ? 'flex flex-wrap gap-1' : 'flex gap-1'
                 }
               >
+                {lineStart && (
+                  // A line with only a rest keeps the room, with no labels.
+                  <div
+                    data-line-start
+                    className="shrink-0"
+                    style={{ width: lineStart.width }}
+                  >
+                    {row.some((item) => item.kind === 'bar') &&
+                      lineStart.render(layout)}
+                  </div>
+                )}
                 {row.map(renderItem)}
               </div>
             );
