@@ -139,7 +139,7 @@ export default function Piano() {
 
   return (
     <div>
-      <h3 className="font-heading text-sm text-text-secondary mb-3">Piano</h3>
+      <h3 className="lh-label mb-3">Piano</h3>
       <div className="flex overflow-x-auto relative">
         {[3, 4].map((octave) => (
           <Octave

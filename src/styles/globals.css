@@ -24,8 +24,13 @@
 
 /* Lighthouse design system primitives. Night is the default theme; day
    applies under .light on <html>. Components use the semantic --color-*
-   tokens in @theme below, never these directly. See docs/adr/0001. */
-:root {
+   tokens in @theme below, never these directly. See docs/adr/0001.
+
+   .ink-night and .ink-day pin a palette to one element whatever the theme:
+   a piano key is a physical object, so a white key always carries day ink
+   and a black key night ink. */
+:root,
+.ink-night {
   --sea-950: #131518;
   --sea-900: #1a1d21;
   --sea-800: #22262b;
@@ -46,7 +51,8 @@
   color-scheme: dark;
 }
 
-:root.light {
+:root.light,
+.ink-day {
   --sea-950: #f5f6f7;
   --sea-900: #eceef0;
   --sea-800: #e3e6e9;
@@ -65,12 +71,6 @@
   --scrim: rgba(30, 33, 37, 0.45);
   --shadow-ink: #d2d6db;
   color-scheme: light;
-
-  /* Piano keys depict a physical object, so they do not flip with the theme. */
-  --color-key-white: var(--sea-950);
-  --color-key-white-hover: var(--sea-800);
-  --color-key-black: var(--fog-bright);
-  --color-key-black-hover: var(--fog);
 }
 
 @theme {
@@ -114,12 +114,6 @@
   --color-dominant: var(--flare);
   --color-dominant-light: var(--flare);
 
-  /* Piano colors */
-  --color-key-white: var(--fog-bright);
-  --color-key-white-hover: var(--fog);
-  --color-key-black: var(--sea-950);
-  --color-key-black-hover: var(--sea-800);
-
   /* Scale comparison colors */
   --color-scale-a: var(--sky);
   --color-scale-b: var(--heather);
@@ -157,9 +151,6 @@
   --color-subdominant-text: var(--buoy);
   --color-dominant-text: var(--flare);
 
-  /* Piano key chrome */
-  --color-key-black-border: var(--rule-strong);
-
   /* Song-form labels (Biblioteca). Cycled by order of first appearance;
      the detector's letters are opaque cluster ids, not verse/chorus names.
      Accents only, never text on their own background. */
@@ -176,7 +167,6 @@
   --shadow-lift: 4px 4px 0 0 var(--rule);
   --shadow-card: 0 0 #0000;
   --shadow-card-hover: 4px 4px 0 0 var(--rule);
-  --shadow-key: 0 0 #0000;
   --shadow-2xs: 0 0 #0000;
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 0 #0000;
@@ -238,6 +228,12 @@
   --text-label--letter-spacing: 0.08em;
   --text-meta: 12px;
   --text-meta--line-height: 18px;
+  /* Dense data (grids, bar cells, chart labels). No weight or tracking of
+     their own; 10px is the floor. */
+  --text-small: 11px;
+  --text-small--line-height: 16px;
+  --text-micro: 10px;
+  --text-micro--line-height: 14px;
   --text-prose: 14px;
   --text-prose--line-height: 24px;
 }
@@ -261,6 +257,25 @@ body {
 
 /* One focus mark for every control. It is in the base layer, so a component
    can move it; do not hide it with focus:outline-none. */
+/* The @theme aliases resolve on :root, so an element that pins its own ink
+   has to resolve the ones it uses again. */
+.ink-day,
+.ink-night {
+  --color-bg-primary: var(--sea-950);
+  --color-text-primary: var(--fog-bright);
+  --color-text-muted: var(--fog-dim);
+  --color-border-strong: var(--rule-strong);
+  --color-accent: var(--fog-bright);
+  --color-on-accent: var(--sea-950);
+  --color-live: var(--beam);
+  --color-tonic: var(--sky);
+  --color-subdominant: var(--buoy);
+  --color-dominant: var(--flare);
+  --color-scale-a: var(--sky);
+  --color-scale-b: var(--heather);
+  --color-scale-shared: var(--flare);
+}
+
 @layer base {
   :focus-visible {
     outline: 2px solid var(--fog-bright);
