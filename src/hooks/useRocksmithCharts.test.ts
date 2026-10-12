@@ -4,10 +4,14 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { summarizeChart } from '@/domain/chartSummary';
 import type { BassChart } from '@/domain/bassChart';
 import { fixtureChart } from '@/domain/bassChartFixture';
+import type { Chart } from '@/domain/drumChart';
+import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
 
 const state = vi.hoisted(() => ({
-  charts: [] as BassChart[],
+  charts: [] as Chart[],
+  /** The id of each chart that the import wrote. */
+  saves: [] as string[],
   chartReads: 0,
   listReads: 0,
   sync: vi.fn(),
@@ -26,8 +30,12 @@ vi.mock('@/services/rocksmithLibrary', () => ({
       const found = state.charts.find((item) => item.id === id);
       return found ? structuredClone(found) : null;
     },
-    save: async (chart: BassChart) => {
-      state.charts = [chart];
+    save: async (chart: Chart) => {
+      state.saves.push(chart.id);
+      state.charts = [
+        ...state.charts.filter((item) => item.id !== chart.id),
+        chart,
+      ];
     },
     remove: async () => {
       state.charts = [];
@@ -48,11 +56,18 @@ const chart = {
   id: 'a'.repeat(64),
   source: 'gp' as const,
 };
+const drums = { ...fixtureDrumChart(1, [{ bar: 0, beat: 0, midi: 36 }]) };
 beforeEach(() => {
   state.charts = [];
+  state.saves = [];
+  // An import reads the stored chart of each id, so each test counts anew.
+  state.chartReads = 0;
+  state.listReads = 0;
   state.sync.mockReset().mockResolvedValue(undefined);
   state.syncSettings.mockReset().mockResolvedValue(undefined);
-  state.importGp.mockReset().mockResolvedValue({ chart, audio: null });
+  state.importGp
+    .mockReset()
+    .mockResolvedValue({ charts: [chart], audio: null });
 });
 afterEach(cleanup);
 
@@ -69,6 +84,70 @@ describe('Biblioteca import and refresh', () => {
       state: 'imported',
       chartId: chart.id,
     });
+  });
+
+  it('saves the two charts of a file with bass and drums, and opens the bass chart', async () => {
+    state.importGp.mockResolvedValue({ charts: [chart, drums], audio: null });
+    const { result } = renderHook(useRocksmithCharts);
+    let imported: Chart | null = null;
+    await act(async () => {
+      imported = await result.current.importFile(new File(['s'], 'a.gp'));
+    });
+    expect(imported).toEqual(chart);
+    expect(state.saves).toEqual([chart.id, drums.id]);
+    expect(result.current.summaries.map((item) => item.part).sort()).toEqual([
+      'bass',
+      'drums',
+    ]);
+    expect(result.current.importStatus).toMatchObject({
+      state: 'imported',
+      chartId: chart.id,
+    });
+  });
+
+  it('a new import of a file that the library holds as a bass chart adds only the drum chart', async () => {
+    state.charts = [chart as BassChart];
+    // The new import gives the bass chart again, with a new import time.
+    const again = { ...chart, importedAt: '2026-10-12T10:00:00.000Z' };
+    state.importGp.mockResolvedValue({ charts: [again, drums], audio: null });
+    const { result } = renderHook(useRocksmithCharts);
+    await waitFor(() => expect(result.current.summaries).toHaveLength(1));
+    await act(async () => {
+      await result.current.importFile(new File(['s'], 'a.gp'));
+    });
+    expect(state.saves).toEqual([drums.id]);
+    expect(state.charts).toEqual([chart, drums]);
+    expect(result.current.summaries).toHaveLength(2);
+    expect(
+      result.current.summaries.find((item) => item.id === chart.id)?.importedAt,
+    ).toBe(chart.importedAt);
+  });
+
+  it('writes a stored chart again when the new import changes it', async () => {
+    state.charts = [chart as BassChart];
+    const changed = { ...chart, title: 'Outro título' };
+    state.importGp.mockResolvedValue({ charts: [changed], audio: null });
+    const { result } = renderHook(useRocksmithCharts);
+    await act(async () => {
+      await result.current.importFile(new File(['s'], 'a.gp'));
+    });
+    expect(state.saves).toEqual([chart.id]);
+    expect(state.charts).toEqual([changed]);
+  });
+
+  it('imports a file with only drums and opens its drum chart', async () => {
+    state.importGp.mockResolvedValue({ charts: [drums], audio: null });
+    const { result } = renderHook(useRocksmithCharts);
+    await act(async () => {
+      const imported = await result.current.importFile(new File(['s'], 'a.gp'));
+      await result.current.open(imported!.id);
+    });
+    expect(result.current.importStatus).toMatchObject({
+      state: 'imported',
+      chartId: drums.id,
+    });
+    expect(result.current.summaries).toEqual([summarizeChart(drums)]);
+    expect(result.current.openChart).toEqual(drums);
   });
 
   it('keeps a successful local import when cloud sync fails', async () => {

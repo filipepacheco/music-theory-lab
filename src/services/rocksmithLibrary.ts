@@ -2,7 +2,7 @@
 // Only derived charts synchronize; original packages and audio blobs remain
 // in this browser.
 
-import type { BassChart } from '@/domain/bassChart';
+import type { Chart } from '@/domain/drumChart';
 import {
   isNewerChartRecord,
   type BassChartRecord,
@@ -39,13 +39,13 @@ export interface StoredChartAudio {
 }
 
 export interface RocksmithLibraryRepository {
-  listCharts(): Promise<BassChart[]>;
+  listCharts(): Promise<Chart[]>;
   /** One full chart, or null when it is not stored. */
-  getChart(chartId: string): Promise<BassChart | null>;
+  getChart(chartId: string): Promise<Chart | null>;
   getAudio(chartId: string): Promise<StoredChartAudio | null>;
   /** The ids of the charts that have a recording in this browser. */
   listAudioIds(): Promise<string[]>;
-  save(chart: BassChart, audio: StoredChartAudio | null): Promise<void>;
+  save(chart: Chart, audio: StoredChartAudio | null): Promise<void>;
   saveAudio(audio: StoredChartAudio): Promise<void>;
   remove(chartId: string): Promise<void>;
   listRecords(): Promise<BassChartRecord[]>;
@@ -101,7 +101,7 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
         cursor.onsuccess = () => {
           const current = cursor.result;
           if (!current) return;
-          const chart = current.value as BassChart;
+          const chart = current.value as Chart;
           records.put({
             id: chart.id,
             updatedAt: new Date(chart.importedAt).toISOString(),
@@ -123,7 +123,7 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
         cursor.onsuccess = () => {
           const current = cursor.result;
           if (!current) return;
-          summaries.put(summarizeChart(current.value as BassChart));
+          summaries.put(summarizeChart(current.value as Chart));
           current.continue();
         };
       }
@@ -153,7 +153,7 @@ export function createIndexedDbRocksmithLibrary(
     listCharts: () =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(CHART_STORE, 'readonly');
-        const charts = await requestResult<BassChart[]>(
+        const charts = await requestResult<Chart[]>(
           transaction.objectStore(CHART_STORE).getAll(),
         );
         return charts.sort((a, b) => b.importedAt.localeCompare(a.importedAt));
@@ -162,7 +162,7 @@ export function createIndexedDbRocksmithLibrary(
     getChart: (chartId) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(CHART_STORE, 'readonly');
-        const chart = await requestResult<BassChart | undefined>(
+        const chart = await requestResult<Chart | undefined>(
           transaction.objectStore(CHART_STORE).get(chartId),
         );
         return chart ?? null;

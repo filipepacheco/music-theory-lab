@@ -47,8 +47,9 @@ const SYNC_STATE_KEY = 'music-theory-lab-chart-sync';
  * The version of the chart records that this client can read. Raise it when
  * the client starts to read a record that an earlier client skipped (a new
  * chart type, a new field): each device then reads from counter 0 one time.
+ * Version 2 reads the drum chart records.
  */
-export const CHART_SYNC_FORMAT = 1;
+export const CHART_SYNC_FORMAT = 2;
 
 function isChartVersion(value: unknown): boolean {
   return (
