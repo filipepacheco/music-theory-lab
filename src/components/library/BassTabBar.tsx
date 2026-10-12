@@ -7,7 +7,11 @@ import {
   type BarAnalysis,
   type DegreeCategory,
 } from '@/domain/bassAnalysis';
-import type { BassChartBar, BassChartNote } from '@/domain/bassChart';
+import type {
+  BassChartBar,
+  BassChartNote,
+  LabelLane,
+} from '@/domain/bassChart';
 import type { HarmonicSegment } from '@/domain/bassHarmony';
 import type { HarmonicFunction } from '@/constants/harmonicFields';
 
@@ -138,10 +142,58 @@ function RepeatSign({ x, y }: { x: number; y: number }) {
 }
 
 /** Tab label for one note: fret, `x` for a dead note, slide direction. */
-function noteLabel(note: BassChartNote): string {
+export function noteLabel(note: BassChartNote): string {
   const base = note.techniques.includes('mute') ? 'x' : String(note.fret);
   if (note.slideToFret === null) return base;
   return `${base}${note.slideToFret > note.fret ? '/' : '\\'}`;
+}
+
+/** Character width of the heading font (monospace), in em. */
+const CHAR_EM = 0.6;
+/** Clear space kept between two labels of a lane, in pixels. */
+export const LABEL_GAP = 4;
+
+/**
+ * The label lanes of a bar: one for the fret numbers of each string, and
+ * the degree lane (one label per onset) when degrees are shown.
+ */
+export function barLabelLanes(
+  notes: IndexedNote[],
+  analysis: BarAnalysis | null,
+): LabelLane[] {
+  const lanes: LabelLane[] = [];
+  for (let string = 0; string < STRING_COUNT; string += 1) {
+    lanes.push({
+      charWidth: FRET_FONT_SIZE * CHAR_EM,
+      labels: notes
+        .filter(({ note }) => note.string === string)
+        .map(({ note }) => ({
+          beat: note.beatInBar,
+          chars: noteLabel(note).length,
+        })),
+    });
+  }
+  if (analysis) {
+    const degrees = new Map(analysis.notes.map((n) => [n.index, n]));
+    const onsets = new Map<number, string[]>();
+    for (const { note, index } of notes) {
+      const degree = degrees.get(index);
+      const label = degree ? degreeLabel(degree) : '';
+      if (!label) continue;
+      onsets.set(note.beatInBar, [
+        ...(onsets.get(note.beatInBar) ?? []),
+        label,
+      ]);
+    }
+    lanes.push({
+      charWidth: DEGREE_FONT_SIZE * CHAR_EM,
+      labels: [...onsets].map(([beat, labels]) => ({
+        beat,
+        chars: labels.join('/').length,
+      })),
+    });
+  }
+  return lanes;
 }
 
 /** Y of a string; the highest string (G) is drawn on top, as in tab. */

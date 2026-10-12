@@ -6,6 +6,9 @@ import {
   buildBassChart,
   fittedBarsPerRow,
   lineBeatWidth,
+  minBeatWidth,
+  neededBeatWidth,
+  sectionBeatWidth,
   hardestNotes,
   midiNoteName,
   sectionBlocks,
@@ -329,6 +332,95 @@ describe('queries', () => {
 
     it('widens each beat when the widest bar has fewer beats', () => {
       expect(lineBeatWidth({ ...line, beatCount: 3 })).toBe(77);
+    });
+  });
+
+  describe('needed beat width', () => {
+    const lane = (labels: [number, number][]) => ({
+      charWidth: 6,
+      labels: labels.map(([beat, chars]) => ({ beat, chars })),
+    });
+
+    it('is zero without two labels in a lane', () => {
+      expect(neededBeatWidth([], 4)).toBe(0);
+      expect(neededBeatWidth([lane([[0, 2]])], 4)).toBe(0);
+    });
+
+    it('keeps the nearest pair of one lane clear of touching', () => {
+      // Two digits (12 px) + 4 px gap over a third of a beat.
+      const needed = neededBeatWidth(
+        [
+          lane([
+            [0, 1],
+            [1, 2],
+            [1 + 1 / 3, 2],
+          ]),
+        ],
+        4,
+      );
+      expect(needed).toBeCloseTo(48);
+      // The first label ends before the next one starts.
+      expect(1 * 6 <= (1 / 3) * needed).toBe(true);
+      expect(2 * 6 + 4 <= (1 / 3) * needed + 1e-9).toBe(true);
+    });
+
+    it('takes the widest need of all lanes and ignores one beat', () => {
+      const sparse = lane([
+        [0, 1],
+        [2, 1],
+      ]);
+      const dense = lane([
+        [0, 2],
+        [0.5, 1],
+      ]);
+      expect(neededBeatWidth([sparse, dense], 4)).toBe(32);
+      expect(
+        neededBeatWidth(
+          [
+            lane([
+              [1, 1],
+              [1, 2],
+            ]),
+          ],
+          4,
+        ),
+      ).toBe(0);
+    });
+
+    it('sizes a section from base and need, to three times the base', () => {
+      expect(sectionBeatWidth(34, 0)).toBe(34);
+      expect(sectionBeatWidth(34, 20)).toBe(34);
+      expect(sectionBeatWidth(34, 50)).toBe(50);
+      expect(sectionBeatWidth(34, 500)).toBe(102);
+    });
+
+    it('lets a line narrow to 0.8 of the base, but not under the need', () => {
+      expect(minBeatWidth(34)).toBeCloseTo(27.2);
+      expect(minBeatWidth(34, 20)).toBeCloseTo(27.2);
+      expect(minBeatWidth(34, 50)).toBe(50);
+      expect(minBeatWidth(34, 500)).toBe(102);
+    });
+
+    it('widens a line past its share to the need, and not past 3x', () => {
+      const line = {
+        lineWidth: 600,
+        barsPerLine: 4,
+        beatCount: 4,
+        barChrome: 16,
+        gap: 4,
+        baseBeatWidth: 34,
+      };
+      expect(lineBeatWidth(line)).toBe(32.75);
+      expect(lineBeatWidth({ ...line, neededBeatWidth: 40 })).toBe(40);
+    });
+
+    it('falls to the largest divisor of the line length that fits', () => {
+      // 8 bars of 4 beats at a need of 60 px take 8 × (16 + 240) px.
+      const bar = 16 + 4 * minBeatWidth(34, 60);
+      const fits = Math.floor((1000 + 4) / (bar + 4));
+      expect(fits).toBe(3);
+      expect(fittedBarsPerRow(8, fits)).toBe(2);
+      expect(fittedBarsPerRow(6, fits)).toBe(3);
     });
   });
 
