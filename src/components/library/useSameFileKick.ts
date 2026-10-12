@@ -23,7 +23,6 @@ export function useSameFileKick(
     setKick(null);
     void (async () => {
       const expected = await partChartId(bassId, 'drums');
-      if (!drumIds.includes(expected)) return;
       const chart = await rocksmithLibrary.getChart(expected);
       if (live && chart && isDrumChart(chart)) setKick(kickBeatsByBar(chart));
     })().catch(() => {});

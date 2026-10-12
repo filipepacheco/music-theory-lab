@@ -14,6 +14,7 @@ import {
   type BassChartNote,
   type LabelLane,
 } from '@/domain/bassChart';
+import { BAR_PAD_X, beatMarkX } from '@/domain/drumGrid';
 import type { HarmonicSegment } from '@/domain/bassHarmony';
 import type { HarmonicFunction } from '@/constants/harmonicFields';
 
@@ -111,7 +112,7 @@ function barTitle(
 export const BEAT_WIDTH = 34;
 /** The largest beat width: only there may a degree label move right. */
 const MAX_SHIFT_WIDTH = BEAT_WIDTH * MAX_BEAT_WIDTH_SCALE;
-const PAD_X = 7;
+const PAD_X = BAR_PAD_X;
 /** The pixels of a bar that do not grow with its beats: padding and border. */
 export const BAR_CHROME = PAD_X * 2 + 2;
 /** Type sizes in a bar; none goes under the design system's 10 px floor. */
@@ -252,6 +253,13 @@ function stringY(string: number): number {
   return PAD_TOP + (STRING_COUNT - 1 - string) * LINE_GAP;
 }
 
+/** The kick hits of a bar, for the label that a screen reader reads. */
+function spokenKicks(beats: readonly number[]): string {
+  return beats.length === 0
+    ? 'Bumbo: nenhum'
+    : `Bumbo no tempo ${beats.map((beat) => beat + 1).join(', ')}`;
+}
+
 function BassTabBar({
   bar,
   notes,
@@ -358,13 +366,13 @@ function BassTabBar({
         viewBox={`0 0 ${width} ${svgHeight}`}
         className="block"
         role="img"
-        aria-label={
+        aria-label={`${
           repeat
             ? `Compasso ${bar.index + 1}: igual ao compasso ${repeatOf + 1}`
             : `Compasso ${bar.index + 1}${symbol ? ` (${symbol})` : ''}: ${
                 notes.length === 0 ? 'pausa' : notes.map(spoken).join(' ')
               }`
-        }
+        }${kickBeats ? `. ${spokenKicks(kickBeats)}` : ''}`}
       >
         {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
           <line
@@ -401,17 +409,16 @@ function BassTabBar({
         )}
         {kickBeats && (
           <g data-kick-row aria-hidden>
-            {!repeat &&
-              kickBeats.map((beat) => (
-                <circle
-                  key={beat}
-                  data-kick-beat={beat}
-                  cx={PAD_X + beat * beatWidth + 3}
-                  cy={HEIGHT + KICK_LANE / 2 - 2}
-                  r={KICK_RADIUS}
-                  fill="var(--color-text-primary)"
-                />
-              ))}
+            {kickBeats.map((beat) => (
+              <circle
+                key={beat}
+                data-kick-beat={beat}
+                cx={beatMarkX(beat, beatWidth)}
+                cy={HEIGHT + KICK_LANE / 2 - 2}
+                r={KICK_RADIUS}
+                fill="var(--color-text-primary)"
+              />
+            ))}
           </g>
         )}
         {!repeat &&

@@ -101,6 +101,19 @@ export function drumGridRows(hits: GridHit[]): DrumGridRow[] {
   return DRUM_GRID_ROWS.filter((row) => used.has(row));
 }
 
+/** Padding at each side of a bar, in the bass tab and in the drum grid. */
+export const BAR_PAD_X = 7;
+/** Width of one drum symbol (11 px monospace), and of a kick circle's span. */
+export const DRUM_MARK_WIDTH = 11 * 0.6;
+
+/**
+ * The x of the centre of a mark at `beat` in a bar: the one rule that the
+ * drum grid and the kick row of the bass tab share, so the two align.
+ */
+export function beatMarkX(beat: number, beatWidth: number): number {
+  return BAR_PAD_X + beat * beatWidth + DRUM_MARK_WIDTH / 2;
+}
+
 /** One symbol of the grid: what a row draws at one beat of a bar. */
 export interface DrumGridMark {
   row: DrumGridRow;

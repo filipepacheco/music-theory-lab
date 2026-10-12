@@ -2,6 +2,9 @@ import { memo } from 'react';
 import { BEAT_WIDTH, RepeatSign } from '@/components/library/BassTabBar';
 import type { BassChartBar } from '@/domain/bassChart';
 import {
+  BAR_PAD_X,
+  beatMarkX,
+  DRUM_MARK_WIDTH,
   drumBarSpoken,
   DRUM_GRID_ROW_LABEL,
   DRUM_GRID_ROW_NAME,
@@ -11,16 +14,14 @@ import {
 
 /** The base beat width: the one of the bass tab, so the two parts align. */
 export const DRUM_BEAT_WIDTH = BEAT_WIDTH;
-const PAD_X = 7;
+const PAD_X = BAR_PAD_X;
 /** The pixels of a bar that do not grow with its beats: padding and border. */
 export const DRUM_BAR_CHROME = PAD_X * 2 + 2;
 /** Type sizes in a bar; none goes under the design system's 10 px floor. */
 const SYMBOL_FONT_SIZE = 11;
 const ACCENT_FONT_SIZE = 10;
-/** Character width of the heading font (monospace), in em. */
-const CHAR_EM = 0.6;
 /** The width of one symbol, and of one parenthesis of a ghost note. */
-export const DRUM_CHAR_WIDTH = SYMBOL_FONT_SIZE * CHAR_EM;
+export const DRUM_CHAR_WIDTH = DRUM_MARK_WIDTH;
 /** Clear space kept between two symbols of a row, in pixels. */
 export const DRUM_LABEL_GAP = 4;
 /** Room above the first row for the bar number and the `>` of an accent. */
@@ -171,7 +172,7 @@ function DrumGridBar({
           marks.map((mark) => {
             const rowIndex = rows.indexOf(mark.row);
             if (rowIndex < 0) return null;
-            const x = PAD_X + mark.beat * beatWidth + DRUM_CHAR_WIDTH / 2;
+            const x = beatMarkX(mark.beat, beatWidth);
             const y = rowY(rowIndex);
             const accent = mark.dynamic === 'accent';
             const text = {
