@@ -23,20 +23,29 @@ import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 const state = vi.hoisted(() => ({
   charts: [] as unknown[],
   remove: vi.fn(),
+  /** The shared clock of the two parts: inert unless a test turns it on. */
+  shared: {
+    active: false,
+    playing: false,
+    currentSeconds: 0,
+    play: vi.fn(),
+    pause: vi.fn(),
+    seek: vi.fn(),
+  },
 }));
 
 // The clock of the two parts imports the audio engine, which needs a browser.
 vi.mock('@/hooks/useSongPartsPlayback', () => ({
   useSongPartsPlayback: () => ({
-    active: false,
+    active: state.shared.active,
     audio: {
-      ready: false,
-      playing: false,
-      duration: 0,
-      currentSeconds: 0,
-      play: async () => {},
-      pause: () => {},
-      seek: () => {},
+      ready: state.shared.active,
+      playing: state.shared.playing,
+      duration: 8,
+      currentSeconds: state.shared.currentSeconds,
+      play: state.shared.play,
+      pause: state.shared.pause,
+      seek: state.shared.seek,
     },
     mutes: { bass: false, drums: false },
     toggleMute: () => {},
@@ -165,6 +174,12 @@ const lineLength = () =>
 beforeEach(() => {
   state.charts = [bassOf(MIDI_BASS, 'midi'), bassOf(GP_BASS, 'gp'), drums];
   state.remove.mockReset();
+  state.shared.active = false;
+  state.shared.playing = false;
+  state.shared.currentSeconds = 0;
+  state.shared.play.mockReset();
+  state.shared.pause.mockReset();
+  state.shared.seek.mockReset();
   localStorage.clear();
   localStorage.setItem('music-theory-lab:fifths-window-open', 'false');
   window.history.replaceState(null, '', '#/biblioteca');
@@ -298,5 +313,28 @@ describe('part selector of the song screen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
     await waitFor(() => expect(state.remove).toHaveBeenCalledWith(GP_DRUMS));
     expect(window.location.hash).toBe('#/biblioteca');
+  });
+
+  it('keeps the shared playback going on a change of part and shows the cursor on the new part', async () => {
+    window.history.replaceState(null, '', `#/biblioteca/${KEY}/gp/bass`);
+    state.shared.active = true;
+    state.shared.playing = true;
+    // Bars last 2 s at 120 bpm: 3 s is inside the second bar.
+    state.shared.currentSeconds = 3;
+    render(<LibraryModule />);
+    await waitFor(() => expect(tab()).toBeTruthy());
+    expect(screen.getAllByLabelText('Pausar').length).toBeGreaterThan(0);
+
+    fireEvent.click(part('Bateria'));
+    await waitFor(() => expect(grid()).toBeTruthy());
+    const active = [...document.querySelectorAll('button[data-bar]')]
+      .filter((item) => (item as HTMLElement).dataset.active === 'true')
+      .map((item) => Number((item as HTMLElement).dataset.bar));
+    expect(active).toEqual([1]);
+    // Still playing, and the change of part stopped nothing.
+    expect(screen.getAllByLabelText('Pausar').length).toBeGreaterThan(0);
+    expect(state.shared.pause).not.toHaveBeenCalled();
+    expect(state.shared.seek).not.toHaveBeenCalled();
+    expect(state.shared.play).not.toHaveBeenCalled();
   });
 });

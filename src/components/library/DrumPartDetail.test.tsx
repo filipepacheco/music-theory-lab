@@ -23,6 +23,8 @@ const state = vi.hoisted(() => ({
   seeks: [] as number[],
   /** The seeks of the sample player, which sounds when no recording links. */
   sampleSeeks: [] as number[],
+  /** The `enabled` argument of each call to the sample player. */
+  sampleEnabled: [] as boolean[],
 }));
 vi.mock('@/services/confirm', () => ({
   confirmDialog: vi.fn(() => Promise.resolve(true)),
@@ -67,6 +69,7 @@ vi.mock('@/components/library/useLibraryAudio', () => ({
 // The sample player moves the clock, as its transport does, and sounds nothing.
 vi.mock('@/hooks/useDrumSamplePlayback', () => ({
   useDrumSamplePlayback: (_chart: unknown, enabled: boolean) => {
+    state.sampleEnabled.push(enabled);
     const [currentSeconds, setCurrentSeconds] = useState(0);
     return {
       ready: enabled,
@@ -166,6 +169,7 @@ beforeEach(() => {
   state.recording = null;
   state.seeks = [];
   state.sampleSeeks = [];
+  state.sampleEnabled = [];
   localStorage.clear();
   vi.stubGlobal('indexedDB', new IDBFactory());
   // A line that the frame can measure: 1000 pixels wide.
@@ -529,6 +533,9 @@ describe('drum part of the song detail', () => {
 
     fireEvent.click(bar(4));
     expect(state.seeks).toEqual([chart.bars[4].startTime]);
+    // With a recording the sample player is off and gets no seek.
+    expect(state.sampleSeeks).toEqual([]);
+    expect(state.sampleEnabled.includes(true)).toBe(false);
     expect(active()).toEqual([4]);
     expect(bar(4).classList.contains('border-live')).toBe(true);
     expect(bar(4).querySelectorAll('[data-playhead]')).toHaveLength(1);

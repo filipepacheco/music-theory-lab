@@ -11,7 +11,11 @@ import {
   type PlaybackPart,
 } from '@/domain/songPartsPlayback';
 
-function setup(mutes: PartMutes = NO_MUTES) {
+function setup(
+  mutes: PartMutes = NO_MUTES,
+  bassNotes?: number[],
+  drumTimes?: number[],
+) {
   let clock = 0;
   const log: string[] = [];
   const stops: (PlaybackPart | undefined)[] = [];
@@ -29,15 +33,17 @@ function setup(mutes: PartMutes = NO_MUTES) {
   const current = { mutes };
   const transport = createSongPartsTransport(
     {
-      bass: [
-        { time: 0, midi: 40, seconds: 0.5 },
-        { time: 1, midi: 43, seconds: 0.5 },
-      ],
-      drums: [
-        { time: 0, sample: 'kick', rate: 1, gain: 1 },
-        { time: 0.5, sample: 'snare', rate: 1, gain: 1 },
-        { time: 1, sample: 'kick', rate: 1, gain: 1 },
-      ],
+      bass: (bassNotes ?? [0, 1]).map((time) => ({
+        time,
+        midi: 40,
+        seconds: 0.5,
+      })),
+      drums: (drumTimes ?? [0, 0.5, 1]).map((time) => ({
+        time,
+        sample: 'kick' as const,
+        rate: 1,
+        gain: 1,
+      })),
       durationSeconds: 3,
     },
     voice,
@@ -101,5 +107,26 @@ describe('createSongPartsTransport', () => {
     expect(t.log).toContain('bass@0.35#1');
     expect(t.log).toContain('drums@0.35#1');
     expect(t.log.some((l) => l.endsWith('#0.5'))).toBe(false);
+  });
+
+  it('keeps a bass note and a drum hit on one beat together after a tempo change', async () => {
+    // 120 bpm, then 60 bpm from 2 s: beat 5 sounds at 3 s, not at 2.5 s.
+    const t = setup(NO_MUTES, [0, 2, 3], [0, 2, 3]);
+    await t.transport.play();
+    for (const at of [0.5, 1.2, 1.9, 2.2, 2.9, 3.1]) t.advance(at);
+    const whenOf = (part: string, time: number) =>
+      t.log.find((l) => l.startsWith(part) && l.endsWith(`#${time}`));
+    expect(whenOf('bass', 3)).toBe('bass@3.05#3');
+    expect(whenOf('drums', 3)).toBe('drums@3.05#3');
+    expect(t.log.some((l) => l.includes('@2.55'))).toBe(false);
+  });
+
+  it('does not stop the voice at the end of the chart', async () => {
+    const t = setup();
+    await t.transport.play();
+    t.advance(1);
+    t.advance(5);
+    expect(t.state.current).toMatchObject({ playing: false });
+    expect(t.stops).toEqual([]);
   });
 });

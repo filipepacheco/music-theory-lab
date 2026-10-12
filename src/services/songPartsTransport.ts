@@ -117,7 +117,10 @@ export function createSongPartsTransport(
       else voice.scheduleDrum(event.hit, when);
     }
     if (current >= duration) {
-      halt();
+      // The end of the chart lets the scheduled hits ring out: only the timer
+      // stops. Pause, seek, and dispose still silence the voice.
+      stopTimer?.();
+      stopTimer = null;
       update({ playing: false, currentSeconds: duration });
       return;
     }
