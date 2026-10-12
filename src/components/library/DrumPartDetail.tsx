@@ -76,9 +76,12 @@ export default function DrumPartDetail({
     together && parts ? parts.audio : synthOnly ? samples : recording;
   const reportRecording = parts?.reportRecording;
   const recordingLinked = audioState.status !== 'missing';
+  const recordingKnown = audioState.status !== 'loading';
   useEffect(() => {
-    reportRecording?.(chart.id, recordingLinked);
-  }, [reportRecording, chart.id, recordingLinked]);
+    // A part that was just opened has not read its storage: keep the answer
+    // of the part before it, so a change of part does not stop the playback.
+    if (recordingKnown) reportRecording?.(chart.id, recordingLinked);
+  }, [reportRecording, chart.id, recordingLinked, recordingKnown]);
   const hasPlayer = audioUrl !== null || synthOnly;
   const cursor = useSongCursor(chart, audio, hasPlayer);
   const { activeBar, seek } = cursor;

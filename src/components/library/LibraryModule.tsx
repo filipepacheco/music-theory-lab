@@ -188,9 +188,11 @@ export default function LibraryModule() {
     summaries.find((item) => item.id === targetChartId) ?? null;
   // The clock of the two parts of one file lives here, above the detail that
   // a change of part remounts, so the playback goes on.
+  // It reads the summary of the target, not the open chart: the chart loads
+  // after the address changes, and that gap must not look like a closed song.
   const songParts = useSongPartsPlayback(
-    selectedChart?.id ?? null,
-    selectedChart ? (isDrumChart(selectedChart) ? 'drums' : 'bass') : null,
+    selectedSummary?.id ?? null,
+    selectedSummary?.part ?? null,
     resolved?.song.charts ?? NO_SONG_CHARTS,
   );
 

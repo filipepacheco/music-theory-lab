@@ -178,6 +178,11 @@ export function useSongPartsPlayback(
   // read again whenever the part on the screen changes.
   const partnerId = openId === bassId ? drumId : bassId;
   const hasLoaded = loaded !== null;
+  // The mutes belong to one song: a part change keeps them, a new song resets.
+  useEffect(() => {
+    mutesRef.current = NO_MUTES;
+    setMutes(NO_MUTES);
+  }, [bassId]);
   useEffect(() => {
     if (!partnerId || !hasLoaded) return;
     let live = true;
@@ -212,6 +217,7 @@ export function useSongPartsPlayback(
   const drumsChart = loaded?.drums ?? null;
   const active =
     !!pair &&
+    (openId === pair.bassId || openId === pair.drumId) &&
     !!bassChart &&
     !!drumsChart &&
     !loaded?.partnerRecording &&

@@ -121,6 +121,18 @@ describe('createSongPartsTransport', () => {
     expect(t.log.some((l) => l.includes('@2.55'))).toBe(false);
   });
 
+  it('silences a ringing crash on dispose or seek after the end', async () => {
+    for (const leave of ['dispose', 'seek'] as const) {
+      const t = setup();
+      await t.transport.play();
+      t.advance(5);
+      expect(t.stops).toEqual([]);
+      if (leave === 'dispose') t.transport.dispose();
+      else t.transport.seek(1);
+      expect(t.stops).toEqual([undefined]);
+    }
+  });
+
   it('does not stop the voice at the end of the chart', async () => {
     const t = setup();
     await t.transport.play();
