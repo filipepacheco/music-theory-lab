@@ -14,15 +14,17 @@ export function useLinkedRecordings(listShown: boolean): ReadonlySet<string> {
   useEffect(() => {
     if (!listShown) return;
     let cancelled = false;
-    rocksmithLibrary
-      .listAudioIds()
-      .then((found) => {
+    // The call can throw before it returns a promise (no `indexedDB` at all),
+    // so it runs inside an async function.
+    void (async () => {
+      try {
+        const found = await rocksmithLibrary.listAudioIds();
         if (!cancelled) setIds(new Set(found));
-      })
-      .catch(() => {
-        // IndexedDB unavailable: no recording is known.
+      } catch {
+        // IndexedDB missing or refused (private window): no recording known.
         if (!cancelled) setIds(NONE);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
