@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import BassDegreeGuide from '@/components/library/BassDegreeGuide';
 import {
   BassMixPicker,
@@ -59,6 +59,7 @@ import {
 } from '@/domain/bassHarmony';
 import { bassCrossoverHz, type BassMixMode } from '@/domain/bassMix';
 import { useBassSynthPlayback } from '@/hooks/useBassSynthPlayback';
+import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import { NOTE_NAMES } from '@/constants/notes';
 import {
   chordCell,
@@ -84,6 +85,8 @@ interface Props {
   onRemove: () => void;
   /** The charts of the song; a drum chart of the same file gives the kick row. */
   songCharts?: readonly ChartSummary[];
+  /** The clock of the two parts of one file; it lives above the part. */
+  parts?: SongPartsPlayback;
 }
 
 const CIRCLE_OPEN_KEY = 'music-theory-lab:fifths-window-open';
@@ -122,6 +125,7 @@ export default function RocksmithTrackDetail({
   settingsKey,
   onRemove,
   songCharts = NO_CHARTS,
+  parts,
 }: Props) {
   const kickBeats = useSameFileKick(originalChart.id, songCharts);
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
@@ -168,8 +172,18 @@ export default function RocksmithTrackDetail({
   const recording = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
   // With no recording to follow, the sampled bass plays the chart itself.
   const synthOnly = audioState.status === 'missing';
-  const synth = useBassSynthPlayback(chart, synthOnly, shift);
-  const audio = synthOnly ? synth : recording;
+  const together = synthOnly && !!parts?.active;
+  const synth = useBassSynthPlayback(chart, synthOnly && !together, shift);
+  const audio = together && parts ? parts.audio : synthOnly ? synth : recording;
+  const reportRecording = parts?.reportRecording;
+  const reportBass = parts?.reportBass;
+  const recordingLinked = audioState.status !== 'missing';
+  useEffect(() => {
+    reportRecording?.(originalChart.id, recordingLinked);
+  }, [reportRecording, originalChart.id, recordingLinked]);
+  useEffect(() => {
+    reportBass?.(chart, shift);
+  }, [reportBass, chart, shift]);
   const hasPlayer = audioUrl !== null || synthOnly;
   const [showDegrees, setShowDegrees] = useState(false);
   const [circleOpen, setCircleOpen] = useState(readCircleOpen);
@@ -399,6 +413,11 @@ export default function RocksmithTrackDetail({
       }
       audio={audio}
       hasPlayer={hasPlayer}
+      partMutes={
+        together && parts
+          ? { mutes: parts.mutes, onToggle: parts.toggleMute }
+          : undefined
+      }
       playerPanels={
         <>
           {synth.failed && (

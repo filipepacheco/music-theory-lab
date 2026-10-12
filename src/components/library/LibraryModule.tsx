@@ -4,6 +4,7 @@ import RocksmithChartList from './RocksmithChartList';
 import RocksmithTrackDetail from './RocksmithTrackDetail';
 import DrumPartDetail from '@/components/library/DrumPartDetail';
 import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
+import { useSongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
 import {
   groupLibrarySongs,
@@ -14,7 +15,11 @@ import {
 import { DEFAULT_LIST_VIEW, type ListView } from '@/domain/libraryListView';
 import { useLinkedRecordings } from '@/components/library/useLinkedRecordings';
 import { useListScroll } from '@/components/library/useListScroll';
-import { summarizeChart, type ChartPart } from '@/domain/chartSummary';
+import {
+  summarizeChart,
+  type ChartPart,
+  type ChartSummary,
+} from '@/domain/chartSummary';
 import { isDrumChart } from '@/domain/drumChart';
 import Frame from '@/components/shared/Frame';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
@@ -37,6 +42,8 @@ import {
   readLastSource,
   writeLastSource,
 } from '@/components/library/lastSource';
+
+const NO_SONG_CHARTS: readonly ChartSummary[] = [];
 
 const SOURCE_CHOICE_LABEL: Record<SourceChoice, string> = {
   gp: 'Guitar Pro',
@@ -179,6 +186,13 @@ export default function LibraryModule() {
     targetChartId && openChart?.id === targetChartId ? openChart : null;
   const selectedSummary =
     summaries.find((item) => item.id === targetChartId) ?? null;
+  // The clock of the two parts of one file lives here, above the detail that
+  // a change of part remounts, so the playback goes on.
+  const songParts = useSongPartsPlayback(
+    selectedChart?.id ?? null,
+    selectedChart ? (isDrumChart(selectedChart) ? 'drums' : 'bass') : null,
+    resolved?.song.charts ?? NO_SONG_CHARTS,
+  );
 
   /** Store a group override, then show the song that now holds the chart. */
   const correctGroup = async (chartId: string, override: string | null) => {
@@ -303,6 +317,7 @@ export default function LibraryModule() {
               key={selectedChart.id}
               settingsKey={settingsKey}
               chart={selectedChart}
+              parts={songParts}
               onRemove={() => {
                 navigate({ screen: 'list' });
                 void remove(selectedChart.id);
@@ -314,6 +329,7 @@ export default function LibraryModule() {
               settingsKey={settingsKey}
               chart={selectedChart}
               songCharts={resolved?.song.charts}
+              parts={songParts}
               onRemove={() => {
                 navigate({ screen: 'list' });
                 void remove(selectedChart.id);

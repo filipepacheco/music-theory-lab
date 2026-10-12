@@ -27,6 +27,26 @@ const state = vi.hoisted(() => ({
   fileByChart: {} as Record<string, string>,
 }));
 
+// The clock of the two parts imports the audio engine, which needs a browser.
+vi.mock('@/hooks/useSongPartsPlayback', () => ({
+  useSongPartsPlayback: () => ({
+    active: false,
+    audio: {
+      ready: false,
+      playing: false,
+      duration: 0,
+      currentSeconds: 0,
+      play: async () => {},
+      pause: () => {},
+      seek: () => {},
+    },
+    mutes: { bass: false, drums: false },
+    toggleMute: () => {},
+    reportBass: () => {},
+    reportRecording: () => {},
+  }),
+}));
+
 vi.mock('@/hooks/useRocksmithCharts', () => ({
   useRocksmithCharts: () => {
     const [openId, setOpenId] = useState<string | null>(null);
