@@ -393,7 +393,7 @@ function LocalAudioAttachment({
       </div>
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer"
       >
         {fileName ? 'Trocar arquivo local' : 'Vincular áudio original'}
       </label>

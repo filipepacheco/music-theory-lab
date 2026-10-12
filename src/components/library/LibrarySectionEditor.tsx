@@ -277,7 +277,7 @@ function BoundaryButton({
       disabled={error !== null}
       title={error ?? label}
       onClick={onClick}
-      className="cursor-pointer border border-border-default bg-bg-card px-1.5 py-1 text-[9px] text-text-secondary hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-45"
+      className="cursor-pointer border border-border-default bg-bg-card px-1.5 py-1 text-[9px] text-text-secondary hover:bg-accent hover:text-on-accent disabled:cursor-not-allowed disabled:opacity-45"
     >
       {children}
     </button>

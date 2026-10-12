@@ -26,7 +26,7 @@ const STRING_COUNT = 4;
 const DISPLAY_ORDER = [3, 2, 1, 0];
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24]);
 /** Dark text that stays readable on the amber highlight in both themes. */
-const ON_HIGHLIGHT = '#1a1f2e';
+const ON_HIGHLIGHT = 'var(--color-on-accent)';
 
 function mod12(n: number): number {
   return ((n % 12) + 12) % 12;

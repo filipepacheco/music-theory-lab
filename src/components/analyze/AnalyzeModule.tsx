@@ -11,6 +11,8 @@ import {
   type StageProgress,
 } from './intakeClient';
 import Frame from '@/components/shared/Frame';
+import Button from '@/components/shared/Button';
+import Callout from '@/components/shared/Callout';
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -104,13 +106,10 @@ export default function AnalyzeModule() {
       {offline && <OfflineNotice />}
 
       {!offline && health && !health.ok && (
-        <p className="text-sm text-warning border border-warning/30 bg-warning/10 px-3 py-2">
+        <Callout tone="warning" className="my-0">
           Checkpoints ausentes: {health.missing_checkpoints.join(', ')}. Rode{' '}
-          <code className="font-mono text-xs">
-            scripts/fetch_checkpoints.py
-          </code>{' '}
-          antes de analisar.
-        </p>
+          <code>scripts/fetch_checkpoints.py</code> antes de analisar.
+        </Callout>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_1fr] gap-4">
@@ -131,7 +130,7 @@ export default function AnalyzeModule() {
               accept=".mp3,.m4a,.wav,.flac,.ogg,audio/*"
               disabled={blocked || busy}
               onChange={(event) => pickFile(event.target.files?.[0] ?? null)}
-              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-tertiary file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-bg-hover file:cursor-pointer disabled:opacity-50"
+              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-tertiary file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-accent hover:file:text-on-accent file:cursor-pointer disabled:opacity-50"
             />
           </label>
 
@@ -148,13 +147,14 @@ export default function AnalyzeModule() {
             disabled={blocked || busy}
           />
 
-          <button
+          <Button
             type="submit"
             disabled={!file || blocked || busy}
-            className="font-heading text-sm bg-accent px-3 py-2 text-on-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            variant="primary"
+            className="self-start"
           >
             {busy ? 'Enviando…' : 'Analisar'}
-          </button>
+          </Button>
 
           {error && <p className="text-xs text-danger">{error}</p>}
 
@@ -221,15 +221,13 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wide text-text-muted">
-        {label}
-      </span>
+      <span className="lh-label">{label}</span>
       <input
         type="text"
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="border border-border-default bg-bg-card px-2 py-1.5 text-sm text-text-primary disabled:opacity-50"
+        className="lh-input disabled:opacity-50"
       />
     </label>
   );

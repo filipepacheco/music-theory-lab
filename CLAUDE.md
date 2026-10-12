@@ -65,7 +65,7 @@ src/
     quiz/           Four exercise types with quiz cards and scoreboard
     transcription/  Song sections, chord picking, playback controls, save/load
     structure/      Song structure recorder: DraggableBar, StructureSections, ColorPicker, drag-and-drop
-    shared/         Lighthouse primitives (Frame, Button, Tag, Field, Select, Segmented, Callout), Badge, MetronomeControl, SpeedControl, TeacherTip
+    shared/         Lighthouse primitives (Frame, Button, Tag, Field, Select, Segmented, Callout), ConfirmHost, Badge, MetronomeControl, SpeedControl, TeacherTip
 ```
 
 ### Module System
@@ -163,6 +163,8 @@ The look is the Lighthouse design system (see `docs/adr/0001-adopt-lighthouse-de
 The Lighthouse components are the `lh-*` classes in `src/styles/lighthouse.css`, loaded into the Tailwind `components` layer so a utility on the same element wins. Use them through the wrappers in `src/components/shared/`: `Frame` (a box with its title in the top border; every module sits in one, with `titleAs="h2"`), `Button` (`[ label ]`; `variant="primary"` for the one filled action), `Tag` (`<WORD>`), `Field` (text input with an optional prompt glyph), `Select` (native select), `Segmented` (one choice of a few), and `Callout` (a note with a glyph in its gutter). A floating window uses the `lh-dialog` classes, and a row of tabs uses `lh-tabs` / `lh-tab`. State rules: the open tab or chosen option is inverted (`aria-current`, `aria-pressed`); the pointer gives a tab a quiet `--sea-800` ground and inverts a button; a control whose thing runs now takes `live` (lamp colour). Focus is one global `:focus-visible` outline in `globals.css`: never add `focus:outline-none` or a focus ring class. Only the components with a consumer are ported; port another from the Lighthouse source when it is needed. The type scale is `text-title`, `text-heading`, `text-ui`, `text-label`, `text-meta`, and `text-prose`.
 
 Instrument tokens: `--color-octave-1/2/3` (+ `-dim` variants, `--color-octave-fallback`), `--color-bass-highlight`, `--color-key-black-border`, `--shadow-key`.
+
+**Confirmations**: never call `window.confirm`. Use `await confirmDialog({ title, message?, confirmLabel?, danger? })` from `@/services/confirm`; it resolves to a boolean and is drawn by `ConfirmHost` (mounted once in `App.tsx`) as a native `<dialog class="lh-dialog">`. Pass `danger: true` for destructive actions.
 
 ### Theme
 

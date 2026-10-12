@@ -22,7 +22,7 @@ export default function LibraryPlayer({ audio }: Props) {
         type="button"
         onClick={togglePlay}
         disabled={disabled}
-        className="font-heading text-sm px-3 py-1 bg-bg-tertiary text-text-primary hover:bg-bg-hover disabled:opacity-50 disabled:cursor-not-allowed"
+        className="font-heading text-sm px-3 py-1 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label={audio.playing ? 'Pausar' : 'Tocar'}
       >
         {audio.playing ? 'Pausar' : 'Tocar'}

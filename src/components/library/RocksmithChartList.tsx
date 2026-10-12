@@ -31,7 +31,7 @@ export default function RocksmithChartList({
           className={`font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary ${
             importing
               ? 'opacity-50 cursor-wait'
-              : 'hover:bg-bg-hover cursor-pointer'
+              : 'hover:bg-accent hover:text-on-accent cursor-pointer'
           }`}
         >
           Importar .psarc / .mid / .gp
@@ -84,7 +84,7 @@ export default function RocksmithChartList({
                   aria-current={isActive ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 cursor-pointer border ${
                     isActive
-                      ? 'bg-accent/15 border-accent/40 text-text-primary'
+                      ? 'bg-bg-tertiary border-accent text-text-primary'
                       : 'bg-bg-card border-border-default hover:bg-bg-hover'
                   }`}
                 >

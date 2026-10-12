@@ -91,6 +91,7 @@ import {
   transposeBassChart,
   transposeMusicalKey,
 } from '@/domain/bassTransposition';
+import { confirmDialog } from '@/services/confirm';
 
 interface Props {
   chart: BassChart;
@@ -497,12 +498,15 @@ export default function RocksmithTrackDetail({
         </div>
         <button
           type="button"
-          onClick={() => {
-            if (window.confirm(`Remover "${chart.title}" deste navegador?`)) {
-              onRemove();
-            }
+          onClick={async () => {
+            const confirmed = await confirmDialog({
+              title: `Remover "${chart.title}" deste navegador?`,
+              confirmLabel: 'Remover',
+              danger: true,
+            });
+            if (confirmed) onRemove();
           }}
-          className="font-heading text-xs px-3 py-1.5 border border-border-default text-text-muted hover:text-text-error hover:border-text-error cursor-pointer"
+          className="font-heading text-xs px-3 py-1.5 border border-border-strong text-text-secondary hover:bg-danger hover:text-on-accent hover:border-danger cursor-pointer"
         >
           Remover
         </button>
@@ -568,7 +572,7 @@ export default function RocksmithTrackDetail({
               aria-label="Diminuir meio tom"
               disabled={!canTranspose || !canLower}
               onClick={() => setSemitones((value) => value - 1)}
-              className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               −½ tom
             </button>
@@ -585,7 +589,7 @@ export default function RocksmithTrackDetail({
               aria-label="Aumentar meio tom"
               disabled={!canTranspose || !canRaise}
               onClick={() => setSemitones((value) => value + 1)}
-              className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-bg-hover cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               +½ tom
             </button>
@@ -874,7 +878,7 @@ export default function RocksmithTrackDetail({
             aria-pressed={circleOpen}
             className={`shrink-0 px-2 py-1 border text-[11px] cursor-pointer ${
               circleOpen
-                ? 'border-accent bg-accent/15 text-accent'
+                ? 'border-accent bg-accent text-on-accent'
                 : 'border-border-default text-text-muted hover:text-text-primary'
             }`}
           >
@@ -1276,7 +1280,7 @@ function AudioSource({
       )}
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer"
       >
         {ready ? 'Trocar áudio' : 'Vincular áudio'}
       </label>

@@ -33,7 +33,7 @@ export default function LibraryTrackList({
               aria-current={isActive ? 'true' : undefined}
               className={`w-full text-left px-3 py-2 cursor-pointer border ${
                 isActive
-                  ? 'bg-accent/15 border-accent/40 text-text-primary'
+                  ? 'bg-bg-tertiary border-accent text-text-primary'
                   : 'bg-bg-card border-border-default hover:bg-bg-hover'
               }`}
             >

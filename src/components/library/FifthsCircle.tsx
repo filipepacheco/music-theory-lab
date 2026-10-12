@@ -42,7 +42,7 @@ const RINGS = {
 } as const;
 const FONT = { major: 15, minor: 12, numeral: 10 } as const;
 /** Dark text that stays readable on the amber highlight in both themes. */
-const ON_HIGHLIGHT = '#1a1f2e';
+const ON_HIGHLIGHT = 'var(--color-on-accent)';
 
 function point(radius: number, degrees: number): [number, number] {
   const radians = (degrees * Math.PI) / 180;
