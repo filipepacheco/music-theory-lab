@@ -96,10 +96,13 @@ import {
   transposeBassChart,
   transposeMusicalKey,
 } from '@/domain/bassTransposition';
+import { useSectionLineLengths } from '@/components/library/useSectionLineLengths';
 import { confirmDialog } from '@/services/confirm';
 
 interface Props {
   chart: BassChart;
+  /** A new value reloads the line lengths (a synchronization brought some). */
+  settingsKey?: unknown;
   onRemove: () => void;
 }
 
@@ -126,45 +129,9 @@ function writeCircleOpen(open: boolean): void {
   }
 }
 
-const BARS_PER_ROW_KEY = 'music-theory-lab:bars-per-row';
 /** Tailwind's gap-1 between bars, in pixels. */
 const BAR_GAP = 4;
 const BARS_PER_ROW_OPTIONS = Array.from({ length: 16 }, (_, i) => i + 1);
-
-/** Bars per line, by chart id and then by the section's first bar. */
-type BarsPerRow = Record<string, Record<string, number>>;
-
-function readBarsPerRow(): BarsPerRow {
-  try {
-    const parsed: unknown = JSON.parse(
-      localStorage.getItem(BARS_PER_ROW_KEY) ?? '{}',
-    );
-    if (parsed && typeof parsed === 'object') return parsed as BarsPerRow;
-  } catch {
-    // Unreadable or blocked storage: every section wraps on its own.
-  }
-  return {};
-}
-
-function writeBarsPerRow(value: BarsPerRow): void {
-  try {
-    localStorage.setItem(BARS_PER_ROW_KEY, JSON.stringify(value));
-  } catch {
-    // Blocked storage: the choice lasts until the page is reloaded.
-  }
-}
-
-/** A stored count when it is one the picker offers, else wrap freely. */
-function storedBarsPerRow(
-  all: BarsPerRow,
-  chartId: string,
-  startBar: number,
-): number | null {
-  const count = all[chartId]?.[startBar];
-  return typeof count === 'number' && BARS_PER_ROW_OPTIONS.includes(count)
-    ? count
-    : null;
-}
 
 const MARK_REPEATS_KEY = 'music-theory-lab:mark-repeats';
 
@@ -211,6 +178,7 @@ const CATEGORY_LABELS: Record<DegreeCategory, string> = {
 
 export default function RocksmithTrackDetail({
   chart: originalChart,
+  settingsKey,
   onRemove,
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
@@ -263,18 +231,9 @@ export default function RocksmithTrackDetail({
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
   const [markRepeats, setMarkRepeats] = useState(readMarkRepeats);
-  const [barsPerRow, setBarsPerRow] = useState(readBarsPerRow);
-  const changeBarsPerRow = useCallback(
-    (startBar: number, count: number | null) =>
-      setBarsPerRow((all) => {
-        const rows = { ...all[chart.id] };
-        if (count === null) delete rows[startBar];
-        else rows[startBar] = count;
-        const next = { ...all, [chart.id]: rows };
-        writeBarsPerRow(next);
-        return next;
-      }),
-    [chart.id],
+  const { lengthOf, setLength } = useSectionLineLengths(
+    originalChart.id,
+    settingsKey,
   );
   const chartRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
@@ -764,13 +723,13 @@ export default function RocksmithTrackDetail({
               isActive={block.index === activeSection}
               summary={showDegrees ? summaries[block.index] : null}
               harmony={showDegrees ? sectionHarmonies[block.index] : null}
-              barsPerRow={storedBarsPerRow(
-                barsPerRow,
-                chart.id,
-                block.section.startBar,
-              )}
+              barsPerRow={
+                lengthOf(block.section.startBar) === 'auto'
+                  ? null
+                  : (lengthOf(block.section.startBar) as number)
+              }
               onBarsPerRowChange={(count) =>
-                changeBarsPerRow(block.section.startBar, count)
+                void setLength(block.section.startBar, count ?? 'auto')
               }
               barNotes={barNotes}
               analysis={showDegrees ? analysis : null}

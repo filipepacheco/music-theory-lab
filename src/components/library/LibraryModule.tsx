@@ -27,6 +27,7 @@ import {
 } from '@/domain/libraryRoute';
 import GroupOverrideControl from '@/components/library/GroupOverrideControl';
 import { useGroupOverrides } from '@/components/library/useGroupOverrides';
+import { useLineLengthMigration } from '@/components/library/useLineLengthMigration';
 import Segmented from '@/components/shared/Segmented';
 import {
   readLastSource,
@@ -84,7 +85,12 @@ export default function LibraryModule() {
       })),
     [tracks],
   );
+  const lineLengthCopies = useLineLengthMigration();
   const { overrides, setOverride } = useGroupOverrides(summaries);
+  const settingsKey = useMemo(
+    () => [summaries, lineLengthCopies],
+    [summaries, lineLengthCopies],
+  );
   const songs = useMemo(
     () => groupLibrarySongs(summaries, analysedRefs, overrides),
     [summaries, analysedRefs, overrides],
@@ -237,6 +243,7 @@ export default function LibraryModule() {
           {selectedChart ? (
             <RocksmithTrackDetail
               key={selectedChart.id}
+              settingsKey={settingsKey}
               chart={selectedChart}
               onRemove={() => {
                 navigate({ screen: 'list' });

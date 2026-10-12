@@ -1,6 +1,16 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { IDBFactory } from 'fake-indexeddb';
+import { rocksmithLibrary } from '@/services/rocksmithLibrary';
+import { syncChartSettings } from '@/services/chartSettingsSync';
+import { parseChartSettings } from '@/domain/chartSettings';
 import RocksmithTrackDetail from '@/components/library/RocksmithTrackDetail';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import type { BassChart } from '@/domain/bassChart';
@@ -9,6 +19,9 @@ const state = vi.hoisted(() => ({
   audio: { status: 'missing' } as { status: string; url?: string },
   synthChart: null as BassChart | null,
   seeks: [] as number[],
+}));
+vi.mock('@/services/chartSettingsSync', () => ({
+  syncChartSettings: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('@/hooks/useRocksmithAudio', () => ({
   useRocksmithAudio: () => ({
@@ -738,5 +751,80 @@ describe('Biblioteca dense sections', () => {
       expect([a, b]).toEqual([plain + 12, plain + 12]);
       expect([c, d]).toEqual([plain + 24, plain + 24]);
     });
+  });
+});
+
+describe('Biblioteca section line length in the chart settings', () => {
+  const eight = {
+    ...fixtureChart(
+      8,
+      walking(Array.from({ length: 8 }, () => [48, 52, 55, 59])),
+    ),
+    id: 'b'.repeat(64),
+    source: 'gp' as const,
+  };
+  const select = () => screen.getByLabelText(/^Compassos por linha em/);
+  const lines = () => document.querySelectorAll('[data-line]').length;
+
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    vi.mocked(syncChartSettings).mockClear();
+  });
+
+  it('writes the choice by the first bar as a settings record, and synchronizes it', async () => {
+    render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+    fireEvent.change(select(), { target: { value: '4' } });
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+    const saved = await rocksmithLibrary.getSettings(eight.id);
+    expect(saved?.sectionLineLengths).toEqual({ 0: 4 });
+    expect(saved?.songLineLength).toBe('auto');
+    // A second device pulls this record, which the settings check accepts.
+    expect(parseChartSettings(saved)).toEqual(saved);
+    expect(await rocksmithLibrary.listSettings()).toEqual([saved]);
+    expect(lines()).toBe(2);
+
+    fireEvent.change(select(), { target: { value: '' } });
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
+    expect(
+      (await rocksmithLibrary.getSettings(eight.id))?.sectionLineLengths,
+    ).toEqual({ 0: 'auto' });
+    expect(lines()).toBe(0);
+  });
+
+  it('shows the line length of the settings, also one that a synchronization brings', async () => {
+    const view = render(
+      <RocksmithTrackDetail chart={eight} settingsKey={1} onRemove={vi.fn()} />,
+    );
+    expect(lines()).toBe(0);
+    await rocksmithLibrary.applySettings({
+      chartId: eight.id,
+      updatedAt: '2026-10-05T10:00:00.000Z',
+      songLineLength: 'auto',
+      sectionLineLengths: { 0: 2 },
+      groupOverride: null,
+    });
+    view.rerender(
+      <RocksmithTrackDetail chart={eight} settingsKey={2} onRemove={vi.fn()} />,
+    );
+    await waitFor(() => expect(lines()).toBe(4));
+    expect((select() as HTMLSelectElement).value).toBe('2');
+  });
+
+  it('does not restart playback or move the cursor when a length changes', async () => {
+    render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+    fireEvent.click(document.querySelectorAll('button[data-bar]')[5]);
+    const playing = state.synthChart;
+    const seeks = [...state.seeks];
+    const active = () =>
+      [...document.querySelectorAll('button[data-bar]')]
+        .filter((bar) => bar.classList.contains('border-live'))
+        .map((bar) => (bar as HTMLElement).dataset.bar);
+    expect(active()).toEqual(['5']);
+    fireEvent.change(select(), { target: { value: '3' } });
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalled());
+    // The player gets the same chart object, and no seek follows the change.
+    expect(state.synthChart).toBe(playing);
+    expect(state.seeks).toEqual(seeks);
+    expect(active()).toEqual(['5']);
   });
 });

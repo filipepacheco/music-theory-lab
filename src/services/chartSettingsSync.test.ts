@@ -19,6 +19,11 @@ import {
   type ChartCloud,
 } from '@/services/bassChartSync';
 import {
+  BARS_PER_ROW_KEY,
+  LINE_LENGTH_MIGRATED_KEY,
+  migrateBrowserLineLengths,
+} from '@/services/lineLengthMigration';
+import {
   CHART_SETTINGS_SYNC_FORMAT,
   chartSettingsCloud,
   createChartSettingsSyncStore,
@@ -628,5 +633,103 @@ describe('the settings route, from the browser', () => {
     vi.stubGlobal('localStorage', { getItem: () => 'device' });
     await expect(chartSettingsCloud.pull(0)).rejects.toThrow('500');
     await expect(chartSettingsCloud.push([settings])).rejects.toThrow('500');
+  });
+});
+
+describe('the copy of the browser line lengths', () => {
+  const importedAt = new Date(chart.importedAt).toISOString();
+
+  async function oldBrowser() {
+    const item = device();
+    await item.library.save(chart, null);
+    item.storage.setItem(
+      BARS_PER_ROW_KEY,
+      JSON.stringify({
+        [chart.id]: { 0: 4, 8: 2 },
+        ['f'.repeat(64)]: { 0: 3 },
+      }),
+    );
+    return item;
+  }
+
+  it('copies each length of a stored chart with its import time, one time', async () => {
+    const item = await oldBrowser();
+    expect(await migrateBrowserLineLengths(item.library, item.storage)).toBe(
+      true,
+    );
+    expect(await item.library.getSettings(chart.id)).toEqual({
+      chartId: chart.id,
+      updatedAt: importedAt,
+      songLineLength: 'auto',
+      sectionLineLengths: { 0: 4, 8: 2 },
+      groupOverride: null,
+    });
+    // A chart that this browser does not hold gets nothing.
+    expect(await item.library.listSettings()).toHaveLength(1);
+    expect(item.storage.getItem(LINE_LENGTH_MIGRATED_KEY)).toBe('true');
+    // A second start copies nothing, also after a later edit.
+    const edited = {
+      ...(await item.library.getSettings(chart.id))!,
+      updatedAt: '2026-10-06T10:00:00.000Z',
+      sectionLineLengths: { 0: 'auto' as const },
+    };
+    await item.library.saveSettings(edited);
+    expect(await migrateBrowserLineLengths(item.library, item.storage)).toBe(
+      false,
+    );
+    expect(await item.library.getSettings(chart.id)).toEqual(edited);
+  });
+
+  it('runs again after a failure, and copies nothing from unreadable data', async () => {
+    const item = await oldBrowser();
+    const broken = {
+      ...item.library,
+      listCharts: () => Promise.reject(new Error('x')),
+    };
+    await expect(
+      migrateBrowserLineLengths(broken, item.storage),
+    ).rejects.toThrow();
+    expect(item.storage.getItem(LINE_LENGTH_MIGRATED_KEY)).toBeNull();
+    item.storage.setItem(BARS_PER_ROW_KEY, '{oops');
+    await migrateBrowserLineLengths(item.library, item.storage);
+    expect(await item.library.listSettings()).toEqual([]);
+  });
+
+  it('loses to an edit from a different device, whichever device synchronizes first', async () => {
+    for (const copiedFirst of [true, false]) {
+      const [old, other] = [await oldBrowser(), device()];
+      const cloud = settingsCloud();
+      await migrateBrowserLineLengths(old.library, old.storage);
+      const edit = {
+        ...settings,
+        updatedAt: '2026-10-07T10:00:00.000Z',
+        songLineLength: 'auto' as const,
+        sectionLineLengths: { 0: 8 },
+      };
+      await other.library.saveSettings(edit);
+      if (copiedFirst) {
+        await syncSettings(old, cloud);
+        await syncSettings(other, cloud);
+      } else {
+        await syncSettings(other, cloud);
+        await syncSettings(old, cloud);
+      }
+      await syncSettings(old, cloud);
+      await syncSettings(other, cloud);
+      expect(await old.library.getSettings(chart.id)).toEqual(edit);
+      expect(await other.library.getSettings(chart.id)).toEqual(edit);
+      expect(cloud.record(chart.id)).toEqual(edit);
+    }
+  });
+
+  it('reaches a second device that has no edit, as a settings record', async () => {
+    const [old, other] = [await oldBrowser(), device()];
+    const cloud = settingsCloud();
+    await migrateBrowserLineLengths(old.library, old.storage);
+    await syncSettings(old, cloud);
+    await syncSettings(other, cloud);
+    expect(
+      (await other.library.getSettings(chart.id))?.sectionLineLengths,
+    ).toEqual({ 0: 4, 8: 2 });
   });
 });
