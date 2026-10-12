@@ -10,8 +10,9 @@
   fonts and generated web assets. `research/` and `init-project-*/` contain
   exploratory import/chord-recognition work; keep prototypes separate from
   production code.
-- Read `CONTEXT.md` for domain vocabulary and the nearest `CLAUDE.md` before
-  changing a scoped area. Workflow notes are in `docs/agents/`.
+- Read `CONTEXT.md` for domain vocabulary, and the doc that the deep-dive
+  table of `CLAUDE.md` names for the area, before changing it. Workflow notes
+  are in `docs/agents/`.
 
 ## Build, Test, and Development Commands
 

@@ -24,6 +24,10 @@ const state = vi.hoisted(() => ({
   }>,
   open: vi.fn(),
   importFile: vi.fn(),
+  audioIds: [] as string[],
+}));
+vi.mock('@/services/rocksmithLibrary', () => ({
+  rocksmithLibrary: { listAudioIds: async () => state.audioIds },
 }));
 
 vi.mock('@/hooks/useRocksmithCharts', () => ({
@@ -86,6 +90,7 @@ beforeEach(() => {
   state.tracks = [];
   state.open.mockReset().mockResolvedValue(undefined);
   state.importFile.mockReset();
+  state.audioIds = [];
   window.history.replaceState(null, '', '#/biblioteca');
 });
 afterEach(cleanup);
@@ -314,5 +319,140 @@ describe('Biblioteca screens and addresses', () => {
     expect(window.location.hash).toBe(
       `#/biblioteca/${encodeURIComponent('brand new|band')}/gp/bass`,
     );
+  });
+});
+
+function rowTitles() {
+  return screen
+    .queryAllByRole('row')
+    .slice(1)
+    .map((tr) => within(tr).getAllByRole('cell')[0].textContent);
+}
+const search = () => screen.getByLabelText('Buscar por título ou artista');
+
+describe('Biblioteca list search, filters, and sort', () => {
+  beforeEach(() => {
+    state.summaries = [
+      chartOf('a', 'Água de Beber', 'Tom Jobim', 'midi'),
+      chartOf('b', 'Come Together', 'The Beatles', 'gp'),
+      chartOf('b2', 'Come Together', 'The Beatles', 'gp', 'drums'),
+      chartOf('c', 'Zebra', 'Álvaro Ótimo', 'rocksmith'),
+    ];
+  });
+
+  it('finds a song of the shared library with no accents, and keeps the text and rows after a click and Back', async () => {
+    render(<LibraryModule />);
+    expect(rowTitles()).toHaveLength(3);
+    fireEvent.change(search(), { target: { value: 'agua' } });
+    expect(rowTitles()).toEqual(['Água de Beber']);
+    fireEvent.click(row('Água de Beber'));
+    await waitFor(() => screen.getByTestId('chart'));
+    expect(screen.queryByLabelText('Buscar por título ou artista')).toBeNull();
+    window.history.back();
+    await waitFor(() => expect(screen.queryByTestId('chart')).toBeNull());
+    expect((search() as HTMLInputElement).value).toBe('agua');
+    expect(rowTitles()).toEqual(['Água de Beber']);
+  });
+
+  it('searches by artist and combines filters with the search', () => {
+    render(<LibraryModule />);
+    fireEvent.change(search(), { target: { value: 'ALVARO' } });
+    expect(rowTitles()).toEqual(['Zebra']);
+    fireEvent.change(search(), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Fonte'), {
+      target: { value: 'gp' },
+    });
+    expect(rowTitles()).toEqual(['Come Together']);
+    fireEvent.change(screen.getByLabelText('Parte'), {
+      target: { value: 'drums' },
+    });
+    expect(rowTitles()).toEqual(['Come Together']);
+    fireEvent.change(search(), { target: { value: 'jobim' } });
+    expect(rowTitles()).toEqual([]);
+  });
+
+  it('shows a song that holds a drum chart under the part "drums"', () => {
+    render(<LibraryModule />);
+    fireEvent.change(screen.getByLabelText('Parte'), {
+      target: { value: 'drums' },
+    });
+    expect(rowTitles()).toEqual(['Come Together']);
+  });
+
+  it('filters by the recordings of this browser', async () => {
+    state.audioIds = ['c'];
+    render(<LibraryModule />);
+    fireEvent.change(screen.getByLabelText('Gravação vinculada'), {
+      target: { value: 'linked' },
+    });
+    await waitFor(() => expect(rowTitles()).toEqual(['Zebra']));
+  });
+
+  it('filters by tuning', () => {
+    render(<LibraryModule />);
+    const select = screen.getByLabelText('Afinação') as HTMLSelectElement;
+    expect(select.options.length).toBeGreaterThanOrEqual(2);
+    fireEvent.change(select, { target: { value: select.options[1].value } });
+    expect(rowTitles().length).toBeGreaterThan(0);
+  });
+
+  it('sorts by title, artist, and tempo', () => {
+    render(<LibraryModule />);
+    const sort = screen.getByLabelText('Ordenar por');
+    fireEvent.change(sort, { target: { value: 'title' } });
+    expect(rowTitles()).toEqual(['Água de Beber', 'Come Together', 'Zebra']);
+    fireEvent.change(sort, { target: { value: 'artist' } });
+    expect(rowTitles()).toEqual(['Zebra', 'Come Together', 'Água de Beber']);
+  });
+
+  it('shows a message when the search has no result, and clears it', () => {
+    render(<LibraryModule />);
+    fireEvent.change(search(), { target: { value: 'xyzzy' } });
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByText(/Nenhuma música encontrada/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Limpar busca e filtros'));
+    expect(rowTitles()).toHaveLength(3);
+  });
+
+  it('keeps filters and sort after a visit to a song screen', async () => {
+    render(<LibraryModule />);
+    fireEvent.change(screen.getByLabelText('Fonte'), {
+      target: { value: 'gp' },
+    });
+    fireEvent.change(screen.getByLabelText('Ordenar por'), {
+      target: { value: 'tempo' },
+    });
+    fireEvent.click(row('Come Together'));
+    await waitFor(() => screen.getByTestId('chart'));
+    window.history.back();
+    await waitFor(() => expect(screen.queryByTestId('chart')).toBeNull());
+    expect((screen.getByLabelText('Fonte') as HTMLSelectElement).value).toBe(
+      'gp',
+    );
+    expect(
+      (screen.getByLabelText('Ordenar por') as HTMLSelectElement).value,
+    ).toBe('tempo');
+    expect(rowTitles()).toEqual(['Come Together']);
+  });
+
+  it('restores the scroll position when the list returns', async () => {
+    const scrollTo = vi.fn();
+    Object.defineProperty(window, 'scrollTo', {
+      value: scrollTo,
+      configurable: true,
+    });
+    render(<LibraryModule />);
+    Object.defineProperty(window, 'scrollY', {
+      value: 480,
+      configurable: true,
+    });
+    fireEvent.scroll(window);
+    fireEvent.click(row('Zebra'));
+    await waitFor(() => screen.getByTestId('chart'));
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    fireEvent.scroll(window);
+    window.history.back();
+    await waitFor(() => expect(screen.queryByTestId('chart')).toBeNull());
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 480 });
   });
 });

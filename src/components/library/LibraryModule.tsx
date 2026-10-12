@@ -9,15 +9,34 @@ import {
   songJoinedByImport,
   type LibrarySong,
 } from '@/domain/librarySong';
+import { DEFAULT_LIST_VIEW, type ListView } from '@/domain/libraryListView';
+import { useLinkedRecordings } from '@/components/library/useLinkedRecordings';
+import { useListScroll } from '@/components/library/useListScroll';
 import { summarizeChart } from '@/domain/chartSummary';
 import Frame from '@/components/shared/Frame';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
 import {
+  choiceOfTarget,
   formatLibraryRoute,
   resolveSongRoute,
   routeOfChart,
   routeOfSong,
+  routeOfSource,
+  songSourceChoices,
+  type SourceChoice,
 } from '@/domain/libraryRoute';
+import Segmented from '@/components/shared/Segmented';
+import {
+  readLastSource,
+  writeLastSource,
+} from '@/components/library/lastSource';
+
+const SOURCE_CHOICE_LABEL: Record<SourceChoice, string> = {
+  gp: 'Guitar Pro',
+  rocksmith: 'Rocksmith',
+  midi: 'MIDI',
+  analise: 'Análise',
+};
 
 export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
@@ -25,6 +44,8 @@ export default function LibraryModule() {
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const { route, navigate } = useLibraryRoute();
+  // Lives here, not in the list, so it survives a visit to a song screen.
+  const [listView, setListView] = useState<ListView>(DEFAULT_LIST_VIEW);
   const {
     summaries,
     openId,
@@ -70,7 +91,14 @@ export default function LibraryModule() {
     [songs, route],
   );
   const target = resolved?.target ?? null;
+  const currentChoice =
+    resolved && target ? choiceOfTarget(resolved.song, target) : null;
+  const choices = resolved ? songSourceChoices(resolved.song) : [];
+  const songKeyOpen = resolved?.song.key ?? null;
   const targetChartId = target?.kind === 'chart' ? target.id : null;
+  const listShown = !resolved;
+  const linkedChartIds = useLinkedRecordings(listShown);
+  useListScroll(listShown);
 
   // The first load is over when the index answered and one sync ended.
   useEffect(() => {
@@ -83,9 +111,26 @@ export default function LibraryModule() {
     if (targetChartId && openId !== targetChartId) void open(targetChartId);
   }, [targetChartId, openId, open]);
 
+  // The device keeps the source that the song screen shows, for each song.
+  useEffect(() => {
+    if (songKeyOpen && currentChoice)
+      writeLastSource(songKeyOpen, currentChoice);
+  }, [songKeyOpen, currentChoice]);
+
   const selectSong = (song: LibrarySong) => {
     setJoinMessage(null);
-    navigate(routeOfSong(song));
+    navigate(routeOfSong(song, readLastSource(song.key)));
+  };
+
+  const selectSource = (choice: SourceChoice) => {
+    if (!resolved) return;
+    navigate(
+      routeOfSource(
+        resolved.song,
+        choice,
+        route.screen === 'song' ? route.part : undefined,
+      ),
+    );
   };
 
   const selectedTrack =
@@ -145,6 +190,18 @@ export default function LibraryModule() {
               {joinMessage}
             </p>
           )}
+          {choices.length > 1 && currentChoice && (
+            <Segmented<SourceChoice>
+              label="Fonte"
+              value={currentChoice}
+              onChange={selectSource}
+              options={choices.map((choice) => ({
+                value: choice,
+                label: SOURCE_CHOICE_LABEL[choice],
+              }))}
+              className="self-start"
+            />
+          )}
           {selectedChart ? (
             <RocksmithTrackDetail
               key={selectedChart.id}
@@ -180,6 +237,9 @@ export default function LibraryModule() {
           )}
           <RocksmithChartList
             songs={songs}
+            view={listView}
+            onViewChange={setListView}
+            linkedChartIds={linkedChartIds}
             importStatus={importStatus}
             onSelect={selectSong}
             onImport={(file) => void handleImport(file)}
