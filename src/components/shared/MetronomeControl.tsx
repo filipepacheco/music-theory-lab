@@ -34,7 +34,7 @@ export default function MetronomeControl() {
         >
           -
         </Button>
-        <span className="w-[7ch] text-center text-meta text-text-secondary">
+        <span className="min-w-[7ch] whitespace-nowrap text-center text-meta text-text-secondary">
           {bpm} bpm
         </span>
         <Button
