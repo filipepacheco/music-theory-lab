@@ -63,12 +63,77 @@ export function routeOfChart(
   return { screen: 'song', songKey, source, part };
 }
 
-/** The song screen on the best source of a song. */
-export function routeOfSong(song: LibrarySong): SongRoute {
+/** One entry of the source selector: a chart source, or the analysis. */
+export type SourceChoice = BassChartSource | typeof ANALYSIS_SEGMENT;
+
+const SOURCE_ORDER: SourceChoice[] = ['gp', 'rocksmith', 'midi'];
+
+/** Whether a stored text names a source choice. */
+export function isSourceChoice(value: unknown): value is SourceChoice {
+  return (
+    value === ANALYSIS_SEGMENT ||
+    (typeof value === 'string' && SOURCE_ORDER.includes(value as SourceChoice))
+  );
+}
+
+/** The entries of the source selector of a song: its sources, then the analysis. */
+export function songSourceChoices(song: LibrarySong): SourceChoice[] {
+  const choices = SOURCE_ORDER.filter((source) =>
+    song.charts.some((chart) => chart.source === source),
+  );
+  if (song.analysed.length > 0) choices.push(ANALYSIS_SEGMENT);
+  return choices;
+}
+
+/**
+ * The route of a source choice. A chart source keeps the current part when it
+ * has a chart of it, else it takes its first chart.
+ */
+export function routeOfSource(
+  song: LibrarySong,
+  choice: SourceChoice,
+  currentPart: SongRoute['part'] = 'bass',
+): SongRoute {
+  if (choice === ANALYSIS_SEGMENT) {
+    return routeOfChart(song.key, ANALYSIS_SEGMENT, ANALYSIS_SEGMENT);
+  }
+  const ofSource = song.charts.filter((chart) => chart.source === choice);
+  const chart =
+    ofSource.find((item) => item.part === currentPart) ??
+    ofSource.find((item) => item.part === 'bass') ??
+    ofSource[0];
+  return chart
+    ? routeOfChart(song.key, chart.source, chart.part)
+    : routeOfSong(song);
+}
+
+/**
+ * The song screen on the source that this device used last, else on the best
+ * source of the song: Guitar Pro, Rocksmith, MIDI.
+ */
+export function routeOfSong(
+  song: LibrarySong,
+  lastSource?: SourceChoice | null,
+): SongRoute {
+  if (lastSource && songSourceChoices(song).includes(lastSource)) {
+    return routeOfSource(song, lastSource);
+  }
   const chart = song.charts[0];
   return chart
     ? routeOfChart(song.key, chart.source, chart.part)
     : routeOfChart(song.key, ANALYSIS_SEGMENT, ANALYSIS_SEGMENT);
+}
+
+/** The source choice that a resolved target stands on. */
+export function choiceOfTarget(
+  song: LibrarySong,
+  target: RouteTarget,
+): SourceChoice {
+  if (target.kind === 'analysis') return ANALYSIS_SEGMENT;
+  return (
+    song.charts.find((chart) => chart.id === target.id)?.source ??
+    ANALYSIS_SEGMENT
+  );
 }
 
 /** What a song screen shows. */
