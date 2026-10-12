@@ -98,6 +98,7 @@ import {
 } from '@/domain/bassTransposition';
 import { useSectionLineLengths } from '@/components/library/useSectionLineLengths';
 import { confirmDialog } from '@/services/confirm';
+import type { LineLength } from '@/domain/chartSettings';
 
 interface Props {
   chart: BassChart;
@@ -231,10 +232,15 @@ export default function RocksmithTrackDetail({
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
   const [markRepeats, setMarkRepeats] = useState(readMarkRepeats);
-  const { lengthOf, setLength } = useSectionLineLengths(
-    originalChart.id,
-    settingsKey,
-  );
+  const {
+    lengthOf,
+    setLength,
+    setSongLength,
+    clearLength,
+    isOwn,
+    songLength,
+    hasSectionLengths,
+  } = useSectionLineLengths(originalChart.id, settingsKey);
   const chartRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(0);
@@ -670,6 +676,36 @@ export default function RocksmithTrackDetail({
             Tablatura por seção
           </h4>
           <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1 text-small text-text-muted">
+              todas as seções
+              <select
+                value={songLength === 'auto' ? '' : songLength}
+                onChange={async (e) => {
+                  const next: LineLength =
+                    e.target.value === '' ? 'auto' : Number(e.target.value);
+                  if (hasSectionLengths) {
+                    const confirmed = await confirmDialog({
+                      title: 'Aplicar a todas as seções?',
+                      message:
+                        'Os compassos por linha próprios de cada seção serão removidos.',
+                      confirmLabel: 'Aplicar',
+                    });
+                    if (!confirmed) return;
+                  }
+                  void setSongLength(next);
+                }}
+                aria-label="Compassos por linha de todas as seções"
+                title="Define os compassos por linha de todas as seções e remove os valores próprios"
+                className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
+              >
+                <option value="">auto</option>
+                {BARS_PER_ROW_OPTIONS.map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
@@ -731,6 +767,8 @@ export default function RocksmithTrackDetail({
               onBarsPerRowChange={(count) =>
                 void setLength(block.section.startBar, count ?? 'auto')
               }
+              ownLength={isOwn(block.section.startBar)}
+              onClearOwnLength={() => void clearLength(block.section.startBar)}
               barNotes={barNotes}
               analysis={showDegrees ? analysis : null}
               markRepeats={markRepeats}
@@ -899,6 +937,8 @@ function SectionBlock({
   harmony,
   barsPerRow,
   onBarsPerRowChange,
+  ownLength,
+  onClearOwnLength,
   barNotes,
   analysis,
   markRepeats,
@@ -913,6 +953,8 @@ function SectionBlock({
   /** Bars per line, or null to wrap at the screen's edge. */
   barsPerRow: number | null;
   onBarsPerRowChange: (count: number | null) => void;
+  ownLength: boolean;
+  onClearOwnLength: () => void;
   barNotes: IndexedNote[][];
   /** Per-bar analysis when degrees are shown: the degree lane has labels. */
   analysis: readonly BarAnalysis[] | null;
@@ -1073,6 +1115,25 @@ function SectionBlock({
             ))}
           </select>
         </label>
+        {ownLength && (
+          <>
+            <span
+              data-own-length
+              className="text-small text-text-primary"
+              title="Esta seção tem um valor próprio"
+            >
+              ● própria
+            </span>
+            <button
+              type="button"
+              onClick={onClearOwnLength}
+              aria-label={`Usar o valor de todas as seções em ${sectionLabel(section.name)}`}
+              className="font-heading text-small px-1.5 py-0.5 border border-border-default text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
+            >
+              Remover
+            </button>
+          </>
+        )}
       </div>
       {harmony && <SectionProgression harmony={harmony} />}
       {summary && <SectionSummary summary={summary} />}

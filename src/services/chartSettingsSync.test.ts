@@ -7,6 +7,7 @@ import {
 } from '@/domain/bassChartRecord';
 import {
   isNewerChartSettings,
+  withSongLineLength,
   type ChartSettings,
 } from '@/domain/chartSettings';
 import {
@@ -195,6 +196,32 @@ describe('chart settings synchronization', () => {
     // The chart record of each device is the one from before the change.
     expect(await first.library.listRecords()).toEqual(chartRecords);
     expect(await second.library.listRecords()).toEqual(chartRecords);
+  });
+
+  it('the control all sections writes one settings record, and the record reaches a second device', async () => {
+    const [first, second] = [device(), device()];
+    const cloud = settingsCloud();
+    await first.library.saveSettings(settings);
+    await syncSettings(first, cloud);
+    await syncSettings(second, cloud);
+    expect(
+      (await second.library.getSettings(chart.id))?.sectionLineLengths,
+    ).toEqual({ 0: 'auto', 8: 2 });
+
+    const change = withSongLineLength(
+      await first.library.getSettings(chart.id),
+      chart.id,
+      6,
+      '2026-10-06T10:00:00.000Z',
+    );
+    await first.library.saveSettings(change);
+    cloud.writes.length = 0;
+    await syncSettings(first, cloud);
+    expect(cloud.writes).toEqual([[chart.id]]);
+    await syncSettings(second, cloud);
+    const reached = await second.library.getSettings(chart.id);
+    expect(reached?.songLineLength).toBe(6);
+    expect(reached?.sectionLineLengths).toEqual({});
   });
 
   it('keeps the later write on the two devices when the two change one chart', async () => {
