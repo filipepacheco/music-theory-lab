@@ -9,9 +9,11 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { IDBFactory } from 'fake-indexeddb';
 import LibraryModule from '@/components/library/LibraryModule';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import { summarizeChart } from '@/domain/chartSummary';
+import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import type { BassChart } from '@/domain/bassChart';
 
 const state = vi.hoisted(() => ({
@@ -179,25 +181,38 @@ describe('source selector of the song screen', () => {
   });
 
   it('keeps the line lengths of each source apart', async () => {
+    // The line lengths are chart settings, which need a stored chart id.
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    state.charts = [
+      chartOf('a'.repeat(64), 'midi'),
+      chartOf('b'.repeat(64), 'rocksmith'),
+      chartOf('c'.repeat(64), 'gp'),
+    ];
     window.history.replaceState(null, '', `#/biblioteca/${KEY}/gp/bass`);
     render(<LibraryModule />);
     await waitFor(() => pickers());
     const automatic = lines();
     fireEvent.change(pickers()[0], { target: { value: '2' } });
     expect(lines()).toBe('2');
+    await waitFor(async () =>
+      expect(await rocksmithLibrary.listSettings()).toHaveLength(1),
+    );
 
     fireEvent.click(choice('MIDI'));
     await waitFor(() => expect(pressed('MIDI')).toBe('true'));
     expect(lines()).toBe(automatic);
     fireEvent.change(pickers()[0], { target: { value: '4' } });
     expect(lines()).toBe('4');
+    await waitFor(async () =>
+      expect(await rocksmithLibrary.listSettings()).toHaveLength(2),
+    );
 
     fireEvent.click(choice('Guitar Pro'));
     await waitFor(() => expect(pressed('Guitar Pro')).toBe('true'));
-    expect(lines()).toBe('2');
+    await waitFor(() => expect(lines()).toBe('2'));
     fireEvent.click(choice('MIDI'));
     await waitFor(() => expect(pressed('MIDI')).toBe('true'));
-    expect(lines()).toBe('4');
+    await waitFor(() => expect(lines()).toBe('4'));
   });
 
   it('keeps the linked recording of each source apart', async () => {

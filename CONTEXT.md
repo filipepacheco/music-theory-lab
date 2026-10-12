@@ -178,6 +178,15 @@ sends the full chart to the shared library again. A deletion leaves a deletion
 record, so a device that was offline cannot bring the chart back.
 _Avoid_: song, tab, arrangement
 
+**Line length**:
+The number of bars in each line of a section of a [[chart]], from 1 to 16, or
+"automatic" (the layout wraps the bars as they fit). The musician sets it for
+a section, by its first bar, or for the whole song; a section with no choice
+uses the song line length. A set number always holds: each line shows exactly
+that many bars, and the layout never lowers it to a divisor. It lives in the
+[[chart-settings]], so it shows on all devices. A new import starts automatic.
+_Avoid_: bars per row, bars per line
+
 **Chart settings**:
 The synchronized view choices of one [[chart]]: the song line length, the
 line length of each section (by its first bar), and the group override (a

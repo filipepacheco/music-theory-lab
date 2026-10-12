@@ -227,3 +227,63 @@ export function groupOverridesOf(
   }
   return overrides;
 }
+
+/**
+ * The line length of the section that starts at `startBar`: its own choice,
+ * else the song line length. Without settings the layout is automatic. A set
+ * number always holds: the layout never lowers it.
+ */
+export function sectionLineLength(
+  settings: ChartSettings | null,
+  startBar: number,
+): LineLength {
+  if (!settings) return 'auto';
+  return settings.sectionLineLengths[startBar] ?? settings.songLineLength;
+}
+
+/**
+ * The settings with a new line length for the section that starts at
+ * `startBar`. Only that section changes. `auto` is stored as a choice, so it
+ * also holds against a song line length.
+ */
+export function withSectionLineLength(
+  current: ChartSettings | null,
+  chartId: string,
+  startBar: number,
+  length: LineLength,
+  now: string,
+): ChartSettings {
+  const base = current ?? defaultChartSettings(chartId, now);
+  return {
+    ...base,
+    updatedAt: now,
+    sectionLineLengths: { ...base.sectionLineLengths, [startBar]: length },
+  };
+}
+
+/**
+ * The settings that copy the section line lengths of the old browser store
+ * into `current`. A section that the settings already hold keeps its value,
+ * and a value that is not allowed is left out. The copy has the import time
+ * of its chart as update time, so a real edit on any device is newer. Null
+ * when nothing is copied.
+ */
+export function withBrowserLineLengths(
+  current: ChartSettings | null,
+  chartId: string,
+  browser: unknown,
+  importedAt: string,
+): ChartSettings | null {
+  if (!object(browser)) return null;
+  const base = current ?? defaultChartSettings(chartId, importedAt);
+  const sections: Record<number, LineLength> = { ...base.sectionLineLengths };
+  let copied = false;
+  for (const [bar, length] of Object.entries(browser)) {
+    if (!FIRST_BAR.test(bar) || !lineLength(length) || length === 'auto')
+      continue;
+    if (sections[Number(bar)] !== undefined) continue;
+    sections[Number(bar)] = length;
+    copied = true;
+  }
+  return copied ? { ...base, sectionLineLengths: sections } : null;
+}
