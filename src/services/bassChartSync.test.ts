@@ -677,6 +677,71 @@ describe('incremental chart synchronization', () => {
     expect(remote.reads[0].after).toBe(0);
   });
 
+  /** A record of a later client: a drum chart names its part. */
+  const drums = {
+    id: numbered(7).id,
+    updatedAt: '2026-10-05T10:00:00.000Z',
+    chart: { ...numbered(7), part: 'drums' },
+  } as BassChartRecord;
+
+  it('a record that the client cannot read is not skipped for ever: the client with the next format version downloads it again', async () => {
+    const { remote } = await library(2);
+    await remote.push(drums);
+    await remote.push({
+      id: numbered(8).id,
+      updatedAt: '2026-10-05T10:00:00.000Z',
+      chart: numbered(8),
+    });
+    const storage = memoryStorage();
+    const local = device();
+    const stored = async () =>
+      (await local.listCharts()).map((item) => item.id);
+
+    // This client skips the record, and its counter moves past it.
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect((await stored()).sort()).toEqual(
+      [1, 2, 8].map((index) => numbered(index).id),
+    );
+    expect(
+      JSON.parse(storage.items.get('music-theory-lab-chart-sync')!),
+    ).toMatchObject({ format: CHART_SYNC_FORMAT, counter: 4 });
+    remote.reads.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect(remote.reads).toEqual([{ after: 4, ids: [] }]);
+
+    // The client that reads more has the next format version. Its first read
+    // starts at counter 0, so the record comes again.
+    remote.reads.length = 0;
+    remote.writes.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage, CHART_SYNC_FORMAT + 1),
+    );
+    expect(remote.reads).toEqual([
+      { after: 0, ids: [1, 2, 7, 8].map((index) => numbered(index).id) },
+    ]);
+    expect(remote.writes).toEqual([]);
+  });
+
+  it('keeps format version 1 only while the client reads no drum chart record', () => {
+    // This test fails when the client starts to read a drum chart record.
+    // Then raise CHART_SYNC_FORMAT in the same change, and change the two
+    // values here: a device that skipped the record must read it again.
+    expect({
+      format: CHART_SYNC_FORMAT,
+      readsDrumCharts: parseBassChartRecord(drums) !== null,
+    }).toEqual({ format: 1, readsDrumCharts: false });
+  });
+
   it('sends the last counter and reads a page of the chart route', async () => {
     const record = { id: chart.id, updatedAt: chart.importedAt, chart };
     const fetch = vi.fn().mockResolvedValue({
