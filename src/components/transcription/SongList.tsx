@@ -10,9 +10,7 @@ export default function SongList() {
 
   if (isLoading) {
     return (
-      <div className="text-xs text-text-muted py-2">
-        Carregando músicas...
-      </div>
+      <div className="text-xs text-text-muted py-2">Carregando músicas...</div>
     );
   }
 
@@ -29,45 +27,50 @@ export default function SongList() {
         {songs.map((song) => {
           const isActive = song.id === activeSongId;
           return (
-            <button
+            <div
               key={song.id}
-              onClick={() => loadSong(song)}
-              className={`group relative text-left px-4 py-3 border cursor-pointer ${
+              className={`relative border ${
                 isActive
-                  ? 'border-accent bg-accent/10'
+                  ? 'border-accent bg-bg-tertiary'
                   : 'border-border-default bg-bg-card hover:border-accent hover:shadow-lift'
               }`}
             >
-              <span className="font-heading text-xs text-text-primary block pr-6">
-                {song.title}
-              </span>
-              {song.artist && (
-                <span className="text-[10px] text-text-muted block mt-0.5">
-                  {song.artist}
+              <button
+                type="button"
+                aria-current={isActive ? 'true' : undefined}
+                onClick={() => loadSong(song)}
+                className="block w-full h-full text-left px-4 py-3 cursor-pointer"
+              >
+                <span className="font-heading text-xs text-text-primary block pr-6">
+                  {song.title}
                 </span>
-              )}
-
-              {/* Section pills */}
-              <div className="flex gap-1 flex-wrap mt-1.5">
-                {song.sections.map((sec) => (
-                  <span
-                    key={sec.id}
-                    className="text-[10px] font-mono px-1.5 py-0.5"
-                    style={{
-                      backgroundColor: SECTION_COLORS[sec.type] + '20',
-                      color: SECTION_COLORS[sec.type],
-                    }}
-                  >
-                    {sec.customLabel || sec.type}
+                {song.artist && (
+                  <span className="text-micro text-text-muted block mt-0.5">
+                    {song.artist}
                   </span>
-                ))}
-              </div>
+                )}
+
+                {/* Section pills */}
+                <span className="flex gap-1 flex-wrap mt-1.5">
+                  {song.sections.map((sec) => (
+                    <span
+                      key={sec.id}
+                      className="text-micro font-mono px-1.5 py-0.5"
+                      style={{
+                        backgroundColor: SECTION_COLORS[sec.type] + '20',
+                        color: SECTION_COLORS[sec.type],
+                      }}
+                    >
+                      {sec.customLabel || sec.type}
+                    </span>
+                  ))}
+                </span>
+              </button>
 
               <button
                 type="button"
                 aria-label={`Remover ${song.title}`}
-                onClick={async (e) => {
-                  e.stopPropagation();
+                onClick={async () => {
                   const confirmed = await confirmDialog({
                     title: `Remover "${song.title}"?`,
                     confirmLabel: 'Remover',
@@ -75,11 +78,11 @@ export default function SongList() {
                   });
                   if (confirmed) remove(song.id);
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>
-            </button>
+            </div>
           );
         })}
       </div>

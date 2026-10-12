@@ -121,7 +121,7 @@ export default function AnalyzeModule() {
           }}
         >
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-text-muted">
+            <span className="lh-label">
               Arquivo
             </span>
             <input
@@ -159,7 +159,7 @@ export default function AnalyzeModule() {
           {error && <p className="text-xs text-danger">{error}</p>}
 
           {health?.ok && (
-            <p className="text-[11px] text-text-muted">
+            <p className="text-small text-text-muted">
               Dispositivo: <span className="font-mono">{health.device}</span>.
               Uma faixa por vez — há só uma GPU.
             </p>
@@ -191,16 +191,16 @@ function OfflineNotice() {
       <p className="text-sm text-text-secondary">
         O serviço de análise não está rodando.
       </p>
-      <p className="text-[11px] text-text-muted">
+      <p className="text-small text-text-muted">
         Ele é separado do <code className="font-mono">npm run dev</code> porque
         precisa da GPU e dos checkpoints. Em outro terminal, dentro de{' '}
         <code className="font-mono">research/audio-library-poc</code>:
       </p>
-      <pre className="text-[11px] font-mono text-text-secondary bg-bg-tertiary px-2 py-1.5 overflow-x-auto">
+      <pre className="text-small font-mono text-text-secondary bg-bg-tertiary px-2 py-1.5 overflow-x-auto">
         .venv\Scripts\audio-library-intake.exe --workspace workspace --public
         ..\..\public
       </pre>
-      <p className="text-[11px] text-text-muted">
+      <p className="text-small text-text-muted">
         Precisa das extras <code className="font-mono">inference</code> e{' '}
         <code className="font-mono">server</code> instaladas.
       </p>
@@ -248,7 +248,7 @@ function JobCard({ job }: { job: IntakeJob }) {
           {job.title || job.filename}
         </span>
         <span
-          className={`text-[11px] shrink-0 ${
+          className={`text-small shrink-0 ${
             job.status === 'failed'
               ? 'text-danger'
               : job.status === 'succeeded'
@@ -267,9 +267,9 @@ function JobCard({ job }: { job: IntakeJob }) {
           <StageChip key={stage.kind} stage={stage} />
         ))}
       </ul>
-      {job.error && <p className="text-[11px] text-danger">{job.error}</p>}
+      {job.error && <p className="text-small text-danger">{job.error}</p>}
       {job.status === 'succeeded' && (
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           Publicada na Biblioteca — abra o módulo para ver a cifra.
         </p>
       )}
@@ -288,7 +288,7 @@ function StageChip({ stage }: { stage: StageProgress }) {
   return (
     <li
       title={stage.detail ?? undefined}
-      className={`border px-2 py-0.5 text-[10px] font-heading ${
+      className={`border px-2 py-0.5 text-micro font-heading ${
         STAGE_TONE[stage.status]
       }`}
     >

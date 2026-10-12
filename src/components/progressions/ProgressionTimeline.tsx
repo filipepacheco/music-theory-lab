@@ -18,7 +18,7 @@ export default function ProgressionTimeline() {
   if (customProgression.length === 0) {
     return (
       <div className="border border-dashed border-border-strong p-4 sm:p-8 text-center">
-        <div className="text-2xl text-text-muted/40 mb-2">+</div>
+        <div className="text-2xl text-text-muted mb-2">+</div>
         <p className="text-sm text-text-secondary">
           Clique nos acordes acima para montar sua progressão
         </p>
@@ -70,9 +70,9 @@ export default function ProgressionTimeline() {
               <motion.div
                 key={`${idx}-${step.label}`}
                 layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 className="relative flex flex-col items-center gap-0.5 px-3 py-3 bg-bg-card border min-w-[80px] group"
                 style={{ borderColor }}
@@ -81,7 +81,7 @@ export default function ProgressionTimeline() {
                 <button
                   onClick={() => removeProgressionStep(idx)}
                   aria-label="Remover acorde"
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>
@@ -93,10 +93,10 @@ export default function ProgressionTimeline() {
                 >
                   {step.label}
                 </span>
-                <span className="font-mono text-[10px] text-text-secondary">
+                <span className="font-mono text-micro text-text-secondary">
                   {resolved.chordName}
                 </span>
-                <span className="font-mono text-[10px] text-text-muted">
+                <span className="font-mono text-micro text-text-muted">
                   {resolved.noteNames.join(" ")}
                 </span>
 

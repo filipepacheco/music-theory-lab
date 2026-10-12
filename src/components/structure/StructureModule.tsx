@@ -176,7 +176,7 @@ export default function StructureModule() {
                   key={s.name}
                   type="button"
                   onClick={() => handleSuggestionClick(s)}
-                  className="px-2.5 py-1 text-[11px] font-medium border cursor-pointer"
+                  className="px-2.5 py-1 text-small font-medium border cursor-pointer"
                   style={{
                     backgroundColor: STRUCTURE_PALETTE[s.colorIndex] + '15',
                     borderColor: STRUCTURE_PALETTE[s.colorIndex] + '30',

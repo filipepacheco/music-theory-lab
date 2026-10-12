@@ -61,12 +61,12 @@ export default function ProgressionExamples() {
                 {prog.steps.map((step, i) => (
                   <span
                     key={i}
-                    className={`text-xs px-1.5 py-0.5 ${
+                    className={`text-xs px-1.5 py-0.5 border ${
                       isPlaying && currentStep === i
-                        ? 'bg-live text-on-accent'
+                        ? 'border-live bg-live text-on-accent'
                         : step.degree === null
-                          ? 'bg-accent/20 text-accent'
-                          : 'bg-bg-tertiary text-text-secondary'
+                          ? 'border-border-strong bg-bg-tertiary text-text-primary'
+                          : 'border-transparent bg-bg-tertiary text-text-secondary'
                     }`}
                     style={
                       step.beats && step.beats > 4
@@ -76,7 +76,7 @@ export default function ProgressionExamples() {
                   >
                     {step.label}
                     {step.beats && step.beats > 4 && (
-                      <span className="text-[9px] opacity-50 ml-0.5">
+                      <span className="text-micro opacity-50 ml-0.5">
                         {step.beats / 4}c
                       </span>
                     )}

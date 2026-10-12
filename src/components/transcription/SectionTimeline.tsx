@@ -53,9 +53,9 @@ export default function SectionTimeline() {
               <motion.div
                 key={`${idx}-${step.label}`}
                 layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 className="relative flex flex-col items-center gap-0.5 px-3 py-3 bg-bg-card border min-w-[80px] group"
                 style={{
@@ -85,7 +85,7 @@ export default function SectionTimeline() {
                 <button
                   onClick={() => removeSongStep(activeSectionIndex, idx)}
                   aria-label="Remover acorde"
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>
@@ -97,10 +97,10 @@ export default function SectionTimeline() {
                 >
                   {step.label}
                 </span>
-                <span className="font-mono text-[10px] text-text-secondary">
+                <span className="font-mono text-micro text-text-secondary">
                   {resolved.chordName}
                 </span>
-                <span className="font-mono text-[10px] text-text-muted">
+                <span className="font-mono text-micro text-text-muted">
                   {resolved.noteNames.join(' ')}
                 </span>
 

@@ -19,7 +19,7 @@ export default function SpeedControl({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[10px] text-text-muted whitespace-nowrap">
+      <span className="text-micro text-text-muted whitespace-nowrap">
         Velocidade
       </span>
       <input

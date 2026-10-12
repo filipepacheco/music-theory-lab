@@ -41,14 +41,14 @@ export default function StructureRecorder() {
           {barCount} {barCount === 1 ? 'compasso' : 'compassos'}
         </span>
         {focusedSection ? (
-          <span className="text-[11px] text-text-muted/80">
+          <span className="text-small text-text-muted/80">
             Adicionando a:{' '}
             <span style={{ color: focusedSection.color }} className="font-medium">
               {focusedSection.name}
             </span>
           </span>
         ) : (
-          <span className="text-[11px] text-text-muted/60">
+          <span className="text-small text-text-muted/60">
             Selecione uma seção
           </span>
         )}

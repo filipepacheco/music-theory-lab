@@ -25,7 +25,6 @@ export default function ChordGrid() {
           noteNames={chord.noteNames}
           intervals={chord.intervals}
           isSelected={selectedChordIndex === index}
-          index={index}
           onClick={() => handleChordClick(index)}
         />
       ))}

@@ -90,16 +90,16 @@ export default function ProgressionChordStrip() {
                 >
                   {step.label}
                 </span>
-                <span className="font-mono text-[10px] text-text-secondary truncate">
+                <span className="font-mono text-micro text-text-secondary truncate">
                   {step.chordName}
                 </span>
               </div>
-              <div className="font-mono text-[10px] text-text-muted truncate">
+              <div className="font-mono text-micro text-text-muted truncate">
                 {step.noteNames.join(" ")}
               </div>
               {fn && (
                 <div
-                  className="text-[9px] mt-0.5 opacity-60"
+                  className="text-micro mt-0.5 opacity-60 truncate"
                   style={{ color }}
                 >
                   {FUNCTION_LABELS[fn]}

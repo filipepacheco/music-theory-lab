@@ -45,7 +45,7 @@ export default function LibraryRejectedBoundaryReview({
     <div className="flex flex-col gap-2">
       {suggestions.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-text-muted">
+          <p className="text-small text-text-muted">
             O resultado rejeitado permanece oculto até você pedir para
             inspecioná-lo.
           </p>
@@ -54,7 +54,7 @@ export default function LibraryRejectedBoundaryReview({
             aria-expanded={visible}
             aria-controls={regionId}
             onClick={() => onVisibleChange(!visible)}
-            className="cursor-pointer border border-border-default bg-bg-primary px-3 py-1.5 text-[11px] text-text-secondary hover:border-warning/50"
+            className="cursor-pointer border border-border-default bg-bg-primary px-3 py-1.5 text-small text-text-secondary hover:border-warning/50"
           >
             {visible
               ? 'Ocultar sugestões rejeitadas'
@@ -68,7 +68,7 @@ export default function LibraryRejectedBoundaryReview({
           id={regionId}
           role="note"
           aria-label="Sugestões rejeitadas da análise estrutural"
-          className="border border-warning/25 bg-warning/5 px-3 py-2 text-[11px] text-text-secondary"
+          className="border border-warning/25 bg-warning/5 px-3 py-2 text-small text-text-secondary"
         >
           Estas divisões falharam no teste de estabilidade. São pistas para
           revisão manual, não resultados automáticos aceitos.
@@ -100,7 +100,7 @@ export default function LibraryRejectedBoundaryReview({
                   type="button"
                   disabled
                   aria-label={`Sugestão rejeitada indisponível, ${support}% de apoio. Motivo registrado: ${recordedReason}. ${reason}`}
-                  className="w-full cursor-not-allowed border border-dashed border-border-default bg-bg-card px-2 py-1.5 text-left text-[10px] text-text-muted opacity-70"
+                  className="w-full cursor-not-allowed border border-dashed border-border-default bg-bg-card px-2 py-1.5 text-left text-micro text-text-muted opacity-70"
                 >
                   <span className="font-medium text-text-secondary">
                     Sugestão rejeitada indisponível · {support}% de apoio

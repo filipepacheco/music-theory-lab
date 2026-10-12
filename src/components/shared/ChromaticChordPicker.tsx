@@ -94,7 +94,7 @@ export default function ChromaticChordPicker({
         <motion.span
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
-          className="text-[10px]"
+          className="text-micro"
         >
           &#9654;
         </motion.span>
@@ -124,7 +124,7 @@ export default function ChromaticChordPicker({
                       className={`px-2.5 py-1.5 text-xs font-mono cursor-pointer ${
                         selectedRoot === i
                           ? 'bg-accent text-on-accent'
-                          : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                          : 'bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent'
                       }`}
                     >
                       {name}
@@ -182,14 +182,14 @@ export default function ChromaticChordPicker({
                             expandedCategory === cat.id ? null : cat.id,
                           )
                         }
-                        className="flex items-center gap-1 text-[11px] text-text-secondary hover:text-text-primary cursor-pointer mb-1"
+                        className="flex items-center gap-1 text-small text-text-secondary hover:text-text-primary cursor-pointer mb-1"
                       >
                         <motion.span
                           animate={{
                             rotate: expandedCategory === cat.id ? 90 : 0,
                           }}
                           transition={{ duration: 0.1 }}
-                          className="text-[8px]"
+                          className="text-micro"
                         >
                           &#9654;
                         </motion.span>

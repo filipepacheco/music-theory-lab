@@ -18,7 +18,7 @@ export default function LibrarySectionStatus({ analysis }: Props) {
       <p className="text-xs font-medium text-text-primary">
         Seções automáticas não publicadas
       </p>
-      <p className="mt-1 text-[11px] text-text-secondary">
+      <p className="mt-1 text-small text-text-secondary">
         {unstableStructure
           ? 'A análise estrutural não permaneceu estável nas variações de teste.'
           : 'A grade de pulsos não passou pela validação calibrada.'}{' '}

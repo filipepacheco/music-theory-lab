@@ -133,7 +133,7 @@ export function SectionOverlay({ section }: { section: StructureSection }) {
       >
         {section.name}
       </span>
-      <span className="text-[10px] text-text-muted font-mono">
+      <span className="text-micro text-text-muted font-mono">
         {section.barIds.length}c
       </span>
     </div>
@@ -196,11 +196,11 @@ function DroppableSection({
   return (
     <motion.div
       ref={mergedRef}
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className={`group relative flex flex-col gap-1.5 px-2 py-2 sm:px-3 border ${
-        isOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''
-      } ${isFocused ? 'ring-2 ring-accent/60 shadow-[0_0_12px_var(--color-accent)/15]' : ''}`}
+        isOver ? 'ring-1 ring-accent bg-bg-tertiary' : ''
+      } ${isFocused ? 'ring-2 ring-accent' : ''}`}
       style={{
         backgroundColor: isOver ? undefined : color + '10',
         borderColor: isOver
@@ -243,7 +243,7 @@ function DroppableSection({
               setSectionBarsPerRow(section.id, val ? Number(val) : undefined);
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="text-[10px] sm:text-xs bg-bg-tertiary border border-border-strong px-1 py-0.5 text-text-secondary cursor-pointer w-full"
+            className="text-micro sm:text-xs bg-bg-tertiary border border-border-strong px-1 py-0.5 text-text-secondary cursor-pointer w-full"
             aria-label="Compassos por linha"
           >
             <option value="">Auto</option>
@@ -279,7 +279,7 @@ function DroppableSection({
                 e.stopPropagation();
                 duplicateSection(section.id);
               }}
-              className="text-[10px] sm:text-xs text-text-muted hover:text-accent cursor-pointer"
+              className="text-micro sm:text-xs text-text-muted hover:bg-accent hover:text-on-accent cursor-pointer"
               title="Duplicar seção"
             >
               <svg
@@ -396,7 +396,7 @@ function DroppableSection({
           e.stopPropagation();
           onRemove(section.id);
         }}
-        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[9px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
+        className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
       >
         X
       </button>

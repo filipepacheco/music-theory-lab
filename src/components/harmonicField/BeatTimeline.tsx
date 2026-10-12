@@ -105,7 +105,7 @@ export default function BeatTimeline() {
             >
               {cell.isChordStart && (
                 <span
-                  className="text-[10px] font-mono font-medium leading-none whitespace-nowrap absolute bottom-0"
+                  className="text-micro font-mono font-medium leading-none whitespace-nowrap absolute bottom-0"
                   style={{ color: functionColor(cell.harmonicFunction) }}
                 >
                   {cell.label}
@@ -149,7 +149,7 @@ export default function BeatTimeline() {
               style={{ gridRow: 3, gridColumn: idx + 1 }}
             >
               <span
-                className={`text-[9px] font-mono leading-none ${
+                className={`text-micro font-mono leading-none ${
                   cell.isDownbeat
                     ? "text-text-secondary"
                     : "text-text-muted opacity-50"

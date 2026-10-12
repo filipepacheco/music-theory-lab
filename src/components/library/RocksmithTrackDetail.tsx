@@ -492,7 +492,7 @@ export default function RocksmithTrackDetail({
               .filter(Boolean)
               .join(' · ')}
           </p>
-          <p className="text-[11px] text-text-muted">
+          <p className="text-small text-text-muted">
             Baixo importado de {chart.sourceFileName}
           </p>
         </div>
@@ -549,7 +549,7 @@ export default function RocksmithTrackDetail({
               <option value="suggested">Sugerida pelo Music Lab</option>
             </select>
           </label>
-          <p className="text-[11px] text-text-muted">
+          <p className="text-small text-text-muted">
             {!originalFingeringAvailable
               ? 'Este GP só tem a digitação sugerida. Reimporte o arquivo para recuperar as posições originais quando disponíveis.'
               : fingeringRecalculated
@@ -646,18 +646,18 @@ export default function RocksmithTrackDetail({
               </option>
             </select>
           </label>
-          <p className="text-[11px] text-text-muted">
+          <p className="text-small text-text-muted">
             {audioState.status === 'ready'
               ? 'Transposição indisponível com uma gravação vinculada. O áudio toca no tom original.'
               : 'Cada clique muda o tom em meio tom e recalcula as casas na afinação escolhida. Se necessário, a linha inteira muda de oitava, preservando os intervalos.'}
           </p>
           {canTranspose && practiceTuning === 'drop-d' && (
-            <p className="text-[11px] text-text-muted">
+            <p className="text-small text-text-muted">
               Drop D: afine apenas a corda E em D; mantenha A, D e G.
             </p>
           )}
           {canTranspose && octaveOffset !== 0 && (
-            <p role="status" className="text-[11px] text-text-muted">
+            <p role="status" className="text-small text-text-muted">
               Linha inteira {Math.abs(octaveOffset)}{' '}
               {Math.abs(octaveOffset) === 1 ? 'oitava' : 'oitavas'}{' '}
               {octaveOffset > 0 ? 'acima' : 'abaixo'} para caber na afinação
@@ -666,7 +666,7 @@ export default function RocksmithTrackDetail({
           )}
           {canTranspose &&
             ((!canLower && shift > -12) || (!canRaise && shift < 12)) && (
-              <p role="status" className="text-[11px] text-text-muted">
+              <p role="status" className="text-small text-text-muted">
                 Um dos próximos tons não comporta a linha inteira nesta
                 afinação. A transposição foi limitada para preservar os
                 intervalos.
@@ -677,7 +677,7 @@ export default function RocksmithTrackDetail({
 
       {hasPlayer && <LibraryPlayer audio={audio} />}
       {synth.failed && (
-        <p role="alert" className="text-[11px] text-text-error">
+        <p role="alert" className="text-small text-text-error">
           Não foi possível carregar o som do baixo. Verifique a conexão e tente
           de novo.
         </p>
@@ -706,7 +706,7 @@ export default function RocksmithTrackDetail({
             Tablatura por seção
           </h4>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
+            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={showDegrees}
@@ -715,7 +715,7 @@ export default function RocksmithTrackDetail({
               />
               Mostrar graus
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
+            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={follow}
@@ -725,7 +725,7 @@ export default function RocksmithTrackDetail({
               Acompanhar a reprodução
             </label>
             <label
-              className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer"
+              className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer"
               title="Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição"
             >
               <input
@@ -799,7 +799,7 @@ export default function RocksmithTrackDetail({
             />
           ))}
         </div>
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           Um bloco = um compasso, na grade de tempos do próprio arquivo. As
           linhas vão da corda G (em cima) à E (embaixo); pontilhados marcam os
           tempos. x = nota abafada, / e \ = slide.
@@ -876,7 +876,7 @@ export default function RocksmithTrackDetail({
             type="button"
             onClick={toggleCircle}
             aria-pressed={circleOpen}
-            className={`shrink-0 px-2 py-1 border text-[11px] cursor-pointer ${
+            className={`shrink-0 px-2 py-1 border text-small cursor-pointer ${
               circleOpen
                 ? 'border-accent bg-accent text-on-accent'
                 : 'border-border-default text-text-muted hover:text-text-primary'
@@ -1016,7 +1016,7 @@ function SectionBlock({
         <span className="font-heading text-sm text-text-secondary">
           Pausa ×{item.count}
         </span>
-        <span className="text-[9px] text-text-muted tabular-nums">
+        <span className="text-micro text-text-muted tabular-nums">
           compassos {item.startBar + 1}–{item.startBar + item.count}
         </span>
       </button>
@@ -1038,15 +1038,15 @@ function SectionBlock({
           {sectionLabel(section.name)}
         </span>
         {block.occurrenceTotal > 1 && (
-          <span className="text-[11px] text-text-muted">
+          <span className="text-small text-text-muted">
             {block.occurrence}ª de {block.occurrenceTotal}
           </span>
         )}
-        <span className="text-[11px] text-text-muted ml-auto tabular-nums">
+        <span className="text-small text-text-muted ml-auto tabular-nums">
           {formatDuration(start)}–{formatDuration(end)} · {barCount}{' '}
           {barCount === 1 ? 'compasso' : 'compassos'}
         </span>
-        <label className="flex items-center gap-1 text-[11px] text-text-muted">
+        <label className="flex items-center gap-1 text-small text-text-muted">
           por linha
           <select
             value={barsPerRow ?? ''}
@@ -1057,7 +1057,7 @@ function SectionBlock({
             }
             aria-label={`Compassos por linha em ${sectionLabel(section.name)}`}
             title="Quantos compassos cabem em cada linha desta seção"
-            className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-[11px] text-text-secondary cursor-pointer"
+            className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
           >
             <option value="">auto</option>
             {BARS_PER_ROW_OPTIONS.map((count) => (
@@ -1104,7 +1104,7 @@ function SectionSummary({ summary }: { summary: AnalysisSummary }) {
   const moves = motion.repeats + motion.steps + motion.leaps;
   if (total === 0) return null;
   return (
-    <p className="flex flex-wrap gap-x-2 gap-y-0.5 font-heading text-[10px] text-text-muted tabular-nums">
+    <p className="flex flex-wrap gap-x-2 gap-y-0.5 font-heading text-micro text-text-muted tabular-nums">
       {DEGREE_CATEGORIES.map((category) => (
         <span key={category} style={{ color: DEGREE_COLORS[category] }}>
           {CATEGORY_LABELS[category]} {percent(counts[category], total)}
@@ -1135,7 +1135,7 @@ function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
   );
   return (
     <div className="flex flex-col gap-0.5">
-      <p className="flex flex-wrap items-baseline gap-x-1 font-heading text-[11px] leading-snug">
+      <p className="flex flex-wrap items-baseline gap-x-1 font-heading text-small leading-snug">
         {repeats > 1 && <span className="text-text-muted">(</span>}
         {cycle.map((segment, i) => (
           <span key={segment.startBar} className="flex items-baseline gap-1">
@@ -1160,7 +1160,7 @@ function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
           {harmony.events.map((event) => (
             <span
               key={`${event.kind}-${event.startBar}`}
-              className="border border-border-default bg-bg-card px-1.5 py-0.5 text-[10px] text-text-secondary"
+              className="border border-border-default bg-bg-card px-1.5 py-0.5 text-micro text-text-secondary"
             >
               {event.label}
               <span className="text-text-muted tabular-nums">
@@ -1188,7 +1188,7 @@ function KeyPicker({
   const others = ALL_KEYS.filter((key) => !suggested.has(keyValue(key)));
   const current = suggestions.find((s) => keyValue(s) === keyValue(value));
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-muted">
       <label className="flex items-center gap-1.5">
         Tom para análise
         <select
@@ -1224,7 +1224,7 @@ function KeyPicker({
 
 function DegreeLegend() {
   return (
-    <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-heading text-[10px] text-text-muted">
+    <p className="flex flex-wrap gap-x-3 gap-y-0.5 font-heading text-micro text-text-muted">
       <span style={{ color: DEGREE_COLORS.root }}>R fundamental</span>
       <span style={{ color: DEGREE_COLORS.third }}>3ª b3 / 3</span>
       <span style={{ color: DEGREE_COLORS.fifth }}>5ª b5 / 5 / #5</span>
@@ -1268,12 +1268,12 @@ function AudioSource({
                 : `Áudio local: ${ready.fileName}`
               : 'Este arquivo não trouxe áudio: o sintetizador toca a linha de baixo. Vincule a gravação para tocar junto com ela.'}
         </p>
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           O áudio fica somente neste navegador e não é enviado para a nuvem.
         </p>
       </div>
       {ready && !ready.playable && (
-        <p role="alert" className="text-[11px] text-text-error">
+        <p role="alert" className="text-small text-text-error">
           Este navegador não toca Ogg Vorbis. Vincule uma versão em MP3 da mesma
           gravação.
         </p>
@@ -1296,7 +1296,7 @@ function AudioSource({
         }}
       />
       {saveError && (
-        <p role="alert" className="text-[11px] text-text-error">
+        <p role="alert" className="text-small text-text-error">
           Não foi possível salvar o áudio neste navegador. Verifique o espaço
           disponível e tente novamente.
         </p>
@@ -1342,7 +1342,7 @@ function BassMixPicker({
         })}
       </div>
       {mode !== 'full' && (
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           Separação por frequência, com corte em ~{crossoverHz} Hz: o bumbo
           continua no "Só baixo" e os harmônicos agudos do baixo vazam no "Sem
           baixo".
@@ -1355,7 +1355,7 @@ function BassMixPicker({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-bg-card border border-border-default px-3 py-2 min-w-0">
-      <dt className="text-[10px] uppercase tracking-wide text-text-muted">
+      <dt className="lh-label">
         {label}
       </dt>
       <dd className="font-heading text-sm text-text-primary mt-0.5 truncate">

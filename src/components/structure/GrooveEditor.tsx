@@ -101,7 +101,7 @@ export function GrooveEditor({
                 e.target.value as GrooveSubdivision,
               );
             }}
-            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
+            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-micro text-text-secondary cursor-pointer"
           >
             {GROOVE_SUBDIVISIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -121,7 +121,7 @@ export function GrooveEditor({
                 Number(e.target.value) as GrooveMeasureCount,
               );
             }}
-            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-[10px] text-text-secondary cursor-pointer"
+            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-micro text-text-secondary cursor-pointer"
           >
             {GROOVE_MEASURE_COUNTS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -147,7 +147,7 @@ export function GrooveEditor({
       {DRUM_PIECES.map((piece) => (
         <div key={piece.id} className="flex items-center gap-1">
           <span
-            className="w-5 shrink-0 text-center font-mono text-[9px] text-text-muted"
+            className="w-5 shrink-0 text-center font-mono text-micro text-text-muted"
             title={
               piece.id === 'bumbo'
                 ? 'Bumbo'

@@ -62,30 +62,31 @@ export default function PresetList() {
           </h3>
           <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap">
             {userSaved.map((prog) => (
-              <button
-                key={prog.id}
-                onClick={() => loadProgression(prog)}
-                className="group relative text-left px-4 py-3 border border-border-default bg-bg-card hover:border-accent hover:shadow-lift active:translate-x-px active:translate-y-px cursor-pointer"
-              >
-                <span className="font-heading text-xs text-text-primary block pr-6">
-                  {prog.name}
-                </span>
-                <div className="flex gap-1 flex-wrap mt-1.5">
-                  {prog.steps.map((s, i) => (
-                    <span
-                      key={i}
-                      className="text-[10px] font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5"
-                    >
-                      {s.label}
-                    </span>
-                  ))}
-                </div>
+              <div key={prog.id} className="relative flex">
+                <button
+                  type="button"
+                  onClick={() => loadProgression(prog)}
+                  className="flex-1 text-left px-4 py-3 border border-border-default bg-bg-card hover:border-accent hover:shadow-lift active:translate-x-px active:translate-y-px cursor-pointer"
+                >
+                  <span className="font-heading text-xs text-text-primary block pr-6">
+                    {prog.name}
+                  </span>
+                  <span className="flex gap-1 flex-wrap mt-1.5">
+                    {prog.steps.map((s, i) => (
+                      <span
+                        key={i}
+                        className="text-micro font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5"
+                      >
+                        {s.label}
+                      </span>
+                    ))}
+                  </span>
+                </button>
 
                 <button
                   type="button"
                   aria-label={`Remover ${prog.name}`}
-                  onClick={async (e) => {
-                    e.stopPropagation();
+                  onClick={async () => {
                     const confirmed = await confirmDialog({
                       title: `Remover "${prog.name}"?`,
                       confirmLabel: 'Remover',
@@ -93,11 +94,11 @@ export default function PresetList() {
                     });
                     if (confirmed) remove(prog.id);
                   }}
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -122,7 +123,7 @@ export default function PresetList() {
                 {prog.steps.map((s, i) => (
                   <span
                     key={i}
-                    className="text-[10px] font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5"
+                    className="text-micro font-mono text-text-muted bg-bg-tertiary px-1.5 py-0.5"
                   >
                     {s.label}
                   </span>

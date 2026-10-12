@@ -210,7 +210,7 @@ export default function GpImportPanel() {
                   />
                 </label>
                 {gp && (
-                  <span className="text-[10px] font-mono text-text-muted">
+                  <span className="text-micro font-mono text-text-muted">
                     {gp.masterBarCount} compassos - GP {gp.gpVersion}
                   </span>
                 )}
@@ -241,7 +241,7 @@ export default function GpImportPanel() {
                           key={n}
                           active={keyRoot === i}
                           onClick={() => setKeyRoot(i)}
-                          className="px-1 py-1.5 text-[11px] font-mono"
+                          className="px-1 py-1.5 text-small font-mono"
                         >
                           {getPreferredRootName(i)}
                         </PillButton>
@@ -253,7 +253,7 @@ export default function GpImportPanel() {
                           key={String(m)}
                           active={isMinor === m}
                           onClick={() => setIsMinor(m)}
-                          className="flex-1 px-2 py-1.5 text-[11px]"
+                          className="flex-1 px-2 py-1.5 text-small"
                         >
                           {m ? 'menor' : 'maior'}
                         </PillButton>
@@ -303,7 +303,7 @@ export default function GpImportPanel() {
                         ? 'Importando...'
                         : `Importar ${bars.length} compassos`}
                     </Button>
-                    <span className="text-[10px] text-text-muted">
+                    <span className="text-micro text-text-muted">
                       Cria uma música nova em partes de 64 compassos.
                     </span>
                   </div>
@@ -325,7 +325,7 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
         ? 'bg-bg-tertiary'
         : bar.step.degree !== null
           ? 'bg-success/15'
-          : 'bg-accent/15';
+          : 'ring-1 ring-inset ring-accent';
 
   return (
     <div
@@ -334,9 +334,9 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
       }
       className={`px-1.5 py-1 text-center ${tone}`}
     >
-      <div className="text-[9px] font-mono text-text-muted">{bar.bar}</div>
+      <div className="text-micro font-mono text-text-muted">{bar.bar}</div>
       <div
-        className={`text-[11px] font-mono truncate ${
+        className={`text-small font-mono truncate ${
           bar.carried ? 'text-text-muted italic' : 'text-text-primary'
         }`}
       >

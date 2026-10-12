@@ -87,7 +87,7 @@ function ChartFretboard({
           {Array.from({ length: fretCount + 1 }, (_, fret) => (
             <div
               key={fret}
-              className="text-center font-heading text-[9px] text-text-muted tabular-nums"
+              className="text-center font-heading text-micro text-text-muted tabular-nums"
             >
               {fret === 0 ? '' : fret}
             </div>
@@ -99,7 +99,7 @@ function ChartFretboard({
             className="grid"
             style={{ gridTemplateColumns: columns }}
           >
-            <div className="flex items-center justify-center font-heading text-[10px] text-text-secondary">
+            <div className="flex items-center justify-center font-heading text-micro text-text-secondary">
               {noteNames[mod12(openMidi[string])]}
             </div>
             {Array.from({ length: fretCount + 1 }, (_, fret) => {
@@ -120,7 +120,7 @@ function ChartFretboard({
                   className={`relative h-8 flex items-center justify-center cursor-pointer ${
                     fret === 0
                       ? 'bg-bg-tertiary border-r-2 border-r-text-muted'
-                      : 'bg-fret-bg border-r border-r-fret-border hover:bg-bg-hover'
+                      : 'bg-fret-bg border-r border-r-fret-border hover:bg-bg-tertiary'
                   }`}
                 >
                   <span className="absolute inset-x-0 top-1/2 h-px bg-string" />
@@ -130,7 +130,7 @@ function ChartFretboard({
                     )}
                   {isActive ? (
                     <span
-                      className="relative z-10 w-7 h-7 rounded-full flex items-center justify-center font-heading text-[10px] font-bold"
+                      className="relative z-10 w-7 h-7 flex items-center justify-center font-heading text-micro font-bold"
                       style={{
                         backgroundColor: 'var(--color-bass-root-highlight)',
                         color: ON_HIGHLIGHT,
@@ -142,7 +142,7 @@ function ChartFretboard({
                     </span>
                   ) : tone ? (
                     <span
-                      className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center bg-bg-card font-heading text-[10px] font-bold border-2 ${
+                      className={`relative z-10 w-6 h-6 flex items-center justify-center bg-bg-card font-heading text-micro font-bold border-2 ${
                         tone.played ? '' : 'border-dashed opacity-60'
                       }`}
                       style={{

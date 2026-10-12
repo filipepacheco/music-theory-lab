@@ -22,7 +22,7 @@ export default function RocksmithChartList({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-heading text-xs uppercase tracking-wide text-text-muted">
+        <h3 className="lh-label">
           Linhas de baixo
         </h3>
         <label
@@ -51,23 +51,23 @@ export default function RocksmithChartList({
       </div>
 
       {importStatus.state === 'importing' && (
-        <p role="status" className="text-[11px] text-text-muted">
+        <p role="status" className="text-small text-text-muted">
           Lendo {importStatus.fileName}…
         </p>
       )}
       {importStatus.state === 'imported' && !importStatus.hasAudio && (
-        <p role="status" className="text-[11px] text-text-muted">
+        <p role="status" className="text-small text-text-muted">
           Importado sem áudio: vincule a gravação na faixa.
         </p>
       )}
       {importStatus.state === 'error' && (
-        <p role="alert" className="text-[11px] text-text-error">
+        <p role="alert" className="text-small text-text-error">
           {importStatus.message}
         </p>
       )}
 
       {charts.length === 0 ? (
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           Importe Rocksmith 2014 (.psarc), MIDI (.mid) ou Guitar Pro 7/8 (.gp)
           para ver a linha de baixo compasso a compasso, tocando junto com a
           música.
@@ -85,21 +85,21 @@ export default function RocksmithChartList({
                   className={`w-full text-left px-3 py-2 cursor-pointer border ${
                     isActive
                       ? 'bg-bg-tertiary border-accent text-text-primary'
-                      : 'bg-bg-card border-border-default hover:bg-bg-hover'
+                      : 'bg-bg-card border-border-default hover:bg-bg-tertiary'
                   }`}
                 >
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="font-medium text-text-primary truncate">
                       {chart.title}
                     </span>
-                    <span className="text-[11px] text-text-muted shrink-0">
+                    <span className="text-small text-text-muted shrink-0">
                       {formatDuration(chart.songLengthSeconds)}
                     </span>
                   </div>
                   <div className="text-xs text-text-secondary truncate">
                     {chart.artist}
                   </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
+                  <div className="text-small text-text-muted mt-0.5">
                     Baixo · {chart.notes.length} notas · ~
                     {Math.round(chart.averageTempoBpm)} bpm
                   </div>

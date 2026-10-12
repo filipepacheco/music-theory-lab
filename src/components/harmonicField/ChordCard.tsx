@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { motion } from "framer-motion";
 import type { HarmonicFunction } from "@/constants/harmonicFields";
 import Badge from "@/components/shared/Badge";
 import { FUNCTION_COLORS } from "@/constants/functionColors";
@@ -11,7 +10,6 @@ interface ChordCardProps {
   noteNames: string[];
   intervals: number[];
   isSelected: boolean;
-  index: number;
   onClick: () => void;
 }
 
@@ -21,16 +19,12 @@ const ChordCard = memo(function ChordCard({
   harmonicFunction,
   noteNames,
   isSelected,
-  index,
   onClick,
 }: ChordCardProps) {
   const functionColor = FUNCTION_COLORS[harmonicFunction];
 
   return (
-    <motion.button
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.05 }}
+    <button
       onClick={onClick}
       aria-label={`${romanNumeral} - ${chordName}`}
       aria-pressed={isSelected}
@@ -65,13 +59,13 @@ const ChordCard = memo(function ChordCard({
         {noteNames.map((n, i) => (
           <span
             key={i}
-            className="text-[10px] text-text-primary px-1 sm:px-2 py-0.5 bg-bg-tertiary border border-border-default"
+            className="text-micro text-text-primary px-1 sm:px-2 py-0.5 bg-bg-tertiary border border-border-default"
           >
             {n}
           </span>
         ))}
       </div>
-    </motion.button>
+    </button>
   );
 });
 

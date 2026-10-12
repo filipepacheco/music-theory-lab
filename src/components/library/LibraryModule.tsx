@@ -73,7 +73,7 @@ export default function LibraryModule() {
             onSelect={(c) => setSelection({ kind: 'rocksmith', id: c.id })}
             onImport={(file) => void handleImport(file)}
           />
-          <p role="status" className="text-[11px] text-text-muted">
+          <p role="status" className="text-small text-text-muted">
             {syncStatus === 'syncing'
               ? 'Sincronizando linhas de baixo…'
               : syncStatus === 'synced'
@@ -91,7 +91,7 @@ export default function LibraryModule() {
           </p>
 
           <div className="flex flex-col gap-2">
-            <h3 className="font-heading text-xs uppercase tracking-wide text-text-muted">
+            <h3 className="lh-label">
               Faixas analisadas
             </h3>
             {error && (

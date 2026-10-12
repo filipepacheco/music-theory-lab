@@ -122,7 +122,7 @@ export default function TranscriptionModule() {
                   <span className="block text-sm font-medium text-text-primary">
                     Adicionar acorde manualmente
                   </span>
-                  <span className="mt-1 block text-[10px] text-text-muted">
+                  <span className="mt-1 block text-micro text-text-muted">
                     Use o campo harmônico ou escolha um acorde cromático para a
                     seção ativa.
                   </span>

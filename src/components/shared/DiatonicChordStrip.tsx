@@ -32,7 +32,7 @@ export default function DiatonicChordStrip({
     <div>
       <div className="flex items-center justify-between mb-2">
         <h4 className="font-heading text-sm text-text-secondary">{title}</h4>
-        <span className="text-[10px] font-mono text-text-muted">
+        <span className="text-micro font-mono text-text-muted">
           {stepCount} acordes
         </span>
       </div>
@@ -46,7 +46,6 @@ export default function DiatonicChordStrip({
             noteNames={chord.noteNames}
             intervals={chord.intervals}
             isSelected={false}
-            index={index}
             onClick={() => handleChordClick(index)}
           />
         ))}

@@ -62,12 +62,9 @@ export default function ScaleComparison() {
                 const noteIdx = (rootNote + n) % 12;
                 const inA = notesA.has(noteIdx);
                 return (
-                  <motion.div
+                  <div
                     key={n}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: n * 0.03 }}
-                    className="flex-1 h-7 flex items-center justify-center text-[10px] font-mono font-medium"
+                    className="flex-1 h-7 flex items-center justify-center text-micro font-mono font-medium"
                     style={{
                       background: inA
                         ? notesB.has(noteIdx)
@@ -78,7 +75,7 @@ export default function ScaleComparison() {
                     }}
                   >
                     {inA ? getNoteName(noteIdx, rootName) : ""}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -93,12 +90,9 @@ export default function ScaleComparison() {
                 const noteIdx = (rootNote + n) % 12;
                 const inB = notesB.has(noteIdx);
                 return (
-                  <motion.div
+                  <div
                     key={n}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: n * 0.03 }}
-                    className="flex-1 h-7 flex items-center justify-center text-[10px] font-mono font-medium"
+                    className="flex-1 h-7 flex items-center justify-center text-micro font-mono font-medium"
                     style={{
                       background: inB
                         ? notesA.has(noteIdx)
@@ -109,7 +103,7 @@ export default function ScaleComparison() {
                     }}
                   >
                     {inB ? getNoteName(noteIdx, rootName) : ""}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

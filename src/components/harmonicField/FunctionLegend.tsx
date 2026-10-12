@@ -18,7 +18,7 @@ export default function FunctionLegend({ compact }: FunctionLegendProps) {
         {LEGEND_ITEMS.map(({ fn, label, colorClass }) => (
           <div key={fn} className="flex items-center gap-1">
             <div className={`w-2 h-2 ${colorClass}`} />
-            <span className="text-[10px] text-text-muted">{label}</span>
+            <span className="text-micro text-text-muted">{label}</span>
           </div>
         ))}
       </div>

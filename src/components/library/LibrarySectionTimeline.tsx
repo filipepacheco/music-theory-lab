@@ -57,7 +57,7 @@ export default function LibrarySectionTimeline({
             )}–${formatDuration(section.end_seconds)}`}
             className={[
               'h-9 min-w-[1.5rem] flex items-center justify-center',
-              'font-heading text-[11px]',
+              'font-heading text-small',
               isActive ? 'text-text-primary' : 'text-text-secondary',
               onSeek ? 'cursor-pointer' : 'cursor-default',
             ].join(' ')}

@@ -38,7 +38,7 @@ export default function LibraryPlayer({ audio }: Props) {
         aria-label="Posição da faixa"
         className="flex-1 accent-text-primary"
       />
-      <span className="text-[11px] text-text-muted font-heading tabular-nums whitespace-nowrap">
+      <span className="text-small text-text-muted font-heading tabular-nums whitespace-nowrap">
         {formatDuration(audio.currentSeconds)} /{' '}
         {formatDuration(audio.duration)}
       </span>

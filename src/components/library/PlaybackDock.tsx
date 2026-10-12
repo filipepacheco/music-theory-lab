@@ -96,7 +96,7 @@ export default function PlaybackDock({
             <div className="font-heading text-xs text-text-primary truncate">
               {title}
             </div>
-            <div className="text-[11px] text-text-muted truncate">{status}</div>
+            <div className="text-small text-text-muted truncate">{status}</div>
           </div>
           {actions}
           <button
@@ -106,7 +106,7 @@ export default function PlaybackDock({
               writeCollapsed(!collapsed);
             }}
             aria-expanded={!collapsed}
-            className="shrink-0 px-2 py-1 border border-border-strong text-[11px] text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
+            className="shrink-0 px-2 py-1 border border-border-strong text-small text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
           >
             {collapsed ? 'Mostrar braço' : 'Recolher braço'}
           </button>

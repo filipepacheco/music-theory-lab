@@ -28,49 +28,54 @@ export default function StructureList() {
         {structures.map((structure) => {
           const isActive = structure.id === activeStructureId;
           return (
-            <button
+            <div
               key={structure.id}
-              onClick={() => loadStructure(structure)}
-              className={`group relative text-left px-4 py-3 border cursor-pointer ${
+              className={`relative border ${
                 isActive
-                  ? 'border-accent bg-accent/10'
+                  ? 'border-accent bg-bg-tertiary'
                   : 'border-border-default bg-bg-card hover:border-accent hover:shadow-lift'
               }`}
             >
-              <span className="font-heading text-xs text-text-primary block pr-6">
-                {structure.title}
-              </span>
-              {structure.artist && (
-                <span className="text-[10px] text-text-muted block mt-0.5">
-                  {structure.artist}
+              <button
+                type="button"
+                aria-current={isActive ? 'true' : undefined}
+                onClick={() => loadStructure(structure)}
+                className="block w-full h-full text-left px-4 py-3 cursor-pointer"
+              >
+                <span className="font-heading text-xs text-text-primary block pr-6">
+                  {structure.title}
                 </span>
-              )}
+                {structure.artist && (
+                  <span className="text-micro text-text-muted block mt-0.5">
+                    {structure.artist}
+                  </span>
+                )}
 
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-text-muted font-mono">
-                  {structure.bars.length}c
+                <span className="flex items-center gap-2 mt-1.5">
+                  <span className="text-micro text-text-muted font-mono">
+                    {structure.bars.length}c
+                  </span>
+                  <span className="flex gap-1 flex-wrap">
+                    {structure.sections.map((sec) => (
+                      <span
+                        key={sec.id}
+                        className="text-micro font-mono px-1.5 py-0.5"
+                        style={{
+                          backgroundColor: sec.color + '20',
+                          color: sec.color,
+                        }}
+                      >
+                        {sec.name}
+                      </span>
+                    ))}
+                  </span>
                 </span>
-                <div className="flex gap-1 flex-wrap">
-                  {structure.sections.map((sec) => (
-                    <span
-                      key={sec.id}
-                      className="text-[10px] font-mono px-1.5 py-0.5"
-                      style={{
-                        backgroundColor: sec.color + '20',
-                        color: sec.color,
-                      }}
-                    >
-                      {sec.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              </button>
 
               <button
                 type="button"
                 aria-label={`Remover ${structure.title}`}
-                onClick={async (e) => {
-                  e.stopPropagation();
+                onClick={async () => {
                   const confirmed = await confirmDialog({
                     title: `Remover "${structure.title}"?`,
                     confirmLabel: 'Remover',
@@ -78,11 +83,11 @@ export default function StructureList() {
                   });
                   if (confirmed) void remove(structure.id);
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>
-            </button>
+            </div>
           );
         })}
       </div>

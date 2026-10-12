@@ -113,7 +113,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="border border-border-default bg-bg-card p-3 flex flex-col gap-1.5">
       <h5 className="font-heading text-xs text-text-primary">{title}</h5>
-      <div className="flex flex-col gap-1 text-[11px] leading-snug text-text-secondary">
+      <div className="flex flex-col gap-1 text-small leading-snug text-text-secondary">
         {children}
       </div>
     </div>
@@ -156,7 +156,7 @@ export default function BassDegreeGuide({
             Cada nota ganha um nome pela distância até a raiz, contada em casas
             (semitons). Na mesma corda, é só contar as casas a partir da raiz.
           </p>
-          <table className="font-heading text-[10px]">
+          <table className="font-heading text-micro">
             <thead>
               <tr className="text-text-muted text-left">
                 <th className="pr-2 font-normal">grau</th>

@@ -84,7 +84,7 @@ function ReviewChordCard({
         >
           {isUnsure ? 'Revisar' : 'Confirmado'}
         </span>
-        <span className="text-[10px] text-text-muted">{step.beats ?? 4}t</span>
+        <span className="text-micro text-text-muted">{step.beats ?? 4}t</span>
       </div>
       <p
         className={`mt-2 truncate font-heading text-base ${
@@ -93,7 +93,7 @@ function ReviewChordCard({
       >
         {step.label}
       </p>
-      <p className="mt-1 truncate text-[10px] text-text-secondary">
+      <p className="mt-1 truncate text-micro text-text-secondary">
         {details.chordName}
       </p>
     </button>
@@ -270,7 +270,7 @@ export default function TranscriptionReviewWorkspace() {
             <p className="text-xs font-medium text-warning">
               Selecione um acorde para conferir os detalhes
             </p>
-            <p className="mt-1 text-[10px] text-warning/60">
+            <p className="mt-1 text-micro text-warning/60">
               Os acordes em amarelo ainda precisam de revisão.
             </p>
           </div>
@@ -298,7 +298,7 @@ export default function TranscriptionReviewWorkspace() {
                     style={{ backgroundColor: SECTION_COLORS[section.type] }}
                   />
                   <span className="text-xs font-medium">{label}</span>
-                  <span className="text-[10px] text-text-muted">
+                  <span className="text-micro text-text-muted">
                     {section.steps.length} acordes
                   </span>
                 </button>
