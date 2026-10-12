@@ -15,9 +15,10 @@ import {
   createGrowlybassSampler,
   type GrowlybassSamplerStatus,
 } from '@/services/growlybass';
-import type {
-  DrumPlaybackHit,
-  DrumSampleId,
+import {
+  DRUM_SAMPLE_TRIM_DB,
+  type DrumPlaybackHit,
+  type DrumSampleId,
 } from '@/domain/drumPlaybackSchedule';
 import type { GrowlybassSamplePlan } from '@/utils/growlybass';
 
@@ -252,14 +253,14 @@ interface GrooveSample {
 const DRUM_SAMPLE_BASE_URL = `${import.meta.env.BASE_URL}drum-samples/`;
 const GROOVE_SAMPLE_BASE_URL = DRUM_SAMPLE_BASE_URL;
 
-function createGrooveSample(filename: string, volume: number): GrooveSample {
+function createGrooveSample(sample: DrumSampleId, mixDb: number): GrooveSample {
   let resolveReady: (loaded: boolean) => void = () => {};
   const ready = new Promise<boolean>((resolve) => {
     resolveReady = resolve;
   });
   const player = new Tone.Player({
-    url: `${GROOVE_SAMPLE_BASE_URL}${filename}`,
-    volume,
+    url: `${GROOVE_SAMPLE_BASE_URL}${sample}.flac`,
+    volume: DRUM_SAMPLE_TRIM_DB[sample] + mixDb,
     fadeOut: 0.015,
     onload: () => resolveReady(true),
     onerror: () => resolveReady(false),
@@ -268,9 +269,9 @@ function createGrooveSample(filename: string, volume: number): GrooveSample {
 }
 
 const grooveSamples: Record<DrumPiece, GrooveSample> = {
-  bumbo: createGrooveSample('kick.flac', -3),
-  caixa: createGrooveSample('snare.flac', -6),
-  chimbal: createGrooveSample('hihat-closed.flac', -12),
+  bumbo: createGrooveSample('kick', -3),
+  caixa: createGrooveSample('snare', -4),
+  chimbal: createGrooveSample('hihat-closed', -2),
 };
 
 const grooveSamplesReady = Promise.all(
@@ -464,7 +465,9 @@ export function createPlaybackEngine(): PlaybackEngine {
       const buffer = loadedDrumBuffers.get(hit.sample);
       // A hit with no loaded sample makes no sound and no error.
       if (!buffer) return;
-      const gain = new Tone.Gain(hit.gain).connect(limiter);
+      const gain = new Tone.Gain(
+        hit.gain * Tone.dbToGain(DRUM_SAMPLE_TRIM_DB[hit.sample]),
+      ).connect(limiter);
       const source = new Tone.ToneBufferSource({
         url: buffer,
         playbackRate: hit.rate,

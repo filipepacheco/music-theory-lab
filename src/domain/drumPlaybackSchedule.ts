@@ -22,6 +22,28 @@ export const DRUM_SAMPLE_IDS = [
 ] as const;
 export type DrumSampleId = (typeof DRUM_SAMPLE_IDS)[number];
 
+/**
+ * Trim of each sample in dB, so that the pieces balance. Assumes decoded peaks
+ * (ffmpeg volumedetect, dBFS) kick -18.9, snare -3.9, cross-stick -6.4,
+ * closed -13.8, open -6.9, pedal -21.1, high tom -7.3, low tom -8.6, crash
+ * -8.3, ride -21.1, bell -14.5, splash -28: the engine adds the trim, then
+ * the gain of the dynamic goes on top.
+ */
+export const DRUM_SAMPLE_TRIM_DB: Record<DrumSampleId, number> = {
+  kick: 13.9,
+  snare: -1.1,
+  'cross-stick': 0.4,
+  'hihat-closed': 1.8,
+  'hihat-open': -3.1,
+  'hihat-pedal': 9.1,
+  'tom-high': 1.3,
+  'tom-low': 2.6,
+  crash: -1.7,
+  ride: 9.1,
+  'ride-bell': 3.5,
+  splash: 16,
+};
+
 /** A sample, played faster or slower to tune it. */
 export interface DrumSampleChoice {
   sample: DrumSampleId;
