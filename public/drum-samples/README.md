@@ -10,7 +10,7 @@ Samples), licence CC0 1.0 (see `LICENSE.txt`).
 
 | File | Source file |
 |---|---|
-| kick.flac | kick/lofi_kick_snon_vl4_rr1 (vel 96-127) |
+| kick.flac | kickmic/kickmic_kick_snoff_vl4_rr1 (close microphone, snares off, vel 96-127) |
 | snare.flac | snare/lofi_snare_center_vl36 (vel 124-127) |
 | cross-stick.flac | snare/lofi_snare_crossstick_vl16 (vel 120-127) |
 | hihat-closed.flac | hh/lofi_hh_closed_vl4_rr1 (vel 96-127) |
