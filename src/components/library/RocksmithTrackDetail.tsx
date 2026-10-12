@@ -13,6 +13,7 @@ import BassTabBar, {
   BAR_CHROME,
   BEAT_WIDTH,
   LABEL_GAP,
+  barDegreeLevels,
   barLabelLanes,
   tabBarWidth,
   type IndexedNote,
@@ -777,11 +778,12 @@ export default function RocksmithTrackDetail({
               barNotes={barNotes}
               analysis={showDegrees ? analysis : null}
               markRepeats={markRepeats}
-              renderBar={(barIndex, beatWidth, repeatOf) => (
+              renderBar={(barIndex, beatWidth, repeatOf, degreeLevels) => (
                 <BassTabBar
                   key={barIndex}
                   beatWidth={beatWidth}
                   repeatOf={repeatOf}
+                  degreeLevels={degreeLevels}
                   bar={chart.bars[barIndex]}
                   notes={barNotes[barIndex] as IndexedNote[]}
                   activeNotes={barIndex === activeBar ? activeNotes : NO_NOTES}
@@ -964,6 +966,7 @@ function SectionBlock({
     barIndex: number,
     beatWidth?: number,
     repeatOf?: number,
+    degreeLevels?: number,
   ) => ReactNode;
   onSeek: ((seconds: number) => void) | null;
 }) {
@@ -1027,6 +1030,24 @@ function SectionBlock({
           baseBeatWidth: BEAT_WIDTH,
           neededBeatWidth: needed,
         });
+  // The degree lane takes a second level where a label touches the label
+  // before it; all bars of the section keep room for it, at one height.
+  const degreeLevels = useMemo(
+    () =>
+      Math.max(
+        1,
+        ...chart.bars
+          .slice(section.startBar, section.endBar)
+          .map((_, i) =>
+            barDegreeLevels(
+              barNotes[section.startBar + i] ?? [],
+              analysis?.[section.startBar + i] ?? null,
+              beatWidth,
+            ),
+          ),
+      ),
+    [chart, section, barNotes, analysis, beatWidth],
+  );
   // "Above" only means something once the lines have a set length.
   const repeats: ReadonlyMap<number, number> = useMemo(
     () =>
@@ -1037,7 +1058,7 @@ function SectionBlock({
   );
   const renderItem = (item: SectionBlockItem) =>
     item.kind === 'bar' ? (
-      renderBar(item.bar, beatWidth, repeats.get(item.bar))
+      renderBar(item.bar, beatWidth, repeats.get(item.bar), degreeLevels)
     ) : (
       <button
         key={`rest-${item.startBar}`}

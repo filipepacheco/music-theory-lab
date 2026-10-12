@@ -626,4 +626,113 @@ describe('Biblioteca dense sections', () => {
     expect(new Set(beatWidths())).toEqual(new Set([78.65625]));
     expect(78.65625).toBeGreaterThanOrEqual(68.8);
   });
+
+  describe('degree lane', () => {
+    /** Bars 1-2 hold quarter notes; bars 3-4 hold thirty-second notes. */
+    const fast = fixtureChart(
+      4,
+      [
+        ...walking([
+          [48, 52, 55, 59],
+          [48, 52, 55, 59],
+        ]),
+        ...[2, 3].flatMap((bar) =>
+          Array.from({ length: 32 }, (_, i) => ({
+            bar,
+            beat: i / 8,
+            midi: 48 + [0, 3, 6, 10][i % 4],
+          })),
+        ),
+      ],
+      [
+        { name: 'verse', parts: 1, startBar: 0, endBar: 2 },
+        { name: 'chorus', parts: 1, startBar: 2, endBar: 4 },
+      ],
+    );
+    /** Character width of the 10 px degree labels, in pixels. */
+    const CHAR = 6;
+    const barButtons = () => [
+      ...document.querySelectorAll<HTMLButtonElement>('button[data-bar]'),
+    ];
+    /** The degree labels of a bar as boxes: level, left edge, right edge. */
+    const labelBoxes = (bar: HTMLButtonElement) =>
+      [...bar.querySelectorAll('text[data-degree-level]')].map((text) => {
+        const x = Number(text.getAttribute('x'));
+        return {
+          level: Number(text.getAttribute('data-degree-level')),
+          y: Number(text.getAttribute('y')),
+          x,
+          end: x + (text.textContent ?? '').length * CHAR,
+        };
+      });
+    const overlapping = (bar: HTMLButtonElement) => {
+      const boxes = labelBoxes(bar);
+      return boxes.flatMap((a, i) =>
+        boxes
+          .slice(i + 1)
+          .filter((b) => a.level === b.level && a.x < b.end && b.x < a.end),
+      );
+    };
+    const svgHeights = () =>
+      barButtons().map((bar) =>
+        Number(bar.querySelector('svg')?.getAttribute('height')),
+      );
+    const showDegrees = () =>
+      fireEvent.click(screen.getByLabelText('Mostrar graus'));
+
+    it('keeps the labels of a sparse section on the first level', () => {
+      render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);
+      showDegrees();
+      const [first, second] = barButtons();
+      for (const bar of [first, second]) {
+        expect(labelBoxes(bar).length).toBe(4);
+        expect(new Set(labelBoxes(bar).map((box) => box.level))).toEqual(
+          new Set([1]),
+        );
+      }
+    });
+
+    it('puts a label that touches the one before it on the second level', () => {
+      render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);
+      showDegrees();
+      // The section needs more than three times the base width: it stops
+      // there, and the labels of thirty-second notes touch.
+      expect(beatWidths().slice(2)).toEqual([102, 102]);
+      const boxes = labelBoxes(barButtons()[2]);
+      expect(boxes.length).toBe(32);
+      expect(new Set(boxes.map((box) => box.level))).toEqual(new Set([1, 2]));
+      // The second level is drawn under the first.
+      const y = (level: number) =>
+        new Set(boxes.filter((b) => b.level === level).map((b) => b.y));
+      expect(y(1).size).toBe(1);
+      expect(y(2).size).toBe(1);
+      expect([...y(2)][0]).toBeGreaterThanOrEqual([...y(1)][0] + 10);
+    });
+
+    it.each(['auto', '1', '2', '4'])(
+      'draws no two overlapping labels in a dense section: line length %s',
+      (length) => {
+        render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);
+        showDegrees();
+        if (length !== 'auto') {
+          setLineLength(0, length);
+          setLineLength(1, length);
+        }
+        for (const bar of barButtons()) {
+          expect(labelBoxes(bar).length).toBeGreaterThan(0);
+          expect(overlapping(bar)).toEqual([]);
+        }
+      },
+    );
+
+    it('gives the bars of a section one height, with room for its levels', () => {
+      render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);
+      const [plain] = svgHeights();
+      showDegrees();
+      const [a, b, c, d] = svgHeights();
+      // One level of 12 px in the sparse section, two in the dense one.
+      expect([a, b]).toEqual([plain + 12, plain + 12]);
+      expect([c, d]).toEqual([plain + 24, plain + 24]);
+    });
+  });
 });
