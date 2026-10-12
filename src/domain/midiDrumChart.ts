@@ -26,6 +26,45 @@ const NO_CHANNEL = -1;
  */
 export const DRUM_TICKS_PER_BEAT = 48;
 
+/** A hit this much softer than the usual one of its piece is a ghost note. */
+export const GHOST_RATIO = 0.6;
+/** A hit this much louder than the usual one of its piece is an accent. */
+export const ACCENT_RATIO = 1.3;
+
+/**
+ * A MIDI file has no score, so the ghost note and the accent come from the
+ * velocity of the hit against the median velocity of its drum piece in the
+ * file. A piece with a single level of velocity has only normal hits.
+ */
+export function dynamicsByVelocity(
+  midi: MidiFile,
+): (note: MidiNote) => DrumDynamic {
+  const velocities = new Map<string, number[]>();
+  for (const note of midi.notes) {
+    if (note.channel !== DRUM_CHANNEL) continue;
+    const { piece } = drumSoundOf(note.pitch);
+    velocities.set(piece, [...(velocities.get(piece) ?? []), note.velocity]);
+  }
+  const usual = new Map<string, number>();
+  for (const [piece, list] of velocities) {
+    const sorted = [...list].sort((a, b) => a - b);
+    const middle = sorted.length >> 1;
+    usual.set(
+      piece,
+      sorted.length % 2
+        ? sorted[middle]
+        : (sorted[middle - 1] + sorted[middle]) / 2,
+    );
+  }
+  return (note) => {
+    const reference = usual.get(drumSoundOf(note.pitch).piece);
+    if (reference === undefined) return 'normal';
+    if (note.velocity <= reference * GHOST_RATIO) return 'ghost';
+    if (note.velocity >= reference * ACCENT_RATIO) return 'accent';
+    return 'normal';
+  };
+}
+
 export function hasDrumNotes(midi: MidiFile): boolean {
   return midi.notes.some((note) => note.channel === DRUM_CHANNEL);
 }

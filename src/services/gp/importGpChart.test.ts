@@ -143,9 +143,8 @@ describe('Biblioteca Guitar Pro import', () => {
       new Settings(),
       new midi.AlphaSynthMidiFileHandler(generated, true),
     ).generate();
-    const equivalent = await importMidi(
-      file(generated.toBinary(), 'Teste.mid'),
-    );
+    const imported = await importMidi(file(generated.toBinary(), 'Teste.mid'));
+    const equivalent = { chart: imported.charts[0] as BassChart };
     expect(gp.audio).toBeNull();
     expect(gp.chart).toMatchObject({
       source: 'gp',
