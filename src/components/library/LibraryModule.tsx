@@ -9,6 +9,9 @@ import {
   songJoinedByImport,
   type LibrarySong,
 } from '@/domain/librarySong';
+import { DEFAULT_LIST_VIEW, type ListView } from '@/domain/libraryListView';
+import { useLinkedRecordings } from '@/components/library/useLinkedRecordings';
+import { useListScroll } from '@/components/library/useListScroll';
 import { summarizeChart } from '@/domain/chartSummary';
 import Frame from '@/components/shared/Frame';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
@@ -41,6 +44,8 @@ export default function LibraryModule() {
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const { route, navigate } = useLibraryRoute();
+  // Lives here, not in the list, so it survives a visit to a song screen.
+  const [listView, setListView] = useState<ListView>(DEFAULT_LIST_VIEW);
   const {
     summaries,
     openId,
@@ -91,6 +96,9 @@ export default function LibraryModule() {
   const choices = resolved ? songSourceChoices(resolved.song) : [];
   const songKeyOpen = resolved?.song.key ?? null;
   const targetChartId = target?.kind === 'chart' ? target.id : null;
+  const listShown = !resolved;
+  const linkedChartIds = useLinkedRecordings(listShown);
+  useListScroll(listShown);
 
   // The first load is over when the index answered and one sync ended.
   useEffect(() => {
@@ -229,6 +237,9 @@ export default function LibraryModule() {
           )}
           <RocksmithChartList
             songs={songs}
+            view={listView}
+            onViewChange={setListView}
+            linkedChartIds={linkedChartIds}
             importStatus={importStatus}
             onSelect={selectSong}
             onImport={(file) => void handleImport(file)}

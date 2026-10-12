@@ -38,6 +38,8 @@ export interface RocksmithLibraryRepository {
   /** One full chart, or null when it is not stored. */
   getChart(chartId: string): Promise<BassChart | null>;
   getAudio(chartId: string): Promise<StoredChartAudio | null>;
+  /** The ids of the charts that have a recording in this browser. */
+  listAudioIds(): Promise<string[]>;
   save(chart: BassChart, audio: StoredChartAudio | null): Promise<void>;
   saveAudio(audio: StoredChartAudio): Promise<void>;
   remove(chartId: string): Promise<void>;
@@ -163,6 +165,15 @@ export function createIndexedDbRocksmithLibrary(
         return audio ?? null;
       }),
 
+    listAudioIds: () =>
+      withDatabase(factory, async (database) => {
+        const transaction = database.transaction(AUDIO_STORE, 'readonly');
+        const keys = await requestResult<IDBValidKey[]>(
+          transaction.objectStore(AUDIO_STORE).getAllKeys(),
+        );
+        return keys.map(String);
+      }),
+
     save: (chart, audio) =>
       withDatabase(factory, async (database) => {
         const transaction = database.transaction(
@@ -279,6 +290,7 @@ export const rocksmithLibrary: RocksmithLibraryRepository = {
   listCharts: () => createIndexedDbRocksmithLibrary(indexedDB).listCharts(),
   getChart: (id) => createIndexedDbRocksmithLibrary(indexedDB).getChart(id),
   getAudio: (id) => createIndexedDbRocksmithLibrary(indexedDB).getAudio(id),
+  listAudioIds: () => createIndexedDbRocksmithLibrary(indexedDB).listAudioIds(),
   save: (chart, audio) =>
     createIndexedDbRocksmithLibrary(indexedDB).save(chart, audio),
   saveAudio: (audio) =>
