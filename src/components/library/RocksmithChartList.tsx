@@ -1,21 +1,50 @@
 import type { LibrarySong } from '@/domain/librarySong';
+import { formatLibraryRoute, routeOfSong } from '@/domain/libraryRoute';
 import { formatDuration } from '@/components/library/libraryData';
 import type { RocksmithImportStatus } from '@/hooks/useRocksmithCharts';
 
 const SOURCE_LABEL = { gp: 'GP', rocksmith: 'Rocksmith', midi: 'MIDI' };
 const PART_LABEL = { bass: 'Baixo', drums: 'Bateria' };
+const HEADINGS = [
+  'Título',
+  'Artista',
+  'Partes',
+  'Andamento',
+  'Duração',
+  'Importado em',
+];
 
 interface Props {
   songs: LibrarySong[];
-  selectedKey: string | null;
   importStatus: RocksmithImportStatus;
   onSelect: (song: LibrarySong) => void;
   onImport: (file: File) => void;
 }
 
+function tempoOf(song: LibrarySong): string {
+  const tempo = song.charts[0]?.tempoBpm;
+  return tempo ? `${Math.round(tempo)} BPM` : '—';
+}
+
+function durationOf(song: LibrarySong): string {
+  const seconds =
+    song.charts[0]?.durationSeconds ?? song.analysed[0]?.durationSeconds;
+  return seconds ? formatDuration(seconds) : '—';
+}
+
+function importedOf(song: LibrarySong): string {
+  const latest = song.charts
+    .map((chart) => chart.importedAt)
+    .sort()
+    .pop();
+  const date = latest ? new Date(latest) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString('pt-BR')
+    : '—';
+}
+
 export default function RocksmithChartList({
   songs,
-  selectedKey,
   importStatus,
   onSelect,
   onImport,
@@ -23,7 +52,7 @@ export default function RocksmithChartList({
   const inputId = 'rocksmith-psarc-input';
   const importing = importStatus.state === 'importing';
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 min-w-0">
       <div className="flex items-center justify-between gap-2">
         <h3 className="lh-label">Linhas de baixo</h3>
         <label
@@ -74,37 +103,43 @@ export default function RocksmithChartList({
           música.
         </p>
       ) : (
-        <ul className="flex flex-col gap-1.5" role="list">
-          {songs.map((song) => {
-            const isActive = song.key === selectedKey;
-            const duration =
-              song.charts[0]?.durationSeconds ??
-              song.analysed[0]?.durationSeconds ??
-              0;
-            return (
-              <li key={song.key}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(song)}
-                  aria-current={isActive ? 'true' : undefined}
-                  className={`w-full text-left px-3 py-2 cursor-pointer border ${
-                    isActive
-                      ? 'bg-bg-tertiary border-accent text-text-primary'
-                      : 'bg-bg-card border-border-default hover:bg-bg-tertiary'
-                  }`}
+        <table className="block w-full border-collapse text-left sm:table">
+          <thead className="sr-only sm:not-sr-only sm:table-header-group">
+            <tr className="border-b border-border-default">
+              {HEADINGS.map((heading) => (
+                <th
+                  key={heading}
+                  scope="col"
+                  className="lh-label px-3 py-2 font-normal"
                 >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-medium text-text-primary truncate">
-                      {song.title}
-                    </span>
-                    <span className="text-small text-text-muted shrink-0">
-                      {formatDuration(duration)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-text-secondary truncate">
-                    {song.artist}
-                  </div>
-                  <div className="text-small mt-0.5 flex flex-wrap gap-1">
+                  {heading}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="block sm:table-row-group">
+            {songs.map((song) => (
+              <tr
+                key={song.key}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest('a')) return;
+                  onSelect(song);
+                }}
+                className="mb-1.5 flex cursor-pointer flex-wrap items-baseline gap-x-3 border border-border-default bg-bg-card px-3 py-2 hover:bg-bg-tertiary sm:mb-0 sm:table-row sm:border-0 sm:border-b sm:p-0"
+              >
+                <td className="w-full min-w-0 sm:table-cell sm:w-auto sm:px-3 sm:py-2">
+                  <a
+                    href={formatLibraryRoute(routeOfSong(song))}
+                    className="font-medium text-text-primary hover:underline"
+                  >
+                    {song.title}
+                  </a>
+                </td>
+                <td className="w-full min-w-0 text-xs text-text-secondary sm:table-cell sm:w-auto sm:px-3 sm:py-2">
+                  {song.artist}
+                </td>
+                <td className="w-full text-small sm:table-cell sm:w-auto sm:px-3 sm:py-2">
+                  <span className="flex flex-wrap gap-1">
                     {song.sources.map((source) => (
                       <SongBadge key={source} label={SOURCE_LABEL[source]} />
                     ))}
@@ -112,12 +147,21 @@ export default function RocksmithChartList({
                     {song.parts.map((part) => (
                       <SongBadge key={part} label={PART_LABEL[part]} />
                     ))}
-                  </div>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                  </span>
+                </td>
+                <td className="text-small text-text-muted sm:table-cell sm:px-3 sm:py-2">
+                  {tempoOf(song)}
+                </td>
+                <td className="text-small text-text-muted sm:table-cell sm:px-3 sm:py-2">
+                  {durationOf(song)}
+                </td>
+                <td className="text-small text-text-muted sm:table-cell sm:px-3 sm:py-2">
+                  {importedOf(song)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

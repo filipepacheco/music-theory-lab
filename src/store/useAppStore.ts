@@ -60,7 +60,9 @@ function applySongState(song: {
 export const useAppStore = create<AppState>((set, get) => ({
   rootNote: 0, // C
   isMinor: false,
-  activeModule: 'harmonicField',
+  activeModule: window.location.hash.startsWith('#/biblioteca')
+    ? 'library'
+    : 'harmonicField',
   harmonicField: getHarmonicField(0, false),
   selectedChordIndex: null,
   highlightedNotes: [],
