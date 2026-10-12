@@ -129,7 +129,7 @@ export function tabBarWidth(
  * The bar-repeat sign (a slash between two dots, like %), centred on
  * `x`, `y`: play the bar above again.
  */
-function RepeatSign({ x, y }: { x: number; y: number }) {
+export function RepeatSign({ x, y }: { x: number; y: number }) {
   return (
     <g aria-hidden fill="var(--color-text-secondary)">
       <line

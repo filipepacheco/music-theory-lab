@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import LibraryTrackDetail from './LibraryTrackDetail';
 import RocksmithChartList from './RocksmithChartList';
 import RocksmithTrackDetail from './RocksmithTrackDetail';
+import DrumPartDetail from '@/components/library/DrumPartDetail';
 import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
 import {
@@ -12,7 +13,7 @@ import {
 import { DEFAULT_LIST_VIEW, type ListView } from '@/domain/libraryListView';
 import { useLinkedRecordings } from '@/components/library/useLinkedRecordings';
 import { useListScroll } from '@/components/library/useListScroll';
-import { summarizeChart } from '@/domain/chartSummary';
+import { summarizeChart, type ChartPart } from '@/domain/chartSummary';
 import { isDrumChart } from '@/domain/drumChart';
 import Frame from '@/components/shared/Frame';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
@@ -23,6 +24,7 @@ import {
   routeOfChart,
   routeOfSong,
   routeOfSource,
+  songPartChoices,
   songSourceChoices,
   type SourceChoice,
 } from '@/domain/libraryRoute';
@@ -40,6 +42,11 @@ const SOURCE_CHOICE_LABEL: Record<SourceChoice, string> = {
   rocksmith: 'Rocksmith',
   midi: 'MIDI',
   analise: 'Análise',
+};
+
+const PART_CHOICE_LABEL: Record<ChartPart, string> = {
+  bass: 'Baixo',
+  drums: 'Bateria',
 };
 
 export default function LibraryModule() {
@@ -109,6 +116,14 @@ export default function LibraryModule() {
   const choices = resolved ? songSourceChoices(resolved.song) : [];
   const songKeyOpen = resolved?.song.key ?? null;
   const targetChartId = target?.kind === 'chart' ? target.id : null;
+  // The parts of the open source, and the one that the song screen shows.
+  const parts =
+    resolved && currentChoice
+      ? songPartChoices(resolved.song, currentChoice)
+      : [];
+  const currentPart =
+    resolved?.song.charts.find((chart) => chart.id === targetChartId)?.part ??
+    null;
   const listShown = !resolved;
   const linkedChartIds = useLinkedRecordings(listShown);
   useListScroll(listShown);
@@ -144,6 +159,14 @@ export default function LibraryModule() {
         route.screen === 'song' ? route.part : undefined,
       ),
     );
+  };
+
+  const selectPart = (part: ChartPart) => {
+    const chart = resolved?.song.charts.find(
+      (item) => item.source === currentChoice && item.part === part,
+    );
+    if (resolved && chart)
+      navigate(routeOfChart(resolved.song.key, chart.source, chart.part));
   };
 
   const selectedTrack =
@@ -230,6 +253,18 @@ export default function LibraryModule() {
               className="self-start"
             />
           )}
+          {parts.length > 1 && currentPart && (
+            <Segmented<ChartPart>
+              label="Parte"
+              value={currentPart}
+              onChange={selectPart}
+              options={parts.map((part) => ({
+                value: part,
+                label: PART_CHOICE_LABEL[part],
+              }))}
+              className="self-start"
+            />
+          )}
           {targetChartId && resolved && (
             <GroupOverrideControl
               song={resolved.song}
@@ -245,10 +280,15 @@ export default function LibraryModule() {
             />
           )}
           {selectedChart && isDrumChart(selectedChart) ? (
-            <p role="status" className="text-sm text-text-muted">
-              Esta parte é de bateria. A visualização da bateria ainda não está
-              disponível.
-            </p>
+            <DrumPartDetail
+              key={selectedChart.id}
+              settingsKey={settingsKey}
+              chart={selectedChart}
+              onRemove={() => {
+                navigate({ screen: 'list' });
+                void remove(selectedChart.id);
+              }}
+            />
           ) : selectedChart ? (
             <RocksmithTrackDetail
               key={selectedChart.id}

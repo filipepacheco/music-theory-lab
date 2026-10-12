@@ -85,7 +85,7 @@ describe('rows of the drum grid', () => {
     ).toEqual([
       'Pratos',
       'Chimbal',
-      'Toms',
+      'Tons',
       'Caixa',
       'Surdo',
       'Bumbo',

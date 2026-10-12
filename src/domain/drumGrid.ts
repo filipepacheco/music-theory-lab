@@ -22,7 +22,7 @@ export type DrumGridRow = (typeof DRUM_GRID_ROWS)[number];
 export const DRUM_GRID_ROW_LABEL: Record<DrumGridRow, string> = {
   pratos: 'Pratos',
   chimbal: 'Chimbal',
-  toms: 'Toms',
+  toms: 'Tons',
   caixa: 'Caixa',
   surdo: 'Surdo',
   bumbo: 'Bumbo',

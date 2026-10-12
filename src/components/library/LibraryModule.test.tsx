@@ -83,6 +83,11 @@ vi.mock('@/components/library/RocksmithTrackDetail', () => ({
     <div data-testid="chart">{chart.id}</div>
   ),
 }));
+vi.mock('@/components/library/DrumPartDetail', () => ({
+  default: ({ chart }: { chart: { id: string } }) => (
+    <div data-testid="drums">{chart.id}</div>
+  ),
+}));
 
 function chartOf(
   id: string,
@@ -202,7 +207,7 @@ describe('drum charts in the Biblioteca', () => {
     await waitFor(() => expect(state.open).toHaveBeenCalledWith(charts[0].id));
   });
 
-  it('a song with only a drum chart opens the song screen with the notice', async () => {
+  it('a song with only a drum chart opens the song screen with the drum part', async () => {
     state.summaries = [summarizeChart(drums)];
     state.charts = [drums];
     render(<LibraryModule />);
@@ -210,21 +215,19 @@ describe('drum charts in the Biblioteca', () => {
     expect(within(row('Rosanna')).queryByText('Baixo')).toBeNull();
     fireEvent.click(row('Rosanna'));
     await waitFor(() => expect(state.open).toHaveBeenCalledWith(drums.id));
-    expect(
-      await screen.findByText(
-        /A visualização da bateria ainda não está disponível/,
-      ),
-    ).toBeTruthy();
+    expect((await screen.findByTestId('drums')).textContent).toBe(drums.id);
     expect(window.location.hash).toBe(
       `#/biblioteca/${encodeURIComponent('rosanna|toto')}/gp/drums`,
     );
-    // The song screen shows the notice in place of the bass tab.
+    // The song screen shows the drum part in place of the bass tab, and the
+    // notice of the time before the drum grid is gone.
+    expect(screen.queryByText(/visualização da bateria/)).toBeNull();
     expect(screen.queryByTestId('chart')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.getByText('← Voltar para a lista')).toBeTruthy();
   });
 
-  it('shows the notice for a drum chart from a saved address', async () => {
+  it('shows the drum part, and no notice, for a drum chart from a saved address', async () => {
     state.summaries = [summarizeChart(drums)];
     state.charts = [drums];
     window.history.replaceState(
@@ -233,11 +236,8 @@ describe('drum charts in the Biblioteca', () => {
       `#/biblioteca/${encodeURIComponent('rosanna|toto')}/gp/drums`,
     );
     render(<LibraryModule />);
-    expect(
-      await screen.findByText(
-        /A visualização da bateria ainda não está disponível/,
-      ),
-    ).toBeTruthy();
+    expect((await screen.findByTestId('drums')).textContent).toBe(drums.id);
+    expect(screen.queryByText(/visualização da bateria/)).toBeNull();
     expect(screen.queryByTestId('chart')).toBeNull();
   });
 
@@ -252,6 +252,7 @@ describe('drum charts in the Biblioteca', () => {
     await waitFor(() => screen.getByTestId('chart'));
     expect(screen.getByTestId('chart').textContent).toBe('gp1');
     expect(screen.queryByText(/visualização da bateria/)).toBeNull();
+    expect(screen.queryByTestId('drums')).toBeNull();
   });
 });
 

@@ -87,6 +87,18 @@ export function songSourceChoices(song: LibrarySong): SourceChoice[] {
   return choices;
 }
 
+const PART_ORDER: ChartPart[] = ['bass', 'drums'];
+
+/** The entries of the part selector: the parts that a source of a song has. */
+export function songPartChoices(
+  song: LibrarySong,
+  source: SourceChoice,
+): ChartPart[] {
+  return PART_ORDER.filter((part) =>
+    song.charts.some((chart) => chart.source === source && chart.part === part),
+  );
+}
+
 /**
  * The route of a source choice. A chart source keeps the current part when it
  * has a chart of it, else it takes its first chart.
