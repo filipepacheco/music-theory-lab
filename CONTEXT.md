@@ -145,7 +145,8 @@ The row under the bass tab that names the degree of each note over the
 that touches the label before it shows on the second level, and a label with
 enough space stays on the first. When the bars are at their largest width and
 a label still touches the label before it on its level, it moves right by the
-missing distance.
+missing distance. Below the largest width (a set line length) no label moves:
+labels may touch, but each stays at its note, inside its bar.
 _Avoid_: degree row, interval line
 
 **Suggested key**:

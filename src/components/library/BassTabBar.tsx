@@ -9,6 +9,7 @@ import {
 } from '@/domain/bassAnalysis';
 import {
   degreeLanePlaces,
+  MAX_BEAT_WIDTH_SCALE,
   type BassChartBar,
   type BassChartNote,
   type LabelLane,
@@ -103,6 +104,8 @@ function barTitle(
 
 /** The base beat width, in pixels: the one the automatic layout uses. */
 export const BEAT_WIDTH = 34;
+/** The largest beat width: only there may a degree label move right. */
+const MAX_SHIFT_WIDTH = BEAT_WIDTH * MAX_BEAT_WIDTH_SCALE;
 const PAD_X = 7;
 /** The pixels of a bar that do not grow with its beats: padding and border. */
 export const BAR_CHROME = PAD_X * 2 + 2;
@@ -231,7 +234,9 @@ export function barDegreeLevels(
   const lane = degreeLane(degreeOnsets(notes, analysis));
   return Math.max(
     1,
-    ...degreeLanePlaces(lane, beatWidth, LABEL_GAP).map((p) => p.level + 1),
+    ...degreeLanePlaces(lane, beatWidth, LABEL_GAP, MAX_SHIFT_WIDTH).map(
+      (p) => p.level + 1,
+    ),
   );
 }
 
@@ -268,7 +273,12 @@ function BassTabBar({
   // One lane entry per onset, on the level and at the x where it is clear
   // of the entries before it.
   const onsets = degreeOnsets(notes, analysis);
-  const places = degreeLanePlaces(degreeLane(onsets), beatWidth, LABEL_GAP);
+  const places = degreeLanePlaces(
+    degreeLane(onsets),
+    beatWidth,
+    LABEL_GAP,
+    MAX_SHIFT_WIDTH,
+  );
   const levels = Math.max(
     degreeLevels ?? 1,
     ...places.map((place) => place.level + 1),
