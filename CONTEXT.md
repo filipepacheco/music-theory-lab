@@ -214,6 +214,15 @@ Its part field is "drums", and its id is a hash of the file hash and the part
 name. All percussion tracks of a file make one drum chart.
 _Avoid_: drum tab, drum track, groove
 
+**Line length**:
+The number of bars in each line of a section of a [[chart]], from 1 to 16, or
+"automatic" (the layout wraps the bars as they fit). The musician sets it for
+a section, by its first bar, or for the whole song; a section with no choice
+uses the song line length. A set number always holds: each line shows exactly
+that many bars, and the layout never lowers it to a divisor. It lives in the
+[[chart-settings]], so it shows on all devices. A new import starts automatic.
+_Avoid_: bars per row, bars per line
+
 **Chart settings**:
 The synchronized view choices of one [[chart]]: the song line length, the
 line length of each section (by its first bar), and the group override (a

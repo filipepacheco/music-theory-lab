@@ -5,9 +5,7 @@ import {
   barsRepeatingAbove,
   buildBassChart,
   degreeLanePlaces,
-  fittedBarsPerRow,
   lineBeatWidth,
-  minBeatWidth,
   neededBeatWidth,
   sectionBeatWidth,
   hardestNotes,
@@ -269,15 +267,6 @@ describe('queries', () => {
     ]);
   });
 
-  it('halves a line length that does not fit the screen', () => {
-    expect(fittedBarsPerRow(8, 9)).toBe(8);
-    expect(fittedBarsPerRow(8, 7)).toBe(4);
-    expect(fittedBarsPerRow(8, 3)).toBe(2);
-    expect(fittedBarsPerRow(12, 7)).toBe(6);
-    expect(fittedBarsPerRow(7, 6)).toBe(6);
-    expect(fittedBarsPerRow(8, 0)).toBe(1);
-  });
-
   describe('beat width of a line', () => {
     const line = {
       lineWidth: 1000,
@@ -321,15 +310,20 @@ describe('queries', () => {
       expect(lineUsed(short)).toBeLessThan(1000);
     });
 
-    it('narrows the beats a little to keep the line length', () => {
+    it('narrows the beats to keep the line length', () => {
       const tight = { ...line, lineWidth: 600 };
       // 600 - 12 - 64 = 524 over 16 beats, under the base 34.
       expect(lineBeatWidth(tight)).toBe(32.75);
       expect(lineUsed(tight)).toBe(600);
     });
 
-    it('never narrows a beat under 0.8 of the base width', () => {
-      expect(lineBeatWidth({ ...line, lineWidth: 300 })).toBeCloseTo(27.2);
+    it('has no lower limit for a dense section: the line length holds', () => {
+      // 375 px, 8 bars of 4 beats: (375 - 28 - 128) / 32 beats = 6.84 px.
+      const dense = { ...line, lineWidth: 375, barsPerLine: 8 };
+      expect(lineBeatWidth(dense)).toBe(6.84375);
+      expect(lineBeatWidth(dense)).toBeLessThan(34 * 0.8);
+      expect(lineUsed(dense)).toBeLessThanOrEqual(375);
+      expect(lineUsed(dense)).toBeGreaterThan(374);
     });
 
     it('widens each beat when the widest bar has fewer beats', () => {
@@ -396,14 +390,7 @@ describe('queries', () => {
       expect(sectionBeatWidth(34, 500)).toBe(102);
     });
 
-    it('lets a line narrow to 0.8 of the base, but not under the need', () => {
-      expect(minBeatWidth(34)).toBeCloseTo(27.2);
-      expect(minBeatWidth(34, 20)).toBeCloseTo(27.2);
-      expect(minBeatWidth(34, 50)).toBe(50);
-      expect(minBeatWidth(34, 500)).toBe(102);
-    });
-
-    it('widens a line past its share to the need, and not past 3x', () => {
+    it('ignores the need of a section when a line length is set', () => {
       const line = {
         lineWidth: 600,
         barsPerLine: 4,
@@ -413,16 +400,6 @@ describe('queries', () => {
         baseBeatWidth: 34,
       };
       expect(lineBeatWidth(line)).toBe(32.75);
-      expect(lineBeatWidth({ ...line, neededBeatWidth: 40 })).toBe(40);
-    });
-
-    it('falls to the largest divisor of the line length that fits', () => {
-      // 8 bars of 4 beats at a need of 60 px take 8 × (16 + 240) px.
-      const bar = 16 + 4 * minBeatWidth(34, 60);
-      const fits = Math.floor((1000 + 4) / (bar + 4));
-      expect(fits).toBe(3);
-      expect(fittedBarsPerRow(8, fits)).toBe(2);
-      expect(fittedBarsPerRow(6, fits)).toBe(3);
     });
   });
 
@@ -584,14 +561,11 @@ describe('queries', () => {
             barChrome: 16,
             gap: 4,
             baseBeatWidth: BASE,
-            neededBeatWidth: needed,
           };
-          // The widths the screen draws a section at: the automatic layout,
-          // and a line length on a narrow and on a wide line.
+          // The widths where labels never touch: the automatic layout, and a
+          // line length with room to spare (a tighter one may touch).
           const widths = [
             sectionBeatWidth(BASE, needed),
-            minBeatWidth(BASE, needed),
-            lineBeatWidth(line),
             lineBeatWidth({ ...line, lineWidth: 1600, barsPerLine: 1 }),
           ];
           for (const width of widths) expect(overlaps(l, width)).toBe(0);

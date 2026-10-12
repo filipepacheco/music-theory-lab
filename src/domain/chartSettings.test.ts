@@ -6,6 +6,12 @@ import {
   isNewerSettingsVersion,
   laterChartSettings,
   parseChartSettings,
+  sectionLineLength,
+  withBrowserLineLengths,
+  hasOwnSectionLineLength,
+  withSectionLineLength,
+  withSongLineLength,
+  withoutSectionLineLength,
   type ChartSettings,
 } from '@/domain/chartSettings';
 import { songKey } from '@/domain/librarySong';
@@ -174,5 +180,103 @@ describe('the last write of chart settings', () => {
 
   it('keeps the stored record when an earlier change repeats its choices', () => {
     expect(laterChartSettings({ ...settings }, later)).toBe(later);
+  });
+});
+
+describe('section line length', () => {
+  it('tells its own number, its own automatic, and no value', () => {
+    expect(sectionLineLength(settings, 8)).toBe(2);
+    expect(hasOwnSectionLineLength(settings, 8)).toBe(true);
+    expect(sectionLineLength(settings, 0)).toBe('auto');
+    expect(hasOwnSectionLineLength(settings, 0)).toBe(true);
+    expect(sectionLineLength(settings, 16)).toBe(settings.songLineLength);
+    expect(hasOwnSectionLineLength(settings, 16)).toBe(false);
+    expect(hasOwnSectionLineLength(null, 0)).toBe(false);
+  });
+
+  it('sets the song line length and removes all section values in one write', () => {
+    const now = '2026-10-06T10:00:00.000Z';
+    const next = withSongLineLength(settings, settings.chartId, 6, now);
+    expect(next).toEqual({
+      ...settings,
+      updatedAt: now,
+      songLineLength: 6,
+      sectionLineLengths: {},
+    });
+    expect(sectionLineLength(next, 8)).toBe(6);
+    expect(parseChartSettings(next)).toEqual(next);
+    const first = withSongLineLength(null, settings.chartId, 'auto', now);
+    expect(first.songLineLength).toBe('auto');
+    expect(first.sectionLineLengths).toEqual({});
+  });
+
+  it('removes the value of one section, which then follows the song', () => {
+    const now = '2026-10-06T10:00:00.000Z';
+    const next = withoutSectionLineLength(settings, settings.chartId, 8, now);
+    expect(next.sectionLineLengths).toEqual({ 0: 'auto' });
+    expect(sectionLineLength(next, 8)).toBe(4);
+    expect(settings.sectionLineLengths[8]).toBe(2);
+  });
+
+  it('gives the choice of a section, else the song line length, else automatic', () => {
+    expect(sectionLineLength(null, 0)).toBe('auto');
+    expect(sectionLineLength(settings, 8)).toBe(2);
+    expect(sectionLineLength(settings, 0)).toBe('auto');
+    expect(sectionLineLength(settings, 16)).toBe(4);
+  });
+
+  it('keeps a set length as it is, with no divisor rule', () => {
+    const seven = withSectionLineLength(settings, settings.chartId, 8, 7, 'x');
+    expect(sectionLineLength(seven, 8)).toBe(7);
+  });
+
+  it('writes one section and keeps the other choices', () => {
+    const now = '2026-10-06T10:00:00.000Z';
+    const next = withSectionLineLength(settings, settings.chartId, 16, 6, now);
+    expect(next).toEqual({
+      ...settings,
+      updatedAt: now,
+      sectionLineLengths: { 0: 'auto', 8: 2, 16: 6 },
+    });
+    const auto = withSectionLineLength(next, settings.chartId, 8, 'auto', now);
+    expect(auto.sectionLineLengths[8]).toBe('auto');
+    expect(parseChartSettings(auto)).toEqual(auto);
+  });
+
+  it('starts from the automatic layout when the chart has no settings', () => {
+    const now = '2026-10-06T10:00:00.000Z';
+    const first = withSectionLineLength(null, settings.chartId, 0, 4, now);
+    expect(first.songLineLength).toBe('auto');
+    expect(first.groupOverride).toBeNull();
+    expect(first.sectionLineLengths).toEqual({ 0: 4 });
+  });
+
+  it('copies the browser lengths with the import time, and leaves out bad values', () => {
+    const copy = withBrowserLineLengths(
+      null,
+      settings.chartId,
+      { 0: 4, 8: 99, 16: 'x', abc: 3, 24: 2 },
+      '2026-01-01T00:00:00.000Z',
+    );
+    expect(copy).toEqual({
+      chartId: settings.chartId,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      songLineLength: 'auto',
+      sectionLineLengths: { 0: 4, 24: 2 },
+      groupOverride: null,
+    });
+    expect(withBrowserLineLengths(null, settings.chartId, {}, 'x')).toBeNull();
+    expect(withBrowserLineLengths(null, settings.chartId, 5, 'x')).toBeNull();
+  });
+
+  it('keeps a section that the settings already hold when it copies', () => {
+    const copy = withBrowserLineLengths(
+      settings,
+      settings.chartId,
+      { 8: 5, 12: 3 },
+      '2020-01-01T00:00:00.000Z',
+    );
+    expect(copy?.sectionLineLengths).toEqual({ 0: 'auto', 8: 2, 12: 3 });
+    expect(copy?.updatedAt).toBe(settings.updatedAt);
   });
 });

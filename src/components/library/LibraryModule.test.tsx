@@ -12,6 +12,7 @@ import {
 import LibraryModule from '@/components/library/LibraryModule';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
+import type { ChartSettings } from '@/domain/chartSettings';
 import type { BassChart } from '@/domain/bassChart';
 import type { Chart } from '@/domain/drumChart';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
@@ -31,9 +32,20 @@ const state = vi.hoisted(() => ({
   open: vi.fn(),
   importFile: vi.fn(),
   audioIds: [] as string[],
+  settings: new Map<string, ChartSettings>(),
 }));
 vi.mock('@/services/rocksmithLibrary', () => ({
-  rocksmithLibrary: { listAudioIds: async () => state.audioIds },
+  rocksmithLibrary: {
+    listAudioIds: async () => state.audioIds,
+    listSettings: async () => [...state.settings.values()],
+    getSettings: async (id: string) => state.settings.get(id) ?? null,
+    saveSettings: async (item: ChartSettings) => {
+      state.settings.set(item.chartId, item);
+    },
+  },
+}));
+vi.mock('@/services/chartSettingsSync', () => ({
+  syncChartSettings: async () => undefined,
 }));
 
 vi.mock('@/hooks/useRocksmithCharts', () => ({
@@ -100,6 +112,7 @@ beforeEach(() => {
   state.open.mockReset().mockResolvedValue(undefined);
   state.importFile.mockReset();
   state.audioIds = [];
+  state.settings.clear();
   window.history.replaceState(null, '', '#/biblioteca');
 });
 afterEach(cleanup);
@@ -548,5 +561,68 @@ describe('Biblioteca list search, filters, and sort', () => {
     window.history.back();
     await waitFor(() => expect(screen.queryByTestId('chart')).toBeNull());
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 480 });
+  });
+});
+
+describe('Correct the group of a chart', () => {
+  const songs = () => [
+    chartOf('a1', 'Come Together', 'The Beatles', 'gp'),
+    chartOf('b1', 'Come Togther', 'The Beatles', 'midi'),
+  ];
+
+  it('moves the open chart to a different song; the address and the song screen show it', async () => {
+    state.summaries = songs();
+    window.history.replaceState(
+      null,
+      '',
+      `#/biblioteca/${encodeURIComponent('come togther|the beatles')}/midi/bass`,
+    );
+    render(<LibraryModule />);
+    await screen.findByTestId('chart');
+    fireEvent.change(screen.getByLabelText('Mover a cifra para a música'), {
+      target: { value: 'come together|the beatles' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mover' }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        `#/biblioteca/${encodeURIComponent('come together|the beatles')}/midi/bass`,
+      ),
+    );
+    expect(state.settings.get('b1')?.groupOverride).toBe(
+      'come together|the beatles',
+    );
+    // The song screen now holds both sources.
+    expect(await screen.findByText('Guitar Pro')).toBeTruthy();
+    expect(screen.getByText('MIDI')).toBeTruthy();
+  });
+
+  it('separates the chart, then removes the override', async () => {
+    state.summaries = [
+      chartOf('a1', 'Come Together', 'The Beatles', 'gp'),
+      chartOf('b1', 'Come Together', 'The Beatles', 'midi'),
+    ];
+    window.history.replaceState(
+      null,
+      '',
+      `#/biblioteca/${encodeURIComponent('come together|the beatles')}/midi/bass`,
+    );
+    render(<LibraryModule />);
+    await screen.findByTestId('chart');
+    fireEvent.click(screen.getByRole('button', { name: 'Separar da música' }));
+    await waitFor(() =>
+      expect(window.location.hash).toContain(
+        encodeURIComponent('separate:b1|'),
+      ),
+    );
+    expect(state.settings.get('b1')?.groupOverride).toBe('separate');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remover correção' }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        `#/biblioteca/${encodeURIComponent('come together|the beatles')}/midi/bass`,
+      ),
+    );
+    expect(state.settings.get('b1')?.groupOverride).toBeNull();
   });
 });

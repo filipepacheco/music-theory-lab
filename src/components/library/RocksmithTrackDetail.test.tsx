@@ -1,6 +1,17 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { IDBFactory } from 'fake-indexeddb';
+import { rocksmithLibrary } from '@/services/rocksmithLibrary';
+import { syncChartSettings } from '@/services/chartSettingsSync';
+import { confirmDialog } from '@/services/confirm';
+import { parseChartSettings } from '@/domain/chartSettings';
 import RocksmithTrackDetail from '@/components/library/RocksmithTrackDetail';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import type { BassChart } from '@/domain/bassChart';
@@ -9,6 +20,12 @@ const state = vi.hoisted(() => ({
   audio: { status: 'missing' } as { status: string; url?: string },
   synthChart: null as BassChart | null,
   seeks: [] as number[],
+}));
+vi.mock('@/services/confirm', () => ({
+  confirmDialog: vi.fn(() => Promise.resolve(true)),
+}));
+vi.mock('@/services/chartSettingsSync', () => ({
+  syncChartSettings: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('@/hooks/useRocksmithAudio', () => ({
   useRocksmithAudio: () => ({
@@ -411,18 +428,20 @@ describe('Biblioteca bar layout', () => {
     );
   });
 
-  it('narrows the beats before it shortens the line, at one type size', () => {
+  it('narrows the beats to keep the line length, at one type size', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     const automatic = typeSizes();
-    // 7 bars do not fit at the base width (152 px), but do at 0.8 of it.
+    // 7 bars do not fit at the base width (152 px): the beats narrow.
     setLineLength('7');
     expect(widths().slice(0, 3)).toEqual([139.375, 139.375, 139.375]);
     expect(139.375 * 7 + 4 * 6).toBeLessThanOrEqual(LINE_WIDTH);
     expect(139.375 * 7 + 4 * 6).toBeGreaterThan(LINE_WIDTH - 1);
     expect(typeSizes()).toEqual(automatic);
-    // 8 do not: the line length falls to 4.
+    // 8 bars narrow the beats under 0.8 of the base: the length still holds.
     setLineLength('8');
-    expect(widths()[0]).toBe(247);
+    // (1000 - 7 gaps of 4 - 8 × 16) / 32 beats = 26.375 < 27.2.
+    expect(widths()[0]).toBe(16 + 4 * 26.375);
+    expect(typeSizes()).toEqual(automatic);
   });
 
   it('stops a bar at three times the base beat width', () => {
@@ -476,12 +495,9 @@ describe('Biblioteca bar layout', () => {
     setLineLength('7');
     expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6], [7]]);
     expect(wrapping()).toEqual([]);
-    // 8 bars do not fit: the line length falls to 4, and still does not wrap.
+    // 8 bars at a narrow beat: the line length holds, and does not wrap.
     setLineLength('8');
-    expect(barsOfLines()).toEqual([
-      [0, 1, 2, 3],
-      [4, 5, 6, 7],
-    ]);
+    expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6, 7]]);
     expect(wrapping()).toEqual([]);
   });
 
@@ -607,7 +623,7 @@ describe('Biblioteca dense sections', () => {
     expect(d).toBe(c);
   });
 
-  it('falls to a divisor of the line length when the need does not fit', () => {
+  it('keeps the set line length of a dense section', () => {
     const sixDense = fixtureChart(
       6,
       Array.from({ length: 6 }, (_, bar) =>
@@ -621,10 +637,15 @@ describe('Biblioteca dense sections', () => {
     );
     render(<RocksmithTrackDetail chart={sixDense} onRemove={vi.fn()} />);
     setLineLength(0, '6');
-    // 6 bars of 68.8 px beats need 6 × 291 px: only 3 fit. 6 falls to 3, and
-    // the 3 bars share the line: (1000 - 8 - 48) / 12 beats.
-    expect(new Set(beatWidths())).toEqual(new Set([78.65625]));
-    expect(78.65625).toBeGreaterThanOrEqual(68.8);
+    // 6 bars of 68.8 px beats would need 6 × 291 px; the line length holds
+    // anyway: (1000 - 20 - 96) / 24 beats, rounded down to 1/64 px.
+    expect(new Set(beatWidths())).toEqual(new Set([36.828125]));
+    expect(36.828125).toBeLessThan(68.8);
+    // With exactly that number of bars in each line.
+    const rows = [...document.querySelectorAll('[data-line]')];
+    expect(
+      rows.map((row) => row.querySelectorAll('button[data-bar]').length),
+    ).toEqual([6]);
   });
 
   describe('degree lane', () => {
@@ -733,6 +754,162 @@ describe('Biblioteca dense sections', () => {
       // One level of 12 px in the sparse section, two in the dense one.
       expect([a, b]).toEqual([plain + 12, plain + 12]);
       expect([c, d]).toEqual([plain + 24, plain + 24]);
+    });
+  });
+});
+
+describe('Biblioteca section line length in the chart settings', () => {
+  const eight = {
+    ...fixtureChart(
+      8,
+      walking(Array.from({ length: 8 }, () => [48, 52, 55, 59])),
+    ),
+    id: 'b'.repeat(64),
+    source: 'gp' as const,
+  };
+  const select = () => screen.getByLabelText(/^Compassos por linha em/);
+  const lines = () => document.querySelectorAll('[data-line]').length;
+
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    vi.mocked(syncChartSettings).mockClear();
+  });
+
+  it('writes the choice by the first bar as a settings record, and synchronizes it', async () => {
+    render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+    fireEvent.change(select(), { target: { value: '4' } });
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+    const saved = await rocksmithLibrary.getSettings(eight.id);
+    expect(saved?.sectionLineLengths).toEqual({ 0: 4 });
+    expect(saved?.songLineLength).toBe('auto');
+    // A second device pulls this record, which the settings check accepts.
+    expect(parseChartSettings(saved)).toEqual(saved);
+    expect(await rocksmithLibrary.listSettings()).toEqual([saved]);
+    expect(lines()).toBe(2);
+
+    fireEvent.change(select(), { target: { value: '' } });
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
+    expect(
+      (await rocksmithLibrary.getSettings(eight.id))?.sectionLineLengths,
+    ).toEqual({ 0: 'auto' });
+    expect(lines()).toBe(0);
+  });
+
+  it('shows the line length of the settings, also one that a synchronization brings', async () => {
+    const view = render(
+      <RocksmithTrackDetail chart={eight} settingsKey={1} onRemove={vi.fn()} />,
+    );
+    expect(lines()).toBe(0);
+    await rocksmithLibrary.applySettings({
+      chartId: eight.id,
+      updatedAt: '2026-10-05T10:00:00.000Z',
+      songLineLength: 'auto',
+      sectionLineLengths: { 0: 2 },
+      groupOverride: null,
+    });
+    view.rerender(
+      <RocksmithTrackDetail chart={eight} settingsKey={2} onRemove={vi.fn()} />,
+    );
+    await waitFor(() => expect(lines()).toBe(4));
+    expect((select() as HTMLSelectElement).value).toBe('2');
+  });
+
+  it('does not restart playback or move the cursor when a length changes', async () => {
+    render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+    fireEvent.click(document.querySelectorAll('button[data-bar]')[5]);
+    const playing = state.synthChart;
+    const seeks = [...state.seeks];
+    const active = () =>
+      [...document.querySelectorAll('button[data-bar]')]
+        .filter((bar) => bar.classList.contains('border-live'))
+        .map((bar) => (bar as HTMLElement).dataset.bar);
+    expect(active()).toEqual(['5']);
+    fireEvent.change(select(), { target: { value: '3' } });
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalled());
+    // The player gets the same chart object, and no seek follows the change.
+    expect(state.synthChart).toBe(playing);
+    expect(state.seeks).toEqual(seeks);
+    expect(active()).toEqual(['5']);
+  });
+
+  describe('the control for all sections', () => {
+    const all = () =>
+      screen.getByLabelText('Compassos por linha de todas as seções');
+
+    beforeEach(() => vi.mocked(confirmDialog).mockClear());
+
+    it('offers 1 to 16 and automatic', () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      const values = [...(all() as HTMLSelectElement).options].map(
+        (o) => o.value,
+      );
+      expect(values).toEqual([
+        '',
+        ...Array.from({ length: 16 }, (_, i) => `${i + 1}`),
+      ]);
+    });
+
+    it('sets the song line length without a question when no section has a value', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(all(), { target: { value: '4' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      expect(confirmDialog).not.toHaveBeenCalled();
+      const saved = await rocksmithLibrary.getSettings(eight.id);
+      expect(saved?.songLineLength).toBe(4);
+      expect(saved?.sectionLineLengths).toEqual({});
+      // A section with no value shows the song line length.
+      expect((select() as HTMLSelectElement).value).toBe('4');
+      expect(lines()).toBe(2);
+      expect(document.querySelector('[data-own-length]')).toBeNull();
+    });
+
+    it('asks first when a section has a value, and a cancel changes nothing', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(select(), { target: { value: '2' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      const before = await rocksmithLibrary.getSettings(eight.id);
+      vi.mocked(confirmDialog).mockResolvedValueOnce(false);
+      fireEvent.change(all(), { target: { value: '6' } });
+      await waitFor(() => expect(confirmDialog).toHaveBeenCalledTimes(1));
+      await Promise.resolve();
+      expect(await rocksmithLibrary.getSettings(eight.id)).toEqual(before);
+      expect(syncChartSettings).toHaveBeenCalledTimes(1);
+      expect((all() as HTMLSelectElement).value).toBe('');
+      expect((select() as HTMLSelectElement).value).toBe('2');
+    });
+
+    it('on a yes writes one record with the song value and no section value', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(select(), { target: { value: '2' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      fireEvent.change(all(), { target: { value: '6' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
+      const saved = await rocksmithLibrary.getSettings(eight.id);
+      expect(saved?.songLineLength).toBe(6);
+      expect(saved?.sectionLineLengths).toEqual({});
+      expect(await rocksmithLibrary.listSettings()).toEqual([saved]);
+      expect((select() as HTMLSelectElement).value).toBe('6');
+    });
+
+    it('marks a section with its own value, and a control removes it', async () => {
+      render(<RocksmithTrackDetail chart={eight} onRemove={vi.fn()} />);
+      fireEvent.change(all(), { target: { value: '4' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+      fireEvent.change(select(), { target: { value: '2' } });
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
+      // The change applies to that section only.
+      expect(
+        (await rocksmithLibrary.getSettings(eight.id))?.songLineLength,
+      ).toBe(4);
+      expect(document.querySelector('[data-own-length]')).not.toBeNull();
+      fireEvent.click(
+        screen.getByLabelText(/^Usar o valor de todas as seções em/),
+      );
+      await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(3));
+      expect(document.querySelector('[data-own-length]')).toBeNull();
+      const saved = await rocksmithLibrary.getSettings(eight.id);
+      expect(saved?.sectionLineLengths).toEqual({});
+      expect((select() as HTMLSelectElement).value).toBe('4');
     });
   });
 });

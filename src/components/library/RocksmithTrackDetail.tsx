@@ -15,7 +15,6 @@ import BassTabBar, {
   LABEL_GAP,
   barDegreeLevels,
   barLabelLanes,
-  tabBarWidth,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
 import ChartFretboard from '@/components/library/ChartFretboard';
@@ -44,8 +43,6 @@ import {
   activeNoteIndexes,
   barIndexAt,
   barsRepeatingAbove,
-  fittedBarsPerRow,
-  minBeatWidth,
   neededBeatWidth,
   sectionBeatWidth,
   isStandardTuning,
@@ -99,10 +96,14 @@ import {
   transposeBassChart,
   transposeMusicalKey,
 } from '@/domain/bassTransposition';
+import { useSectionLineLengths } from '@/components/library/useSectionLineLengths';
 import { confirmDialog } from '@/services/confirm';
+import type { LineLength } from '@/domain/chartSettings';
 
 interface Props {
   chart: BassChart;
+  /** A new value reloads the line lengths (a synchronization brought some). */
+  settingsKey?: unknown;
   onRemove: () => void;
 }
 
@@ -129,45 +130,9 @@ function writeCircleOpen(open: boolean): void {
   }
 }
 
-const BARS_PER_ROW_KEY = 'music-theory-lab:bars-per-row';
 /** Tailwind's gap-1 between bars, in pixels. */
 const BAR_GAP = 4;
 const BARS_PER_ROW_OPTIONS = Array.from({ length: 16 }, (_, i) => i + 1);
-
-/** Bars per line, by chart id and then by the section's first bar. */
-type BarsPerRow = Record<string, Record<string, number>>;
-
-function readBarsPerRow(): BarsPerRow {
-  try {
-    const parsed: unknown = JSON.parse(
-      localStorage.getItem(BARS_PER_ROW_KEY) ?? '{}',
-    );
-    if (parsed && typeof parsed === 'object') return parsed as BarsPerRow;
-  } catch {
-    // Unreadable or blocked storage: every section wraps on its own.
-  }
-  return {};
-}
-
-function writeBarsPerRow(value: BarsPerRow): void {
-  try {
-    localStorage.setItem(BARS_PER_ROW_KEY, JSON.stringify(value));
-  } catch {
-    // Blocked storage: the choice lasts until the page is reloaded.
-  }
-}
-
-/** A stored count when it is one the picker offers, else wrap freely. */
-function storedBarsPerRow(
-  all: BarsPerRow,
-  chartId: string,
-  startBar: number,
-): number | null {
-  const count = all[chartId]?.[startBar];
-  return typeof count === 'number' && BARS_PER_ROW_OPTIONS.includes(count)
-    ? count
-    : null;
-}
 
 const MARK_REPEATS_KEY = 'music-theory-lab:mark-repeats';
 
@@ -214,6 +179,7 @@ const CATEGORY_LABELS: Record<DegreeCategory, string> = {
 
 export default function RocksmithTrackDetail({
   chart: originalChart,
+  settingsKey,
   onRemove,
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
@@ -266,19 +232,15 @@ export default function RocksmithTrackDetail({
   const [follow, setFollow] = useState(true);
   const [showDegrees, setShowDegrees] = useState(false);
   const [markRepeats, setMarkRepeats] = useState(readMarkRepeats);
-  const [barsPerRow, setBarsPerRow] = useState(readBarsPerRow);
-  const changeBarsPerRow = useCallback(
-    (startBar: number, count: number | null) =>
-      setBarsPerRow((all) => {
-        const rows = { ...all[chart.id] };
-        if (count === null) delete rows[startBar];
-        else rows[startBar] = count;
-        const next = { ...all, [chart.id]: rows };
-        writeBarsPerRow(next);
-        return next;
-      }),
-    [chart.id],
-  );
+  const {
+    lengthOf,
+    setLength,
+    setSongLength,
+    clearLength,
+    isOwn,
+    songLength,
+    hasSectionLengths,
+  } = useSectionLineLengths(originalChart.id, settingsKey);
   const chartRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(0);
@@ -714,6 +676,36 @@ export default function RocksmithTrackDetail({
             Tablatura por seção
           </h4>
           <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1 text-small text-text-muted">
+              todas as seções
+              <select
+                value={songLength === 'auto' ? '' : songLength}
+                onChange={async (e) => {
+                  const next: LineLength =
+                    e.target.value === '' ? 'auto' : Number(e.target.value);
+                  if (hasSectionLengths) {
+                    const confirmed = await confirmDialog({
+                      title: 'Aplicar a todas as seções?',
+                      message:
+                        'Os compassos por linha próprios de cada seção serão removidos.',
+                      confirmLabel: 'Aplicar',
+                    });
+                    if (!confirmed) return;
+                  }
+                  void setSongLength(next);
+                }}
+                aria-label="Compassos por linha de todas as seções"
+                title="Define os compassos por linha de todas as seções e remove os valores próprios"
+                className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
+              >
+                <option value="">auto</option>
+                {BARS_PER_ROW_OPTIONS.map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
@@ -767,14 +759,16 @@ export default function RocksmithTrackDetail({
               isActive={block.index === activeSection}
               summary={showDegrees ? summaries[block.index] : null}
               harmony={showDegrees ? sectionHarmonies[block.index] : null}
-              barsPerRow={storedBarsPerRow(
-                barsPerRow,
-                chart.id,
-                block.section.startBar,
-              )}
-              onBarsPerRowChange={(count) =>
-                changeBarsPerRow(block.section.startBar, count)
+              barsPerRow={
+                lengthOf(block.section.startBar) === 'auto'
+                  ? null
+                  : (lengthOf(block.section.startBar) as number)
               }
+              onBarsPerRowChange={(count) =>
+                void setLength(block.section.startBar, count ?? 'auto')
+              }
+              ownLength={isOwn(block.section.startBar)}
+              onClearOwnLength={() => void clearLength(block.section.startBar)}
               barNotes={barNotes}
               analysis={showDegrees ? analysis : null}
               markRepeats={markRepeats}
@@ -943,6 +937,8 @@ function SectionBlock({
   harmony,
   barsPerRow,
   onBarsPerRowChange,
+  ownLength,
+  onClearOwnLength,
   barNotes,
   analysis,
   markRepeats,
@@ -957,6 +953,8 @@ function SectionBlock({
   /** Bars per line, or null to wrap at the screen's edge. */
   barsPerRow: number | null;
   onBarsPerRowChange: (count: number | null) => void;
+  ownLength: boolean;
+  onClearOwnLength: () => void;
   barNotes: IndexedNote[][];
   /** Per-bar analysis when degrees are shown: the degree lane has labels. */
   analysis: readonly BarAnalysis[] | null;
@@ -984,8 +982,7 @@ function SectionBlock({
     observer.observe(element);
     return () => observer.disconnect();
   }, [barsPerRow]);
-  // How many bars fit a line at the smallest beat width; when the chosen
-  // length does not, a divisor of it keeps the phrases aligned.
+  // The beats of the widest bar of the section size the line.
   const mostBeats = Math.max(
     ...chart.bars
       .slice(section.startBar, section.endBar)
@@ -1008,14 +1005,8 @@ function SectionBlock({
       ),
     [chart, section, barNotes, analysis],
   );
-  const smallestBar = tabBarWidth(mostBeats, minBeatWidth(BEAT_WIDTH, needed));
-  const perLine =
-    barsPerRow === null || lineWidth === null
-      ? barsPerRow
-      : fittedBarsPerRow(
-          barsPerRow,
-          Math.floor((lineWidth + BAR_GAP) / (smallestBar + BAR_GAP)),
-        );
+  // A set line length always holds: the bars take the width that fits.
+  const perLine = barsPerRow;
   // One beat width for the whole section, so the beats align from line to
   // line: the one that makes a line of its widest bars fill the line.
   const beatWidth =
@@ -1028,7 +1019,6 @@ function SectionBlock({
           barChrome: BAR_CHROME,
           gap: BAR_GAP,
           baseBeatWidth: BEAT_WIDTH,
-          neededBeatWidth: needed,
         });
   // The degree lane takes a second level where a label touches the label
   // before it; all bars of the section keep room for it, at one height.
@@ -1125,6 +1115,25 @@ function SectionBlock({
             ))}
           </select>
         </label>
+        {ownLength && (
+          <>
+            <span
+              data-own-length
+              className="text-small text-text-primary"
+              title="Esta seção tem um valor próprio"
+            >
+              ● própria
+            </span>
+            <button
+              type="button"
+              onClick={onClearOwnLength}
+              aria-label={`Usar o valor de todas as seções em ${sectionLabel(section.name)}`}
+              className="font-heading text-small px-1.5 py-0.5 border border-border-default text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
+            >
+              Remover
+            </button>
+          </>
+        )}
       </div>
       {harmony && <SectionProgression harmony={harmony} />}
       {summary && <SectionSummary summary={summary} />}

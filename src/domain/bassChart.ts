@@ -532,41 +532,17 @@ export function sectionRows(
   return rows.filter((row) => row !== undefined);
 }
 
-/**
- * The line length to draw when only `fits` bars fit on screen: the chosen
- * one when it fits, else its largest divisor that does (8 → 4 → 2), so the
- * lines still start on the same bars of each phrase. A length with no such
- * divisor (7 with room for 6) falls back to as many as fit.
- */
-export function fittedBarsPerRow(chosen: number, fits: number): number {
-  if (fits >= chosen) return chosen;
-  const room = Math.max(1, fits);
-  for (let length = room; length > 1; length -= 1) {
-    if (chosen % length === 0) return length;
-  }
-  return room;
-}
-
 /** How many times its base width a beat may grow to fill a line. */
 export const MAX_BEAT_WIDTH_SCALE = 3;
-/**
- * How far a beat may narrow to keep a chosen line length, before the line
- * length falls to a divisor. Only the spacing narrows: the text keeps its
- * size.
- */
-export const MIN_BEAT_WIDTH_SCALE = 0.8;
-
 /**
  * The beat width, in pixels, that makes `barsPerLine` bars of `beatCount`
  * beats share a line `lineWidth` wide. Each bar also takes `barChrome`
  * pixels that do not grow (padding and border), and `gap` separates the
- * bars. The width stays between `MIN_BEAT_WIDTH_SCALE` and
- * `MAX_BEAT_WIDTH_SCALE` times `baseBeatWidth`: past the largest, the line
- * keeps free space at its end; under the smallest, the bars do not fit and
- * the caller must draw fewer of them to a line (`fittedBarsPerRow`). It is
- * rounded down to 1/64 px, the layout unit of Chromium, so the bars do not
- * overflow the line there. Firefox lays out in 1/60 px and can round a bar
- * up by a fraction: the caller's rows must not wrap.
+ * bars. A set line length always wins: there is no lower limit, so labels
+ * may touch. Past three times `baseBeatWidth` the line keeps free space at
+ * its end. It is rounded down to 1/64 px, the layout unit of Chromium, so
+ * the bars do not overflow the line there. Firefox lays out in 1/60 px and
+ * can round a bar up by a fraction: the caller's rows must not wrap.
  */
 export function lineBeatWidth(line: {
   lineWidth: number;
@@ -575,8 +551,6 @@ export function lineBeatWidth(line: {
   barChrome: number;
   gap: number;
   baseBeatWidth: number;
-  /** The beat width the section's labels need; see `neededBeatWidth`. */
-  neededBeatWidth?: number;
 }): number {
   const bars = Math.max(1, Math.floor(line.barsPerLine));
   const beats = bars * Math.max(1, line.beatCount);
@@ -584,19 +558,7 @@ export function lineBeatWidth(line: {
   const shared = Math.floor((room / beats) * 64) / 64;
   return Math.min(
     line.baseBeatWidth * MAX_BEAT_WIDTH_SCALE,
-    Math.max(minBeatWidth(line.baseBeatWidth, line.neededBeatWidth), shared),
-  );
-}
-
-/**
- * The narrowest beat a line may use: 0.8 of the base width, but never under
- * what the section's labels need (up to three times the base width), so
- * narrowing to keep a line length never makes labels touch.
- */
-export function minBeatWidth(base: number, needed = 0): number {
-  return Math.max(
-    base * MIN_BEAT_WIDTH_SCALE,
-    Math.min(needed, base * MAX_BEAT_WIDTH_SCALE),
+    Math.max(1, shared),
   );
 }
 
