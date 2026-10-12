@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   formatLibraryRoute,
   parseLibraryRoute,
+  songPartChoices,
   type LibraryRoute,
 } from '@/domain/libraryRoute';
-import { songKey } from '@/domain/librarySong';
+import { groupLibrarySongs, songKey } from '@/domain/librarySong';
+import type { ChartSummary } from '@/domain/chartSummary';
 
 describe('library route', () => {
   it('round-trips a song address with a key that has spaces and a bar', () => {
@@ -62,5 +64,43 @@ describe('library route', () => {
     ]) {
       expect(parseLibraryRoute(hash)).toEqual({ screen: 'list' });
     }
+  });
+});
+
+describe('part choices of a source', () => {
+  const chart = (
+    id: string,
+    source: ChartSummary['source'],
+    part: ChartSummary['part'],
+  ): ChartSummary => ({
+    id,
+    title: 'Come Together',
+    artist: 'The Beatles',
+    source,
+    part,
+    tempoBpm: 82,
+    durationSeconds: 260,
+    barCount: 90,
+    noteCount: 400,
+    tuning: part === 'bass' ? [0, 0, 0, 0] : null,
+    importedAt: '2026-01-01T00:00:00Z',
+  });
+  const [song] = groupLibrarySongs(
+    [
+      chart('d', 'gp', 'drums'),
+      chart('b', 'gp', 'bass'),
+      chart('m', 'midi', 'bass'),
+    ],
+    [],
+  );
+
+  it('lists the parts that the source has, the bass first', () => {
+    expect(songPartChoices(song, 'gp')).toEqual(['bass', 'drums']);
+    expect(songPartChoices(song, 'midi')).toEqual(['bass']);
+  });
+
+  it('lists no part for a source that the song lacks, and for the analysis', () => {
+    expect(songPartChoices(song, 'rocksmith')).toEqual([]);
+    expect(songPartChoices(song, 'analise')).toEqual([]);
   });
 });
