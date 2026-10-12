@@ -17,7 +17,13 @@ export function useGroupOverrides(refreshKey: unknown) {
     (async () => {
       try {
         const settings = await rocksmithLibrary.listSettings();
-        if (!cancelled) setOverrides(groupOverridesOf(settings));
+        if (cancelled) return;
+        const next = groupOverridesOf(settings);
+        // A reload with no change keeps the object, so the songs are not
+        // grouped again after each synchronization.
+        setOverrides((current) =>
+          JSON.stringify(current) === JSON.stringify(next) ? current : next,
+        );
       } catch {
         // No local store: the calculated groups stay.
       }
