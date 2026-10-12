@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BassChart } from '@/domain/bassChart';
+import type { ChartSummary } from '@/domain/chartSummary';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import { syncBassCharts } from '@/services/bassChartSync';
 
@@ -35,8 +36,19 @@ async function loadImporter(file: File) {
   };
 }
 
+/** Keep the previous object when the new one holds the same data. */
+function keepIfEqual<T>(existing: T | undefined, next: T): T {
+  return existing !== undefined &&
+    JSON.stringify(existing) === JSON.stringify(next)
+    ? existing
+    : next;
+}
+
 export function useRocksmithCharts() {
-  const [charts, setCharts] = useState<BassChart[]>([]);
+  const [summaries, setSummaries] = useState<ChartSummary[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [openChart, setOpenChart] = useState<BassChart | null>(null);
+  const openIdRef = useRef<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<
     'syncing' | 'synced' | 'offline'
   >('syncing');
@@ -44,24 +56,60 @@ export function useRocksmithCharts() {
     state: 'idle',
   });
 
-  const refresh = useCallback(async () => {
+  /** Load the one full chart that is open; null when it is gone. */
+  const loadOpen = useCallback(async () => {
+    const id = openIdRef.current;
+    if (id === null) return;
     try {
-      const next = await rocksmithLibrary.listCharts();
-      // Preserve unchanged chart objects: background polling must not reset
+      const chart = await rocksmithLibrary.getChart(id);
+      if (openIdRef.current !== id) return;
+      // Preserve an unchanged chart object: background polling must not reset
       // the synth transport or the user's position in the open chart.
-      setCharts((current) =>
-        next.map((chart) => {
-          const existing = current.find((item) => item.id === chart.id);
-          return existing && JSON.stringify(existing) === JSON.stringify(chart)
-            ? existing
-            : chart;
-        }),
+      setOpenChart((current) =>
+        chart
+          ? keepIfEqual(current?.id === id ? current : undefined, chart)
+          : null,
       );
     } catch {
-      // IndexedDB unavailable (private mode, blocked): no imported charts.
-      setCharts([]);
+      if (openIdRef.current === id) setOpenChart(null);
     }
   }, []);
+
+  const refresh = useCallback(async () => {
+    try {
+      const next = await rocksmithLibrary.listSummaries();
+      setSummaries((current) => {
+        const same =
+          current.length === next.length &&
+          next.every(
+            (row, index) => keepIfEqual(current[index], row) === current[index],
+          );
+        return same
+          ? current
+          : next.map((row) =>
+              keepIfEqual(
+                current.find((item) => item.id === row.id),
+                row,
+              ),
+            );
+      });
+    } catch {
+      // IndexedDB unavailable (private mode, blocked): no imported charts.
+      setSummaries([]);
+    }
+    await loadOpen();
+  }, [loadOpen]);
+
+  /** Open one chart by id, loading it in full; null closes it. */
+  const open = useCallback(
+    async (chartId: string | null) => {
+      openIdRef.current = chartId;
+      setOpenId(chartId);
+      setOpenChart(null);
+      await loadOpen();
+    },
+    [loadOpen],
+  );
 
   const synchronize = useCallback(async () => {
     setSyncStatus('syncing');
@@ -137,5 +185,15 @@ export function useRocksmithCharts() {
     [refresh, synchronize],
   );
 
-  return { charts, importStatus, importFile, remove, syncStatus, synchronize };
+  return {
+    summaries,
+    openId,
+    openChart,
+    open,
+    importStatus,
+    importFile,
+    remove,
+    syncStatus,
+    synchronize,
+  };
 }

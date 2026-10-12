@@ -15,8 +15,16 @@ export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { charts, importStatus, importFile, remove, syncStatus, synchronize } =
-    useRocksmithCharts();
+  const {
+    summaries,
+    openChart,
+    open,
+    importStatus,
+    importFile,
+    remove,
+    syncStatus,
+    synchronize,
+  } = useRocksmithCharts();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,13 +50,16 @@ export default function LibraryModule() {
       ? (tracks?.find((t) => t.source_sha256 === selection.sha) ?? null)
       : null;
   const selectedChart =
-    selection?.kind === 'rocksmith'
-      ? (charts.find((c) => c.id === selection.id) ?? null)
+    selection?.kind === 'rocksmith' && openChart?.id === selection.id
+      ? openChart
       : null;
 
   const handleImport = async (file: File) => {
     const chart = await importFile(file);
-    if (chart) setSelection({ kind: 'rocksmith', id: chart.id });
+    if (chart) {
+      setSelection({ kind: 'rocksmith', id: chart.id });
+      void open(chart.id);
+    }
   };
 
   return (
@@ -59,18 +70,21 @@ export default function LibraryModule() {
       className="flex flex-col gap-4"
     >
       <p className="text-xs text-text-muted">
-        Análise automática de cifra, tom e andamento das faixas processadas
-        pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
-        de arquivos MIDI e Guitar Pro (.gp).
+        Análise automática de cifra, tom e andamento das faixas processadas pelo
+        pipeline off-line, e linhas de baixo importadas do Rocksmith ou de
+        arquivos MIDI e Guitar Pro (.gp).
       </p>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4 min-w-0">
           <RocksmithChartList
-            charts={charts}
+            charts={summaries}
             selectedId={selection?.kind === 'rocksmith' ? selection.id : null}
             importStatus={importStatus}
-            onSelect={(c) => setSelection({ kind: 'rocksmith', id: c.id })}
+            onSelect={(id) => {
+              setSelection({ kind: 'rocksmith', id });
+              void open(id);
+            }}
             onImport={(file) => void handleImport(file)}
           />
           <p role="status" className="text-small text-text-muted">
@@ -91,9 +105,7 @@ export default function LibraryModule() {
           </p>
 
           <div className="flex flex-col gap-2">
-            <h3 className="lh-label">
-              Faixas analisadas
-            </h3>
+            <h3 className="lh-label">Faixas analisadas</h3>
             {error && (
               <p className="text-sm text-danger">
                 Falha ao carregar o índice da biblioteca: {error}

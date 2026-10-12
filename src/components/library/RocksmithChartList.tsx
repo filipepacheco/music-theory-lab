@@ -1,12 +1,12 @@
-import type { BassChart } from '@/domain/bassChart';
+import type { ChartSummary } from '@/domain/chartSummary';
 import { formatDuration } from '@/components/library/libraryData';
 import type { RocksmithImportStatus } from '@/hooks/useRocksmithCharts';
 
 interface Props {
-  charts: BassChart[];
+  charts: ChartSummary[];
   selectedId: string | null;
   importStatus: RocksmithImportStatus;
-  onSelect: (chart: BassChart) => void;
+  onSelect: (chartId: string) => void;
   onImport: (file: File) => void;
 }
 
@@ -22,9 +22,7 @@ export default function RocksmithChartList({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="lh-label">
-          Linhas de baixo
-        </h3>
+        <h3 className="lh-label">Linhas de baixo</h3>
         <label
           htmlFor={inputId}
           aria-disabled={importing}
@@ -80,7 +78,7 @@ export default function RocksmithChartList({
               <li key={chart.id}>
                 <button
                   type="button"
-                  onClick={() => onSelect(chart)}
+                  onClick={() => onSelect(chart.id)}
                   aria-current={isActive ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 cursor-pointer border ${
                     isActive
@@ -93,15 +91,15 @@ export default function RocksmithChartList({
                       {chart.title}
                     </span>
                     <span className="text-small text-text-muted shrink-0">
-                      {formatDuration(chart.songLengthSeconds)}
+                      {formatDuration(chart.durationSeconds)}
                     </span>
                   </div>
                   <div className="text-xs text-text-secondary truncate">
                     {chart.artist}
                   </div>
                   <div className="text-small text-text-muted mt-0.5">
-                    Baixo · {chart.notes.length} notas · ~
-                    {Math.round(chart.averageTempoBpm)} bpm
+                    Baixo · {chart.noteCount} notas · ~
+                    {Math.round(chart.tempoBpm)} bpm
                   </div>
                 </button>
               </li>
