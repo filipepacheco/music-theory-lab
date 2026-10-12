@@ -15,6 +15,10 @@ import { parseChartSettings } from '@/domain/chartSettings';
 import RocksmithTrackDetail from '@/components/library/RocksmithTrackDetail';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import type { BassChart } from '@/domain/bassChart';
+import { fixtureDrumChart } from '@/domain/drumChartFixture';
+import { partChartId } from '@/services/chartId';
+import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
+import type { Chart } from '@/domain/drumChart';
 
 const state = vi.hoisted(() => ({
   audio: { status: 'missing' } as { status: string; url?: string },
@@ -911,5 +915,85 @@ describe('Biblioteca section line length in the chart settings', () => {
       expect(saved?.sectionLineLengths).toEqual({});
       expect((select() as HTMLSelectElement).value).toBe('4');
     });
+  });
+});
+
+describe('Biblioteca kick row under the bass tab', () => {
+  const summary = (c: Chart): ChartSummary => summarizeChart(c);
+  const drums = async (bassId: string, id?: string) => ({
+    ...fixtureDrumChart(1, [
+      { bar: 0, beat: 0, midi: 36 },
+      { bar: 0, beat: 2, midi: 36 },
+      { bar: 0, beat: 1, midi: 38 },
+    ]),
+    id: id ?? (await partChartId(bassId, 'drums')),
+  });
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+  });
+
+  it('shows the kick at the beat of each hit when the drum chart is from the same file', async () => {
+    const drum = await drums(chart.id);
+    await rocksmithLibrary.save(drum, null);
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={chart}
+        songCharts={[summary(drum)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+    const beats = [...container.querySelectorAll('[data-kick-beat]')].map(
+      (c) => [c.getAttribute('data-kick-beat'), c.getAttribute('cx')],
+    );
+    expect(beats).toEqual([
+      ['0', '10'],
+      ['2', '78'],
+    ]);
+  });
+
+  it('shows no kick row without a drum chart or with one from another file', async () => {
+    const other = await drums(chart.id, 'another-file-drums');
+    await rocksmithLibrary.save(other, null);
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={chart}
+        songCharts={[summary(other)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    expect(container.querySelector('[data-kick-row]')).toBeNull();
+    cleanup();
+    const plain = render(
+      <RocksmithTrackDetail chart={chart} onRemove={vi.fn()} />,
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    expect(plain.container.querySelector('[data-kick-row]')).toBeNull();
+  });
+
+  it('keeps an empty kick row in a bar with no kick hit, at one height', async () => {
+    const two = {
+      ...fixtureChart(2, walking([[48, 52, 55, 59]])),
+      source: 'gp' as const,
+    };
+    const drum = {
+      ...(await drums(two.id)),
+      hits: [],
+    };
+    await rocksmithLibrary.save(drum, null);
+    const { container } = render(
+      <RocksmithTrackDetail
+        chart={two}
+        songCharts={[summary(drum)]}
+        onRemove={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-kick-row]')).toBeTruthy(),
+    );
+    expect(container.querySelectorAll('[data-kick-beat]').length).toBe(0);
   });
 });
