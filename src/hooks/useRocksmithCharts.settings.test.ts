@@ -4,7 +4,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import type { BassChartRecord } from '@/domain/bassChartRecord';
-import type { ChartSettings } from '@/domain/chartSettings';
+import { withGroupOverride, type ChartSettings } from '@/domain/chartSettings';
 import { groupLibrarySongs } from '@/domain/librarySong';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
@@ -220,5 +220,35 @@ describe('chart settings in the Biblioteca', () => {
     });
     expect(result.current.syncStatus).toBe('synced');
     expect(cloud.settings.record(chart.id)).toEqual(settings);
+  });
+
+  it('a group override reaches a second device and changes no chart', async () => {
+    await rocksmithLibrary.saveSettings(settings);
+    const first = await openLibrary();
+    const override = withGroupOverride(
+      await rocksmithLibrary.getSettings(chart.id),
+      chart.id,
+      'other song|other artist',
+      '2026-10-06T10:00:00.000Z',
+    );
+    await rocksmithLibrary.saveSettings(override);
+    await act(async () => {
+      await first.result.current.synchronize();
+    });
+    expect(cloud.settings.record(chart.id)).toEqual(override);
+    expect(override.songLineLength).toBe(4);
+    expect(chartsSent()).toEqual([]);
+    const chartOnCloud = structuredClone(cloud.charts.record(chart.id));
+    first.unmount();
+
+    // A second device: an empty local store that synchronizes.
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    const second = renderHook(useRocksmithCharts);
+    await waitFor(() =>
+      expect(second.result.current.syncStatus).toBe('synced'),
+    );
+    expect(await rocksmithLibrary.getSettings(chart.id)).toEqual(override);
+    expect(await rocksmithLibrary.getChart(chart.id)).toEqual(chart);
+    expect(cloud.charts.record(chart.id)).toEqual(chartOnCloud);
   });
 });

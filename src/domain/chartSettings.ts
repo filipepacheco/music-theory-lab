@@ -185,3 +185,45 @@ export function laterChartSettings(
     updatedAt: new Date(Date.parse(stored.updatedAt) + 1).toISOString(),
   };
 }
+
+/** The settings of a chart that never had any: all choices automatic. */
+export function defaultChartSettings(
+  chartId: string,
+  now: string,
+): ChartSettings {
+  return {
+    chartId,
+    updatedAt: now,
+    songLineLength: 'auto',
+    sectionLineLengths: {},
+    groupOverride: null,
+  };
+}
+
+/**
+ * The settings with a new group override (null removes it). Only the group
+ * changes: the line lengths stay as they were.
+ */
+export function withGroupOverride(
+  current: ChartSettings | null,
+  chartId: string,
+  override: string | null,
+  now: string,
+): ChartSettings {
+  return {
+    ...(current ?? defaultChartSettings(chartId, now)),
+    updatedAt: now,
+    groupOverride: override,
+  };
+}
+
+/** The overrides of a list of settings, by chart id; no override is left out. */
+export function groupOverridesOf(
+  settings: ChartSettings[],
+): Record<string, string> {
+  const overrides: Record<string, string> = {};
+  for (const item of settings) {
+    if (item.groupOverride) overrides[item.chartId] = item.groupOverride;
+  }
+  return overrides;
+}

@@ -25,6 +25,8 @@ import {
   songSourceChoices,
   type SourceChoice,
 } from '@/domain/libraryRoute';
+import GroupOverrideControl from '@/components/library/GroupOverrideControl';
+import { useGroupOverrides } from '@/components/library/useGroupOverrides';
 import Segmented from '@/components/shared/Segmented';
 import {
   readLastSource,
@@ -82,9 +84,10 @@ export default function LibraryModule() {
       })),
     [tracks],
   );
+  const { overrides, setOverride } = useGroupOverrides(summaries);
   const songs = useMemo(
-    () => groupLibrarySongs(summaries, analysedRefs),
-    [summaries, analysedRefs],
+    () => groupLibrarySongs(summaries, analysedRefs, overrides),
+    [summaries, analysedRefs, overrides],
   );
   const resolved = useMemo(
     () => (route.screen === 'song' ? resolveSongRoute(songs, route) : null),
@@ -139,6 +142,21 @@ export default function LibraryModule() {
       : null;
   const selectedChart =
     targetChartId && openChart?.id === targetChartId ? openChart : null;
+
+  /** Store a group override, then show the song that now holds the chart. */
+  const correctGroup = async (chartId: string, override: string | null) => {
+    setJoinMessage(null);
+    await setOverride(chartId, override);
+    const next = { ...overrides };
+    if (override) next[chartId] = override;
+    else delete next[chartId];
+    const chart = summaries.find((item) => item.id === chartId);
+    const song = groupLibrarySongs(summaries, analysedRefs, next).find((item) =>
+      item.charts.some((c) => c.id === chartId),
+    );
+    if (song && chart)
+      navigate(routeOfChart(song.key, chart.source, chart.part));
+  };
 
   const handleImport = async (file: File) => {
     setJoinMessage(null);
@@ -200,6 +218,20 @@ export default function LibraryModule() {
                 label: SOURCE_CHOICE_LABEL[choice],
               }))}
               className="self-start"
+            />
+          )}
+          {targetChartId && resolved && (
+            <GroupOverrideControl
+              song={resolved.song}
+              targets={songs.filter(
+                (item) =>
+                  item.key !== resolved.song.key &&
+                  !item.key.startsWith('separate:'),
+              )}
+              overridden={targetChartId in overrides}
+              onMove={(key) => void correctGroup(targetChartId, key)}
+              onSeparate={() => void correctGroup(targetChartId, 'separate')}
+              onRemove={() => void correctGroup(targetChartId, null)}
             />
           )}
           {selectedChart ? (
