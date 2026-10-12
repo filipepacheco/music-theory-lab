@@ -14,9 +14,15 @@ import { fixtureChart } from '@/domain/bassChartFixture';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 import type { ChartSettings } from '@/domain/chartSettings';
 import type { BassChart } from '@/domain/bassChart';
+import type { Chart } from '@/domain/drumChart';
+import { fixtureDrumChart } from '@/domain/drumChartFixture';
+import { exporter, importer } from '@coderline/alphatab';
+import { importGpChart } from '@/services/gp/importGpChart';
 
 const state = vi.hoisted(() => ({
   summaries: [] as ChartSummary[],
+  /** The full charts that the hook can open; a different id opens a stub. */
+  charts: [] as Chart[],
   tracks: [] as Array<{
     source_sha256: string;
     title: string;
@@ -48,7 +54,9 @@ vi.mock('@/hooks/useRocksmithCharts', () => ({
     return {
       summaries: state.summaries,
       openId,
-      openChart: openId ? { id: openId } : null,
+      openChart: openId
+        ? (state.charts.find((chart) => chart.id === openId) ?? { id: openId })
+        : null,
       open: async (id: string | null) => {
         setOpenId(id);
         await state.open(id);
@@ -99,6 +107,7 @@ function row(title: string) {
 
 beforeEach(() => {
   state.summaries = [];
+  state.charts = [];
   state.tracks = [];
   state.open.mockReset().mockResolvedValue(undefined);
   state.importFile.mockReset();
@@ -158,6 +167,91 @@ describe('Biblioteca list', () => {
     fireEvent.click(row('Second Track'));
     expect(screen.getByTestId('analysis').textContent).toBe('sha-2');
     expect(state.open).not.toHaveBeenCalled();
+  });
+});
+
+describe('drum charts in the Biblioteca', () => {
+  const drums: Chart = {
+    ...fixtureDrumChart(1, [{ bar: 0, beat: 0, midi: 36 }]),
+    title: 'Rosanna',
+    artist: 'Toto',
+  };
+
+  it('a file with bass and drums gives one row of the list, with a drums badge', async () => {
+    const score = importer.ScoreLoader.loadAlphaTex(
+      String.raw`\title "Billie Jean" \artist "Michael Jackson" \tempo 117
+\track "Baixo" \instrument 34 \tuning (G2 D2 A1 E1) 2.3.8 2.2 4.2 2.2 0.2 4.3 2.3 4.3
+\track "Bateria" \instrument percussion :8 (36 42) 42 (38 42) 42 (36 42) 42 (38 42) 42`,
+    );
+    const bytes = new exporter.Gp7Exporter().export(score);
+    const { charts } = await importGpChart({
+      name: 'Billie Jean.gp',
+      arrayBuffer: async () => bytes.slice().buffer,
+    } as Blob & { name: string });
+    expect(charts).toHaveLength(2);
+    state.summaries = charts.map(summarizeChart);
+    render(<LibraryModule />);
+    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.getAllByText('Billie Jean')).toHaveLength(1);
+    const badges = within(row('Billie Jean'));
+    for (const label of ['GP', 'Baixo', 'Bateria']) {
+      expect(badges.getByText(label)).toBeTruthy();
+    }
+    // The row opens the bass chart.
+    fireEvent.click(row('Billie Jean'));
+    await waitFor(() => expect(state.open).toHaveBeenCalledWith(charts[0].id));
+  });
+
+  it('a song with only a drum chart opens the song screen with the notice', async () => {
+    state.summaries = [summarizeChart(drums)];
+    state.charts = [drums];
+    render(<LibraryModule />);
+    expect(within(row('Rosanna')).getByText('Bateria')).toBeTruthy();
+    expect(within(row('Rosanna')).queryByText('Baixo')).toBeNull();
+    fireEvent.click(row('Rosanna'));
+    await waitFor(() => expect(state.open).toHaveBeenCalledWith(drums.id));
+    expect(
+      await screen.findByText(
+        /A visualização da bateria ainda não está disponível/,
+      ),
+    ).toBeTruthy();
+    expect(window.location.hash).toBe(
+      `#/biblioteca/${encodeURIComponent('rosanna|toto')}/gp/drums`,
+    );
+    // The song screen shows the notice in place of the bass tab.
+    expect(screen.queryByTestId('chart')).toBeNull();
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByText('← Voltar para a lista')).toBeTruthy();
+  });
+
+  it('shows the notice for a drum chart from a saved address', async () => {
+    state.summaries = [summarizeChart(drums)];
+    state.charts = [drums];
+    window.history.replaceState(
+      null,
+      '',
+      `#/biblioteca/${encodeURIComponent('rosanna|toto')}/gp/drums`,
+    );
+    render(<LibraryModule />);
+    expect(
+      await screen.findByText(
+        /A visualização da bateria ainda não está disponível/,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('chart')).toBeNull();
+  });
+
+  it('shows the bass tab, and no notice, for the bass chart of a song with the two parts', async () => {
+    state.summaries = [
+      chartOf('gp1', 'Rosanna', 'Toto', 'gp'),
+      summarizeChart(drums),
+    ];
+    state.charts = [drums];
+    render(<LibraryModule />);
+    fireEvent.click(row('Rosanna'));
+    await waitFor(() => screen.getByTestId('chart'));
+    expect(screen.getByTestId('chart').textContent).toBe('gp1');
+    expect(screen.queryByText(/visualização da bateria/)).toBeNull();
   });
 });
 

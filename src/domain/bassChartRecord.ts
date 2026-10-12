@@ -3,12 +3,20 @@ import {
   type BassChart,
   type BassTechnique,
 } from './bassChart.js';
+import {
+  DRUM_ARTICULATIONS,
+  DRUM_CHART_PIECES,
+  DRUM_DYNAMICS,
+  type Chart,
+  type DrumChart,
+} from './drumChart.js';
 
 /** A null chart is a durable deletion, so offline devices cannot resurrect it. */
 export interface BassChartRecord {
   id: string;
   updatedAt: string;
-  chart: BassChart | null;
+  /** A bass chart or a drum chart: the two use one table and one route. */
+  chart: Chart | null;
 }
 
 const techniques = new Set<BassTechnique>([
@@ -49,28 +57,34 @@ function timestamp(value: unknown): value is string {
   );
 }
 
-/** Validate external charts before letting them reach analysis or playback. */
-export function parseBassChart(value: unknown): BassChart | null {
-  if (!object(value)) return null;
-  const fields = new Set([
-    'schemaVersion',
-    'id',
-    'sourceFileName',
-    'source',
-    'importedAt',
-    'title',
-    'artist',
-    'album',
-    'year',
-    'tuning',
-    'songLengthSeconds',
-    'averageTempoBpm',
-    'bars',
-    'sections',
-    'notes',
-    'originalFingering',
-  ]);
-  if (Object.keys(value).some((key) => !fields.has(key))) return null;
+/** The fields that a bass chart and a drum chart share. */
+const SHARED_FIELDS = [
+  'schemaVersion',
+  'id',
+  'sourceFileName',
+  'source',
+  'importedAt',
+  'title',
+  'artist',
+  'album',
+  'year',
+  'songLengthSeconds',
+  'averageTempoBpm',
+  'bars',
+  'sections',
+];
+
+/**
+ * The checks of the id, the metadata, the bars, and the sections, which are
+ * the same for the two chart types. `own` names the other fields that the
+ * chart type allows.
+ */
+function validSharedFields(
+  value: Record<string, unknown>,
+  own: string[],
+): boolean {
+  const fields = new Set([...SHARED_FIELDS, ...own]);
+  if (Object.keys(value).some((key) => !fields.has(key))) return false;
   if (
     value.schemaVersion !== 1 ||
     typeof value.id !== 'string' ||
@@ -82,9 +96,6 @@ export function parseBassChart(value: unknown): BassChart | null {
     (value.source !== undefined &&
       !['rocksmith', 'midi', 'gp'].includes(String(value.source))) ||
     (value.year !== null && !integer(value.year)) ||
-    !Array.isArray(value.tuning) ||
-    value.tuning.length !== 4 ||
-    !value.tuning.every(integer) ||
     !finite(value.songLengthSeconds) ||
     value.songLengthSeconds <= 0 ||
     !finite(value.averageTempoBpm) ||
@@ -92,12 +103,10 @@ export function parseBassChart(value: unknown): BassChart | null {
     !Array.isArray(value.bars) ||
     value.bars.length === 0 ||
     value.bars.length > 100_000 ||
-    !Array.isArray(value.notes) ||
-    value.notes.length > 200_000 ||
     !Array.isArray(value.sections) ||
     value.sections.length === 0
   )
-    return null;
+    return false;
 
   const bars = value.bars;
   if (
@@ -114,9 +123,9 @@ export function parseBassChart(value: unknown): BassChart | null {
         (i === 0 || bar.startTime === bars[i - 1].endTime),
     )
   )
-    return null;
-  if (
-    !value.sections.every(
+    return false;
+  return (
+    value.sections.every(
       (section, i, sections) =>
         object(section) &&
         typeof section.name === 'string' &&
@@ -130,11 +139,28 @@ export function parseBassChart(value: unknown): BassChart | null {
         (i === 0
           ? section.startBar === 0
           : section.startBar === sections[i - 1].endBar),
-    ) ||
-    value.sections[value.sections.length - 1].endBar !== bars.length
+    ) && value.sections[value.sections.length - 1].endBar === bars.length
+  );
+}
+
+/**
+ * Validate an external bass chart before it reaches analysis or playback. A
+ * bass chart has no part field, so a drum chart fails here.
+ */
+export function parseBassChart(value: unknown): BassChart | null {
+  if (!object(value)) return null;
+  if (!validSharedFields(value, ['tuning', 'notes', 'originalFingering']))
+    return null;
+  if (
+    !Array.isArray(value.tuning) ||
+    value.tuning.length !== 4 ||
+    !value.tuning.every(integer) ||
+    !Array.isArray(value.notes) ||
+    value.notes.length > 200_000
   )
     return null;
 
+  const bars = value.bars as unknown[];
   const tuning = value.tuning;
   const notes = value.notes;
   if (
@@ -196,6 +222,75 @@ export function parseBassChart(value: unknown): BassChart | null {
   return value as unknown as BassChart;
 }
 
+const HIT_FIELDS = new Set([
+  'time',
+  'bar',
+  'beatInBar',
+  'piece',
+  'articulation',
+  'dynamic',
+  'intensity',
+  'midi',
+]);
+const pieces = new Set<unknown>(DRUM_CHART_PIECES);
+const articulations = new Set<unknown>(DRUM_ARTICULATIONS);
+const dynamics = new Set<unknown>(DRUM_DYNAMICS);
+
+/**
+ * Validate an external drum chart. The piece of a hit is not compared with
+ * its MIDI number: a chart from an earlier map of drum pieces stays valid.
+ */
+export function parseDrumChart(value: unknown): DrumChart | null {
+  if (!object(value) || value.part !== 'drums') return null;
+  if (!validSharedFields(value, ['part', 'hits'])) return null;
+  if (
+    (value.source !== 'midi' && value.source !== 'gp') ||
+    !Array.isArray(value.hits) ||
+    value.hits.length === 0 ||
+    value.hits.length > 200_000
+  )
+    return null;
+
+  const bars = value.bars as unknown[];
+  if (
+    !value.hits.every(
+      (hit, i, hits) =>
+        object(hit) &&
+        Object.keys(hit).length === HIT_FIELDS.size &&
+        Object.keys(hit).every((key) => HIT_FIELDS.has(key)) &&
+        finite(hit.time) &&
+        hit.time >= 0 &&
+        (i === 0 || hit.time >= hits[i - 1].time) &&
+        integer(hit.bar) &&
+        hit.bar >= 0 &&
+        hit.bar < bars.length &&
+        finite(hit.beatInBar) &&
+        hit.beatInBar >= 0 &&
+        pieces.has(hit.piece) &&
+        articulations.has(hit.articulation) &&
+        dynamics.has(hit.dynamic) &&
+        integer(hit.intensity) &&
+        hit.intensity >= 1 &&
+        hit.intensity <= 127 &&
+        integer(hit.midi) &&
+        hit.midi >= 0 &&
+        hit.midi <= 127,
+    )
+  )
+    return null;
+  return value as unknown as DrumChart;
+}
+
+/**
+ * Validate a chart of the one or the other type. A chart with a part field
+ * is a drum chart; a bass chart has none, so stored bass charts stay valid.
+ */
+export function parseChart(value: unknown): Chart | null {
+  return object(value) && 'part' in value
+    ? parseDrumChart(value)
+    : parseBassChart(value);
+}
+
 export function parseBassChartRecord(value: unknown): BassChartRecord | null {
   if (
     !object(value) ||
@@ -208,7 +303,7 @@ export function parseBassChartRecord(value: unknown): BassChartRecord | null {
     !timestamp(value.updatedAt)
   )
     return null;
-  const chart = value.chart === null ? null : parseBassChart(value.chart);
+  const chart = value.chart === null ? null : parseChart(value.chart);
   if (value.chart !== null && (!chart || chart.id !== value.id)) return null;
   return {
     id: value.id,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BassChart } from '@/domain/bassChart';
+import type { Chart } from '@/domain/drumChart';
 import type { ChartSummary } from '@/domain/chartSummary';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import { syncBassCharts } from '@/services/bassChartSync';
@@ -11,13 +11,16 @@ export type RocksmithImportStatus =
   | { state: 'imported'; chartId: string; hasAudio: boolean }
   | { state: 'error'; message: string };
 
-/** The importer for a file, by extension. */
+/**
+ * The importer for a file, by extension. An import gives one chart for each
+ * part of the file, the bass chart first.
+ */
 async function loadImporter(file: File) {
   if (/\.gp$/i.test(file.name)) {
     const { importGpChart, gpChartImportErrorMessage } =
       await import('@/services/gp/importGpChart');
     return {
-      importChart: importGpChart,
+      importCharts: importGpChart,
       importErrorMessage: gpChartImportErrorMessage,
     };
   }
@@ -25,16 +28,31 @@ async function loadImporter(file: File) {
     const { importMidi, midiImportErrorMessage } =
       await import('@/services/midi/importMidi');
     return {
-      importChart: importMidi,
+      importCharts: async (source: File) => {
+        const { chart, audio } = await importMidi(source);
+        return { charts: [chart], audio };
+      },
       importErrorMessage: midiImportErrorMessage,
     };
   }
   const { importPsarc, psarcImportErrorMessage } =
     await import('@/services/rocksmith/importPsarc');
   return {
-    importChart: importPsarc,
+    importCharts: async (source: File) => {
+      const { chart, audio } = await importPsarc(source);
+      return { charts: [chart], audio };
+    },
     importErrorMessage: psarcImportErrorMessage,
   };
+}
+
+/** True when a new import of the file gives the chart that is stored. */
+function isStoredChart(stored: Chart | null, imported: Chart): boolean {
+  return (
+    stored !== null &&
+    JSON.stringify({ ...stored, importedAt: '' }) ===
+      JSON.stringify({ ...imported, importedAt: '' })
+  );
 }
 
 /** Keep the previous object when the new one holds the same data. */
@@ -48,7 +66,7 @@ function keepIfEqual<T>(existing: T | undefined, next: T): T {
 export function useRocksmithCharts() {
   const [summaries, setSummaries] = useState<ChartSummary[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [openChart, setOpenChart] = useState<BassChart | null>(null);
+  const [openChart, setOpenChart] = useState<Chart | null>(null);
   const openIdRef = useRef<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<
     'syncing' | 'synced' | 'offline'
@@ -145,7 +163,7 @@ export function useRocksmithCharts() {
   }, [refresh, synchronize]);
 
   const importFile = useCallback(
-    async (file: File): Promise<BassChart | null> => {
+    async (file: File): Promise<Chart | null> => {
       setImportStatus({ state: 'importing', fileName: file.name });
       // Let the status paint: parsing and audio conversion block the thread.
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -154,12 +172,23 @@ export function useRocksmithCharts() {
       try {
         const loaded = await loadImporter(file);
         importErrorMessage = loaded.importErrorMessage;
-        const { importChart } = loaded;
-        const { chart, audio } = await importChart(file);
-        await rocksmithLibrary.save(
-          chart,
-          audio && { chartId: chart.id, origin: 'psarc', ...audio },
-        );
+        const { charts, audio } = await loaded.importCharts(file);
+        // The first chart opens after the import, and it owns the recording.
+        const [chart] = charts;
+        for (const item of charts) {
+          const recording =
+            item === chart && audio
+              ? { chartId: item.id, origin: 'psarc' as const, ...audio }
+              : null;
+          // A new import of a file adds only the part that the library does
+          // not hold: a stored chart with no change is not written again.
+          if (
+            !recording &&
+            isStoredChart(await rocksmithLibrary.getChart(item.id), item)
+          )
+            continue;
+          await rocksmithLibrary.save(item, recording);
+        }
         await refresh();
         setImportStatus({
           state: 'imported',
