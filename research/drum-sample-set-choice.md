@@ -6,7 +6,7 @@ Feeds: ticket 23, "The drum chart plays with drum samples"
 
 ## Owner choice
 
-**Chosen set:** _(the owner writes the name here)_
+**Chosen set:** Virtuosity Drums (CC0). Chosen by LIPE on 2026-10-12.
 
 **Chosen by / date:** _(the owner writes it here)_
 
