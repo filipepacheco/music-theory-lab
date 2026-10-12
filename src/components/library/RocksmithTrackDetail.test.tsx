@@ -411,18 +411,20 @@ describe('Biblioteca bar layout', () => {
     );
   });
 
-  it('narrows the beats before it shortens the line, at one type size', () => {
+  it('narrows the beats to keep the line length, at one type size', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     const automatic = typeSizes();
-    // 7 bars do not fit at the base width (152 px), but do at 0.8 of it.
+    // 7 bars do not fit at the base width (152 px): the beats narrow.
     setLineLength('7');
     expect(widths().slice(0, 3)).toEqual([139.375, 139.375, 139.375]);
     expect(139.375 * 7 + 4 * 6).toBeLessThanOrEqual(LINE_WIDTH);
     expect(139.375 * 7 + 4 * 6).toBeGreaterThan(LINE_WIDTH - 1);
     expect(typeSizes()).toEqual(automatic);
-    // 8 do not: the line length falls to 4.
+    // 8 bars narrow the beats under 0.8 of the base: the length still holds.
     setLineLength('8');
-    expect(widths()[0]).toBe(247);
+    // (1000 - 7 gaps of 4 - 8 × 16) / 32 beats = 26.375 < 27.2.
+    expect(widths()[0]).toBe(16 + 4 * 26.375);
+    expect(typeSizes()).toEqual(automatic);
   });
 
   it('stops a bar at three times the base beat width', () => {
@@ -476,12 +478,9 @@ describe('Biblioteca bar layout', () => {
     setLineLength('7');
     expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6], [7]]);
     expect(wrapping()).toEqual([]);
-    // 8 bars do not fit: the line length falls to 4, and still does not wrap.
+    // 8 bars at a narrow beat: the line length holds, and does not wrap.
     setLineLength('8');
-    expect(barsOfLines()).toEqual([
-      [0, 1, 2, 3],
-      [4, 5, 6, 7],
-    ]);
+    expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6, 7]]);
     expect(wrapping()).toEqual([]);
   });
 
@@ -607,7 +606,7 @@ describe('Biblioteca dense sections', () => {
     expect(d).toBe(c);
   });
 
-  it('falls to a divisor of the line length when the need does not fit', () => {
+  it('keeps the set line length of a dense section', () => {
     const sixDense = fixtureChart(
       6,
       Array.from({ length: 6 }, (_, bar) =>
@@ -621,10 +620,15 @@ describe('Biblioteca dense sections', () => {
     );
     render(<RocksmithTrackDetail chart={sixDense} onRemove={vi.fn()} />);
     setLineLength(0, '6');
-    // 6 bars of 68.8 px beats need 6 × 291 px: only 3 fit. 6 falls to 3, and
-    // the 3 bars share the line: (1000 - 8 - 48) / 12 beats.
-    expect(new Set(beatWidths())).toEqual(new Set([78.65625]));
-    expect(78.65625).toBeGreaterThanOrEqual(68.8);
+    // 6 bars of 68.8 px beats would need 6 × 291 px; the line length holds
+    // anyway: (1000 - 20 - 96) / 24 beats, rounded down to 1/64 px.
+    expect(new Set(beatWidths())).toEqual(new Set([36.828125]));
+    expect(36.828125).toBeLessThan(68.8);
+    // With exactly that number of bars in each line.
+    const rows = [...document.querySelectorAll('[data-line]')];
+    expect(
+      rows.map((row) => row.querySelectorAll('button[data-bar]').length),
+    ).toEqual([6]);
   });
 
   describe('degree lane', () => {
