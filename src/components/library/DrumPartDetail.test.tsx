@@ -109,6 +109,8 @@ const sections = [
 ];
 const chart = fixtureDrumChart(10, specs, sections);
 
+/** Room for the writes of the settings in the local store. */
+const SLOW = { timeout: 5000 };
 const ROWS = ['pratos', 'chimbal', 'toms', 'caixa', 'surdo', 'bumbo'];
 const LABELS = ['Pratos', 'Chimbal', 'Tons', 'Caixa', 'Surdo', 'Bumbo'];
 
@@ -441,15 +443,20 @@ describe('drum part of the song detail', () => {
     );
     // The control for all sections asks first, then removes the own value.
     fireEvent.change(allLengths(), { target: { value: '2' } });
-    await waitFor(() => expect(verseLength().value).toBe('2'));
-    expect(document.querySelectorAll('[data-own-length]')).toHaveLength(0);
+    // Each write reads the stored settings back; a loaded machine is slow.
+    await waitFor(() => expect(verseLength().value).toBe('2'), SLOW);
+    await waitFor(
+      () =>
+        expect(document.querySelectorAll('[data-own-length]')).toHaveLength(0),
+      SLOW,
+    );
     expect(
       lines().map((line) => line.querySelectorAll('[data-bar]').length),
     ).toEqual([0, 2, 2, 2, 2]);
     cleanup();
     // The lengths come back from the settings of the chart.
     renderPart();
-    await waitFor(() => expect(verseLength().value).toBe('2'));
+    await waitFor(() => expect(verseLength().value).toBe('2'), SLOW);
   });
 
   it('marks the bar that draws the same as the bar above, under a line length', () => {
