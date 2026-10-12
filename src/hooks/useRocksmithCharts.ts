@@ -74,6 +74,10 @@ export function useRocksmithCharts() {
   const [importStatus, setImportStatus] = useState<RocksmithImportStatus>({
     state: 'idle',
   });
+  // Raised when a pass of the chart settings ends. A pass can bring settings
+  // of a different device and no chart: `summaries` keeps its identity then,
+  // so a screen that shows chart settings reloads them by this number.
+  const [settingsRevision, setSettingsRevision] = useState(0);
 
   /** Load the one full chart that is open; null when it is gone. */
   const loadOpen = useCallback(async () => {
@@ -134,9 +138,13 @@ export function useRocksmithCharts() {
     setSyncStatus('syncing');
     // The status covers the charts and the chart settings. One that fails
     // does not stop the other.
+    // A pass that fails can still have stored what it read, so the number
+    // rises after each pass. It does not wait for the charts.
     const results = await Promise.allSettled([
       syncBassCharts(),
-      syncChartSettings(),
+      syncChartSettings().finally(() =>
+        setSettingsRevision((revision) => revision + 1),
+      ),
     ]);
     setSyncStatus(
       results.every((result) => result.status === 'fulfilled')
@@ -230,5 +238,6 @@ export function useRocksmithCharts() {
     remove,
     syncStatus,
     synchronize,
+    settingsRevision,
   };
 }

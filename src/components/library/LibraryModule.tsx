@@ -60,6 +60,7 @@ export default function LibraryModule() {
     remove,
     syncStatus,
     synchronize,
+    settingsRevision,
   } = useRocksmithCharts();
 
   useEffect(() => {
@@ -87,11 +88,13 @@ export default function LibraryModule() {
     [tracks],
   );
   const lineLengthCopies = useLineLengthMigration();
-  const { overrides, setOverride } = useGroupOverrides(summaries);
+  // The chart settings reload after each synchronization of them: one can
+  // bring settings of a different device and leave `summaries` as it is.
   const settingsKey = useMemo(
-    () => [summaries, lineLengthCopies],
-    [summaries, lineLengthCopies],
+    () => [summaries, lineLengthCopies, settingsRevision],
+    [summaries, lineLengthCopies, settingsRevision],
   );
+  const { overrides, setOverride } = useGroupOverrides(settingsKey);
   const songs = useMemo(
     () => groupLibrarySongs(summaries, analysedRefs, overrides),
     [summaries, analysedRefs, overrides],

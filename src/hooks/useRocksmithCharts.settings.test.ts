@@ -169,6 +169,28 @@ describe('chart settings in the Biblioteca', () => {
     expect(result.current.openChart).toBe(openChart);
   });
 
+  it('raises the settings revision after each pass of the settings, also when no chart changed and when the route fails', async () => {
+    const { result } = await openLibrary();
+    const summaries = result.current.summaries;
+    const before = result.current.settingsRevision;
+    cloud.settings.put(settings);
+
+    await act(async () => {
+      await result.current.synchronize();
+    });
+
+    // The list keeps its identity, so it cannot tell a screen to reload.
+    expect(result.current.summaries).toBe(summaries);
+    expect(result.current.settingsRevision).toBe(before + 1);
+
+    cloud.settings.failing = true;
+    await act(async () => {
+      await result.current.synchronize();
+    });
+    expect(result.current.syncStatus).toBe('offline');
+    expect(result.current.settingsRevision).toBe(before + 2);
+  });
+
   it('a chart deletion removes its summary and its row of the list, and keeps its settings record', async () => {
     await rocksmithLibrary.saveSettings(settings);
     const { result } = await openLibrary();
