@@ -37,11 +37,11 @@ interface Props {
   /** Note names for chord symbols, spelled for the key in use. */
   noteNames: readonly string[];
   /**
-   * The bar's share of its line as a CSS width, when the section is laid
-   * out a fixed number of bars per line. The bar then shrinks to fit, down
-   * to `MIN_FIT_SCALE` of its size, and never grows past it.
+   * Pixels per beat, when the section's bars share a line of a set length.
+   * The bar is drawn at that real size: only the spacing grows, never the
+   * text. Defaults to `BEAT_WIDTH`.
    */
-  fitWidth?: string;
+  beatWidth?: number;
   /**
    * The bar drawn right above this one when it shows the same tab: the bar
    * is then left empty under a repeat sign.
@@ -91,8 +91,14 @@ function barTitle(
     .join(' · ');
 }
 
+/** The base beat width, in pixels: the one the automatic layout uses. */
 export const BEAT_WIDTH = 34;
 const PAD_X = 7;
+/** The pixels of a bar that do not grow with its beats: padding and border. */
+export const BAR_CHROME = PAD_X * 2 + 2;
+/** Type sizes in a bar; none goes under the design system's 10 px floor. */
+const FRET_FONT_SIZE = 11;
+const DEGREE_FONT_SIZE = 10;
 const PAD_TOP = 9;
 const LINE_GAP = 12;
 const STRING_COUNT = 4;
@@ -100,12 +106,13 @@ const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
 /** Height of the degree lane drawn under the strings. */
 const DEGREE_LANE = 12;
 const DEGREE_Y = HEIGHT + DEGREE_LANE / 2 - 2;
-/** How far a bar may shrink to keep a chosen line length before wrapping. */
-export const MIN_FIT_SCALE = 0.8;
 
 /** A bar's drawn width in pixels, border included. */
-export function tabBarWidth(beatCount: number): number {
-  return PAD_X * 2 + beatCount * BEAT_WIDTH + 2;
+export function tabBarWidth(
+  beatCount: number,
+  beatWidth: number = BEAT_WIDTH,
+): number {
+  return BAR_CHROME + beatCount * beatWidth;
 }
 
 /**
@@ -152,19 +159,11 @@ function BassTabBar({
   segment,
   avoidNotes,
   noteNames,
-  fitWidth,
+  beatWidth = BEAT_WIDTH,
   repeatOf,
 }: Props) {
   const repeat = repeatOf !== undefined;
-  const width = PAD_X * 2 + bar.beatCount * BEAT_WIDTH;
-  const outer = tabBarWidth(bar.beatCount);
-  const fitStyle = fitWidth
-    ? {
-        width: fitWidth,
-        maxWidth: outer,
-        minWidth: Math.round(outer * MIN_FIT_SCALE),
-      }
-    : undefined;
+  const width = PAD_X * 2 + bar.beatCount * beatWidth;
   const isActive = playhead !== null;
   const degrees = new Map<number, AnalyzedNote>(
     analysis?.notes.map((n) => [n.index, n]),
@@ -201,7 +200,8 @@ function BassTabBar({
           : barTitle(bar, analysis, segment)
       }
       data-bar={bar.index}
-      style={fitStyle}
+      data-beat-width={beatWidth}
+      style={{ width: tabBarWidth(bar.beatCount, beatWidth) }}
       className={`relative shrink-0 border text-left ${
         isActive
           ? 'border-live bg-live-tint'
@@ -245,7 +245,7 @@ function BassTabBar({
         width={width}
         height={svgHeight}
         viewBox={`0 0 ${width} ${svgHeight}`}
-        style={fitWidth ? { width: '100%', height: 'auto' } : undefined}
+        className="block"
         role="img"
         aria-label={
           repeat
@@ -258,8 +258,8 @@ function BassTabBar({
         {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
           <line
             key={`beat-${beat}`}
-            x1={PAD_X + (beat + 1) * BEAT_WIDTH}
-            x2={PAD_X + (beat + 1) * BEAT_WIDTH}
+            x1={PAD_X + (beat + 1) * beatWidth}
+            x2={PAD_X + (beat + 1) * beatWidth}
             y1={PAD_TOP - 3}
             y2={analysis ? svgHeight - 2 : HEIGHT - PAD_TOP + 3}
             stroke="var(--color-border-default)"
@@ -280,8 +280,8 @@ function BassTabBar({
         {repeat && <RepeatSign x={width / 2} y={HEIGHT / 2} />}
         {playhead !== null && (
           <line
-            x1={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
-            x2={PAD_X + playhead * bar.beatCount * BEAT_WIDTH}
+            x1={PAD_X + playhead * bar.beatCount * beatWidth}
+            x2={PAD_X + playhead * bar.beatCount * beatWidth}
             y1={2}
             y2={svgHeight - 2}
             stroke="var(--color-accent)"
@@ -295,10 +295,10 @@ function BassTabBar({
             return (
               <text
                 key={index}
-                x={PAD_X + note.beatInBar * BEAT_WIDTH + 1}
+                x={PAD_X + note.beatInBar * beatWidth + 1}
                 y={stringY(note.string)}
                 dominantBaseline="central"
-                fontSize={11}
+                fontSize={FRET_FONT_SIZE}
                 fontWeight={
                   active || note.techniques.includes('accent') ? 700 : 500
                 }
@@ -324,10 +324,10 @@ function BassTabBar({
           [...onsets].map(([beatInBar, atOnset]) => (
             <text
               key={`degree-${beatInBar}`}
-              x={PAD_X + beatInBar * BEAT_WIDTH + 1}
+              x={PAD_X + beatInBar * beatWidth + 1}
               y={DEGREE_Y}
               dominantBaseline="central"
-              fontSize={9}
+              fontSize={DEGREE_FONT_SIZE}
               className="font-heading"
             >
               {[...atOnset]

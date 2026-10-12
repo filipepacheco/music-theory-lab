@@ -334,3 +334,116 @@ describe('Biblioteca semitone buttons', () => {
     ).toBeNull();
   });
 });
+
+describe('Biblioteca bar layout', () => {
+  const LINE_WIDTH = 1000;
+  const eightBars = fixtureChart(
+    8,
+    walking(Array.from({ length: 8 }, () => [48, 52, 55, 59])),
+  );
+  /** Bar 4 is in 3/4, the others in 4/4. */
+  const mixed: BassChart = {
+    ...eightBars,
+    source: 'gp',
+    bars: eightBars.bars.map((bar) =>
+      bar.index === 3 ? { ...bar, beatCount: 3 } : bar,
+    ),
+    notes: eightBars.notes.filter(
+      (note) => !(note.bar === 3 && note.beatInBar >= 3),
+    ),
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly onResize: () => void) {}
+        observe(element: Element) {
+          element.getBoundingClientRect = () =>
+            ({ width: LINE_WIDTH }) as DOMRect;
+          this.onResize();
+        }
+        disconnect() {}
+      },
+    );
+  });
+
+  const bars = () => [
+    ...document.querySelectorAll<HTMLButtonElement>('button[data-bar]'),
+  ];
+  const widths = () => bars().map((bar) => parseFloat(bar.style.width));
+  const typeSizes = () =>
+    [...document.querySelectorAll('button[data-bar] svg text')].map((text) =>
+      Number(text.getAttribute('font-size')),
+    );
+  const setLineLength = (value: string) =>
+    fireEvent.change(screen.getByLabelText(/^Compassos por linha em/), {
+      target: { value },
+    });
+
+  it('keeps the base width in the automatic layout', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    expect(widths()).toEqual([152, 152, 152, 118, 152, 152, 152, 152]);
+  });
+
+  it('makes the bars of a line share its full width at one beat width', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    setLineLength('4');
+    // (1000 - 3 gaps of 4 - 4 × 16 of padding and border) / 16 beats.
+    expect(widths()).toEqual([247, 247, 247, 189.25, 247, 247, 247, 247]);
+    expect(247 * 4 + 4 * 3).toBe(LINE_WIDTH);
+    expect(new Set(bars().map((bar) => bar.dataset.beatWidth))).toEqual(
+      new Set(['57.75']),
+    );
+  });
+
+  it('narrows the beats before it shortens the line, at one type size', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    const automatic = typeSizes();
+    // 7 bars do not fit at the base width (152 px), but do at 0.8 of it.
+    setLineLength('7');
+    expect(widths().slice(0, 3)).toEqual([139.375, 139.375, 139.375]);
+    expect(139.375 * 7 + 4 * 6).toBeLessThanOrEqual(LINE_WIDTH);
+    expect(139.375 * 7 + 4 * 6).toBeGreaterThan(LINE_WIDTH - 1);
+    expect(typeSizes()).toEqual(automatic);
+    // 8 do not: the line length falls to 4.
+    setLineLength('8');
+    expect(widths()[0]).toBe(247);
+  });
+
+  it('stops a bar at three times the base beat width', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    setLineLength('1');
+    expect(widths()[0]).toBe(16 + 4 * 34 * 3);
+    expect(widths()[0]).toBeLessThan(LINE_WIDTH);
+  });
+
+  it('draws the text at one size, never under 10 px, at each width', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText('Mostrar graus'));
+    const automatic = typeSizes();
+    // Frets and degree labels.
+    expect(new Set(automatic).size).toBe(2);
+    expect(Math.min(...automatic)).toBeGreaterThanOrEqual(10);
+    for (const length of ['1', '4', '16']) {
+      setLineLength(length);
+      expect(typeSizes()).toEqual(automatic);
+      for (const svg of document.querySelectorAll('button[data-bar] svg')) {
+        expect(svg.getAttribute('viewBox')).toBe(
+          `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`,
+        );
+      }
+    }
+  });
+
+  it('keeps the bars clickable and the repeat marks under a line length', () => {
+    render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText('Marcar repetições'));
+    setLineLength('4');
+    expect(bars().every((bar) => !bar.disabled)).toBe(true);
+    // Bars 5-7 show the same tab as bars 1-3 above; bar 8 is over a 3/4 bar.
+    expect(
+      bars().filter((bar) => bar.title.includes('igual ao compasso')).length,
+    ).toBe(3);
+  });
+});

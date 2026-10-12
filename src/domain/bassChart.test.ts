@@ -5,6 +5,7 @@ import {
   barsRepeatingAbove,
   buildBassChart,
   fittedBarsPerRow,
+  lineBeatWidth,
   hardestNotes,
   midiNoteName,
   sectionBlocks,
@@ -270,6 +271,65 @@ describe('queries', () => {
     expect(fittedBarsPerRow(12, 7)).toBe(6);
     expect(fittedBarsPerRow(7, 6)).toBe(6);
     expect(fittedBarsPerRow(8, 0)).toBe(1);
+  });
+
+  describe('beat width of a line', () => {
+    const line = {
+      lineWidth: 1000,
+      barsPerLine: 4,
+      beatCount: 4,
+      barChrome: 16,
+      gap: 4,
+      baseBeatWidth: 34,
+    };
+    const lineUsed = (l: typeof line) =>
+      l.barsPerLine * (l.barChrome + l.beatCount * lineBeatWidth(l)) +
+      (l.barsPerLine - 1) * l.gap;
+
+    it('shares the full width of the line between its bars', () => {
+      // 1000 - 3 gaps - 4 × 16 of chrome = 924 over 16 beats.
+      expect(lineBeatWidth(line)).toBe(57.75);
+      expect(lineUsed(line)).toBe(1000);
+    });
+
+    it('gives narrower beats to a longer line length', () => {
+      const five = { ...line, barsPerLine: 5 };
+      // 904 / 20 = 45.2, rounded down to 1/64 px.
+      expect(lineBeatWidth(five)).toBe(45.1875);
+      expect(lineUsed(five)).toBeLessThanOrEqual(1000);
+      expect(lineUsed(five)).toBeGreaterThan(999);
+    });
+
+    it('follows the line width', () => {
+      expect(lineBeatWidth({ ...line, lineWidth: 800 })).toBe(45.25);
+    });
+
+    it('never overflows the line when the share is not exact', () => {
+      const odd = { ...line, lineWidth: 997, barsPerLine: 3, beatCount: 7 };
+      expect(lineUsed(odd)).toBeLessThanOrEqual(997);
+      expect(lineUsed(odd)).toBeGreaterThan(996);
+    });
+
+    it('stops at three times the base width, leaving the line free space', () => {
+      const short = { ...line, barsPerLine: 1 };
+      expect(lineBeatWidth(short)).toBe(102);
+      expect(lineUsed(short)).toBeLessThan(1000);
+    });
+
+    it('narrows the beats a little to keep the line length', () => {
+      const tight = { ...line, lineWidth: 600 };
+      // 600 - 12 - 64 = 524 over 16 beats, under the base 34.
+      expect(lineBeatWidth(tight)).toBe(32.75);
+      expect(lineUsed(tight)).toBe(600);
+    });
+
+    it('never narrows a beat under 0.8 of the base width', () => {
+      expect(lineBeatWidth({ ...line, lineWidth: 300 })).toBeCloseTo(27.2);
+    });
+
+    it('widens each beat when the widest bar has fewer beats', () => {
+      expect(lineBeatWidth({ ...line, beatCount: 3 })).toBe(77);
+    });
   });
 
   it('finds bars that repeat the one above them', () => {

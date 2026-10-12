@@ -10,7 +10,8 @@ import BassDegreeGuide from '@/components/library/BassDegreeGuide';
 import BassTabBar, {
   DEGREE_COLORS,
   FUNCTION_COLORS,
-  MIN_FIT_SCALE,
+  BAR_CHROME,
+  BEAT_WIDTH,
   tabBarWidth,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
@@ -42,6 +43,8 @@ import {
   barsRepeatingAbove,
   fittedBarsPerRow,
   isStandardTuning,
+  lineBeatWidth,
+  MIN_BEAT_WIDTH_SCALE,
   notesByBar,
   sectionBlocks,
   sectionIndexOfBar,
@@ -769,10 +772,10 @@ export default function RocksmithTrackDetail({
               }
               barNotes={barNotes}
               markRepeats={markRepeats}
-              renderBar={(barIndex, fitWidth, repeatOf) => (
+              renderBar={(barIndex, beatWidth, repeatOf) => (
                 <BassTabBar
                   key={barIndex}
-                  fitWidth={fitWidth}
+                  beatWidth={beatWidth}
                   repeatOf={repeatOf}
                   bar={chart.bars[barIndex]}
                   notes={barNotes[barIndex] as IndexedNote[]}
@@ -951,7 +954,7 @@ function SectionBlock({
   markRepeats: boolean;
   renderBar: (
     barIndex: number,
-    fitWidth?: string,
+    beatWidth?: number,
     repeatOf?: number,
   ) => ReactNode;
   onSeek: ((seconds: number) => void) | null;
@@ -962,23 +965,22 @@ function SectionBlock({
   useEffect(() => {
     const element = linesRef.current;
     if (barsPerRow === null || !element) return;
+    // The exact width: a rounded one could be wider than the line, and the
+    // last bar would wrap.
     const observer = new ResizeObserver(() =>
-      setLineWidth(element.clientWidth),
+      setLineWidth(element.getBoundingClientRect().width),
     );
     observer.observe(element);
     return () => observer.disconnect();
   }, [barsPerRow]);
-  // How many bars fit a line at the smallest size a bar may take; when the
-  // chosen length does not, a divisor of it keeps the phrases aligned.
-  const smallestBar = Math.round(
-    tabBarWidth(
-      Math.max(
-        ...chart.bars
-          .slice(section.startBar, section.endBar)
-          .map((b) => b.beatCount),
-      ),
-    ) * MIN_FIT_SCALE,
+  // How many bars fit a line at the smallest beat width; when the chosen
+  // length does not, a divisor of it keeps the phrases aligned.
+  const mostBeats = Math.max(
+    ...chart.bars
+      .slice(section.startBar, section.endBar)
+      .map((b) => b.beatCount),
   );
+  const smallestBar = tabBarWidth(mostBeats, BEAT_WIDTH * MIN_BEAT_WIDTH_SCALE);
   const perLine =
     barsPerRow === null || lineWidth === null
       ? barsPerRow
@@ -986,10 +988,19 @@ function SectionBlock({
           barsPerRow,
           Math.floor((lineWidth + BAR_GAP) / (smallestBar + BAR_GAP)),
         );
-  // Each bar takes an equal share of its line, shrinking a little first.
-  const fitWidth = perLine
-    ? `calc((100% - ${(perLine - 1) * BAR_GAP}px) / ${perLine})`
-    : undefined;
+  // One beat width for the whole section, so the beats align from line to
+  // line: the one that makes a line of its widest bars fill the line.
+  const beatWidth =
+    perLine === null || lineWidth === null
+      ? undefined
+      : lineBeatWidth({
+          lineWidth,
+          barsPerLine: perLine,
+          beatCount: mostBeats,
+          barChrome: BAR_CHROME,
+          gap: BAR_GAP,
+          baseBeatWidth: BEAT_WIDTH,
+        });
   // "Above" only means something once the lines have a set length.
   const repeats: ReadonlyMap<number, number> = useMemo(
     () =>
@@ -1000,7 +1011,7 @@ function SectionBlock({
   );
   const renderItem = (item: SectionBlockItem) =>
     item.kind === 'bar' ? (
-      renderBar(item.bar, fitWidth, repeats.get(item.bar))
+      renderBar(item.bar, beatWidth, repeats.get(item.bar))
     ) : (
       <button
         key={`rest-${item.startBar}`}
@@ -1355,9 +1366,7 @@ function BassMixPicker({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-bg-card border border-border-default px-3 py-2 min-w-0">
-      <dt className="lh-label">
-        {label}
-      </dt>
+      <dt className="lh-label">{label}</dt>
       <dd className="font-heading text-sm text-text-primary mt-0.5 truncate">
         {value}
       </dd>
