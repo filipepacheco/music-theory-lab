@@ -174,21 +174,34 @@ describe('chart settings in the Biblioteca', () => {
     const { result } = await openLibrary();
     expect(groupLibrarySongs(result.current.summaries, [])).toHaveLength(1);
 
+    // The settings route gives nothing during the deletion, so the device
+    // keeps the record by itself.
+    cloud.settings.failing = true;
     await act(async () => {
       await result.current.remove(chart.id);
     });
     await waitFor(() =>
       expect(cloud.charts.record(chart.id)?.chart).toBeNull(),
     );
-    await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+    await waitFor(() => expect(result.current.syncStatus).toBe('offline'));
 
     expect(result.current.summaries).toEqual([]);
     expect(groupLibrarySongs(result.current.summaries, [])).toEqual([]);
     expect(result.current.openChart).toBeNull();
     expect(await rocksmithLibrary.listSummaries()).toEqual([]);
-    // On the device and in the cloud.
     expect(await rocksmithLibrary.getSettings(chart.id)).toEqual(settings);
+
+    // The cloud keeps the record too, and the next synchronization reads
+    // none and removes none.
+    cloud.settings.failing = false;
+    cloud.sent.length = 0;
+    await act(async () => {
+      await result.current.synchronize();
+    });
+    expect(result.current.syncStatus).toBe('synced');
+    expect(cloud.sent.flatMap((item) => item.records)).toEqual([]);
     expect(cloud.settings.record(chart.id)).toEqual(settings);
+    expect(await rocksmithLibrary.getSettings(chart.id)).toEqual(settings);
   });
 
   it('shows no synchronization when the settings route fails, and the retry repairs it', async () => {

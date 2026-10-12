@@ -490,8 +490,15 @@ describe('chart settings and the deletion of their chart', () => {
     expect(await ids(second.library.listSummaries())).toEqual([chart.id]);
 
     await first.library.remove(chart.id);
+    // Before a synchronization: the device keeps the record by itself.
+    expect(await first.library.listSummaries()).toEqual([]);
+    expect(await first.library.listSettings()).toEqual([settings]);
     await syncAll(first, remote);
     await syncAll(second, remote);
+    // The settings synchronization read no record again to repair a loss.
+    expect(remote.settings.reads.map((read) => read.after)).toEqual([
+      0, 0, 1, 1,
+    ]);
 
     for (const item of [first, second]) {
       expect(await item.library.listSummaries()).toEqual([]);
