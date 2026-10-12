@@ -547,6 +547,36 @@ export function fittedBarsPerRow(chosen: number, fits: number): number {
   return room;
 }
 
+/** How many times its base width a beat may grow to fill a line. */
+export const MAX_BEAT_WIDTH_SCALE = 3;
+
+/**
+ * The beat width, in pixels, that makes `barsPerLine` bars of `beatCount`
+ * beats share a line `lineWidth` wide. Each bar also takes `barChrome`
+ * pixels that do not grow (padding and border), and `gap` separates the
+ * bars. The width never goes under `baseBeatWidth` nor over
+ * `MAX_BEAT_WIDTH_SCALE` times it: past that, the line keeps free space at
+ * its end. It is rounded down to the browser's layout unit, 1/64 px, so the
+ * bars never overflow the line.
+ */
+export function lineBeatWidth(line: {
+  lineWidth: number;
+  barsPerLine: number;
+  beatCount: number;
+  barChrome: number;
+  gap: number;
+  baseBeatWidth: number;
+}): number {
+  const bars = Math.max(1, Math.floor(line.barsPerLine));
+  const beats = bars * Math.max(1, line.beatCount);
+  const room = line.lineWidth - (bars - 1) * line.gap - bars * line.barChrome;
+  const shared = Math.floor((room / beats) * 64) / 64;
+  return Math.min(
+    line.baseBeatWidth * MAX_BEAT_WIDTH_SCALE,
+    Math.max(line.baseBeatWidth, shared),
+  );
+}
+
 /**
  * Bars that show the same tab as the bar right above them when a section
  * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
