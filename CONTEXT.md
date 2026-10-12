@@ -131,3 +131,33 @@ _Avoid_: detected key, the key
 **Quiz session**:
 One active run of music-theory questions, including its current question, answer result, score, streak, and replay state.
 _Avoid_: quiz state, quiz screen
+
+**Library song**:
+One row of the Biblioteca list: the charts and [[analysed-track]]s that share
+one [[song-key]]. It is a view calculated when the list loads; it merges and
+deletes nothing, and each chart keeps its own settings and linked recording.
+Its title and artist come from its best [[source]]: Guitar Pro, then
+Rocksmith, then MIDI. A click opens the chart of the best source, or the
+analysis when the song has only an analysed track.
+_Avoid_: merged chart, song record
+
+**Song key**:
+The normalized title and artist that group charts into a [[library-song]]:
+lower case, no accents, no punctuation, no text in brackets, and without
+words that name the file ("bass", "tab", a version number). A chart without
+an artist joins by title when only one song has that title. It is not a
+musical key.
+_Avoid_: key, tonal center
+
+**Source**:
+The file format of a chart: Rocksmith, MIDI, or Guitar Pro.
+_Avoid_: origin, format
+
+**Part**:
+The instrument of a chart: bass or drums.
+_Avoid_: track, instrument
+
+**Analysed track**:
+A recording that the offline pipeline analysed for chords, key, and tempo.
+It appears in the Biblioteca list through its [[library-song]].
+_Avoid_: library track, analysis
