@@ -23,7 +23,7 @@ export default function BeatDots({
         return (
           <div
             key={idx}
-            className={`rounded-full ${
+            className={`${
               isDownbeat
                 ? isAccent
                   ? 'w-[5px] h-[5px] sm:w-[6px] sm:h-[6px]'

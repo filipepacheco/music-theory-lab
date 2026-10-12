@@ -6,6 +6,7 @@ import { GROWLYBASS_SOURCE_COMMIT } from '@/constants/growlybass.generated';
 import { useBassSynth } from '@/hooks/useBassSynth';
 import BassFret from '@/components/instruments/BassFret';
 import { libraryFretHighlightKind } from '@/domain/libraryChordSync';
+import Segmented from '@/components/shared/Segmented';
 
 export interface BassNeckHighlight {
   pitchClasses: number[];
@@ -94,19 +95,18 @@ export default function BassNeck({ highlight }: Props = {}) {
   return (
     <div className="min-w-0">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-heading text-sm text-text-secondary">
+        <h3 className="lh-label">
           Baixo (4 cordas)
         </h3>
-        <button
-          onClick={() => setShowAllNotes(!showAllNotes)}
-          className={`text-xs font-medium px-2.5 py-1 rounded-control border transition-colors cursor-pointer ${
-            showAllNotes
-              ? 'border-accent bg-accent/15 text-accent'
-              : 'border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary'
-          }`}
-        >
-          {showAllNotes ? 'Todas as notas' : 'Apenas acordes'}
-        </button>
+        <Segmented
+          label="Notas no braço"
+          value={showAllNotes ? 'all' : 'chords'}
+          onChange={(value) => setShowAllNotes(value === 'all')}
+          options={[
+            { value: 'chords', label: 'Apenas acordes' },
+            { value: 'all', label: 'Todas as notas' },
+          ]}
+        />
       </div>
       <div className="overflow-x-auto min-w-0">
         {/* Fret numbers */}
@@ -120,7 +120,7 @@ export default function BassNeck({ highlight }: Props = {}) {
           {Array.from({ length: FRET_COUNT + 1 }, (_, fret) => (
             <div
               key={fret}
-              className="text-center text-xs text-text-muted font-mono"
+              className="text-center text-xs text-text-muted"
             >
               {fret === 0 ? '' : fret}
             </div>
@@ -139,7 +139,7 @@ export default function BassNeck({ highlight }: Props = {}) {
               }}
             >
               {/* String label */}
-              <div className="flex items-center justify-center text-sm font-mono text-text-secondary">
+              <div className="flex items-center justify-center text-sm text-text-secondary">
                 {STRING_LABELS[rowIdx]}
               </div>
 
@@ -197,7 +197,7 @@ export default function BassNeck({ highlight }: Props = {}) {
           );
         })}
       </div>
-      <div className="mt-3 text-[11px] leading-relaxed text-text-muted">
+      <div className="mt-3 text-small text-text-muted">
         {samplerStatus === 'loading' && (
           <span role="status">Carregando o timbre do baixo… </span>
         )}

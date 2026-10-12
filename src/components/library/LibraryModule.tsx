@@ -5,6 +5,7 @@ import RocksmithChartList from './RocksmithChartList';
 import RocksmithTrackDetail from './RocksmithTrackDetail';
 import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
+import Frame from '@/components/shared/Frame';
 
 type Selection =
   | { kind: 'analysis'; sha: string }
@@ -51,15 +52,17 @@ export default function LibraryModule() {
   };
 
   return (
-    <section className="section-panel flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-lg text-text-primary">Biblioteca</h2>
-        <p className="text-xs text-text-muted">
-          Análise automática de cifra, tom e andamento das faixas processadas
-          pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
-          de arquivos MIDI e Guitar Pro (.gp).
-        </p>
-      </div>
+    <Frame
+      as="section"
+      title="Biblioteca"
+      titleAs="h2"
+      className="flex flex-col gap-4"
+    >
+      <p className="text-xs text-text-muted">
+        Análise automática de cifra, tom e andamento das faixas processadas
+        pelo pipeline off-line, e linhas de baixo importadas do Rocksmith ou
+        de arquivos MIDI e Guitar Pro (.gp).
+      </p>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4 min-w-0">
@@ -70,7 +73,7 @@ export default function LibraryModule() {
             onSelect={(c) => setSelection({ kind: 'rocksmith', id: c.id })}
             onImport={(file) => void handleImport(file)}
           />
-          <p role="status" className="text-[11px] text-text-muted">
+          <p role="status" className="text-small text-text-muted">
             {syncStatus === 'syncing'
               ? 'Sincronizando linhas de baixo…'
               : syncStatus === 'synced'
@@ -88,11 +91,11 @@ export default function LibraryModule() {
           </p>
 
           <div className="flex flex-col gap-2">
-            <h3 className="font-heading text-xs uppercase tracking-wide text-text-muted">
+            <h3 className="lh-label">
               Faixas analisadas
             </h3>
             {error && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-danger">
                 Falha ao carregar o índice da biblioteca: {error}
               </p>
             )}
@@ -133,6 +136,6 @@ export default function LibraryModule() {
           </p>
         )}
       </div>
-    </section>
+    </Frame>
   );
 }

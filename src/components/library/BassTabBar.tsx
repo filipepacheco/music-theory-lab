@@ -202,18 +202,18 @@ function BassTabBar({
       }
       data-bar={bar.index}
       style={fitStyle}
-      className={`relative shrink-0 rounded-button border text-left transition-colors ${
+      className={`relative shrink-0 border text-left ${
         isActive
-          ? 'border-text-primary bg-bg-hover'
+          ? 'border-live bg-live-tint'
           : 'border-border-default bg-bg-card'
       } ${onSeek ? 'cursor-pointer hover:border-text-primary' : 'cursor-default'}`}
     >
-      <span className="absolute left-1 top-0 font-heading text-[8px] leading-none text-text-muted tabular-nums">
+      <span className="absolute left-1 top-0 font-heading text-micro leading-none text-text-muted tabular-nums">
         {bar.index + 1}
       </span>
       {analysis && repeat && <span className="block h-3" />}
       {analysis && !repeat && (
-        <span className="flex h-3 items-start justify-between gap-1 pl-5 pr-1 pt-0.5 font-heading text-[10px] leading-none">
+        <span className="flex h-3 items-start justify-between gap-1 pl-6 pr-1 pt-0.5 font-heading text-micro leading-none">
           <span
             className="font-bold"
             style={{
@@ -311,7 +311,7 @@ function BassTabBar({
                       : 'var(--color-text-primary)'
                 }
                 stroke={
-                  isActive ? 'var(--color-bg-hover)' : 'var(--color-bg-card)'
+                  isActive ? 'var(--color-live-tint)' : 'var(--color-bg-card)'
                 }
                 strokeWidth={3}
                 paintOrder="stroke"

@@ -1,10 +1,11 @@
 import type { HarmonicFunction } from "@/constants/harmonicFields";
 import { HARMONIC_FUNCTION_LABELS } from "@/constants/explanations";
+import Tag, { type TagTone } from "@/components/shared/Tag";
 
-const BADGE_STYLES: Record<HarmonicFunction, string> = {
-  T: "bg-tonic/20 text-tonic-light",
-  SD: "bg-subdominant/20 text-subdominant-light",
-  D: "bg-dominant/20 text-dominant-light",
+const BADGE_TONES: Record<HarmonicFunction, TagTone> = {
+  T: "tonic",
+  SD: "subdominant",
+  D: "dominant",
 };
 
 interface BadgeProps {
@@ -13,10 +14,8 @@ interface BadgeProps {
 
 export default function Badge({ harmonicFunction }: BadgeProps) {
   return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded-sm sm:rounded-full text-[10px] font-medium ${BADGE_STYLES[harmonicFunction]}`}
-    >
+    <Tag tone={BADGE_TONES[harmonicFunction]}>
       {HARMONIC_FUNCTION_LABELS[harmonicFunction]}
-    </span>
+    </Tag>
   );
 }

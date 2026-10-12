@@ -68,7 +68,7 @@ export default function PlaybackDock({
       ref={dockRef}
       role="region"
       aria-label="Braço do baixo"
-      className="fixed inset-x-0 bottom-20 sm:bottom-0 z-20 border-t border-border-default bg-bg-secondary/95 backdrop-blur-sm shadow-[0_-4px_16px_rgba(0,0,0,0.25)]"
+      className="fixed inset-x-0 bottom-20 sm:bottom-0 z-20 border-t border-border-strong bg-bg-secondary"
     >
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-6 py-2 flex flex-col gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -77,7 +77,9 @@ export default function PlaybackDock({
             onClick={onTogglePlay}
             disabled={!canPlay}
             aria-label={playing ? 'Pausar' : 'Tocar'}
-            className="w-8 h-8 shrink-0 rounded-full bg-accent text-white flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            className={`w-8 h-8 shrink-0 text-on-accent flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-default ${
+              playing ? 'bg-live' : 'bg-accent'
+            }`}
           >
             {playing ? (
               <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
@@ -94,7 +96,7 @@ export default function PlaybackDock({
             <div className="font-heading text-xs text-text-primary truncate">
               {title}
             </div>
-            <div className="text-[11px] text-text-muted truncate">{status}</div>
+            <div className="text-small text-text-muted truncate">{status}</div>
           </div>
           {actions}
           <button
@@ -104,7 +106,7 @@ export default function PlaybackDock({
               writeCollapsed(!collapsed);
             }}
             aria-expanded={!collapsed}
-            className="shrink-0 px-2 py-1 rounded-control border border-border-default text-[11px] text-text-muted hover:text-text-primary cursor-pointer"
+            className="shrink-0 px-2 py-1 border border-border-strong text-small text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
           >
             {collapsed ? 'Mostrar braço' : 'Recolher braço'}
           </button>

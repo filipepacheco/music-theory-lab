@@ -31,9 +31,9 @@ export function DraggableBar({
       <motion.div
         ref={setNodeRef}
         layout
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: isDragging ? 0.3 : 1 }}
-        className="group relative w-10 h-7 sm:w-14 sm:h-10 flex flex-col items-center justify-center rounded-button text-xs font-mono cursor-grab select-none transition-shadow active:cursor-grabbing"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isDragging ? 0.3 : 1 }}
+        className="group relative w-10 h-7 sm:w-14 sm:h-10 flex flex-col items-center justify-center text-xs font-mono cursor-grab select-none active:cursor-grabbing"
         style={{
           backgroundColor: effectiveColor
             ? effectiveColor + '20'
@@ -51,7 +51,7 @@ export function DraggableBar({
         {...attributes}
         {...listeners}
       >
-        <span className="text-[10px] sm:text-xs text-text-primary leading-none">
+        <span className="text-micro sm:text-xs text-text-primary leading-none">
           {shownIndex}
         </span>
         <div className="hidden sm:flex mt-0.5">
@@ -70,7 +70,7 @@ export function DraggableBar({
               e.stopPropagation();
               onRemove();
             }}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full text-[8px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 sm:opacity-0 sm:group-hover:opacity-100"
           >
             X
           </button>
@@ -98,7 +98,7 @@ export function BarOverlay({
   displayIndex?: number;
 }) {
   return (
-    <div className="w-14 h-10 sm:w-16 sm:h-12 flex flex-col items-center justify-center rounded-button text-xs font-mono bg-bg-card border-2 border-accent shadow-lg opacity-90">
+    <div className="w-14 h-10 sm:w-16 sm:h-12 flex flex-col items-center justify-center text-xs font-mono bg-bg-card border-2 border-accent shadow-lg opacity-90">
       <span className="text-text-primary">{displayIndex ?? bar.index + 1}</span>
       <BeatDots timeSignature={bar.timeSignature} accents={bar.accents} />
     </div>

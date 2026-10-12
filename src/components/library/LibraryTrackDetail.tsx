@@ -239,7 +239,7 @@ export default function LibraryTrackDetail({ track }: Props) {
       />
 
       {error && (
-        <p className="text-sm text-red-400">
+        <p className="text-sm text-danger">
           Falha ao carregar detalhes: {error}
         </p>
       )}
@@ -250,7 +250,7 @@ export default function LibraryTrackDetail({ track }: Props) {
 
       {data && (
         <div className="flex flex-col gap-5">
-          <div className="rounded-card border border-border-default bg-bg-card p-3 sm:p-4">
+          <div className="border border-border-default bg-bg-card p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <h4 className="font-heading text-sm text-text-secondary">
                 Braço sincronizado
@@ -267,7 +267,7 @@ export default function LibraryTrackDetail({ track }: Props) {
                 rootPitchClass: activeChord.rootPitchClass,
               }}
             />
-            <p className="mt-2 text-[11px] text-text-muted">
+            <p className="mt-2 text-small text-text-muted">
               A fundamental aparece em âmbar; as demais notas do acorde, em
               verde.
             </p>
@@ -298,19 +298,19 @@ export default function LibraryTrackDetail({ track }: Props) {
                   onEdit={editAnnotation}
                 />
               )}
-              <p className="text-[11px] text-text-muted">
+              <p className="text-small text-text-muted">
                 Renomeie no cabeçalho, clique em um compasso para dividir ou use
                 a fronteira para mover um compasso e unir seções. A ordem
                 original da gravação não muda.
               </p>
               {annotationError && (
-                <p className="text-[11px] text-red-400">{annotationError}</p>
+                <p className="text-small text-danger">{annotationError}</p>
               )}
             </div>
           )}
 
           {annotationError && !annotation && (
-            <p className="text-[11px] text-red-400">{annotationError}</p>
+            <p className="text-small text-danger">{annotationError}</p>
           )}
 
           <div className="flex flex-col gap-2">
@@ -338,7 +338,7 @@ export default function LibraryTrackDetail({ track }: Props) {
               />
             )}
 
-            <p className="text-[11px] text-text-muted">
+            <p className="text-small text-text-muted">
               Um bloco = um compasso, agrupado a partir do down-beat detectado.
               Compassos seguidos sem acorde detectado viram um bloco só.
               {seek
@@ -379,21 +379,21 @@ function LocalAudioAttachment({
     status === 'storage-error';
 
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
       <div>
         <p className="text-xs text-text-secondary">
           {fileName
             ? `Áudio local: ${fileName}`
             : 'O áudio original ainda não está vinculado a esta análise.'}
         </p>
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           O arquivo permanece somente neste navegador e não é enviado para a
           nuvem.
         </p>
       </div>
       <label
         htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover cursor-pointer"
+        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer"
       >
         {fileName ? 'Trocar arquivo local' : 'Vincular áudio original'}
       </label>
@@ -412,8 +412,8 @@ function LocalAudioAttachment({
       {message && (
         <p
           role={isError ? 'alert' : 'status'}
-          className={`text-[11px] ${
-            isError ? 'text-red-400' : 'text-text-muted'
+          className={`text-small ${
+            isError ? 'text-danger' : 'text-text-muted'
           }`}
         >
           {message}
@@ -449,11 +449,11 @@ function SectionBlock({
           Trecho {group.section.label}
         </span>
         {group.occurrenceTotal > 1 && (
-          <span className="text-[11px] text-text-muted">
+          <span className="text-small text-text-muted">
             {group.occurrence}ª de {group.occurrenceTotal}
           </span>
         )}
-        <span className="text-[11px] text-text-muted ml-auto tabular-nums">
+        <span className="text-small text-text-muted ml-auto tabular-nums">
           {formatDuration(group.section.start_seconds)}–
           {formatDuration(group.section.end_seconds)}
           {group.bars.length > 0 &&
@@ -469,7 +469,7 @@ function SectionBlock({
           onSeek={onSeek}
         />
       ) : (
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           Trecho curto demais para conter um compasso inteiro.
         </p>
       )}
@@ -499,10 +499,10 @@ function ChordCells({
         const isActive = cell.bars.some((b) => b.index === activeBarIndex);
         const widthUnits = Math.min(cell.span, MAX_COLLAPSED_SPAN);
         const className = [
-          'rounded-button border px-2 py-1 flex flex-col items-start justify-center',
-          'text-left leading-tight transition-colors',
+          'border px-2 py-1 flex flex-col items-start justify-center',
+          'text-left leading-tight',
           isActive
-            ? 'border-text-primary bg-bg-hover'
+            ? 'border-live bg-live-tint'
             : 'border-border-default bg-bg-card',
           onSeek
             ? 'hover:border-text-primary cursor-pointer'
@@ -529,17 +529,17 @@ function ChordCells({
                 {cell.chord}
               </span>
               {cell.romanNumeral && (
-                <span className="font-heading text-[10px] text-text-secondary">
+                <span className="font-heading text-micro text-text-secondary">
                   {cell.romanNumeral}
                 </span>
               )}
               {cell.span > 1 && (
-                <span className="font-heading text-[10px] text-text-secondary">
+                <span className="font-heading text-micro text-text-secondary">
                   ×{cell.span}
                 </span>
               )}
             </span>
-            <span className="text-[9px] text-text-muted tabular-nums">
+            <span className="text-micro text-text-muted tabular-nums">
               {formatDuration(cell.startSeconds)}
             </span>
           </button>
@@ -551,8 +551,8 @@ function ChordCells({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-button bg-bg-card border border-border-default px-3 py-2">
-      <dt className="text-[10px] uppercase tracking-wide text-text-muted">
+    <div className="bg-bg-card border border-border-default px-3 py-2">
+      <dt className="lh-label">
         {label}
       </dt>
       <dd className="font-heading text-sm text-text-primary mt-0.5">{value}</dd>

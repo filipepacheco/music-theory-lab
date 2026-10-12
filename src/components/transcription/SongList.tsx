@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useSongs } from '@/hooks/useSongs';
 import { SECTION_COLORS } from '@/constants/songSections';
+import { confirmDialog } from '@/services/confirm';
 
 export default function SongList() {
   const loadSong = useAppStore((s) => s.loadSong);
@@ -10,9 +10,7 @@ export default function SongList() {
 
   if (isLoading) {
     return (
-      <div className="text-xs text-text-muted py-2">
-        Carregando músicas...
-      </div>
+      <div className="text-xs text-text-muted py-2">Carregando músicas...</div>
     );
   }
 
@@ -29,55 +27,62 @@ export default function SongList() {
         {songs.map((song) => {
           const isActive = song.id === activeSongId;
           return (
-            <motion.button
+            <div
               key={song.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => loadSong(song)}
-              className={`group relative text-left px-4 py-3 rounded-button border transition-all cursor-pointer ${
+              className={`relative border ${
                 isActive
-                  ? 'border-accent bg-accent/10'
-                  : 'border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)]'
+                  ? 'border-accent bg-bg-tertiary'
+                  : 'border-border-default bg-bg-card hover:border-accent hover:shadow-lift'
               }`}
             >
-              <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent transition-colors">
-                {song.title}
-              </span>
-              {song.artist && (
-                <span className="text-[10px] text-text-muted block mt-0.5">
-                  {song.artist}
+              <button
+                type="button"
+                aria-current={isActive ? 'true' : undefined}
+                onClick={() => loadSong(song)}
+                className="block w-full h-full text-left px-4 py-3 cursor-pointer"
+              >
+                <span className="font-heading text-xs text-text-primary block pr-6">
+                  {song.title}
                 </span>
-              )}
-
-              {/* Section pills */}
-              <div className="flex gap-1 flex-wrap mt-1.5">
-                {song.sections.map((sec) => (
-                  <span
-                    key={sec.id}
-                    className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                    style={{
-                      backgroundColor: SECTION_COLORS[sec.type] + '20',
-                      color: SECTION_COLORS[sec.type],
-                    }}
-                  >
-                    {sec.customLabel || sec.type}
+                {song.artist && (
+                  <span className="text-micro text-text-muted block mt-0.5">
+                    {song.artist}
                   </span>
-                ))}
-              </div>
+                )}
+
+                {/* Section pills */}
+                <span className="flex gap-1 flex-wrap mt-1.5">
+                  {song.sections.map((sec) => (
+                    <span
+                      key={sec.id}
+                      className="text-micro font-mono px-1.5 py-0.5"
+                      style={{
+                        backgroundColor: SECTION_COLORS[sec.type] + '20',
+                        color: SECTION_COLORS[sec.type],
+                      }}
+                    >
+                      {sec.customLabel || sec.type}
+                    </span>
+                  ))}
+                </span>
+              </button>
 
               <button
                 type="button"
                 aria-label={`Remover ${song.title}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.confirm(`Remover "${song.title}"?`))
-                    remove(song.id);
+                onClick={async () => {
+                  const confirmed = await confirmDialog({
+                    title: `Remover "${song.title}"?`,
+                    confirmLabel: 'Remover',
+                    danger: true,
+                  });
+                  if (confirmed) remove(song.id);
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>
-            </motion.button>
+            </div>
           );
         })}
       </div>

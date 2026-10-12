@@ -1,19 +1,7 @@
 import { memo } from "react";
-import { motion } from "framer-motion";
 import type { HarmonicFunction } from "@/constants/harmonicFields";
 import Badge from "@/components/shared/Badge";
-
-const FUNCTION_BORDER_COLORS: Record<HarmonicFunction, string> = {
-  T: "var(--color-tonic)",
-  SD: "var(--color-subdominant)",
-  D: "var(--color-dominant)",
-};
-
-const FUNCTION_GLOW_COLORS: Record<HarmonicFunction, string> = {
-  T: "rgba(59, 130, 246, 0.35)",
-  SD: "rgba(34, 197, 94, 0.35)",
-  D: "rgba(249, 115, 22, 0.35)",
-};
+import { FUNCTION_COLORS } from "@/constants/functionColors";
 
 interface ChordCardProps {
   romanNumeral: string;
@@ -22,7 +10,6 @@ interface ChordCardProps {
   noteNames: string[];
   intervals: number[];
   isSelected: boolean;
-  index: number;
   onClick: () => void;
 }
 
@@ -32,38 +19,35 @@ const ChordCard = memo(function ChordCard({
   harmonicFunction,
   noteNames,
   isSelected,
-  index,
   onClick,
 }: ChordCardProps) {
-  const borderColor = FUNCTION_BORDER_COLORS[harmonicFunction];
-  const glowColor = FUNCTION_GLOW_COLORS[harmonicFunction];
+  const functionColor = FUNCTION_COLORS[harmonicFunction];
 
   return (
-    <motion.button
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.05 }}
-      whileHover={{ scale: 1.02, y: -2 }}
-      whileTap={{ scale: 0.97 }}
+    <button
       onClick={onClick}
       aria-label={`${romanNumeral} - ${chordName}`}
       aria-pressed={isSelected}
-      className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 px-2.5 sm:p-4 rounded-card sm:rounded-button bg-bg-card border transition-shadow cursor-pointer min-w-20 sm:min-w-[100px] shrink-0 sm:shrink sm:flex-1"
-      style={{
-        borderColor: isSelected ? borderColor : "var(--color-border-default)",
-        borderWidth: isSelected ? 2 : 1,
-        boxShadow: isSelected
-          ? `0 0 20px ${glowColor}, 0 0 6px ${glowColor}`
-          : "var(--shadow-card)",
-      }}
+      className={`flex flex-col items-center gap-1.5 sm:gap-2 py-3 px-2.5 sm:p-4 bg-bg-card border cursor-pointer min-w-20 sm:min-w-[100px] shrink-0 sm:shrink sm:flex-1 active:translate-x-px active:translate-y-px ${
+        isSelected ? "" : "border-border-default hover:border-accent hover:shadow-lift"
+      }`}
+      style={
+        // The chosen chord lifts on a hard shadow in its function colour.
+        isSelected
+          ? {
+              borderColor: functionColor,
+              boxShadow: `4px 4px 0 0 ${functionColor}`,
+            }
+          : undefined
+      }
     >
       {/* Roman numeral */}
-      <span className="font-heading text-[20px] sm:text-lg font-extrabold sm:font-bold text-text-primary leading-none">
+      <span className="text-title leading-none text-text-primary">
         {romanNumeral}
       </span>
 
       {/* Chord name */}
-      <span className="text-[12px] sm:text-sm font-medium sm:font-normal font-mono text-text-secondary">
+      <span className="text-meta sm:text-ui text-text-secondary">
         {chordName}
       </span>
 
@@ -75,14 +59,13 @@ const ChordCard = memo(function ChordCard({
         {noteNames.map((n, i) => (
           <span
             key={i}
-            className="text-[10px] font-mono text-text-primary px-1 sm:px-2 py-0.5 rounded-[3px] sm:rounded"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
+            className="text-micro text-text-primary px-1 sm:px-2 py-0.5 bg-bg-tertiary border border-border-default"
           >
             {n}
           </span>
         ))}
       </div>
-    </motion.button>
+    </button>
   );
 });
 

@@ -25,9 +25,8 @@ export default function ModuleNav() {
 
   return (
     <nav
-      className="flex gap-0.5 rounded-button p-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-full bg-bg-tertiary/50"
-      role="navigation"
-      aria-label="Modulos"
+      className="lh-tabs overflow-x-auto scrollbar-none max-w-full"
+      aria-label="Módulos"
     >
       {VISIBLE_MODULES.map((mod) => {
         const isActive = activeModule === mod.id;
@@ -36,12 +35,7 @@ export default function ModuleNav() {
             key={mod.id}
             onClick={() => setActiveModule(mod.id)}
             aria-current={isActive ? "page" : undefined}
-            className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-button text-[11px] sm:text-[13px] font-medium transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              isActive
-                ? "text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-            style={isActive ? { backgroundColor: "var(--color-bg-card)", boxShadow: "var(--shadow-card)" } : undefined}
+            className="lh-tab shrink-0"
           >
             {mod.label}
           </button>

@@ -11,6 +11,10 @@ import SongList from './SongList';
 import HearKeyButton from './HearKeyButton';
 import BeatTimeline from '@/components/harmonicField/BeatTimeline';
 import ProgressionChordStrip from '@/components/harmonicField/ProgressionChordStrip';
+import Frame from '@/components/shared/Frame';
+import Button from '@/components/shared/Button';
+import Field from '@/components/shared/Field';
+import Tag from '@/components/shared/Tag';
 
 export default function TranscriptionModule() {
   const songSections = useAppStore((state) => state.songSections);
@@ -49,22 +53,20 @@ export default function TranscriptionModule() {
       <div>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-accent">
-              Revisão focada
-            </p>
+            <p className="lh-label">Revisão focada</p>
             <input
               type="text"
               value={songTitle}
               onChange={(event) => setSongTitle(event.target.value)}
               placeholder="Título da música"
-              className="mt-1 w-full max-w-2xl truncate bg-transparent font-heading text-2xl text-text-primary placeholder:text-text-muted focus:outline-none"
+              className="mt-1 w-full max-w-2xl truncate bg-transparent font-heading text-2xl text-text-primary placeholder:text-text-muted"
             />
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-muted">
               <span>{chordCountLabel}</span>
               <span>·</span>
               <span
                 className={
-                  reviewCount > 0 ? 'text-amber-200' : 'text-emerald-300'
+                  reviewCount > 0 ? 'text-warning' : 'text-success'
                 }
               >
                 {reviewCount > 0
@@ -76,29 +78,31 @@ export default function TranscriptionModule() {
           <div className="flex shrink-0 items-center gap-2">
             <SaveSongButton />
             {(activeSongId || songSections.length > 0) && (
-              <button
-                type="button"
+              <Button
                 onClick={clearSong}
-                className="text-xs text-text-muted transition-colors hover:text-text-primary"
+                size="sm"
               >
                 Nova transcrição
-              </button>
+              </Button>
             )}
           </div>
         </div>
 
-        <div className="section-panel flex flex-col gap-4">
+        <Frame
+          title="Transcrição"
+          titleAs="h2"
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4">
-            <input
+            <Field
               type="text"
               value={songArtist}
               onChange={(event) => setSongArtist(event.target.value)}
               placeholder="Artista"
-              className="min-w-[180px] flex-1 rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              aria-label="Artista"
+              className="min-w-[180px]"
             />
-            <span className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs font-mono text-text-secondary">
-              {keyDisplay}
-            </span>
+            <Tag tone="bright">{keyDisplay}</Tag>
             <HearKeyButton />
           </div>
 
@@ -107,7 +111,7 @@ export default function TranscriptionModule() {
           <TranscriptionReviewWorkspace />
 
           {songSections.length > 0 && (
-            <div className="rounded-section border border-border-default bg-bg-tertiary/20">
+            <div className="border border-border-default bg-bg-tertiary/20">
               <button
                 type="button"
                 onClick={() => setShowChordPicker((current) => !current)}
@@ -118,7 +122,7 @@ export default function TranscriptionModule() {
                   <span className="block text-sm font-medium text-text-primary">
                     Adicionar acorde manualmente
                   </span>
-                  <span className="mt-1 block text-[10px] text-text-muted">
+                  <span className="mt-1 block text-micro text-text-muted">
                     Use o campo harmônico ou escolha um acorde cromático para a
                     seção ativa.
                   </span>
@@ -136,26 +140,25 @@ export default function TranscriptionModule() {
           )}
 
           {hasSteps && (
-            <div className="rounded-section border border-border-default bg-bg-tertiary/20 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-medium text-text-primary">
-                    Prática
-                  </h3>
-                  <p className="mt-1 text-[10px] text-text-muted">
-                    Ouça a seção atual ou a música inteira.
-                  </p>
-                </div>
-                <span className="text-xs text-text-muted">
-                  {playingSectionIndex !== undefined
-                    ? 'Tocando seção'
-                    : 'Pronto para tocar'}
-                </span>
-              </div>
+            <Frame
+              title="Prática"
+              titleAs="h3"
+              variant="double"
+              live={playingSectionIndex !== undefined}
+              foot={
+                playingSectionIndex !== undefined
+                  ? 'tocando seção'
+                  : 'pronto para tocar'
+              }
+              className="flex flex-col gap-3"
+            >
+              <p className="lh-meta-text">
+                Ouça a seção atual ou a música inteira.
+              </p>
               <SongPlaybackControls
                 onPlayingSectionChange={setPlayingSectionIndex}
               />
-            </div>
+            </Frame>
           )}
 
           <AnimatePresence>
@@ -166,7 +169,7 @@ export default function TranscriptionModule() {
               <ProgressionChordStrip key="chord-strip" />
             )}
           </AnimatePresence>
-        </div>
+        </Frame>
       </div>
 
       <SongList />

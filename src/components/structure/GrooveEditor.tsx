@@ -17,6 +17,7 @@ import type {
   GrooveSubdivision,
   StructureSection,
 } from '@/types';
+import Button from '@/components/shared/Button';
 
 function hasAnyHit(groove: GroovePattern): boolean {
   return DRUM_PIECES.some((piece) => groove[piece.id].some(Boolean));
@@ -69,8 +70,7 @@ export function GrooveEditor({
     <div className="flex flex-col gap-2 border-t border-border-default pt-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
             disabled={!hasGrooveHits && !isPlaying}
             onClick={(e) => {
               e.stopPropagation();
@@ -81,18 +81,14 @@ export function GrooveEditor({
                 void groovePlayer.play(section.groove, structureBpm);
               }
             }}
-            className={`text-[10px] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-              isPlaying
-                ? 'text-red-400 hover:text-red-300'
-                : 'text-accent hover:text-accent/80'
-            }`}
+            size="sm"
+            pressed={isPlaying}
+            live={isPlaying}
             aria-label={isPlaying ? 'Parar groove' : 'Ouvir groove'}
           >
             {isPlaying ? 'Parar' : 'Ouvir groove'}
-          </button>
-          <span className="text-[10px] uppercase tracking-wider text-text-muted">
-            Groove
-          </span>
+          </Button>
+          <span className="lh-label">Groove</span>
           <select
             value={subdivision}
             aria-label="Resolução do groove"
@@ -105,7 +101,7 @@ export function GrooveEditor({
                 e.target.value as GrooveSubdivision,
               );
             }}
-            className="bg-bg-tertiary/70 border border-border-default rounded px-1.5 py-0.5 text-[10px] text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-micro text-text-secondary cursor-pointer"
           >
             {GROOVE_SUBDIVISIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -125,7 +121,7 @@ export function GrooveEditor({
                 Number(e.target.value) as GrooveMeasureCount,
               );
             }}
-            className="bg-bg-tertiary/70 border border-border-default rounded px-1.5 py-0.5 text-[10px] text-text-secondary focus:outline-none focus:border-accent cursor-pointer"
+            className="bg-bg-tertiary border border-border-strong px-1.5 py-0.5 text-micro text-text-secondary cursor-pointer"
           >
             {GROOVE_MEASURE_COUNTS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -135,24 +131,23 @@ export function GrooveEditor({
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               if (isPlaying) groovePlayer.stop();
               clearGroove(section.id);
             }}
-            className="text-[10px] text-text-muted hover:text-red-400 transition-colors cursor-pointer"
+            size="sm"
           >
             Limpar
-          </button>
+          </Button>
         </div>
       </div>
 
       {DRUM_PIECES.map((piece) => (
         <div key={piece.id} className="flex items-center gap-1">
           <span
-            className="w-5 shrink-0 text-center font-mono text-[9px] text-text-muted"
+            className="w-5 shrink-0 text-center font-mono text-micro text-text-muted"
             title={
               piece.id === 'bumbo'
                 ? 'Bumbo'
@@ -177,7 +172,7 @@ export function GrooveEditor({
                       e.stopPropagation();
                       toggleGrooveHit(section.id, piece.id, step);
                     }}
-                    className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 rounded-[3px] transition-colors cursor-pointer"
+                    className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 cursor-pointer"
                     style={{
                       backgroundColor: active
                         ? color

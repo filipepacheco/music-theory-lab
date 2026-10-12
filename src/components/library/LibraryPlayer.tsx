@@ -17,12 +17,12 @@ export default function LibraryPlayer({ audio }: Props) {
   };
 
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex items-center gap-3">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex items-center gap-3">
       <button
         type="button"
         onClick={togglePlay}
         disabled={disabled}
-        className="font-heading text-sm px-3 py-1 rounded-button bg-bg-elevated text-text-primary hover:bg-bg-hover disabled:opacity-50 disabled:cursor-not-allowed"
+        className="font-heading text-sm px-3 py-1 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label={audio.playing ? 'Pausar' : 'Tocar'}
       >
         {audio.playing ? 'Pausar' : 'Tocar'}
@@ -38,7 +38,7 @@ export default function LibraryPlayer({ audio }: Props) {
         aria-label="Posição da faixa"
         className="flex-1 accent-text-primary"
       />
-      <span className="text-[11px] text-text-muted font-heading tabular-nums whitespace-nowrap">
+      <span className="text-small text-text-muted font-heading tabular-nums whitespace-nowrap">
         {formatDuration(audio.currentSeconds)} /{' '}
         {formatDuration(audio.duration)}
       </span>

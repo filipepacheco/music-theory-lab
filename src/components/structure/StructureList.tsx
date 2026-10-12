@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useStructures } from '@/hooks/useStructures';
+import { confirmDialog } from '@/services/confirm';
 
 export default function StructureList() {
   const { items: structures, isLoading, remove } = useStructures();
@@ -28,63 +28,66 @@ export default function StructureList() {
         {structures.map((structure) => {
           const isActive = structure.id === activeStructureId;
           return (
-            <motion.button
+            <div
               key={structure.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => loadStructure(structure)}
-              className={`group relative text-left px-4 py-3 rounded-button border transition-all cursor-pointer ${
+              className={`relative border ${
                 isActive
-                  ? 'border-accent bg-accent/10'
-                  : 'border-border-default bg-bg-card hover:border-accent/50 hover:shadow-[var(--shadow-card-hover)]'
+                  ? 'border-accent bg-bg-tertiary'
+                  : 'border-border-default bg-bg-card hover:border-accent hover:shadow-lift'
               }`}
             >
-              <span className="font-heading text-xs text-text-primary block pr-6 group-hover:text-accent transition-colors">
-                {structure.title}
-              </span>
-              {structure.artist && (
-                <span className="text-[10px] text-text-muted block mt-0.5">
-                  {structure.artist}
+              <button
+                type="button"
+                aria-current={isActive ? 'true' : undefined}
+                onClick={() => loadStructure(structure)}
+                className="block w-full h-full text-left px-4 py-3 cursor-pointer"
+              >
+                <span className="font-heading text-xs text-text-primary block pr-6">
+                  {structure.title}
                 </span>
-              )}
+                {structure.artist && (
+                  <span className="text-micro text-text-muted block mt-0.5">
+                    {structure.artist}
+                  </span>
+                )}
 
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] text-text-muted font-mono">
-                  {structure.bars.length}c
+                <span className="flex items-center gap-2 mt-1.5">
+                  <span className="text-micro text-text-muted font-mono">
+                    {structure.bars.length}c
+                  </span>
+                  <span className="flex gap-1 flex-wrap">
+                    {structure.sections.map((sec) => (
+                      <span
+                        key={sec.id}
+                        className="text-micro font-mono px-1.5 py-0.5"
+                        style={{
+                          backgroundColor: sec.color + '20',
+                          color: sec.color,
+                        }}
+                      >
+                        {sec.name}
+                      </span>
+                    ))}
+                  </span>
                 </span>
-                <div className="flex gap-1 flex-wrap">
-                  {structure.sections.map((sec) => (
-                    <span
-                      key={sec.id}
-                      className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                      style={{
-                        backgroundColor: sec.color + '20',
-                        color: sec.color,
-                      }}
-                    >
-                      {sec.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              </button>
 
               <button
                 type="button"
                 aria-label={`Remover ${structure.title}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (
-                    window.confirm(
-                      `Remover "${structure.title}"?`,
-                    )
-                  )
-                    void remove(structure.id);
+                onClick={async () => {
+                  const confirmed = await confirmDialog({
+                    title: `Remover "${structure.title}"?`,
+                    confirmLabel: 'Remover',
+                    danger: true,
+                  });
+                  if (confirmed) void remove(structure.id);
                 }}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
+                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
               >
                 X
               </button>
-            </motion.button>
+            </div>
           );
         })}
       </div>
