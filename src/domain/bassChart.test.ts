@@ -413,7 +413,7 @@ describe('queries', () => {
     });
     /** Pairs of labels on one level whose boxes overlap. */
     const overlaps = (l: LabelLane, beatWidth: number): number => {
-      const places = degreeLanePlaces(l, beatWidth, GAP);
+      const places = degreeLanePlaces(l, beatWidth, GAP, BASE * 3);
       let count = 0;
       for (let a = 0; a < places.length; a += 1) {
         for (let b = a + 1; b < places.length; b += 1) {
@@ -492,6 +492,7 @@ describe('queries', () => {
         ]),
         BASE * 3,
         GAP,
+        BASE * 3,
       );
       expect(places[0]).toEqual({ level: 0, x: 0, shift: 0 });
       expect(places[1]).toEqual({ level: 1, x: 8.5, shift: 0 });
@@ -515,6 +516,7 @@ describe('queries', () => {
         ]),
         BASE * 3,
         GAP,
+        BASE * 3,
       );
       // Level 1 is free again at 34 px, level 2 at 20.2 px; the note is at
       // 15.3 px.
@@ -535,6 +537,21 @@ describe('queries', () => {
         { level: 1, x: 8.5, shift: 0 },
         { level: 0, x: 0, shift: 0 },
       ]);
+    });
+
+    it('keeps every label inside its bar at a set line length', () => {
+      // 16 sixteenths of 3 characters over a 4-beat bar at 5.8 px a beat.
+      const dense = lane(
+        Array.from({ length: 16 }, (_, i) => [i / 4, 1 + (i % 3)]),
+      );
+      for (const width of [1, 2, 5.8, 20, 60, 101]) {
+        const places = degreeLanePlaces(dense, width, GAP, BASE * 3);
+        expect(places.every((p) => p.shift === 0)).toBe(true);
+        expect(places.every((p) => p.level < 2)).toBe(true);
+        places.forEach((p, i) => {
+          expect(p.x).toBeCloseTo(dense.labels[i].beat * width);
+        });
+      }
     });
 
     describe('at the needed beat width of a section', () => {
@@ -597,7 +614,7 @@ describe('queries', () => {
 
       it('moves labels only when two levels are not enough', () => {
         const width = sectionBeatWidth(BASE, neededBeatWidth([twelfths], GAP));
-        const places = degreeLanePlaces(twelfths, width, GAP);
+        const places = degreeLanePlaces(twelfths, width, GAP, BASE * 3);
         expect(places.some((p) => p.shift > 0)).toBe(true);
         expect(overlaps(twelfths, width)).toBe(0);
       });

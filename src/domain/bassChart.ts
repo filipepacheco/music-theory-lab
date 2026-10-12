@@ -650,15 +650,19 @@ const TOUCH_SLACK = 1e-6;
  * beat, in the order of `lane.labels`. A label touches another when it is
  * less than `gap` pixels clear of it. A label stays on the first level when
  * it has the space; when it touches the label before it, it goes to the
- * second level. When it touches on both levels, which only happens once the
- * beats are at their largest width (`neededBeatWidth` keeps one level clear
- * below that), it moves right by the missing distance, on the level where
- * that distance is smaller.
+ * second level. When it touches on both levels, it moves right by the
+ * missing distance, on the level where that distance is smaller, but only
+ * when `beatWidth` is at least `shiftFrom`, the largest width of a beat
+ * (`neededBeatWidth` keeps one level clear below that in the automatic
+ * layout). Below `shiftFrom` (a set line length that squeezes the beats) the
+ * labels never move: they stay at their notes on two levels and may touch,
+ * so none leaves its bar. `shiftFrom` defaults to never.
  */
 export function degreeLanePlaces(
   lane: LabelLane,
   beatWidth: number,
   gap: number,
+  shiftFrom: number = Infinity,
 ): LaneLabelPlace[] {
   const order = lane.labels
     .map((_, index) => index)
@@ -673,7 +677,7 @@ export function degreeLanePlaces(
     let shift = 0;
     if (level < 0) {
       level = free.indexOf(Math.min(...free));
-      shift = free[level] - noteX;
+      if (beatWidth + TOUCH_SLACK >= shiftFrom) shift = free[level] - noteX;
     }
     places[index] = { level, x: noteX + shift, shift };
     free[level] = noteX + shift + label.chars * lane.charWidth + gap;
