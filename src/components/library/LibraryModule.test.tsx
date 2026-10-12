@@ -13,6 +13,7 @@ import {
 import LibraryModule from '@/components/library/LibraryModule';
 import { useAppStore } from '@/store/useAppStore';
 import { withGroupOverride } from '@/domain/chartSettings';
+import { tuningOf } from '@/domain/libraryListView';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 import type { ChartSettings } from '@/domain/chartSettings';
@@ -36,6 +37,7 @@ const state = vi.hoisted(() => ({
   importFile: vi.fn(),
   audioIds: [] as string[],
   settings: new Map<string, ChartSettings>(),
+  failSave: false,
 }));
 vi.mock('@/services/rocksmithLibrary', () => ({
   rocksmithLibrary: {
@@ -43,6 +45,7 @@ vi.mock('@/services/rocksmithLibrary', () => ({
     listSettings: async () => [...state.settings.values()],
     getSettings: async (id: string) => state.settings.get(id) ?? null,
     saveSettings: async (item: ChartSettings) => {
+      if (state.failSave) throw new Error('refused');
       state.settings.set(item.chartId, item);
     },
   },
@@ -116,6 +119,7 @@ beforeEach(() => {
   state.importFile.mockReset();
   state.audioIds = [];
   state.settings.clear();
+  state.failSave = false;
   window.history.replaceState(null, '', '#/biblioteca');
 });
 afterEach(cleanup);
@@ -559,20 +563,34 @@ describe('Biblioteca list search, filters, and sort', () => {
   });
 
   it('filters by tuning', () => {
+    const dropped = [-2, 0, 0, 0];
+    state.summaries = state.summaries.map((item) =>
+      item.id === 'c' ? { ...item, tuning: dropped } : item,
+    );
     render(<LibraryModule />);
-    const select = screen.getByLabelText('Afinação') as HTMLSelectElement;
-    expect(select.options.length).toBeGreaterThanOrEqual(2);
-    fireEvent.change(select, { target: { value: select.options[1].value } });
-    expect(rowTitles().length).toBeGreaterThan(0);
+    const select = screen.getByRole('combobox', {
+      name: 'Afinação',
+    }) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: tuningOf(dropped) } });
+    expect(rowTitles()).toEqual(['Zebra']);
+    fireEvent.change(select, { target: { value: tuningOf([0, 0, 0, 0]) } });
+    expect(rowTitles()).toEqual(['Água de Beber', 'Come Together']);
   });
 
   it('sorts by title, artist, and tempo', () => {
+    const tempos: Record<string, number> = { a: 100, b: 140, b2: 140, c: 80 };
+    state.summaries = state.summaries.map((item) => ({
+      ...item,
+      tempoBpm: tempos[item.id],
+    }));
     render(<LibraryModule />);
     const sort = screen.getByLabelText('Ordenar por');
     fireEvent.change(sort, { target: { value: 'title' } });
     expect(rowTitles()).toEqual(['Água de Beber', 'Come Together', 'Zebra']);
     fireEvent.change(sort, { target: { value: 'artist' } });
     expect(rowTitles()).toEqual(['Zebra', 'Come Together', 'Água de Beber']);
+    fireEvent.change(sort, { target: { value: 'tempo' } });
+    expect(rowTitles()).toEqual(['Zebra', 'Água de Beber', 'Come Together']);
   });
 
   it('shows a message when the search has no result, and clears it', () => {
@@ -657,6 +675,50 @@ describe('Correct the group of a chart', () => {
     // The song screen now holds both sources.
     expect(await screen.findByText('Guitar Pro')).toBeTruthy();
     expect(screen.getByText('MIDI')).toBeTruthy();
+  });
+
+  it('does not offer a song that already holds a chart of the same source and part', async () => {
+    state.summaries = [
+      chartOf('m1', 'Come Together', 'The Beatles', 'midi'),
+      chartOf('g1', 'Imagine', 'John Lennon', 'gp'),
+      chartOf('m2', 'Come Togther', 'The Beatles', 'midi'),
+      chartOf('g2', 'Yesterday', 'The Beatles', 'gp'),
+    ];
+    window.history.replaceState(
+      null,
+      '',
+      `#/biblioteca/${encodeURIComponent('come togther|the beatles')}/midi/bass`,
+    );
+    render(<LibraryModule />);
+    await screen.findByTestId('chart');
+    const options = within(screen.getByLabelText('Mover a cifra para a música'))
+      .getAllByRole('option')
+      .map((option) => (option as HTMLOptionElement).value);
+    expect(options).toContain('imagine|john lennon');
+    expect(options).toContain('yesterday|the beatles');
+    expect(options).not.toContain('come together|the beatles');
+  });
+
+  it('shows a message when the correction cannot be saved', async () => {
+    state.summaries = songs();
+    state.failSave = true;
+    window.history.replaceState(
+      null,
+      '',
+      `#/biblioteca/${encodeURIComponent('come togther|the beatles')}/midi/bass`,
+    );
+    render(<LibraryModule />);
+    await screen.findByTestId('chart');
+    fireEvent.change(screen.getByLabelText('Mover a cifra para a música'), {
+      target: { value: 'come together|the beatles' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mover' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(
+      /Não foi possível salvar a correção/,
+    );
+    expect(window.location.hash).toContain(
+      encodeURIComponent('come togther|the beatles'),
+    );
   });
 
   it('opens the song that holds a moved chart after a new import of its file', async () => {
