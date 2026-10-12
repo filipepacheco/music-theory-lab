@@ -92,4 +92,22 @@ describe('createDrumSampleTransport', () => {
       currentSeconds: 4,
     });
   });
+
+  it('lets the last hits ring out at the end of the chart', async () => {
+    const { transport, voice, advance } = harness();
+    await transport.play();
+    advance(5);
+    expect(voice.stop).not.toHaveBeenCalled();
+  });
+
+  it('a seek while playing stops the voice, then schedules only the hits from the seek', async () => {
+    const { transport, voice, scheduled, advance } = harness();
+    await transport.play();
+    advance(0.1);
+    scheduled.length = 0;
+    transport.seek(2);
+    expect(voice.stop).toHaveBeenCalledTimes(1);
+    advance(0.1);
+    expect(scheduled.map((s) => s.hit.time)).toEqual([2]);
+  });
 });

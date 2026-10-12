@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import DrumGridBar, {
   DRUM_BAR_CHROME,
   DRUM_BEAT_WIDTH,
@@ -30,12 +30,15 @@ import {
   sectionGroove,
 } from '@/domain/drumSectionGroove';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
+import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 
 interface Props {
   chart: DrumChart;
   /** A new value reloads the line lengths (a synchronization brought some). */
   settingsKey?: unknown;
   onRemove: () => void;
+  /** The clock of the two parts of one file; it lives above the part. */
+  parts?: SongPartsPlayback;
 }
 
 const NO_MARKS: DrumGridMark[] = [];
@@ -61,13 +64,21 @@ export default function DrumPartDetail({
   chart,
   settingsKey,
   onRemove,
+  parts,
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const recording = useLibraryAudio(audioUrl);
   const synthOnly = audioState.status === 'missing';
-  const samples = useDrumSamplePlayback(chart, synthOnly);
-  const audio = synthOnly ? samples : recording;
+  const together = synthOnly && !!parts?.active;
+  const samples = useDrumSamplePlayback(chart, synthOnly && !together);
+  const audio =
+    together && parts ? parts.audio : synthOnly ? samples : recording;
+  const reportRecording = parts?.reportRecording;
+  const recordingLinked = audioState.status !== 'missing';
+  useEffect(() => {
+    reportRecording?.(chart.id, recordingLinked);
+  }, [reportRecording, chart.id, recordingLinked]);
   const hasPlayer = audioUrl !== null || synthOnly;
   const cursor = useSongCursor(chart, audio, hasPlayer);
   const { activeBar, seek } = cursor;
@@ -127,6 +138,11 @@ export default function DrumPartDetail({
       ]}
       audio={audio}
       hasPlayer={hasPlayer}
+      partMutes={
+        together && parts
+          ? { mutes: parts.mutes, onToggle: parts.toggleMute }
+          : undefined
+      }
       recording={{
         state: audioState,
         saveError,

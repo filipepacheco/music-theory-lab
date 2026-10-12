@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from 'react';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
+import PartMuteControls from '@/components/library/PartMuteControls';
 import PlaybackDock from '@/components/library/PlaybackDock';
+import type { PartMutes, PlaybackPart } from '@/domain/songPartsPlayback';
 import {
   formatDuration,
   sectionColorVar,
@@ -164,6 +166,8 @@ interface Props<L> {
     showLabel: string;
     hideLabel: string;
   };
+  /** Mute buttons of the two parts; present while they play together. */
+  partMutes?: { mutes: PartMutes; onToggle: (part: PlaybackPart) => void };
   /** A floating panel of the part, such as the circle of fifths. */
   floating?: (room: FloatingRoom) => ReactNode;
 }
@@ -220,6 +224,7 @@ export default function SongDetailFrame<L>({
   lineStart,
   legend,
   dock,
+  partMutes,
   floating,
 }: Props<L>) {
   const [follow, setFollow] = useState(true);
@@ -448,7 +453,17 @@ export default function SongDetailFrame<L>({
         playing={playing}
         canPlay={cursor.canPlay}
         onTogglePlay={cursor.togglePlay}
-        actions={dock.actions}
+        actions={
+          <>
+            {partMutes && (
+              <PartMuteControls
+                mutes={partMutes.mutes}
+                onToggle={partMutes.onToggle}
+              />
+            )}
+            {dock.actions}
+          </>
+        }
         panel={dock.panel}
         showLabel={dock.showLabel}
         hideLabel={dock.hideLabel}
