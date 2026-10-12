@@ -23,6 +23,7 @@ import {
   drumGridRows,
   type DrumGridMark,
 } from '@/domain/drumGrid';
+import { useDrumSamplePlayback } from '@/hooks/useDrumSamplePlayback';
 import {
   grooveChartInput,
   sectionFillBars,
@@ -54,7 +55,7 @@ const LEGEND: [symbol: string, meaning: string][] = [
  * the labels of its rows to the frame, which owns the rest of the screen. It
  * has no transposition, tuning, fingering, degrees, key, fretboard, or circle
  * of fifths. With a linked recording the cursor follows it; without one the
- * part has no player yet.
+ * drum samples play the chart.
  */
 export default function DrumPartDetail({
   chart,
@@ -63,8 +64,11 @@ export default function DrumPartDetail({
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
-  const audio = useLibraryAudio(audioUrl);
-  const hasPlayer = audioUrl !== null;
+  const recording = useLibraryAudio(audioUrl);
+  const synthOnly = audioState.status === 'missing';
+  const samples = useDrumSamplePlayback(chart, synthOnly);
+  const audio = synthOnly ? samples : recording;
+  const hasPlayer = audioUrl !== null || synthOnly;
   const cursor = useSongCursor(chart, audio, hasPlayer);
   const { activeBar, seek } = cursor;
 
@@ -128,7 +132,7 @@ export default function DrumPartDetail({
         saveError,
         onAttach: attach,
         missingNote:
-          'Nenhuma gravação vinculada. Vincule a gravação para o cursor acompanhar a bateria.',
+          'Nenhuma gravação vinculada: a bateria toca com as amostras do app. Vincule a gravação para ouvir a original.',
       }}
       cursor={cursor}
       chartHeading="Grade da bateria por seção"
@@ -171,7 +175,7 @@ export default function DrumPartDetail({
             ? `Compasso ${activeBar + 1}`
             : hasPlayer
               ? 'Toque a música ou clique num compasso'
-              : 'Vincule a gravação para acompanhar a bateria',
+              : 'Carregando a gravação',
         status:
           activeBar >= 0
             ? drumBarSpoken(marks[activeBar] ?? NO_MARKS, rows)

@@ -32,6 +32,17 @@ vi.mock('@/hooks/useRocksmithAudio', () => ({
     saveError: false,
   }),
 }));
+vi.mock('@/hooks/useDrumSamplePlayback', () => ({
+  useDrumSamplePlayback: () => ({
+    ready: true,
+    playing: false,
+    duration: 2,
+    currentSeconds: 0,
+    play: vi.fn(),
+    pause: vi.fn(),
+    seek: vi.fn(),
+  }),
+}));
 vi.mock('@/hooks/useBassSynth', () => ({
   useBassSynth: () => ({ playBassNote: vi.fn() }),
 }));

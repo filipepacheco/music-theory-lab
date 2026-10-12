@@ -15,6 +15,11 @@ import {
   createGrowlybassSampler,
   type GrowlybassSamplerStatus,
 } from '@/services/growlybass';
+import {
+  DRUM_SAMPLE_TRIM_DB,
+  type DrumPlaybackHit,
+  type DrumSampleId,
+} from '@/domain/drumPlaybackSchedule';
 import type { GrowlybassSamplePlan } from '@/utils/growlybass';
 
 export interface PlaybackEngine {
@@ -55,6 +60,12 @@ export interface PlaybackEngine {
   subscribeBassSampler(
     listener: (status: GrowlybassSamplerStatus) => void,
   ): () => void;
+  /** Load the drum samples a sequenced drum chart will need. */
+  preloadDrumSamples(samples: DrumSampleId[]): Promise<void>;
+  /** Start a preloaded drum sample at `time` on the audio clock. */
+  scheduleDrumHit(hit: DrumPlaybackHit, time: number): void;
+  /** Silence sounding drum hits and cancel scheduled ones. */
+  stopDrumHits(): void;
   playGrooveHit(piece: DrumPiece, time: number): void;
   stopGroove(): void;
   stopAll(presetId?: string): void;
@@ -236,20 +247,20 @@ interface GrooveSample {
   ready: Promise<boolean>;
 }
 
-// These are the acoustic-kit one-shot recordings used by the Tone.js audio
-// examples. They are cached once and still pass through the app's reverb and
-// limiter rather than creating a separate destination path.
-const GROOVE_SAMPLE_BASE_URL =
-  'https://tonejs.github.io/audio/drum-samples/acoustic-kit/';
+// The groove player uses the app's own drum samples (`public/drum-samples/`).
+// They are cached once and still pass through the app's reverb and limiter
+// rather than creating a separate destination path.
+const DRUM_SAMPLE_BASE_URL = `${import.meta.env.BASE_URL}drum-samples/`;
+const GROOVE_SAMPLE_BASE_URL = DRUM_SAMPLE_BASE_URL;
 
-function createGrooveSample(filename: string, volume: number): GrooveSample {
+function createGrooveSample(sample: DrumSampleId, mixDb: number): GrooveSample {
   let resolveReady: (loaded: boolean) => void = () => {};
   const ready = new Promise<boolean>((resolve) => {
     resolveReady = resolve;
   });
   const player = new Tone.Player({
-    url: `${GROOVE_SAMPLE_BASE_URL}${filename}`,
-    volume,
+    url: `${GROOVE_SAMPLE_BASE_URL}${sample}.flac`,
+    volume: DRUM_SAMPLE_TRIM_DB[sample] + mixDb,
     fadeOut: 0.015,
     onload: () => resolveReady(true),
     onerror: () => resolveReady(false),
@@ -258,9 +269,9 @@ function createGrooveSample(filename: string, volume: number): GrooveSample {
 }
 
 const grooveSamples: Record<DrumPiece, GrooveSample> = {
-  bumbo: createGrooveSample('kick.mp3', -3),
-  caixa: createGrooveSample('snare.mp3', -6),
-  chimbal: createGrooveSample('hihat.mp3', -12),
+  bumbo: createGrooveSample('kick', -3),
+  caixa: createGrooveSample('snare', -4),
+  chimbal: createGrooveSample('hihat-closed', -2),
 };
 
 const grooveSamplesReady = Promise.all(
@@ -286,6 +297,46 @@ function stopGrooveSources() {
   grooveSnareBody.triggerRelease();
   grooveSnare.triggerRelease();
   grooveHiHat.triggerRelease();
+}
+
+// Drum chart samples: buffers load once, on first use, and are never
+// disposed. Each hit plays from its own buffer source, so hits overlap.
+const drumBuffers = new Map<
+  DrumSampleId,
+  Promise<Tone.ToneAudioBuffer | null>
+>();
+const activeDrumSources = new Set<Tone.ToneBufferSource>();
+const loadedDrumBuffers = new Map<DrumSampleId, Tone.ToneAudioBuffer>();
+
+function loadDrumSample(
+  id: DrumSampleId,
+): Promise<Tone.ToneAudioBuffer | null> {
+  let loading = drumBuffers.get(id);
+  if (!loading) {
+    loading = Tone.ToneAudioBuffer.fromUrl(`${DRUM_SAMPLE_BASE_URL}${id}.flac`)
+      .then((buffer) => {
+        loadedDrumBuffers.set(id, buffer);
+        return buffer;
+      })
+      .catch(() => {
+        // Let a later play try again.
+        drumBuffers.delete(id);
+        return null;
+      });
+    drumBuffers.set(id, loading);
+  }
+  return loading;
+}
+
+function stopDrumSources() {
+  for (const source of activeDrumSources) {
+    try {
+      source.stop();
+    } catch {
+      // A source that never started has nothing to stop.
+    }
+  }
+  activeDrumSources.clear();
 }
 
 export function createPlaybackEngine(): PlaybackEngine {
@@ -406,6 +457,33 @@ export function createPlaybackEngine(): PlaybackEngine {
 
     subscribeBassSampler: (listener) => growlybassSampler.subscribe(listener),
 
+    preloadDrumSamples: async (samples) => {
+      await Promise.all(samples.map(loadDrumSample));
+    },
+
+    scheduleDrumHit: (hit, time) => {
+      const buffer = loadedDrumBuffers.get(hit.sample);
+      // A hit with no loaded sample makes no sound and no error.
+      if (!buffer) return;
+      const gain = new Tone.Gain(
+        hit.gain * Tone.dbToGain(DRUM_SAMPLE_TRIM_DB[hit.sample]),
+      ).connect(limiter);
+      const source = new Tone.ToneBufferSource({
+        url: buffer,
+        playbackRate: hit.rate,
+        fadeOut: 0.02,
+      }).connect(gain);
+      activeDrumSources.add(source);
+      source.onended = () => {
+        activeDrumSources.delete(source);
+        source.dispose();
+        gain.dispose();
+      };
+      source.start(time);
+    },
+
+    stopDrumHits: () => stopDrumSources(),
+
     playGrooveHit: (piece, time) => {
       void ensureAudio();
 
@@ -436,6 +514,7 @@ export function createPlaybackEngine(): PlaybackEngine {
       for (const synth of chordSynths) synth.releaseAll();
       for (const player of activeGrowlybassPlayers) player.stop();
       stopGrooveSources();
+      stopDrumSources();
     },
   };
 }
