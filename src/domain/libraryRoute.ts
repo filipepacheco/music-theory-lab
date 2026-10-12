@@ -34,7 +34,9 @@ export function parseLibraryRoute(hash: string): LibraryRoute {
   if (segments.length !== 3) return { screen: 'list' };
   const [encodedKey, source, part] = segments;
   try {
-    const songKey = decodeURIComponent(encodedKey);
+    // A song key is in the composed form (NFC); an address that was typed or
+    // pasted can hold the same letters in the other form.
+    const songKey = decodeURIComponent(encodedKey).normalize('NFC');
     if (!songKey || !SOURCES.includes(source) || !PARTS.includes(part)) {
       return { screen: 'list' };
     }
