@@ -60,6 +60,8 @@ interface Props {
   repeatOf?: number;
   /** 0–1 position of the playhead inside this bar, or null in another bar. */
   playhead: number | null;
+  /** The bar leaves the section groove: it is a fill. */
+  fill?: boolean;
   /** Jump to a time; null while there is nothing to play. */
   onSeek: ((seconds: number) => void) | null;
 }
@@ -77,6 +79,7 @@ function DrumGridBar({
   beatWidth,
   repeatOf,
   playhead,
+  fill = false,
   onSeek,
 }: Props) {
   const repeat = repeatOf !== undefined;
@@ -108,6 +111,15 @@ function DrumGridBar({
       <span className="absolute left-1 top-0 font-heading text-micro leading-none text-text-muted tabular-nums">
         {number}
       </span>
+      {fill && (
+        <span
+          data-fill-mark
+          title="Virada: este compasso foge do groove da seção"
+          className="absolute right-1 top-0 font-heading text-micro font-semibold leading-none text-accent"
+        >
+          Virada
+        </span>
+      )}
       <svg
         width={width}
         height={height}
