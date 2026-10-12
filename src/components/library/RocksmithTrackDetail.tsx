@@ -15,7 +15,6 @@ import BassTabBar, {
   LABEL_GAP,
   barDegreeLevels,
   barLabelLanes,
-  tabBarWidth,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
 import ChartFretboard from '@/components/library/ChartFretboard';
@@ -44,8 +43,6 @@ import {
   activeNoteIndexes,
   barIndexAt,
   barsRepeatingAbove,
-  fittedBarsPerRow,
-  minBeatWidth,
   neededBeatWidth,
   sectionBeatWidth,
   isStandardTuning,
@@ -984,8 +981,7 @@ function SectionBlock({
     observer.observe(element);
     return () => observer.disconnect();
   }, [barsPerRow]);
-  // How many bars fit a line at the smallest beat width; when the chosen
-  // length does not, a divisor of it keeps the phrases aligned.
+  // The beats of the widest bar of the section size the line.
   const mostBeats = Math.max(
     ...chart.bars
       .slice(section.startBar, section.endBar)
@@ -1008,14 +1004,8 @@ function SectionBlock({
       ),
     [chart, section, barNotes, analysis],
   );
-  const smallestBar = tabBarWidth(mostBeats, minBeatWidth(BEAT_WIDTH, needed));
-  const perLine =
-    barsPerRow === null || lineWidth === null
-      ? barsPerRow
-      : fittedBarsPerRow(
-          barsPerRow,
-          Math.floor((lineWidth + BAR_GAP) / (smallestBar + BAR_GAP)),
-        );
+  // A set line length always holds: the bars take the width that fits.
+  const perLine = barsPerRow;
   // One beat width for the whole section, so the beats align from line to
   // line: the one that makes a line of its widest bars fill the line.
   const beatWidth =
@@ -1028,7 +1018,6 @@ function SectionBlock({
           barChrome: BAR_CHROME,
           gap: BAR_GAP,
           baseBeatWidth: BEAT_WIDTH,
-          neededBeatWidth: needed,
         });
   // The degree lane takes a second level where a label touches the label
   // before it; all bars of the section keep room for it, at one height.
