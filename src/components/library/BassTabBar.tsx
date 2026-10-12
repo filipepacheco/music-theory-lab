@@ -7,10 +7,11 @@ import {
   type BarAnalysis,
   type DegreeCategory,
 } from '@/domain/bassAnalysis';
-import type {
-  BassChartBar,
-  BassChartNote,
-  LabelLane,
+import {
+  degreeLanePlaces,
+  type BassChartBar,
+  type BassChartNote,
+  type LabelLane,
 } from '@/domain/bassChart';
 import type { HarmonicSegment } from '@/domain/bassHarmony';
 import type { HarmonicFunction } from '@/constants/harmonicFields';
@@ -51,6 +52,11 @@ interface Props {
    * is then left empty under a repeat sign.
    */
   repeatOf?: number;
+  /**
+   * How many levels the degree lane keeps room for, so the bars of a section
+   * share one height. Defaults to the levels this bar's labels use.
+   */
+  degreeLevels?: number;
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -107,7 +113,7 @@ const PAD_TOP = 9;
 const LINE_GAP = 12;
 const STRING_COUNT = 4;
 const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
-/** Height of the degree lane drawn under the strings. */
+/** Height of one level of the degree lane drawn under the strings. */
 const DEGREE_LANE = 12;
 const DEGREE_Y = HEIGHT + DEGREE_LANE / 2 - 2;
 
@@ -173,27 +179,60 @@ export function barLabelLanes(
         })),
     });
   }
-  if (analysis) {
-    const degrees = new Map(analysis.notes.map((n) => [n.index, n]));
-    const onsets = new Map<number, string[]>();
-    for (const { note, index } of notes) {
-      const degree = degrees.get(index);
-      const label = degree ? degreeLabel(degree) : '';
-      if (!label) continue;
-      onsets.set(note.beatInBar, [
-        ...(onsets.get(note.beatInBar) ?? []),
-        label,
-      ]);
-    }
-    lanes.push({
-      charWidth: DEGREE_FONT_SIZE * CHAR_EM,
-      labels: [...onsets].map(([beat, labels]) => ({
-        beat,
-        chars: labels.join('/').length,
-      })),
-    });
-  }
+  if (analysis) lanes.push(degreeLane(degreeOnsets(notes, analysis)));
   return lanes;
+}
+
+/** An onset of the degree lane: its beat and the degrees that sound there. */
+type DegreeOnset = [beatInBar: number, degrees: AnalyzedNote[]];
+
+/**
+ * The entries of a bar's degree lane, one per onset; a double stop lists its
+ * degrees low to high. Notes without a degree get no entry.
+ */
+function degreeOnsets(
+  notes: IndexedNote[],
+  analysis: BarAnalysis | null,
+): DegreeOnset[] {
+  if (!analysis) return [];
+  const degrees = new Map(analysis.notes.map((n) => [n.index, n]));
+  const onsets = new Map<number, AnalyzedNote[]>();
+  for (const { note, index } of notes) {
+    const degree = degrees.get(index);
+    if (!degree || !degreeLabel(degree)) continue;
+    onsets.set(note.beatInBar, [...(onsets.get(note.beatInBar) ?? []), degree]);
+  }
+  return [...onsets].map(([beat, atOnset]) => [
+    beat,
+    atOnset.sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0)),
+  ]);
+}
+
+/** The degree lane as labels: a double stop is one label, `b3/5`. */
+function degreeLane(onsets: DegreeOnset[]): LabelLane {
+  return {
+    charWidth: DEGREE_FONT_SIZE * CHAR_EM,
+    labels: onsets.map(([beat, atOnset]) => ({
+      beat,
+      chars: atOnset.map(degreeLabel).join('/').length,
+    })),
+  };
+}
+
+/**
+ * How many levels a bar's degree lane uses at `beatWidth` pixels a beat: 1,
+ * or 2 when a label touches the label before it.
+ */
+export function barDegreeLevels(
+  notes: IndexedNote[],
+  analysis: BarAnalysis | null,
+  beatWidth: number,
+): number {
+  const lane = degreeLane(degreeOnsets(notes, analysis));
+  return Math.max(
+    1,
+    ...degreeLanePlaces(lane, beatWidth, LABEL_GAP).map((p) => p.level + 1),
+  );
 }
 
 /** Y of a string; the highest string (G) is drawn on top, as in tab. */
@@ -213,6 +252,7 @@ function BassTabBar({
   noteNames,
   beatWidth = BEAT_WIDTH,
   repeatOf,
+  degreeLevels,
 }: Props) {
   const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * beatWidth;
@@ -221,20 +261,19 @@ function BassTabBar({
     analysis?.notes.map((n) => [n.index, n]),
   );
   const symbol = analysis ? barChordSymbol(analysis, noteNames) : null;
-  const svgHeight = analysis ? HEIGHT + DEGREE_LANE : HEIGHT;
   const degreeOf = (index: number): AnalyzedNote | null => {
     const degree = degrees.get(index);
     return degree && degreeLabel(degree) ? degree : null;
   };
-  // One lane entry per onset; a double stop lists its degrees low to high.
-  const onsets = new Map<number, AnalyzedNote[]>();
-  for (const { note, index } of notes) {
-    const degree = degreeOf(index);
-    if (!degree) continue;
-    const atOnset = onsets.get(note.beatInBar) ?? [];
-    atOnset.push(degree);
-    onsets.set(note.beatInBar, atOnset);
-  }
+  // One lane entry per onset, on the level and at the x where it is clear
+  // of the entries before it.
+  const onsets = degreeOnsets(notes, analysis);
+  const places = degreeLanePlaces(degreeLane(onsets), beatWidth, LABEL_GAP);
+  const levels = Math.max(
+    degreeLevels ?? 1,
+    ...places.map((place) => place.level + 1),
+  );
+  const svgHeight = analysis ? HEIGHT + DEGREE_LANE * levels : HEIGHT;
   const spoken = ({ note, index }: IndexedNote): string => {
     const degree = degreeOf(index);
     return degree
@@ -373,40 +412,39 @@ function BassTabBar({
             );
           })}
         {!repeat &&
-          [...onsets].map(([beatInBar, atOnset]) => (
+          onsets.map(([beatInBar, atOnset], onset) => (
             <text
               key={`degree-${beatInBar}`}
-              x={PAD_X + beatInBar * beatWidth + 1}
-              y={DEGREE_Y}
+              x={PAD_X + places[onset].x + 1}
+              y={DEGREE_Y + places[onset].level * DEGREE_LANE}
               dominantBaseline="central"
               fontSize={DEGREE_FONT_SIZE}
               className="font-heading"
+              data-degree-level={places[onset].level + 1}
             >
-              {[...atOnset]
-                .sort((a, b) => (a.midi ?? 0) - (b.midi ?? 0))
-                .map((degree, i) => {
-                  const avoid = avoidNotes?.has(degree.index) ?? false;
-                  return (
-                    <tspan
-                      key={degree.index}
-                      fill={
-                        degree.category
-                          ? DEGREE_COLORS[degree.category]
-                          : 'var(--color-text-primary)'
-                      }
-                      fontWeight={degree.category === 'root' ? 700 : 500}
-                      textDecoration={avoid ? 'underline' : undefined}
-                    >
-                      {i > 0 ? '/' : ''}
-                      {degreeLabel(degree)}
-                      {avoid && (
-                        <title>
-                          Nota evitada: forma b9 com uma nota do acorde
-                        </title>
-                      )}
-                    </tspan>
-                  );
-                })}
+              {atOnset.map((degree, i) => {
+                const avoid = avoidNotes?.has(degree.index) ?? false;
+                return (
+                  <tspan
+                    key={degree.index}
+                    fill={
+                      degree.category
+                        ? DEGREE_COLORS[degree.category]
+                        : 'var(--color-text-primary)'
+                    }
+                    fontWeight={degree.category === 'root' ? 700 : 500}
+                    textDecoration={avoid ? 'underline' : undefined}
+                  >
+                    {i > 0 ? '/' : ''}
+                    {degreeLabel(degree)}
+                    {avoid && (
+                      <title>
+                        Nota evitada: forma b9 com uma nota do acorde
+                      </title>
+                    )}
+                  </tspan>
+                );
+              })}
             </text>
           ))}
       </svg>

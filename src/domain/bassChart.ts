@@ -644,6 +644,57 @@ export function neededBeatWidth(lanes: LabelLane[], gap: number): number {
   return needed;
 }
 
+/** Where the degree lane draws one of its labels. */
+export interface LaneLabelPlace {
+  /** 0 for the first level, 1 for the second. */
+  level: number;
+  /** The label's left edge, in pixels from the bar's first beat. */
+  x: number;
+  /** How far right of its note the label moved, in pixels; mostly 0. */
+  shift: number;
+}
+
+/** How many levels the degree lane has. */
+export const DEGREE_LANE_LEVELS = 2;
+/** Rounding slack, in pixels, when a label is exactly `gap` clear. */
+const TOUCH_SLACK = 1e-6;
+
+/**
+ * Where the degree lane draws each of its labels at `beatWidth` pixels a
+ * beat, in the order of `lane.labels`. A label touches another when it is
+ * less than `gap` pixels clear of it. A label stays on the first level when
+ * it has the space; when it touches the label before it, it goes to the
+ * second level. When it touches on both levels, which only happens once the
+ * beats are at their largest width (`neededBeatWidth` keeps one level clear
+ * below that), it moves right by the missing distance, on the level where
+ * that distance is smaller.
+ */
+export function degreeLanePlaces(
+  lane: LabelLane,
+  beatWidth: number,
+  gap: number,
+): LaneLabelPlace[] {
+  const order = lane.labels
+    .map((_, index) => index)
+    .sort((a, b) => lane.labels[a].beat - lane.labels[b].beat);
+  // Per level, the leftmost x where its next label is clear of the last one.
+  const free = Array.from({ length: DEGREE_LANE_LEVELS }, () => -Infinity);
+  const places: LaneLabelPlace[] = [];
+  for (const index of order) {
+    const label = lane.labels[index];
+    const noteX = label.beat * beatWidth;
+    let level = free.findIndex((x) => noteX + TOUCH_SLACK >= x);
+    let shift = 0;
+    if (level < 0) {
+      level = free.indexOf(Math.min(...free));
+      shift = free[level] - noteX;
+    }
+    places[index] = { level, x: noteX + shift, shift };
+    free[level] = noteX + shift + label.chars * lane.charWidth + gap;
+  }
+  return places;
+}
+
 /**
  * Bars that show the same tab as the bar right above them when a section
  * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab

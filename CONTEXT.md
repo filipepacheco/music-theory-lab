@@ -120,6 +120,15 @@ third, fifth and seventh leave a single reading; otherwise only the root is
 shown.
 _Avoid_: chord, detected chord
 
+**Degree lane**:
+The row under the bass tab that names the degree of each note over the
+[[bar-root]]. A double stop is one label. The lane has two levels: a label
+that touches the label before it shows on the second level, and a label with
+enough space stays on the first. When the bars are at their largest width and
+a label still touches the label before it on its level, it moves right by the
+missing distance.
+_Avoid_: degree row, interval line
+
 **Suggested key**:
 A ranked guess at a bass chart's [[tonal-center]], from where the bass rests
 (bars on the root, how sections start and end, V→I arrivals) rather than from
