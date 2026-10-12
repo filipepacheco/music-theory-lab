@@ -103,7 +103,17 @@ sixteenth, and thirty-second notes across one or two 4/4 measures. One groove
 per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
 The section preview renders a compact standard-style percussion chart.
+A [[drum-chart]] section has a groove too, worked out and not stored: the
+section groove is the kick, snare, and hi-hat bar pattern that the section
+repeats most (the first one on a tie). The section header draws it with the same
+chart.
 _Avoid_: beat, rhythm
+
+**Fill**:
+A bar of a [[drum-chart]] section whose kick, snare, or hi-hat pattern differs
+from the section [[groove]]. The grid marks it. A bar that differs only in
+other [[drum-piece]]s, or that has none of the three, is not a fill.
+_Avoid_: break, variation
 
 **Drum piece**:
 One element of the drum kit, and one row of a drum grid or a [[groove]] grid.

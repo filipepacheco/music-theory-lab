@@ -13,6 +13,7 @@ import SongDetailFrame, {
 } from '@/components/library/SongDetailFrame';
 import { useLibraryAudio } from '@/components/library/useLibraryAudio';
 import { useSongCursor } from '@/components/library/useSongCursor';
+import { GrooveChart } from '@/components/structure/GrooveChart';
 import type { DrumChart } from '@/domain/drumChart';
 import {
   drumBarDrawing,
@@ -23,6 +24,11 @@ import {
   type DrumGridMark,
 } from '@/domain/drumGrid';
 import { useDrumSamplePlayback } from '@/hooks/useDrumSamplePlayback';
+import {
+  grooveChartInput,
+  sectionFillBars,
+  sectionGroove,
+} from '@/domain/drumSectionGroove';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 
 interface Props {
@@ -72,6 +78,25 @@ export default function DrumPartDetail({
     () => new Set(chart.hits.map((hit) => hit.bar)),
     [chart],
   );
+  const fillBars = useMemo(
+    () =>
+      new Set(
+        chart.sections.flatMap((section) =>
+          sectionFillBars(chart, marks, section),
+        ),
+      ),
+    [chart, marks],
+  );
+  // The groove chart of each section; null when the section has no groove or
+  // the chart cannot draw it.
+  const grooves = useMemo(
+    () =>
+      chart.sections.map((section) => {
+        const groove = sectionGroove(chart, marks, section);
+        return groove ? grooveChartInput(chart, marks, groove) : null;
+      }),
+    [chart, marks],
+  );
   const barLanes = useCallback(
     (barIndex: number) =>
       drumGridLanes(marks[barIndex] ?? NO_MARKS, rows, DRUM_CHAR_WIDTH),
@@ -118,6 +143,15 @@ export default function DrumPartDetail({
       barLanes={barLanes}
       barDrawing={barDrawing}
       sectionLayout={noSectionLayout}
+      sectionPanels={(index) => {
+        const groove = grooves[index];
+        return groove ? (
+          <div data-section-groove className="flex flex-col gap-0.5">
+            <span className="text-small text-text-muted">Groove da seção</span>
+            <GrooveChart groove={groove} color="var(--color-accent)" />
+          </div>
+        ) : null;
+      }}
       renderBar={(barIndex, layout) => (
         <DrumGridBar
           beatWidth={layout.beatWidth}
@@ -125,6 +159,7 @@ export default function DrumPartDetail({
           bar={chart.bars[barIndex]}
           rows={rows}
           marks={marks[barIndex] ?? NO_MARKS}
+          fill={fillBars.has(barIndex)}
           playhead={cursor.playhead(barIndex)}
           onSeek={seek}
         />

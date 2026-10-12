@@ -10,6 +10,8 @@ import {
   TranspositionPanel,
   type SectionHarmony,
 } from '@/components/library/BassPartPanels';
+import { useSameFileKick } from '@/components/library/useSameFileKick';
+import type { ChartSummary } from '@/domain/chartSummary';
 import BassTabBar, {
   FUNCTION_COLORS,
   BAR_CHROME,
@@ -80,6 +82,8 @@ interface Props {
   /** A new value reloads the line lengths (a synchronization brought some). */
   settingsKey?: unknown;
   onRemove: () => void;
+  /** The charts of the song; a drum chart of the same file gives the kick row. */
+  songCharts?: readonly ChartSummary[];
 }
 
 const CIRCLE_OPEN_KEY = 'music-theory-lab:fifths-window-open';
@@ -106,6 +110,7 @@ function writeCircleOpen(open: boolean): void {
 }
 
 const NO_NOTES: readonly number[] = [];
+const NO_CHARTS: readonly ChartSummary[] = [];
 
 /**
  * The bass part of the song detail. It supplies the bass tab bar and the
@@ -116,7 +121,9 @@ export default function RocksmithTrackDetail({
   chart: originalChart,
   settingsKey,
   onRemove,
+  songCharts = NO_CHARTS,
 }: Props) {
+  const kickBeats = useSameFileKick(originalChart.id, songCharts);
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const [semitones, setSemitones] = useState(0);
   const [practiceTuning, setPracticeTuning] = useState('original');
@@ -485,6 +492,7 @@ export default function RocksmithTrackDetail({
           }
           avoidNotes={showDegrees ? (harmony?.avoidNotes ?? null) : null}
           noteNames={noteNames}
+          kickBeats={kickBeats ? (kickBeats[barIndex] ?? []) : undefined}
         />
       )}
       legend={`As linhas vão da corda G (em cima) à E (embaixo); pontilhados marcam os tempos. x = nota abafada, / e \\ = slide.${

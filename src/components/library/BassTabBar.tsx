@@ -58,6 +58,11 @@ interface Props {
    * share one height. Defaults to the levels this bar's labels use.
    */
   degreeLevels?: number;
+  /**
+   * Beats of the kick hits in this bar, from the drum chart of the same file.
+   * When set (even empty), a kick row sits under the strings.
+   */
+  kickBeats?: readonly number[];
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -118,7 +123,9 @@ const STRING_COUNT = 4;
 const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
 /** Height of one level of the degree lane drawn under the strings. */
 const DEGREE_LANE = 12;
-const DEGREE_Y = HEIGHT + DEGREE_LANE / 2 - 2;
+/** Height of the kick row drawn under the strings. */
+const KICK_LANE = 14;
+const KICK_RADIUS = 3.5;
 
 /** A bar's drawn width in pixels, border included. */
 export function tabBarWidth(
@@ -258,6 +265,7 @@ function BassTabBar({
   beatWidth = BEAT_WIDTH,
   repeatOf,
   degreeLevels,
+  kickBeats,
 }: Props) {
   const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * beatWidth;
@@ -283,7 +291,9 @@ function BassTabBar({
     degreeLevels ?? 1,
     ...places.map((place) => place.level + 1),
   );
-  const svgHeight = analysis ? HEIGHT + DEGREE_LANE * levels : HEIGHT;
+  const kickLane = kickBeats ? KICK_LANE : 0;
+  const degreeY = HEIGHT + kickLane + DEGREE_LANE / 2 - 2;
+  const svgHeight = HEIGHT + kickLane + (analysis ? DEGREE_LANE * levels : 0);
   const spoken = ({ note, index }: IndexedNote): string => {
     const degree = degreeOf(index);
     return degree
@@ -362,7 +372,7 @@ function BassTabBar({
             x1={PAD_X + (beat + 1) * beatWidth}
             x2={PAD_X + (beat + 1) * beatWidth}
             y1={PAD_TOP - 3}
-            y2={analysis ? svgHeight - 2 : HEIGHT - PAD_TOP + 3}
+            y2={analysis || kickBeats ? svgHeight - 2 : HEIGHT - PAD_TOP + 3}
             stroke="var(--color-border-default)"
             strokeDasharray="1 3"
           />
@@ -388,6 +398,21 @@ function BassTabBar({
             stroke="var(--color-accent)"
             strokeWidth={1.5}
           />
+        )}
+        {kickBeats && (
+          <g data-kick-row aria-hidden>
+            {!repeat &&
+              kickBeats.map((beat) => (
+                <circle
+                  key={beat}
+                  data-kick-beat={beat}
+                  cx={PAD_X + beat * beatWidth + 3}
+                  cy={HEIGHT + KICK_LANE / 2 - 2}
+                  r={KICK_RADIUS}
+                  fill="var(--color-text-primary)"
+                />
+              ))}
+          </g>
         )}
         {!repeat &&
           notes.map(({ note, index }) => {
@@ -426,7 +451,7 @@ function BassTabBar({
             <text
               key={`degree-${beatInBar}`}
               x={PAD_X + places[onset].x + 1}
-              y={DEGREE_Y + places[onset].level * DEGREE_LANE}
+              y={degreeY + places[onset].level * DEGREE_LANE}
               dominantBaseline="central"
               fontSize={DEGREE_FONT_SIZE}
               className="font-heading"
