@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Client } from '@libsql/client';
 import { IDBFactory } from 'fake-indexeddb';
 import { fixtureChart } from '@/domain/bassChartFixture';
-import type { ChartSettings } from '@/domain/chartSettings';
+import {
+  isNewerChartSettings,
+  type ChartSettings,
+} from '@/domain/chartSettings';
 import { createIndexedDbRocksmithLibrary } from '@/services/rocksmithLibrary';
 import {
   chartSettingsCloud,
@@ -178,6 +181,57 @@ describe('chart settings API', () => {
       expect(result.status, JSON.stringify(bad)).toBe(400);
     }
     expect(await rows()).toEqual([]);
+  });
+
+  it('holds a group override with a song key of another script', async () => {
+    const keys = [
+      '夜に駆ける|yoasobi',
+      'ありがとう|いきものがかり',
+      'группа крови|кино',
+      'ζορμπας|θεοδωρακης',
+      'ירושלים של זהב|נעמי שמר',
+    ];
+    const moved = keys.map((groupOverride, index) => ({
+      ...numbered(index + 1),
+      groupOverride,
+    }));
+    expect((await write(moved)).status).toBe(200);
+    expect((await readAfter(0)).records).toEqual(moved);
+    // The stored text holds only ASCII, as the order of two writes needs.
+    for (const row of await rows()) {
+      expect(String(row.settings)).toMatch(/^[\x20-\x7e]+$/);
+    }
+  });
+
+  it('refuses a group override in another script that is not a song key', async () => {
+    for (const groupOverride of [
+      'Группа крови|кино',
+      'ζορμπάς|',
+      'ありがとう|'.normalize('NFD'),
+      '夜に駆ける!|yoasobi',
+      '群青\u202e|yoasobi',
+      '群青|yoasobi|',
+      '🎸|yoasobi',
+    ]) {
+      const result = await write([{ ...record, groupOverride }]);
+      expect(result.status, JSON.stringify(groupOverride)).toBe(400);
+    }
+    expect(await rows()).toEqual([]);
+  });
+
+  it('keeps the same one of two song keys of another script with one update time, as the browser does', async () => {
+    // 𠀀 goes before ｶ in the text order of the browser and after it in the
+    // byte order of the database.
+    const astral = { ...record, groupOverride: '\u{20000}|' };
+    const halfWidth = { ...record, groupOverride: '\uff76|' };
+    const winner = isNewerChartSettings(astral, halfWidth) ? astral : halfWidth;
+    await write([astral], 'first');
+    await write([halfWidth], 'second');
+    expect((await readAfter(0)).records).toEqual([winner]);
+    await state.client!.execute('DELETE FROM chart_settings');
+    await write([halfWidth], 'second');
+    await write([astral], 'first');
+    expect((await readAfter(0)).records).toEqual([winner]);
   });
 
   it('refuses a request without a device id or a list of records, and malformed JSON', async () => {

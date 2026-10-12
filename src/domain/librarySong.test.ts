@@ -45,6 +45,32 @@ describe('songKey', () => {
   it('keeps numbers that belong to the title', () => {
     expect(songKey('Take 5', 'Brubeck')).toBe('take 5|brubeck');
   });
+
+  it('gives two keys for two different Japanese titles', () => {
+    const first = songKey('夜に駆ける', 'YOASOBI');
+    const second = songKey('群青', 'YOASOBI');
+    expect(first).toBe('夜に駆ける|yoasobi');
+    expect(second).toBe('群青|yoasobi');
+    expect(first).not.toBe(second);
+  });
+
+  it('keeps the letters of Cyrillic, Greek, and Hebrew, in lower case', () => {
+    expect(songKey('Группа Крови!', 'КИНО')).toBe('группа крови|кино');
+    expect(songKey('Ζορμπάς (Live)', 'Θεοδωράκης')).toBe('ζορμπας|θεοδωρακης');
+    expect(songKey('ירושלים של זהב', 'נעמי שמר')).toBe(
+      'ירושלים של זהב|נעמי שמר',
+    );
+  });
+
+  it('keeps a letter and its mark as one word, in the composed form', () => {
+    // The voiced mark of kana and the vowel signs of Hindi are not accents.
+    expect(songKey('ありがとう', '')).toBe('ありがとう|');
+    expect(songKey('ありがとう', '')).not.toBe(songKey('ありかとう', ''));
+    expect(songKey('दिल से', '')).toBe('दिल से|');
+    const composed = songKey('ありがとう', '');
+    expect(songKey('ありがとう'.normalize('NFD'), '')).toBe(composed);
+    expect(composed).toBe(composed.normalize('NFC'));
+  });
 });
 
 describe('groupLibrarySongs', () => {
@@ -107,6 +133,54 @@ describe('groupLibrarySongs', () => {
       midi1: songKey('Other', 'Someone'),
     });
     expect(moved).toHaveLength(2);
+  });
+
+  it('keeps two songs with titles in another script as two rows', () => {
+    const first = summary('j1', '夜に駆ける', 'YOASOBI', 'gp');
+    const second = summary('j2', '群青', 'YOASOBI', 'gp');
+    const sameAsFirst = summary('j3', '夜に駆ける (bass)', 'yoasobi', 'midi');
+    const bare = summary('j4', 'Группа крови', '', 'midi');
+    const other = summary('j5', 'Звезда по имени Солнце', '', 'midi');
+    const songs = groupLibrarySongs(
+      [first, second, sameAsFirst, bare, other],
+      [],
+    );
+    expect(songs.map((song) => song.charts.map((c) => c.id))).toEqual([
+      ['j1', 'j3'],
+      ['j2'],
+      ['j4'],
+      ['j5'],
+    ]);
+  });
+
+  it('never groups a chart or a track whose key has no title', () => {
+    // A title of only punctuation, brackets, or file words gives no title.
+    const empty = summary('e1', '', '', 'midi');
+    const marks = summary('e2', '???', '', 'gp');
+    const untitled = summary('e3', '(Untitled)', 'The Beatles', 'gp');
+    const fileWord = summary('e4', 'Bass Tab', 'The Beatles', 'midi');
+    const tracks = [
+      { sha: 't1', title: '', artist: '' },
+      { sha: 't2', title: '[demo]', artist: 'The Beatles' },
+    ];
+    const songs = groupLibrarySongs(
+      [gp, empty, marks, untitled, fileWord],
+      tracks,
+    );
+    expect(songs.map((song) => song.key)).toEqual([
+      songKey('Come Together', 'The Beatles'),
+      'separate:e1|',
+      'separate:e2|',
+      'separate:e3|',
+      'separate:e4|',
+      'separate:t1|',
+      'separate:t2|',
+    ]);
+    for (const song of songs) {
+      expect(song.charts.length + song.analysed.length).toBe(1);
+    }
+    // The import message names no song for such a file.
+    expect(songJoinedByImport([empty, untitled], tracks, marks)).toBeNull();
   });
 
   it('a MIDI chart and a Guitar Pro chart with one song key make one row. Each chart keeps its settings record and its linked recording.', () => {

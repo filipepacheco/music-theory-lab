@@ -173,6 +173,34 @@ describe('sortSongs', () => {
   });
 });
 
+describe('a library with titles in another script', () => {
+  const others = groupLibrarySongs(
+    [
+      summary('j1', '夜に駆ける', 'YOASOBI'),
+      summary('j2', '群青', 'YOASOBI'),
+      summary('j3', 'ありがとう', 'いきものがかり'),
+      summary('r1', 'Группа Крови', 'Кино'),
+    ],
+    [],
+  );
+  const found = (search: string) =>
+    titles(filterSongs(others, view({ search }), NONE));
+
+  it('finds a song by the letters of its title or its artist', () => {
+    expect(found('群青')).toEqual(['群青']);
+    expect(found('yoasobi')).toEqual(['夜に駆ける', '群青']);
+    expect(found('группа кино')).toEqual(['Группа Крови']);
+    expect(found('ありがとう'.normalize('NFD'))).toEqual(['ありがとう']);
+    expect(found('夜 青')).toEqual([]);
+  });
+
+  it('sorts the songs by title with the key as the last tie-break', () => {
+    const sorted = sortSongs(others, 'title');
+    expect(sorted).toHaveLength(4);
+    expect(new Set(sorted.map((song) => song.key)).size).toBe(4);
+  });
+});
+
 describe('applyListView', () => {
   it('filters, then sorts', () => {
     const result = applyListView(

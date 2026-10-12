@@ -51,12 +51,17 @@ function normalizeText(text: string): string {
   for (let i = 0; i < 3; i += 1) {
     result = result.replace(/\([^()]*\)|\[[^[\]]*\]|\{[^{}]*\}/g, ' ');
   }
-  return result
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
+  return (
+    result
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      // Letters and digits of every script stay, with the marks that are part
+      // of a letter (the voiced mark of kana, the vowel signs of Hindi).
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
+      .trim()
+      .normalize('NFC')
+  );
 }
 
 /** The part of a song key that comes from one text (title or artist). */
@@ -101,6 +106,20 @@ function hasArtist(key: string): boolean {
   return key.slice(key.indexOf('|') + 1) !== '';
 }
 
+/** The key of a member that never groups. It has no artist part. */
+function ownKey(id: string): string {
+  return `separate:${id}|`;
+}
+
+/**
+ * The song key of a member. A key without a title names no song: a title of
+ * only punctuation, brackets, or file words. Such a member stays alone.
+ */
+function calculatedKey(title: string, artist: string, id: string): string {
+  const key = songKey(title, artist);
+  return titleOf(key) === '' ? ownKey(id) : key;
+}
+
 function sourceRank(source: BassChartSource): number {
   return SOURCE_ORDER.indexOf(source);
 }
@@ -120,16 +139,16 @@ export function groupLibrarySongs(
       const override = overrides[chart.id];
       const key =
         override === 'separate'
-          ? `separate:${chart.id}|`
+          ? ownKey(chart.id)
           : override
             ? override
-            : songKey(chart.title, chart.artist);
+            : calculatedKey(chart.title, chart.artist, chart.id);
       return { chart, key };
     }),
     ...tracks.map(
       (track): Member => ({
         track,
-        key: songKey(track.title, track.artist),
+        key: calculatedKey(track.title, track.artist, track.sha),
       }),
     ),
   ];
