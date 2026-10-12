@@ -1,18 +1,21 @@
-import type { ChartSummary } from '@/domain/chartSummary';
+import type { LibrarySong } from '@/domain/librarySong';
 import { formatDuration } from '@/components/library/libraryData';
 import type { RocksmithImportStatus } from '@/hooks/useRocksmithCharts';
 
+const SOURCE_LABEL = { gp: 'GP', rocksmith: 'Rocksmith', midi: 'MIDI' };
+const PART_LABEL = { bass: 'Baixo', drums: 'Bateria' };
+
 interface Props {
-  charts: ChartSummary[];
-  selectedId: string | null;
+  songs: LibrarySong[];
+  selectedKey: string | null;
   importStatus: RocksmithImportStatus;
-  onSelect: (chartId: string) => void;
+  onSelect: (song: LibrarySong) => void;
   onImport: (file: File) => void;
 }
 
 export default function RocksmithChartList({
-  charts,
-  selectedId,
+  songs,
+  selectedKey,
   importStatus,
   onSelect,
   onImport,
@@ -64,7 +67,7 @@ export default function RocksmithChartList({
         </p>
       )}
 
-      {charts.length === 0 ? (
+      {songs.length === 0 ? (
         <p className="text-small text-text-muted">
           Importe Rocksmith 2014 (.psarc), MIDI (.mid) ou Guitar Pro 7/8 (.gp)
           para ver a linha de baixo compasso a compasso, tocando junto com a
@@ -72,13 +75,17 @@ export default function RocksmithChartList({
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5" role="list">
-          {charts.map((chart) => {
-            const isActive = chart.id === selectedId;
+          {songs.map((song) => {
+            const isActive = song.key === selectedKey;
+            const duration =
+              song.charts[0]?.durationSeconds ??
+              song.analysed[0]?.durationSeconds ??
+              0;
             return (
-              <li key={chart.id}>
+              <li key={song.key}>
                 <button
                   type="button"
-                  onClick={() => onSelect(chart.id)}
+                  onClick={() => onSelect(song)}
                   aria-current={isActive ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 cursor-pointer border ${
                     isActive
@@ -88,18 +95,23 @@ export default function RocksmithChartList({
                 >
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="font-medium text-text-primary truncate">
-                      {chart.title}
+                      {song.title}
                     </span>
                     <span className="text-small text-text-muted shrink-0">
-                      {formatDuration(chart.durationSeconds)}
+                      {formatDuration(duration)}
                     </span>
                   </div>
                   <div className="text-xs text-text-secondary truncate">
-                    {chart.artist}
+                    {song.artist}
                   </div>
-                  <div className="text-small text-text-muted mt-0.5">
-                    Baixo · {chart.noteCount} notas · ~
-                    {Math.round(chart.tempoBpm)} bpm
+                  <div className="text-small mt-0.5 flex flex-wrap gap-1">
+                    {song.sources.map((source) => (
+                      <SongBadge key={source} label={SOURCE_LABEL[source]} />
+                    ))}
+                    {song.analysed.length > 0 && <SongBadge label="Análise" />}
+                    {song.parts.map((part) => (
+                      <SongBadge key={part} label={PART_LABEL[part]} />
+                    ))}
                   </div>
                 </button>
               </li>
@@ -108,5 +120,13 @@ export default function RocksmithChartList({
         </ul>
       )}
     </div>
+  );
+}
+
+function SongBadge({ label }: { label: string }) {
+  return (
+    <span className="border border-border-default px-1.5 text-text-secondary">
+      {label}
+    </span>
   );
 }
