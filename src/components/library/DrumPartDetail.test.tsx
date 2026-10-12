@@ -532,6 +532,43 @@ describe('drum part of the song detail', () => {
     ]);
   });
 
+  it('shows the section groove with the groove chart, and a fill mark on a bar that leaves it', () => {
+    renderPart();
+    // The intro has no hit: no groove. The verse has one chart.
+    const grooves = document.querySelectorAll('[data-section-groove]');
+    expect(grooves).toHaveLength(1);
+    expect(grooves[0].querySelector('svg[role="img"]')).toBeTruthy();
+    // Bar 3 differs in the snare, hi-hat, and kick pattern: a fill. Bar 10
+    // differs only in the toms: no mark. The plain bars have none.
+    const filled = [...document.querySelectorAll('[data-fill-mark]')].map(
+      (mark) => mark.closest('button')?.dataset.bar,
+    );
+    expect(filled).toEqual(['2']);
+    expect(bar(9).querySelector('[data-fill-mark]')).toBeNull();
+  });
+
+  it('shows no fill mark and no groove for a chart with no kick, snare, or hi-hat', () => {
+    renderPart(
+      fixtureDrumChart(2, [
+        { bar: 0, beat: 0, midi: CRASH },
+        { bar: 1, beat: 0, midi: HIGH_TOM },
+      ]),
+    );
+    expect(document.querySelector('[data-section-groove]')).toBeNull();
+    expect(document.querySelector('[data-fill-mark]')).toBeNull();
+  });
+
+  it('shows no chart when the groove chart cannot draw the section groove', () => {
+    renderPart(
+      fixtureDrumChart(2, [
+        { bar: 0, beat: 1 / 3, midi: KICK },
+        { bar: 1, beat: 1 / 3, midi: KICK },
+      ]),
+    );
+    expect(document.querySelector('[data-section-groove]')).toBeNull();
+    expect(bars()).toHaveLength(2);
+  });
+
   it('removes the drum chart with the control of the frame', async () => {
     const onRemove = renderPart();
     fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
