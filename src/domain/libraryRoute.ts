@@ -1,5 +1,5 @@
 import type { BassChartSource } from '@/domain/bassChart';
-import type { ChartPart } from '@/domain/chartSummary';
+import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
 import type { LibrarySong } from '@/domain/librarySong';
 
 /** The prefix of every address of the Biblioteca. */
@@ -150,6 +150,23 @@ export function choiceOfTarget(
   );
 }
 
+/**
+ * The chart that a source and a part of a song name. A second import of a
+ * song gives two charts with one address: the newest import wins, so the two
+ * parts on the screen come from one file and play together.
+ */
+export function chartOfAddress(
+  song: LibrarySong,
+  source: SongRoute['source'],
+  part: SongRoute['part'],
+): ChartSummary | undefined {
+  return song.charts
+    .filter((item) => item.source === source && item.part === part)
+    .reduce<
+      ChartSummary | undefined
+    >((best, item) => (best && best.importedAt >= item.importedAt ? best : item), undefined);
+}
+
 /** What a song screen shows. */
 export type RouteTarget =
   | { kind: 'chart'; id: string }
@@ -165,9 +182,7 @@ export function resolveSongRoute(
 ): { song: LibrarySong; target: RouteTarget } | null {
   const song = songs.find((item) => item.key === route.songKey);
   if (!song) return null;
-  const exact = song.charts.find(
-    (item) => item.source === route.source && item.part === route.part,
-  );
+  const exact = chartOfAddress(song, route.source, route.part);
   if (exact) return { song, target: { kind: 'chart', id: exact.id } };
   const wantsAnalysis = route.source === ANALYSIS_SEGMENT;
   if (song.charts.length > 0 && !(wantsAnalysis && song.analysed.length > 0)) {
