@@ -25,6 +25,7 @@ import Frame from '@/components/shared/Frame';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
 import {
   choiceOfTarget,
+  chartOfAddress,
   formatLibraryRoute,
   resolveSongRoute,
   routeOfChart,
@@ -171,9 +172,10 @@ export default function LibraryModule() {
   };
 
   const selectPart = (part: ChartPart) => {
-    const chart = resolved?.song.charts.find(
-      (item) => item.source === currentChoice && item.part === part,
-    );
+    const chart =
+      resolved && currentChoice
+        ? chartOfAddress(resolved.song, currentChoice, part)
+        : undefined;
     if (resolved && chart)
       navigate(routeOfChart(resolved.song.key, chart.source, chart.part));
   };

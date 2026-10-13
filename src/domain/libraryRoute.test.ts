@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chartOfAddress,
   formatLibraryRoute,
   parseLibraryRoute,
+  resolveSongRoute,
   songPartChoices,
   type LibraryRoute,
 } from '@/domain/libraryRoute';
@@ -102,5 +104,24 @@ describe('part choices of a source', () => {
   it('lists no part for a source that the song lacks, and for the analysis', () => {
     expect(songPartChoices(song, 'rocksmith')).toEqual([]);
     expect(songPartChoices(song, 'analise')).toEqual([]);
+  });
+  it('names the newest import when two charts share one address', () => {
+    const old = { ...chart('old', 'gp', 'bass'), importedAt: '2026-01-01' };
+    const fresh = { ...chart('new', 'gp', 'bass'), importedAt: '2026-02-01' };
+    for (const charts of [
+      [old, fresh, chart('d', 'gp', 'drums')],
+      [fresh, old, chart('d', 'gp', 'drums')],
+    ]) {
+      const [twice] = groupLibrarySongs(charts, []);
+      expect(chartOfAddress(twice, 'gp', 'bass')?.id).toBe('new');
+      expect(
+        resolveSongRoute([twice], {
+          screen: 'song',
+          songKey: twice.key,
+          source: 'gp',
+          part: 'bass',
+        })?.target,
+      ).toEqual({ kind: 'chart', id: 'new' });
+    }
   });
 });
