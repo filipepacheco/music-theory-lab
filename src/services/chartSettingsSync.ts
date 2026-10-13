@@ -31,7 +31,7 @@ const SYNC_STATE_KEY = 'music-theory-lab-chart-settings-sync';
  * when the client starts to read a record that an earlier client skipped (a
  * new field, a new value): each device then reads from counter 0 one time.
  */
-export const CHART_SETTINGS_SYNC_FORMAT = 1;
+export const CHART_SETTINGS_SYNC_FORMAT = 2;
 const ROUTE = '/api/chart-settings';
 /** The settings route refuses a write with more records. */
 const WRITE_LIMIT = 100;

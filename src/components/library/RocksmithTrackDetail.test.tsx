@@ -1172,3 +1172,79 @@ describe('Biblioteca kick row under the bass tab', () => {
     expect(heights[1]).toBe(heights[0]);
   });
 });
+
+describe('octave of one bar', () => {
+  const riffs = {
+    ...fixtureChart(
+      3,
+      walking([
+        [45, 48, 52, 45],
+        [45, 48, 52, 45],
+        [40, 43, 47, 40],
+      ]),
+    ),
+    id: 'b'.repeat(64),
+    source: 'gp' as const,
+  };
+  const bar = (index: number) =>
+    document.querySelector<HTMLElement>(`[data-bar="${index}"]`)!;
+  const midiOfBar = (index: number) =>
+    state.synthChart!.notes.filter((n) => n.bar === index).map((n) => n.midi);
+
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    vi.mocked(syncChartSettings).mockClear();
+  });
+
+  it('moves the clicked bar, stores the choice, and plays the new octave', async () => {
+    render(<RocksmithTrackDetail chart={riffs} onRemove={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText('Oitava por compasso'));
+    fireEvent.click(bar(1));
+    fireEvent.click(screen.getByLabelText('Uma oitava abaixo'));
+    await waitFor(() => expect(bar(1).dataset.octave).toBe('-1'));
+    expect(bar(0).dataset.octave).toBeUndefined();
+    expect(midiOfBar(1)).toEqual([33, 36, 40, 33]);
+    expect(midiOfBar(0)).toEqual([45, 48, 52, 45]);
+    await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
+    const saved = await rocksmithLibrary.getSettings(riffs.id);
+    expect(saved?.barOctaves).toEqual({ 1: -1 });
+    expect(parseChartSettings(saved)).toEqual(saved);
+  });
+
+  it('applies the choice to the equal bars, and clears all of them', async () => {
+    render(<RocksmithTrackDetail chart={riffs} onRemove={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText('Oitava por compasso'));
+    fireEvent.click(bar(0));
+    fireEvent.click(screen.getByLabelText('Aplicar aos 2 compassos iguais'));
+    fireEvent.click(screen.getByLabelText('Uma oitava abaixo'));
+    await waitFor(() => expect(bar(1).dataset.octave).toBe('-1'));
+    expect(bar(0).dataset.octave).toBe('-1');
+    expect(bar(2).dataset.octave).toBeUndefined();
+    fireEvent.click(screen.getByText('Voltar todos ao original (2)'));
+    await waitFor(() => expect(bar(0).dataset.octave).toBeUndefined());
+    expect(midiOfBar(0)).toEqual([45, 48, 52, 45]);
+    expect(
+      (await rocksmithLibrary.getSettings(riffs.id))?.barOctaves,
+    ).toBeUndefined();
+  });
+
+  it('shows a stored choice, and refuses an octave that leaves the neck', async () => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    await rocksmithLibrary.applySettings({
+      chartId: riffs.id,
+      updatedAt: '2026-10-05T10:00:00.000Z',
+      songLineLength: 'auto',
+      sectionLineLengths: {},
+      groupOverride: null,
+      barOctaves: { 0: -1 },
+    });
+    render(<RocksmithTrackDetail chart={riffs} onRemove={vi.fn()} />);
+    await waitFor(() => expect(bar(0).dataset.octave).toBe('-1'));
+    fireEvent.click(screen.getByLabelText('Oitava por compasso'));
+    fireEvent.click(bar(0));
+    expect(
+      (screen.getByLabelText('Uma oitava abaixo') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+});

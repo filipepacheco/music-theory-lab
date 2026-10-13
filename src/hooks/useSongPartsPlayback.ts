@@ -55,7 +55,7 @@ export interface SongPartsPlayback {
   mutes: PartMutes;
   toggleMute: (part: PlaybackPart) => void;
   /** The bass part tells which line (and shift) it plays. */
-  reportBass: (chart: BassChart, shift: number) => void;
+  reportBass: (chart: BassChart, shift: number, voicing?: string) => void;
   /** The open part tells whether a recording is linked to it. */
   reportRecording: (chartId: string, linked: boolean) => void;
 }
@@ -110,6 +110,7 @@ export function useSongPartsPlayback(
   const [reported, setReported] = useState<{
     chart: BassChart;
     shift: number;
+    voicing: string;
   } | null>(null);
   const [mutes, setMutes] = useState<PartMutes>(NO_MUTES);
   const [state, setState] = useState<LibraryAudioState>(IDLE);
@@ -200,13 +201,16 @@ export function useSongPartsPlayback(
     };
   }, [partnerId, openId, hasLoaded]);
 
-  const reportBass = useCallback((chart: BassChart, shift: number) => {
-    setReported((current) =>
-      current && current.chart === chart && current.shift === shift
-        ? current
-        : { chart, shift },
-    );
-  }, []);
+  const reportBass = useCallback(
+    (chart: BassChart, shift: number, voicing = '') => {
+      setReported((current) =>
+        current && current.chart === chart && current.shift === shift
+          ? current
+          : { chart, shift, voicing },
+      );
+    },
+    [],
+  );
   const reportRecording = useCallback((_chartId: string, linked: boolean) => {
     setOpenRecording(linked);
   }, []);
@@ -214,6 +218,8 @@ export function useSongPartsPlayback(
   const useReported = !!reported && reported.chart.id === bassId;
   const bassChart = useReported ? reported.chart : (loaded?.bass ?? null);
   const shift = useReported ? reported.shift : 0;
+  // The bar octaves of the bass part: a change gives a new sound.
+  const voicing = useReported ? reported.voicing : '';
   const drumsChart = loaded?.drums ?? null;
   const active =
     !!pair &&
@@ -265,7 +271,7 @@ export function useSongPartsPlayback(
     };
     // The chart objects are read from refs: a change of part or of fingering
     // gives new objects with the same sound and must not restart the clock.
-  }, [active, bassId, drumId, shift]);
+  }, [active, bassId, drumId, shift, voicing]);
 
   const toggleMute = useCallback((part: PlaybackPart) => {
     mutesRef.current = {

@@ -17,6 +17,11 @@ export interface ChartSettings {
   sectionLineLengths: Record<number, LineLength>;
   /** A song key, `separate`, or null for the calculated group. */
   groupOverride: string | null;
+  /**
+   * Octaves that a bar of the bass tab moves, by bar index. A bar that is
+   * not here plays as written. Absent when no bar moves.
+   */
+  barOctaves?: Record<number, number>;
 }
 
 export const MAX_LINE_LENGTH = 16;
@@ -28,6 +33,10 @@ const KEY_WORDS = String.raw`(?:[\p{L}\p{M}\p{N}]+(?: [\p{L}\p{M}\p{N}]+)*)?`;
 /** The form that `songKey` gives: words of a title, `|`, words of an artist. */
 const SONG_KEY = new RegExp(`^${KEY_WORDS}\\|${KEY_WORDS}$`, 'u');
 const MAX_SONG_KEY_LENGTH = 400;
+/** The largest number of octaves that one bar moves, up or down. */
+export const MAX_BAR_OCTAVE = 2;
+const MAX_BAR_OCTAVES = 5000;
+const OPTIONAL_FIELDS = ['barOctaves'];
 const FIELDS = [
   'chartId',
   'updatedAt',
@@ -82,6 +91,28 @@ function songKeyText(value: string): boolean {
   );
 }
 
+function barOctave(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value !== 0 &&
+    Math.abs(value) <= MAX_BAR_OCTAVE
+  );
+}
+
+/** The bar octaves of a record in one form, or null when one is not allowed. */
+function barOctaves(value: unknown): Record<number, number> | null {
+  if (value === undefined) return {};
+  if (!object(value)) return null;
+  const bars = Object.entries(value);
+  if (
+    bars.length > MAX_BAR_OCTAVES ||
+    !bars.every(([bar, octave]) => FIRST_BAR.test(bar) && barOctave(octave))
+  )
+    return null;
+  return Object.fromEntries(bars) as Record<number, number>;
+}
+
 function groupOverride(value: unknown): value is string | null {
   return (
     value === null ||
@@ -100,10 +131,15 @@ function groupOverride(value: unknown): value is string | null {
 export function parseChartSettings(value: unknown): ChartSettings | null {
   if (!object(value)) return null;
   const keys = Object.keys(value);
-  if (keys.length !== FIELDS.length || keys.some((k) => !FIELDS.includes(k)))
+  if (
+    FIELDS.some((k) => !keys.includes(k)) ||
+    keys.some((k) => !FIELDS.includes(k) && !OPTIONAL_FIELDS.includes(k))
+  )
     return null;
   const updatedAt = timestamp(value.updatedAt);
+  const octaves = barOctaves(value.barOctaves);
   if (
+    octaves === null ||
     typeof value.chartId !== 'string' ||
     !/^[a-f0-9]{64}$/.test(value.chartId) ||
     updatedAt === null ||
@@ -130,11 +166,12 @@ export function parseChartSettings(value: unknown): ChartSettings | null {
       LineLength
     >,
     groupOverride: value.groupOverride,
+    ...(Object.keys(octaves).length > 0 && { barOctaves: octaves }),
   };
 }
 
 /**
- * The three view choices as one text. Two valid records with equal choices
+ * The view choices as one text. Two valid records with equal choices
  * give equal text. The text holds only ASCII, so its order is the same in the
  * browser and in the database of the server: a song key in another script is
  * written with `\u` escapes, and `JSON.parse` reads it back.
@@ -144,6 +181,10 @@ export function chartSettingsBody(settings: ChartSettings): string {
     songLineLength: settings.songLineLength,
     sectionLineLengths: settings.sectionLineLengths,
     groupOverride: settings.groupOverride,
+    // Left out when empty: a record from before the bar octaves keeps its text.
+    ...(Object.keys(settings.barOctaves ?? {}).length > 0 && {
+      barOctaves: settings.barOctaves,
+    }),
   }).replace(
     /[\u0080-\uffff]/g,
     (unit) => `\\u${unit.charCodeAt(0).toString(16).padStart(4, '0')}`,
@@ -351,4 +392,40 @@ export function withBrowserLineLengths(
     copied = true;
   }
   return copied ? { ...base, sectionLineLengths: sections } : null;
+}
+
+/**
+ * The settings with a new octave for each bar of `bars`. An octave of 0
+ * removes the choice of the bar. Only the bar octaves change.
+ */
+export function withBarOctave(
+  current: ChartSettings | null,
+  chartId: string,
+  bars: readonly number[],
+  octave: number,
+  now: string,
+): ChartSettings {
+  const base = current ?? defaultChartSettings(chartId, now);
+  const octaves = { ...base.barOctaves };
+  for (const bar of bars) {
+    if (octave === 0) delete octaves[bar];
+    else octaves[bar] = octave;
+  }
+  const { barOctaves: _dropped, ...rest } = base;
+  return {
+    ...rest,
+    updatedAt: now,
+    ...(Object.keys(octaves).length > 0 && { barOctaves: octaves }),
+  };
+}
+
+/** The settings with no bar octave: each bar plays as written. */
+export function withoutBarOctaves(
+  current: ChartSettings | null,
+  chartId: string,
+  now: string,
+): ChartSettings {
+  const { barOctaves: _dropped, ...rest } =
+    current ?? defaultChartSettings(chartId, now);
+  return { ...rest, updatedAt: now };
 }

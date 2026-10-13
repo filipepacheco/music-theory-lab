@@ -64,6 +64,10 @@ interface Props {
    * When set (even empty), a kick row sits under the strings.
    */
   kickBeats?: readonly number[];
+  /** Octaves that the musician moved this bar; 0 or absent is as written. */
+  octave?: number;
+  /** The bar that the octave control points to. */
+  selected?: boolean;
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -272,6 +276,8 @@ function BassTabBar({
   noteNames,
   beatWidth = BEAT_WIDTH,
   repeatOf,
+  octave = 0,
+  selected = false,
   degreeLevels,
   kickBeats,
 }: Props) {
@@ -316,19 +322,33 @@ function BassTabBar({
       title={
         repeat
           ? `Compasso ${bar.index + 1} · igual ao compasso ${repeatOf + 1}, o de cima`
-          : barTitle(bar, analysis, segment)
+          : `${barTitle(bar, analysis, segment)}${
+              octave
+                ? ` · ${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
+                : ''
+            }`
       }
       data-bar={bar.index}
+      data-octave={octave || undefined}
+      aria-pressed={selected || undefined}
       data-beat-width={beatWidth}
       style={{ width: tabBarWidth(bar.beatCount, beatWidth) }}
       className={`relative shrink-0 border text-left ${
         isActive
           ? 'border-live bg-live-tint'
-          : 'border-border-default bg-bg-card'
+          : selected
+            ? 'border-text-primary bg-bg-card'
+            : 'border-border-default bg-bg-card'
       } ${onSeek ? 'cursor-pointer hover:border-text-primary' : 'cursor-default'}`}
     >
       <span className="absolute left-1 top-0 font-heading text-micro leading-none text-text-muted tabular-nums">
         {bar.index + 1}
+        {octave !== 0 && (
+          <span aria-hidden="true" className="text-text-primary">
+            {octave > 0 ? '▲' : '▼'}
+            {Math.abs(octave) > 1 ? Math.abs(octave) : ''}
+          </span>
+        )}
       </span>
       {analysis && repeat && <span className="block h-3" />}
       {analysis && !repeat && (
