@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-14 - Drum symbols and groove notation
+
+- **Changed**: the drum grid gives each cymbal and tom a symbol of its own.
+  The crash is a star, the ride is a diamond, and the hi-hat stays `x`. Tom 1
+  is a triangle up and tom 2 is a triangle down, in the same row.
+- **Changed**: in each bar of the drum grid, a solid line marks each beat and
+  a dotted line marks each half beat.
+- **Changed**: the section groove chart uses standard drum notation, close to
+  Songsterr: a percussion clef and 4/4, the hi-hat above the staff, the snare
+  in the third space, the kick in the first space, and stems down to beams.
+  The Estrutura groove chart and the PDF use the same note places.
+
 ## 2026-10-12 - Agent docs
 
 - **Changed**: `CLAUDE.md` is now a map (3,396 to 966 words). The detail on
