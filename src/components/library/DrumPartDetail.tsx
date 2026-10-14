@@ -46,9 +46,13 @@ const NO_MARKS: DrumGridMark[] = [];
 const noSectionLayout = () => null;
 
 const LEGEND: [symbol: string, meaning: string][] = [
-  ['●', 'tambor: bumbo, caixa, tom ou surdo'],
-  ['x', 'prato ou chimbal fechado'],
+  ['●', 'tambor: bumbo, caixa ou surdo'],
+  ['▲', 'tom 1 (agudo)'],
+  ['▼', 'tom 2 (médio)'],
+  ['x', 'chimbal fechado'],
   ['o', 'chimbal aberto'],
+  ['✱', 'prato de ataque'],
+  ['◇', 'prato de condução'],
   ['(x)', 'nota fantasma'],
   ['>', 'acento, sobre o símbolo em negrito'],
 ];
@@ -184,7 +188,7 @@ export default function DrumPartDetail({
         />
       )}
       lineStart={lineStart}
-      legend="Cada linha é uma peça, dos pratos (em cima) ao pedal do chimbal (embaixo); pontilhados marcam os tempos. ● = tambor, x = prato ou chimbal fechado, o = chimbal aberto, (x) = nota fantasma, > = acento."
+      legend="Cada linha é uma peça, dos pratos (em cima) ao pedal do chimbal (embaixo). A linha cheia marca o tempo e a pontilhada o meio tempo. ● = tambor, ▲ = tom 1, ▼ = tom 2, x = chimbal fechado, o = chimbal aberto, ✱ = ataque, ◇ = condução, (x) = nota fantasma, > = acento."
       dock={{
         label: 'Bateria',
         showLabel: 'Mostrar legenda',

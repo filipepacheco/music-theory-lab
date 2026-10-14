@@ -32,9 +32,9 @@ export const DRUM_GRID_ROW_LABEL: Record<DrumGridRow, string> = {
 
 /** The full name of a row, for a tooltip and for a screen reader. */
 export const DRUM_GRID_ROW_NAME: Record<DrumGridRow, string> = {
-  pratos: 'Pratos de ataque e de condução',
+  pratos: 'Pratos: ataque (✱) e condução (◇)',
   chimbal: 'Chimbal',
-  toms: 'Tons agudo e médio',
+  toms: 'Tons: tom 1 agudo (▲) e tom 2 médio (▼)',
   caixa: 'Caixa',
   surdo: 'Surdo',
   bumbo: 'Bumbo',
@@ -42,14 +42,30 @@ export const DRUM_GRID_ROW_NAME: Record<DrumGridRow, string> = {
   outros: 'Outras peças',
 };
 
-/** A filled dot for a drum, `x` for a cymbal, `o` for the open hi-hat. */
-export type DrumGridSymbol = 'dot' | 'x' | 'o';
+/**
+ * The symbol of a hit. A drum is a filled dot, and the two toms are a
+ * triangle up (tom 1, the high one) and a triangle down (tom 2). The hi-hat
+ * is `x`, or `o` when open. The crash is a star and the ride is a diamond,
+ * so the three cymbals differ.
+ */
+export type DrumGridSymbol =
+  | 'dot'
+  | 'tom1'
+  | 'tom2'
+  | 'x'
+  | 'o'
+  | 'crash'
+  | 'ride';
 
 /** The text of a symbol, for a label that a screen reader speaks. */
 export const DRUM_GRID_SYMBOL_TEXT: Record<DrumGridSymbol, string> = {
   dot: '●',
+  tom1: '▲',
+  tom2: '▼',
   x: 'x',
   o: 'o',
+  crash: '✱',
+  ride: '◇',
 };
 
 type GridHit = Pick<DrumHit, 'piece' | 'articulation'>;
@@ -81,12 +97,18 @@ export function drumGridSymbolOf(hit: GridHit): DrumGridSymbol {
   switch (hit.piece) {
     case 'bumbo':
     case 'caixa':
-    case 'tomAgudo':
-    case 'tomMedio':
     case 'surdo':
       return 'dot';
+    case 'tomAgudo':
+      return 'tom1';
+    case 'tomMedio':
+      return 'tom2';
     case 'chimbal':
       return hit.articulation === 'open' ? 'o' : 'x';
+    case 'pratoAtaque':
+      return 'crash';
+    case 'pratoConducao':
+      return 'ride';
     default:
       return 'x';
   }
@@ -128,12 +150,22 @@ const DYNAMIC_RANK: Record<DrumDynamic, number> = {
   normal: 1,
   accent: 2,
 };
-const SYMBOL_RANK: Record<DrumGridSymbol, number> = { x: 0, dot: 1, o: 2 };
+/** The symbol that wins when two hits of a row share a beat. */
+const SYMBOL_RANK: Record<DrumGridSymbol, number> = {
+  x: 0,
+  ride: 1,
+  dot: 1,
+  tom2: 1,
+  tom1: 2,
+  crash: 2,
+  o: 2,
+};
 
 /**
  * The marks of each bar of a chart, ordered by row and then by beat. Hits of
  * one row at one beat (the two toms, or the two cymbals) are one mark: it
- * takes the strongest dynamic, and the open hi-hat wins over the closed one.
+ * takes the strongest dynamic. The open hi-hat wins over the closed one, the
+ * crash over the ride, and tom 1 over tom 2.
  */
 export function drumGridMarksByBar(
   chart: Pick<ChartBars, 'bars'> & { hits: DrumHit[] },
