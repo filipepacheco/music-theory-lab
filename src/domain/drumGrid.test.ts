@@ -95,14 +95,21 @@ describe('rows of the drum grid', () => {
 });
 
 describe('symbols of the drum grid', () => {
-  it('draw a drum as a dot, a cymbal or a closed hi-hat as x, an open hi-hat as o', () => {
-    for (const drum of [KICK, SNARE, HIGH_TOM, MID_TOM, FLOOR_TOM]) {
+  it('draw a drum as a dot, a closed hi-hat as x, an open hi-hat as o', () => {
+    for (const drum of [KICK, SNARE, FLOOR_TOM]) {
       expect(drumGridSymbolOf(drumSoundOf(drum))).toBe('dot');
     }
-    for (const cymbal of [CRASH, RIDE, CLOSED_HAT, PEDAL_HAT]) {
-      expect(drumGridSymbolOf(drumSoundOf(cymbal))).toBe('x');
+    for (const hat of [CLOSED_HAT, PEDAL_HAT]) {
+      expect(drumGridSymbolOf(drumSoundOf(hat))).toBe('x');
     }
     expect(drumGridSymbolOf(drumSoundOf(OPEN_HAT))).toBe('o');
+  });
+
+  it('give the crash, the ride, and each tom a symbol of its own', () => {
+    expect(drumGridSymbolOf(drumSoundOf(CRASH))).toBe('crash');
+    expect(drumGridSymbolOf(drumSoundOf(RIDE))).toBe('ride');
+    expect(drumGridSymbolOf(drumSoundOf(HIGH_TOM))).toBe('tom1');
+    expect(drumGridSymbolOf(drumSoundOf(MID_TOM))).toBe('tom2');
   });
 });
 
@@ -135,9 +142,9 @@ describe('marks of the bars', () => {
       { bar: 0, beat: 2, midi: OPEN_HAT },
     ]);
     expect(drumGridMarksByBar(chart)[0]).toEqual([
-      { row: 'pratos', beat: 0, symbol: 'x', dynamic: 'accent' },
+      { row: 'pratos', beat: 0, symbol: 'crash', dynamic: 'accent' },
       { row: 'chimbal', beat: 2, symbol: 'o', dynamic: 'normal' },
-      { row: 'toms', beat: 1, symbol: 'dot', dynamic: 'normal' },
+      { row: 'toms', beat: 1, symbol: 'tom1', dynamic: 'normal' },
     ]);
   });
 });
