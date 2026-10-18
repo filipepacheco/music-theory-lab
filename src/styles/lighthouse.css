@@ -1,15 +1,3 @@
-/* Lighthouse components, ported from the satori-skills design system
-   (scripts/lighthouse-ds/components/bundle.css). Only the components the app
-   uses are here; port another one from the source when it gets a consumer.
-
-   globals.css loads this file into the `components` layer, so a Tailwind
-   utility on the same element wins. This file is the design system layer, so
-   it may use the primitives directly. React components reach it through the
-   wrappers in src/components/shared (Frame, Button, Tag, Field, Select,
-   Segmented, Callout).
-
-   Horizontal steps inside a line use ch, the width of one mono cell. The
-   "App extensions" section at the end is ours, not Lighthouse's. */
 :root {
   --lh-ground: var(--sea-950);
   --lh-focus: 2px solid var(--fog-bright);
@@ -33,7 +21,6 @@
   --type-code: 400 13px/20px var(--font-mono);
 }
 
-/* ---- text helpers ---- */
 .lh-label {
   font: var(--type-label);
   letter-spacing: 0.08em;
@@ -45,7 +32,6 @@
   color: var(--fog-dim);
 }
 
-/* ---- Frame: a box with its title in the top border ---- */
 .lh-frame {
   position: relative;
   margin: 8px 0 0;
@@ -117,7 +103,6 @@
     bottom right,
     bottom right;
 }
-/* A key hint in the bottom border, at the right: "tab next · space choose". */
 .lh-frame-foot {
   position: absolute;
   right: 1.5ch;
@@ -134,7 +119,6 @@
   text-overflow: ellipsis;
 }
 
-/* ---- Button: [ label ] ---- */
 .lh-btn {
   display: inline-flex;
   align-items: center;
@@ -202,7 +186,6 @@
   cursor: not-allowed;
 }
 
-/* ---- Field: a text input, with an optional prompt glyph before it ---- */
 .lh-field {
   display: flex;
   gap: 1ch;
@@ -234,7 +217,6 @@ textarea.lh-input {
   font: var(--type-code);
 }
 
-/* ---- Tag: <word> ---- */
 .lh-tag {
   display: inline-block;
   font: var(--type-label);
@@ -266,7 +248,6 @@ textarea.lh-input {
   color: var(--wreck);
 }
 
-/* ---- Pips: a row of small squares. A filled one is done or live ---- */
 .lh-pips {
   display: flex;
   font: 400 10px/12px var(--font-mono);
@@ -287,7 +268,6 @@ textarea.lh-input {
   color: var(--beam);
 }
 
-/* ---- Callout: a frame with a glyph in its gutter ---- */
 .lh-callout {
   position: relative;
   margin: var(--space-4) 0;
@@ -320,7 +300,6 @@ textarea.lh-input {
   font-size: 13px;
 }
 
-/* ---- Dialog: a window in a double frame, with a title bar and a hard shadow ---- */
 .lh-dialog {
   width: min(860px, calc(100vw - 32px));
   max-height: min(86vh, 900px);
@@ -367,9 +346,6 @@ textarea.lh-input {
   }
 }
 
-/* ==== App extensions: not part of Lighthouse ==== */
-
-/* Harmonic functions as tags. The hues come from the music layer tokens. */
 .lh-tag.is-tonic {
   color: var(--color-tonic);
 }
@@ -380,20 +356,15 @@ textarea.lh-input {
   color: var(--color-dominant);
 }
 
-/* A button for a thing that runs now (the metronome, a recording). */
 .lh-btn.is-live,
 .lh-btn.is-live::before,
 .lh-btn.is-live::after {
   color: var(--beam);
 }
-/* Pips in a button follow its text when the button inverts. */
 .lh-btn:hover:not(:disabled) :is(.lh-pips, .lh-pip) {
   color: inherit;
 }
 
-/* Tabs: a row of cells for the modules and for a choice of a few. The open
-   cell is inverted, like the open phase of Lighthouse; the pointer gives a
-   quiet ground, so the two do not look the same. */
 .lh-tabs {
   display: flex;
   min-width: 0;
@@ -427,7 +398,6 @@ textarea.lh-input {
   color: var(--sea-950);
   font-weight: 600;
 }
-/* Inset, so a scrolling row of tabs does not cut the outline. */
 .lh-tab:focus-visible {
   outline: var(--lh-focus);
   outline-offset: -2px;
@@ -440,7 +410,6 @@ textarea.lh-input {
   outline-color: var(--sea-950);
 }
 
-/* Select: a native select with the look of the input, and its own arrow. */
 .lh-select {
   position: relative;
   display: inline-flex;
@@ -480,8 +449,6 @@ textarea.lh-input {
   pointer-events: none;
 }
 
-/* A frame folded to its title line. The border fades instead of changing
-   width, so the fold does not move the layout. */
 .lh-frame {
   transition:
     padding 0.25s ease-in-out,
@@ -493,7 +460,6 @@ textarea.lh-input {
   border-bottom-color: transparent;
 }
 
-/* Lighthouse is sized for a desktop pointer. A finger needs a larger target. */
 @media (pointer: coarse) {
   .lh-btn {
     min-height: 44px;

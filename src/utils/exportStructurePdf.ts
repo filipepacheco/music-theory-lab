@@ -146,7 +146,6 @@ export interface GroovePdfRow {
   hits: boolean[];
 }
 
-/** Normalize groove rows for the PDF renderer, including legacy patterns. */
 export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
   if (!groove) return [];
 
@@ -175,11 +174,6 @@ function grooveResolutionLabel(groove: GroovePattern): string {
 
 type WrapText = (text: string, maxWidth: number) => string[];
 
-/**
- * Pure layout for one section: bar grid geometry and comment placement for a
- * page format. `wrapText` is injected so tests can cross this seam without
- * jsPDF — the export path passes `doc.splitTextToSize` bound to the document.
- */
 export function calcSectionLayout(
   section: StructureSection,
   sectionBars: StructureBar[],
@@ -255,7 +249,6 @@ export function calcSectionLayout(
   };
 }
 
-/** Layouts for every non-empty section, in section order. Pure. */
 export function layoutSections(
   sections: StructureSection[],
   bars: StructureBar[],
@@ -464,7 +457,6 @@ function renderSection(
   const [r, g, b] = hexToRgb(section.color);
   const [lr, lg, lb] = lightenRgb(section.color, 0.85);
 
-  // Badge
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(cfg.badgeFontSize);
   const badgeText = section.name;
@@ -484,7 +476,6 @@ function renderSection(
   doc.setTextColor(r, g, b);
   doc.text(badgeText, x + cfg.badgePadH / 2, y + cfg.badgeHeight * 0.7);
 
-  // Bar count
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(cfg.barCountFontSize);
   doc.setTextColor(160, 160, 160);
@@ -496,7 +487,6 @@ function renderSection(
 
   const barsTopY = y + cfg.barsTopOffset;
 
-  // Bars grid
   const sectionFillRgb = lightenRgb(section.color, 0.88);
   const sectionBorderRgb = lightenRgb(section.color, 0.6);
 
@@ -507,7 +497,6 @@ function renderSection(
     const by = barsTopY + row * (cfg.barH + cfg.barGap);
     const bar = sectionBars[i]!;
 
-    // Per-bar color or section color
     const barColor = effectiveBarColor(bar.color, section.color)!;
     const [blr, blg, blb] = bar.color
       ? lightenRgb(bar.color, 0.88)
@@ -521,7 +510,6 @@ function renderSection(
     doc.setLineWidth(0.15);
     doc.roundedRect(bx, by, cfg.barW, cfg.barH, 0.6, 0.6, 'FD');
 
-    // Bar number
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(cfg.barNumFontSize);
     doc.setTextColor(50, 50, 50);
@@ -529,7 +517,6 @@ function renderSection(
     const numW = doc.getTextWidth(numStr);
     doc.text(numStr, bx + (cfg.barW - numW) / 2, by + cfg.barH * 0.38);
 
-    // Beat dots - single row
     const dotCount = dotsForTimeSignature(bar.timeSignature);
     const accentSet = new Set(bar.accents ?? []);
     const dotR = cfg.barH * 0.04;
@@ -559,7 +546,6 @@ function renderSection(
     }
   }
 
-  // Comment
   if (commentLines.length > 0) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(cfg.commentFontSize);
@@ -611,7 +597,6 @@ export function exportStructurePdf({
 
   let headerH = 0;
 
-  // -- Title --
   let ty = cfg.margin;
   if (title) {
     doc.setFont('helvetica', 'bold');
@@ -621,7 +606,6 @@ export function exportStructurePdf({
     ty += 6;
   }
 
-  // -- Subtitle line: artist and/or BPM --
   const subtitleParts: string[] = [];
   if (artist) subtitleParts.push(artist);
   if (bpm && bpm !== 120) subtitleParts.push(`${bpm} BPM`);
@@ -643,10 +627,8 @@ export function exportStructurePdf({
   }
   headerH = ty - cfg.margin;
 
-  // -- Pre-calculate layouts --
   const layouts = layoutSections(sections, bars, cfg, wrapText);
 
-  // -- Flow sections into columns (fill left first, then right) --
   let col = 0;
   const colY: number[] = new Array(cfg.numCols).fill(cfg.margin + headerH);
   const pageBottom = cfg.pageH - cfg.margin;
@@ -670,7 +652,6 @@ export function exportStructurePdf({
     }
   }
 
-  // -- Download --
   const filename = title
     ? `${title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}_estrutura.pdf`
     : 'estrutura.pdf';

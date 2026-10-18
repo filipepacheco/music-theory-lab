@@ -1,11 +1,11 @@
-import { CHORD_TYPES } from "@/constants/chords";
+import { CHORD_TYPES } from '@/constants/chords';
 import {
   MAJOR_FIELD,
   MINOR_FIELD,
   type HarmonicFunction,
-} from "@/constants/harmonicFields";
-import { SCALE_PATTERNS } from "@/constants/scales";
-import { getNoteName } from "./noteHelpers";
+} from '@/constants/harmonicFields';
+import { SCALE_PATTERNS } from '@/constants/scales';
+import { getNoteName } from './noteHelpers';
 
 export interface HarmonicChord {
   degree: number;
@@ -18,21 +18,15 @@ export interface HarmonicChord {
   chordSymbol: string;
 }
 
-/**
- * Get the notes of a scale given a root index and scale pattern ID.
- */
 export function getScaleNotes(
   rootIndex: number,
-  scaleId: string = "major",
+  scaleId: string = 'major',
 ): number[] {
   const pattern = SCALE_PATTERNS[scaleId];
   if (!pattern) return [];
   return pattern.intervals.map((interval) => (rootIndex + interval) % 12);
 }
 
-/**
- * Get the notes of a chord given a root index and chord type ID.
- */
 export function getChordNotes(
   rootIndex: number,
   chordTypeId: string,
@@ -42,10 +36,6 @@ export function getChordNotes(
   return chordType.intervals.map((interval) => (rootIndex + interval) % 12);
 }
 
-/**
- * Compute the full harmonic field for a given root note.
- * Returns an array of 7 HarmonicChord objects.
- */
 export function getHarmonicField(
   rootIndex: number,
   isMinor: boolean = false,
