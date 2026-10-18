@@ -1,11 +1,19 @@
-// Shared GP7 (.gp) parsing — extracted from parse.ts so chords.ts can reuse
-// it. Not app code; research/gp-import/ is standalone. See README.md.
-
 import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
 
 export const NOTE_NAMES = [
-  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
 ];
 export function pitchClassName(midi: number): string {
   return NOTE_NAMES[((midi % 12) + 12) % 12];
@@ -22,9 +30,7 @@ export interface GpFile {
   trackNames: string[];
   masterBarCount: number;
   chordDictionaryFound: boolean;
-  /** Every (bar, track) pair — including empty ones. */
   results: BarPitches[];
-  /** Convenience lookup: pitches for a given bar index + track name. */
   pitchesFor(barIndex: number, trackName: string): number[];
 }
 
@@ -33,8 +39,16 @@ const asArray = <T>(v: T | T[] | undefined): T[] =>
   v === undefined ? [] : Array.isArray(v) ? v : [v];
 
 const REPEATED_TAGS = new Set([
-  'Track', 'Staff', 'Property', 'Item', 'MasterBar', 'Bar', 'Voice', 'Beat',
-  'Note', 'Degree',
+  'Track',
+  'Staff',
+  'Property',
+  'Item',
+  'MasterBar',
+  'Bar',
+  'Voice',
+  'Beat',
+  'Note',
+  'Degree',
 ]);
 
 export function parseGpFile(filePath: string): GpFile {
@@ -70,7 +84,6 @@ export function parseGpFile(filePath: string): GpFile {
     asArray(gpif.Notes?.Note).map((n) => [String(n['@_id']), n]),
   );
 
-  // Fast-path check — see CHORD-METADATA-FINDINGS.md (issue #4).
   let chordDictionaryFound = false;
   for (const track of tracks) {
     for (const staff of asArray(track.Staves?.Staff)) {
@@ -129,7 +142,8 @@ export function parseGpFile(filePath: string): GpFile {
   });
 
   const pitchIndex = new Map<string, number[]>();
-  for (const r of results) pitchIndex.set(`${r.barIndex}::${r.track}`, r.pitches);
+  for (const r of results)
+    pitchIndex.set(`${r.barIndex}::${r.track}`, r.pitches);
 
   return {
     gpVersion: String(gpif.GPVersion),

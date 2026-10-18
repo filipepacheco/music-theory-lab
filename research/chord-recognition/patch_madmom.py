@@ -1,18 +1,3 @@
-"""Patch madmom 0.16.1 for Python 3.10+ and numpy 1.24+.
-
-madmom hasn't been released since 2018 and uses several APIs that have been
-removed from Python and numpy since:
-
-  - ``from collections import MutableSequence``  (moved to collections.abc in Py3.3, removed Py3.10)
-  - ``np.float``, ``np.int``, ``np.bool``, ``np.object``  (removed in numpy 1.24)
-
-Running this script patches the installed madmom package in-place. Run it once
-after ``pip install -r requirements.txt``. Safe to run multiple times (idempotent).
-
-Usage:
-    python patch_madmom.py
-"""
-
 from __future__ import annotations
 
 import re
