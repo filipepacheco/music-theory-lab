@@ -1,23 +1,3 @@
-"""Local-only HTTP service that turns an uploaded audio file into library data.
-
-This is the one part of the POC that listens on a socket, and it is a
-development convenience, not a product surface. It binds loopback by default,
-has no authentication, and runs arbitrary decode + inference work for anyone
-who can reach it, so it must never be exposed off the machine. The offline
-``audio-library-poc`` CLI is untouched and still reaches the network only
-through ``fetch_checkpoints.py``; this ships as its own console script so
-that promise keeps holding.
-
-What it automates is the manual part: hash the upload, write the manifest,
-run beat/chord/key/beat-quality/section, then publish into ``public/library`` with
-``--copy-audio`` so the viewer gets a player. Uploaded audio lands in the
-ignored workspace and the copied source is covered by
-``public/library/tracks/*/source.*`` in .gitignore, so originals stay local.
-
-One job runs at a time. There is a single GPU behind this and a queue is
-easier to reason about than a semaphore.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -58,11 +38,8 @@ from audio_library_poc.track_intake import (
 BEAT_CHECKPOINT_PATH = "models/beat_this-final0.ckpt"
 CHORD_CHECKPOINT_PATH = "models/chordmini-btc-model-best.pth"
 
-#: Extensions the intake accepts. The decoders downstream dispatch on suffix.
 ALLOWED_SUFFIXES = frozenset({".mp3", ".m4a", ".wav", ".flac", ".ogg"})
 
-#: Refuse anything larger than this rather than filling the disk. A 10-minute
-#: lossless stereo file lands well under it.
 MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 
 JobStatus = Literal["queued", "running", "succeeded", "failed"]
@@ -80,16 +57,12 @@ class StageProgress:
 
 @dataclass(frozen=True)
 class ArtifactPointer:
-    """One immutable workspace artifact used by a dependent stage."""
-
     relative_path: str
     sha256: str
 
 
 @dataclass
 class Job:
-    """One uploaded file working its way through the intake stages."""
-
     id: str
     slug: str
     title: str
@@ -122,18 +95,10 @@ class Job:
         }
 
 
-class IntakeError(Exception):
-    """A request the caller can fix: bad suffix, oversized file, no checkpoint."""
+class IntakeError(Exception): ...
 
 
 class JobRegistry:
-    """Jobs plus the worker thread that drains them, oldest first.
-
-    Deliberately in-memory: a restart loses the list, but never the work —
-    completed stages are committed in the workspace cache, so re-uploading the
-    same file replays as cache hits.
-    """
-
     def __init__(self) -> None:
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
@@ -171,21 +136,13 @@ class JobRegistry:
                 continue
             try:
                 runner.execute(job)
-            except Exception as exc:  # noqa: BLE001 - the worker must not die
+            except Exception as exc:
                 job.status = "failed"
                 job.error = f"{type(exc).__name__}: {exc}"
                 job.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class JobRunner:
-    """Runs a job's stages, then publishes the workspace into public/library.
-
-    ``public`` is the app's ``public/`` directory, not ``public/library``:
-    ``sync_workspace_to_public.py`` appends ``library`` itself. Passing the
-    deeper path publishes into ``public/library/library`` and the viewer sees
-    nothing, so `main` refuses it outright.
-    """
-
     def __init__(self, workspace: Path, public: Path, *, copy_audio: bool = True):
         self.workspace = workspace
         self.public = public
@@ -277,8 +234,6 @@ class JobRunner:
                 continue
             progress.status = "failed"
             progress.detail = _describe_failure(result)
-            # section is optional to the public export; the other three are
-            # not, so only a section failure is worth continuing past.
             if specification.stage_kind != STRUCTURAL_SEGMENTATION_STAGE_KIND:
                 job.status = "failed"
                 job.error = f"{specification.stage_kind}: {progress.detail}"
@@ -290,7 +245,6 @@ class JobRunner:
         job.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
 
     def publish(self) -> None:
-        """Run the sync script the same way a human would, in its own process."""
 
         script = (
             Path(__file__).resolve().parents[2]
@@ -327,7 +281,6 @@ def _describe_failure(result: Any) -> str:
 
 
 def checkpoint_ref(workspace: Path, relative_path: str) -> CheckpointRef:
-    """Pin a checkpoint by hashing what is actually on disk."""
 
     path = workspace / relative_path
     if not path.is_file():
@@ -347,11 +300,6 @@ def prepare_job(
     artist: str,
     device: str,
 ) -> Job:
-    """Validate an upload, land it in the workspace, and write its manifest.
-
-    Raises `IntakeError` for anything the caller can correct. Nothing here
-    starts work; the returned job still has to be queued.
-    """
 
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
@@ -379,8 +327,6 @@ def prepare_job(
         device=device,
         quality_gates=_load_quality_gates(workspace),
     )
-    # Validate before writing: a manifest that cannot load is a bug here, not
-    # something the operator should discover mid-run.
     PipelineManifest.model_validate(manifest)
     (workspace / f"intake-{slug}.local.yaml").write_text(
         yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True),
@@ -409,7 +355,6 @@ def prepare_job(
 
 
 def _load_quality_gates(workspace: Path) -> IntakeQualityGates:
-    """Load held-out calibration evidence, or stay explicitly provisional."""
 
     path = workspace / INTAKE_CALIBRATION_MANIFEST
     if not path.is_file():
@@ -432,12 +377,6 @@ def _register_track(
     title: str,
     artist: str,
 ) -> None:
-    """Tell the public export what this upload is and where its audio lives.
-
-    Recorded here rather than at publish time so the metadata survives a
-    crash mid-analysis: re-running the sync script by hand then still finds
-    the title, the artist and the file to copy for the player.
-    """
 
     path = workspace / INTAKE_TRACKS_MANIFEST
     existing = (
@@ -497,8 +436,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     public = arguments.public.resolve()
     if public.name == "library":
-        # Publishing would land in public/library/library and the viewer would
-        # never look there. Easier to refuse than to leave someone hunting.
         print(
             f"--public should be the app's public/ directory, not {public}. "
             f"Results already go into <public>/library/. Try {public.parent}.",

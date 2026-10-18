@@ -1,15 +1,3 @@
-"""Tests for the intake upload boundary.
-
-Only `prepare_job` is covered here, and deliberately: it is the point where
-an untrusted filename and an arbitrary byte string become a file on disk and
-a manifest. Everything past it (the FastAPI wiring, the worker thread, the
-GPU stages) needs the `server` and `inference` extras, which CI does not
-install.
-
-Importing this module must stay cheap for the same reason — `create_app`
-imports FastAPI lazily so the rest of the file works without it.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -201,8 +189,6 @@ class TestPrepareJob:
     def test_an_upload_cannot_escape_the_originals_directory(
         self, workspace: Path
     ) -> None:
-        # The filename is attacker-controlled in the general case. slugify
-        # strips separators, so a traversal attempt lands as a plain name.
         job = prepare(workspace, title="", filename="../../etc/passwd.mp3")
         landed = (workspace / "originals" / f"{job.slug}.mp3").resolve()
         assert landed.is_file()
@@ -211,8 +197,6 @@ class TestPrepareJob:
     def test_two_uploads_of_the_same_title_reuse_one_slug(
         self, workspace: Path
     ) -> None:
-        # Same title means the same run id, which is what makes a re-upload
-        # replay through the orchestrator cache instead of redoing the work.
         first = prepare(workspace)
         second = prepare(workspace)
         assert first.slug == second.slug
@@ -220,13 +204,6 @@ class TestPrepareJob:
 
 
 class TestTrackRegistration:
-    """`prepare_job` must leave the export enough to display and play a track.
-
-    Without a row in the intake manifest the published track reaches the app
-    as "Untitled" by "Unknown" with the player disabled, because the export's
-    only other metadata source is the curated corpus.
-    """
-
     def _rows(self, workspace: Path) -> list[dict]:
         manifest = yaml.safe_load(
             (workspace / INTAKE_TRACKS_MANIFEST).read_text(encoding="utf-8")
@@ -266,9 +243,6 @@ class TestTrackRegistration:
         }
 
     def test_same_audio_under_a_new_title_leaves_one_row(self, workspace: Path) -> None:
-        # Same bytes, so the export would group both under one sha256 anyway;
-        # keeping both rows would just mean the display metadata depended on
-        # which one the loader happened to read last.
         prepare(workspace)
         prepare(workspace, title="Come Together (remaster)")
         (row,) = self._rows(workspace)

@@ -1,22 +1,3 @@
-"""Render a Markdown report of beat-aligned chord progressions.
-
-Walks workspace/runs/ for every source that has all three Phase 3
-outputs on disk — a succeeded ``beat.beat_this`` stage, a succeeded
-``chord.chordmini_btc`` stage, and a succeeded ``key.hpcp`` stage — and
-emits one section per track showing the beat-aligned progression with
-Roman-numeral degrees relative to the detected key.
-
-Standard library + the pydantic contracts we already have, so no new
-runtime dep.
-
-Invocation:
-
-    .venv\\Scripts\\python.exe scripts/beat_aligned_chords_report.py \\
-        --workspace workspace \\
-        --out workspace/reports/beat_aligned_chords.md \\
-        --min-beat-span 4
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -60,17 +41,14 @@ _STAGE_KIND_TO_ARTIFACT = {
 
 @dataclass(frozen=True)
 class TrackBundle:
-    """The three results a track needs before it can be aligned."""
-
     source_sha256: str
-    run_ids: dict[str, str]  # stage_kind -> run_id
+    run_ids: dict[str, str]
     beats: BeatAnalysisResult
     chords: ChordAnalysisResult
     key: KeyAnalysisResult
 
 
 def collect_bundles(workspace: Path) -> list[TrackBundle]:
-    """Group succeeded runs by source_sha256; keep only fully-covered triples."""
 
     per_source: dict[str, dict[str, tuple[str, Any]]] = {}
     runs_root = workspace / "runs"
@@ -208,7 +186,7 @@ def _load_result(stage_kind: str, path: Path) -> Any | None:
             return ChordAnalysisResult.model_validate(raw)
         if stage_kind == "key.hpcp":
             return KeyAnalysisResult.model_validate(raw)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     return None
 

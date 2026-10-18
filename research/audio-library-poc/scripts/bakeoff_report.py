@@ -1,18 +1,3 @@
-"""Render a Markdown bakeoff report from workspace/runs/.
-
-Walks the workspace runs tree, keeps every stage-result envelope whose
-status is ``succeeded`` and whose ``stage_kind`` starts with ``separator.``,
-loads the paired ``SeparationResult`` JSON, and prints a per-track +
-aggregate comparison to stdout (or ``--out`` if given). Standard library
-only so the offline harness stays torch-free.
-
-Invocation:
-
-    .venv\\Scripts\\python.exe scripts/bakeoff_report.py \\
-        --workspace workspace \\
-        --out workspace/reports/bakeoff.md
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -23,13 +8,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 
 @dataclass(frozen=True)
 class BakeoffRun:
-    """One (separator, track) datapoint the report consumes."""
-
     run_id: str
     stage_kind: str
     candidate_id: str
@@ -46,7 +28,6 @@ class BakeoffRun:
 
 
 def collect_runs(workspace: Path) -> list[BakeoffRun]:
-    """Return one BakeoffRun per succeeded separator stage under workspace/runs/."""
 
     runs_root = workspace / "runs"
     if not runs_root.is_dir():
@@ -113,9 +94,7 @@ def _load_run(
         run_id=run_id,
         stage_kind=identity.get("stage_kind", stage_dir.name),
         candidate_id=str(sep_result.get("provenance", {}).get("candidate", "")),
-        source_relative_path=str(
-            _extract_source_relative_path(sep_result, artifact_dir)
-        ),
+        source_relative_path=str(sep_result.get("source_sha256", "")),
         duration_seconds=float(source_facts.get("duration_seconds", 0.0)),
         wall_seconds=float(envelope.get("metrics", {}).get("duration_seconds", 0.0)),
         reconstruction_relative_rms=float(reconstruction.get("relative_rms", 0.0)),
@@ -130,17 +109,7 @@ def _load_run(
     )
 
 
-def _extract_source_relative_path(
-    sep_result: dict[str, Any], artifact_dir: Path
-) -> str:
-    # The separator config isn't nested in SeparationResult; the run_id folder
-    # name is derived from the pipeline yaml the user drove. Use source_sha256
-    # as the machine-readable fallback and let the report label rows by run_id.
-    return str(sep_result.get("source_sha256", ""))
-
-
 def group_by_track(runs: Iterable[BakeoffRun]) -> dict[str, list[BakeoffRun]]:
-    """Group runs by ``source_relative_path`` so per-track comparisons align."""
 
     tracks: dict[str, list[BakeoffRun]] = {}
     for run in runs:
@@ -151,7 +120,6 @@ def group_by_track(runs: Iterable[BakeoffRun]) -> dict[str, list[BakeoffRun]]:
 def render_report(
     runs: list[BakeoffRun], *, generated_at: datetime | None = None
 ) -> str:
-    """Return a Markdown document comparing every (candidate, track) datapoint."""
 
     if not runs:
         return (

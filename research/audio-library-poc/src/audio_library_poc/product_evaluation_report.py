@@ -1,5 +1,3 @@
-"""Manifest-authoritative JSON and Markdown reports for product metrics."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -55,7 +53,6 @@ def build_product_report(
     bootstrap_replicates: int = 2000,
     manifest_sha256: str | None = None,
 ) -> ProductEvaluationReport:
-    """Score only resolved, hash-verified manifest selections and excerpts."""
 
     if bootstrap_replicates < 1:
         raise ValueError("bootstrap_replicates must be positive")
@@ -204,7 +201,6 @@ def build_product_report(
 
 
 def render_product_markdown(report: ProductEvaluationReport) -> str:
-    """Render the same portable report data for human inspection."""
 
     manifest = report.manifest
     lines = [

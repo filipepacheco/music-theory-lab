@@ -1,35 +1,3 @@
-"""Pure-domain module: align ChordSegments to detected beats + roman-numeral degrees.
-
-Takes three independent Phase 3 analysis results — beats
-(``BeatAnalysisResult``), chord segments (``ChordAnalysisResult``), and a
-detected key (``KeyAnalysisResult``) — and produces one integrated view
-of "which chord landed on which beat, and what does it mean relative to
-the detected key". No new stage kind: this is a data transformation the
-report script and any downstream similarity code can call directly.
-
-Beat alignment rule:
-
-- Each chord segment ``[start_seconds, end_seconds)`` is snapped to the
-  nearest beat by index. ``start_beat_index`` is the argmin over
-  ``|beat_time - start_seconds|``; ``end_beat_index`` is the argmin over
-  ``|beat_time - end_seconds|``.
-- The chord's ``snapped_start_seconds`` / ``snapped_end_seconds`` are the
-  beat times at those indices (or the original endpoint when it falls
-  outside the beat grid — clamped to the first/last beat).
-- When both indices collapse to the same beat (chord shorter than one
-  half-beat), the region is still emitted with ``beat_span == 0`` — the
-  caller can filter these out.
-
-Roman-numeral rule:
-
-- ``relative_root_pc = (chord.root_pc - key.tonic_pc) mod 12``.
-- Non-pitched labels (``unknown``, ``no_chord``) get ``relative_root_pc =
-  None`` and ``roman_numeral = None``.
-- Otherwise, the twelve chromatic offsets map to seven diatonic degrees
-  with an accidental prefix (``b`` or ``#``) that depends on the key's
-  mode; case is upper for major chord quality, lower for minor.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -95,8 +63,6 @@ _PITCH_CLASS_NAMES = (
 
 @dataclass(frozen=True)
 class AlignedChordRegion:
-    """One chord segment expressed in beat-aligned + tonal-relative terms."""
-
     start_seconds: float
     end_seconds: float
     snapped_start_seconds: float
@@ -112,7 +78,6 @@ class AlignedChordRegion:
 
     @property
     def chord_display(self) -> str:
-        """A short human-readable chord label, or ``N`` / ``?`` for non-pitched."""
 
         if self.chord_label is ChordLabel.NO_CHORD:
             return "N"
@@ -124,7 +89,6 @@ class AlignedChordRegion:
 
 
 def relative_root_of(chord_root_pc: int, key_tonic_pc: int) -> int:
-    """Return the chromatic offset (0-11) of ``chord_root_pc`` from ``key_tonic_pc``."""
 
     return (chord_root_pc - key_tonic_pc) % 12
 
@@ -134,12 +98,6 @@ def roman_numeral(
     chord_mode: ChordLabel,
     key_mode: TonalMode,
 ) -> str:
-    """Return a roman-numeral degree such as ``I``, ``vi``, ``bVII``.
-
-    Case is upper for major chord quality, lower for minor. Only major /
-    minor chord modes are supported; passing anything else raises
-    ``ValueError``.
-    """
 
     if chord_mode not in (ChordLabel.MAJOR, ChordLabel.MINOR):
         raise ValueError(
@@ -162,12 +120,6 @@ def align_chords_to_beats(
     beats: BeatAnalysisResult,
     key: KeyAnalysisResult,
 ) -> list[AlignedChordRegion]:
-    """Snap every chord segment to the nearest detected beat.
-
-    The three results must be for the same source (same
-    ``source_sha256``); a mismatch raises ``ValueError`` immediately
-    rather than silently mis-aligning.
-    """
 
     if chords.source_sha256 != beats.source_sha256:
         raise ValueError("chords and beats have different source_sha256")
@@ -219,11 +171,6 @@ def collapse_short_regions(
     *,
     min_beat_span: int = 1,
 ) -> list[AlignedChordRegion]:
-    """Fold regions shorter than ``min_beat_span`` into the previous region.
-
-    Useful for the report generator which wants a bar-level view of the
-    progression rather than raw frame-level flicker.
-    """
 
     if min_beat_span < 1:
         return list(regions)
@@ -247,7 +194,6 @@ def _nearest_beat_index(beat_times: list[float], target_seconds: float) -> int:
             lo = mid + 1
         else:
             hi = mid
-    # lo is the first beat >= target. Compare with lo-1 to pick the nearest.
     if lo == 0:
         return 0
     prev = lo - 1
@@ -276,7 +222,6 @@ def _extend_region(
     )
 
 
-# Silence unused-import lint noise: BeatEstimate is re-exported for tests.
 __all__ = (
     "AlignedChordRegion",
     "BeatEstimate",

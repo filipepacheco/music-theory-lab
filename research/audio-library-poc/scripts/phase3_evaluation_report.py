@@ -1,10 +1,3 @@
-"""Render raw harmony diagnostics from one frozen evaluation manifest.
-
-This intentionally does not discover directories or select a "latest" result.
-It verifies every selected envelope and artifact before scoring. Product-output
-metrics belong to Phase 2 and are not calculated here.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -41,7 +34,6 @@ def render_report(
     split: EvaluationSplit | None = None,
     generated_at: datetime | None = None,
 ) -> str:
-    """Render selected raw-model diagnostics without changing selection."""
 
     stamp = (generated_at or datetime.now(UTC)).isoformat(timespec="seconds")
     tracks = [
@@ -231,7 +223,6 @@ def _project_intervals(
     labels: list[str],
     excerpts: tuple,
 ) -> tuple[np.ndarray, list[str]]:
-    """Clip intervals to the frozen excerpts and concatenate their timeline."""
 
     projected: list[tuple[float, float]] = []
     projected_labels: list[str] = []
@@ -285,7 +276,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _private_report_path(workspace: Path, output: Path) -> Path:
-    """Keep raw diagnostics in the private workspace reports directory."""
 
     reports_root = (workspace.resolve() / "reports").resolve()
     target = output.resolve()

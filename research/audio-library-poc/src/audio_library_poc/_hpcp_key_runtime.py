@@ -1,17 +1,3 @@
-"""Real HPCP + Krumhansl-Kessler key runtime.
-
-Lazy-imports librosa so importing ``hpcp_key_stage`` in the offline harness
-stays free of MIR deps. The algorithm is:
-
-1. Load audio via soundfile, mono-mix, resample to config.sample_rate.
-2. Extract a 12-bin CQT-based chromagram via librosa.feature.chroma_cqt.
-3. Mean over time -> one 12-dim pitch-class vector.
-4. Rotate each of two Krumhansl-Kessler profiles (major, minor) across
-   all 12 tonics and compute Pearson correlation with the pitch-class
-   vector. That's 24 candidates.
-5. Sort best-first and return.
-"""
-
 from __future__ import annotations
 
 import time
@@ -36,7 +22,6 @@ from audio_library_poc.key_analysis import (
 )
 from audio_library_poc.models import Metrics, StageIdentity, TonalMode
 
-# Krumhansl & Kessler (1982) key profiles, C-rooted.
 _KRUMHANSL_KESSLER_MAJOR = np.array(
     [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
     dtype=np.float64,
@@ -109,7 +94,6 @@ def run_hpcp_key_inference(
 
 
 def _score_all_keys(pitch_class_vector: np.ndarray) -> list[KeyEstimate]:
-    """Correlate the 12-dim pitch-class vector with all 24 Krumhansl profiles."""
 
     scores: list[KeyEstimate] = []
     for tonic_pc in range(12):
@@ -141,8 +125,6 @@ def _pearson_correlation(a: np.ndarray, b: np.ndarray) -> float:
     if a_std == 0 or b_std == 0:
         return 0.0
     correlation = float(np.corrcoef(a, b)[0, 1])
-    # Clamp to the [-1, 1] range the contract requires — numerical drift can
-    # push a perfect correlation slightly above 1.
     return max(-1.0, min(1.0, correlation))
 
 

@@ -1,5 +1,3 @@
-"""Deterministic stage double for exercising orchestration behavior."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,8 +20,6 @@ from audio_library_poc.models import (
 
 
 class FakeStageConfig(ContractModel):
-    """Behavior controls stored inside ``StageSpecification.config``."""
-
     retryable_failures: int = Field(default=0, ge=0)
     terminal_failure: bool = False
     interrupt_attempts: list[int] = Field(default_factory=list)
@@ -36,8 +32,6 @@ SimulatedInterruption = StageInterruption
 
 
 class FakeStage:
-    """Produce attempt-independent bytes from the committed stage identity."""
-
     def execute(
         self,
         *,

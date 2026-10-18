@@ -1,5 +1,3 @@
-"""Offline stage adapter for the beat-input quality decision."""
-
 from __future__ import annotations
 
 from pathlib import Path

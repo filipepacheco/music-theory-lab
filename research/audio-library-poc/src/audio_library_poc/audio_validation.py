@@ -1,5 +1,3 @@
-"""Bounded-memory audio validation for dependency-free synthetic PCM16 POCs."""
-
 from __future__ import annotations
 
 import math
@@ -25,8 +23,6 @@ from audio_library_poc.separation import (
 
 
 class AudioSource(Protocol):
-    """A signal readable as bounded interleaved floating-point chunks."""
-
     @property
     def sample_rate(self) -> int: ...
 
@@ -43,16 +39,12 @@ class AudioSource(Protocol):
 
 
 class AudioValidationError(RuntimeError):
-    """Validation failure carrying the POC's serializable typed error."""
-
     def __init__(self, error: TypedError) -> None:
         super().__init__(error.message)
         self.error = error
 
 
 class Pcm16WaveSource:
-    """Minimal PCM16 WAV reader for generated fixtures, not general decoding."""
-
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self._sample_rate, self._channels, self._frame_count = _inspect_pcm16_wave(
@@ -120,7 +112,6 @@ def validate_separation_audio(
     tolerances: AudioValidationTolerances | None = None,
     chunk_frames: int = 65_536,
 ) -> SeparationValidationReport:
-    """Validate five stems while retaining at most bounded chunks for six signals."""
 
     _validate_chunk_frames(chunk_frames)
     accepted_tolerances = _validate_tolerances(tolerances)

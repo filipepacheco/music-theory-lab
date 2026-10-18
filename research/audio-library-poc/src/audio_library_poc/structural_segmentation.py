@@ -1,5 +1,3 @@
-"""Pure rules for deterministic beat-synchronous structural segmentation."""
-
 from __future__ import annotations
 
 import hashlib
@@ -28,8 +26,6 @@ class FrozenStructuralModel(ContractModel):
 
 @dataclass(frozen=True)
 class CandidateLevel:
-    """One hierarchy level after chronological short-run consolidation."""
-
     m: int
     labels: tuple[int, ...]
     boundaries_seconds: tuple[float, ...]
@@ -41,8 +37,6 @@ class CandidateLevel:
 
 @dataclass(frozen=True)
 class PreparedHierarchy:
-    """Seed-independent spectral embedding shared by four K-means runs."""
-
     eigenvectors: np.ndarray
     combined_features: np.ndarray
     interval_count: int
@@ -50,8 +44,6 @@ class PreparedHierarchy:
 
 @dataclass(frozen=True)
 class SectionStabilityThresholds:
-    """Versioned product gate pinned to the held-out v1 calibration."""
-
     gate_version: str
     calibration_id: str | None
     minimum_count_agreement: float = 0.75
@@ -91,8 +83,6 @@ class SectionStabilityThresholds:
 
 
 class SectionCalibrationEvidence(FrozenStructuralModel):
-    """Held-out product evidence required before automatic publication."""
-
     calibration_id: Identifier
     config_sha256: Sha256
     held_out: StrictBool
@@ -330,7 +320,6 @@ class StabilityGateDecision:
 
 
 def contiguous_run_count(labels: Iterable[int]) -> int:
-    """Count chronological runs, not the number of distinct cluster ids."""
 
     iterator = iter(labels)
     try:
@@ -361,7 +350,6 @@ def perturbation_configurations() -> tuple[PerturbationConfiguration, ...]:
 def standardize_features(
     features: np.ndarray,
 ) -> tuple[np.ndarray, tuple[int, ...]]:
-    """Standardize dimensions per track without dividing by zero."""
 
     values = np.asarray(features, dtype=np.float64)
     if values.ndim != 2 or not np.all(np.isfinite(values)):
@@ -385,7 +373,6 @@ def analyze_candidate_levels(
     minimum_run_beats: int = 4,
     minimum_mean_run_seconds: float = 10.0,
 ) -> tuple[CandidateLevel, ...]:
-    """Compute candidate levels for one deterministic perturbation run."""
 
     prepared = prepare_candidate_hierarchy(
         harmonic_features=harmonic_features,
@@ -409,7 +396,6 @@ def prepare_candidate_hierarchy(
     neighbor_offset: int,
     smoothing_beats: int,
 ) -> PreparedHierarchy:
-    """Build the graph and eigenvectors shared by all seed perturbations."""
 
     from scipy.linalg import eigh
     from scipy.sparse.csgraph import laplacian
@@ -467,7 +453,6 @@ def cluster_candidate_levels(
     minimum_run_beats: int = 4,
     minimum_mean_run_seconds: float = 10.0,
 ) -> tuple[CandidateLevel, ...]:
-    """Cluster every m for one seed using a prepared spectral hierarchy."""
 
     from sklearn.cluster import KMeans
 
@@ -660,7 +645,6 @@ def _label_entropy(labels: tuple[int, ...]) -> float:
 def select_candidate_level(
     candidates: tuple[CandidateLevel, ...],
 ) -> CandidateLevel | None:
-    """Apply the mean-duration/maximum-entropy published level rule."""
 
     eligible = [candidate for candidate in candidates if candidate.eligible]
     if not eligible:
@@ -681,7 +665,6 @@ def snap_boundaries_to_beats(
     beat_times: tuple[float, ...],
     duration_seconds: float,
 ) -> tuple[float, ...]:
-    """Snap internal boundaries to beats, resolving equal ties earlier."""
 
     valid_beats = tuple(
         beat for beat in beat_times if isfinite(beat) and 0.0 < beat < duration_seconds
@@ -729,7 +712,6 @@ def build_published_sections(
     selected: CandidateLevel | None,
     duration_seconds: float,
 ) -> tuple[StructuralSection, ...]:
-    """Build only neutral automatic sections or one reviewable fallback."""
 
     if not accepted or selected is None:
         return (
@@ -762,13 +744,6 @@ def match_boundary_f1(
     *,
     tolerance_seconds: float,
 ) -> tuple[float, tuple[bool, ...]]:
-    """Maximum-cardinality one-to-one matching for ordered boundaries.
-
-    Boundary matching is an ordered interval problem: advancing the earlier
-    unmatched boundary whenever a pair lies outside the tolerance produces a
-    maximum-cardinality assignment. This avoids nearest-first choices that can
-    consume the only valid match for the next boundary.
-    """
 
     reference_order = sorted(enumerate(reference), key=lambda item: item[1])
     estimated_order = sorted(enumerate(estimated), key=lambda item: item[1])
@@ -804,7 +779,6 @@ def summarize_stability(
     perturbation_counts: tuple[int, ...],
     tolerance_seconds: float,
 ) -> tuple[float, float, tuple[float, ...]]:
-    """Return count agreement, median F1, and baseline-boundary support."""
 
     if not perturbation_boundaries:
         return 0.0, 0.0, tuple(0.0 for _ in baseline_boundaries)

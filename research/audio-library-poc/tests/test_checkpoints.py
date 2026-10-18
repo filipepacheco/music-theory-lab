@@ -1,5 +1,3 @@
-"""Tests for the checkpoint manifest, fetcher, and CLI wrapper script."""
-
 from __future__ import annotations
 
 import hashlib

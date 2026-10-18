@@ -1,5 +1,3 @@
-"""Smoke tests for the chord-evaluation module."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -134,7 +132,6 @@ def test_root_correct_but_quality_wrong_drops_majmin(tmp_path: Path) -> None:
     _write_lab(lab, [(0.0, 4.0, "D:min")])
     ref_intervals, ref_labels = load_reference_lab(lab)
 
-    # Estimate says "D" (major) — same root, wrong quality.
     result = _chord_result(
         [
             ChordSegment(
@@ -149,6 +146,5 @@ def test_root_correct_but_quality_wrong_drops_majmin(tmp_path: Path) -> None:
     est_intervals, est_labels = chord_result_to_estimate(result)
     scores = evaluate(ref_intervals, ref_labels, est_intervals, est_labels)
     assert scores.scores["root"] == pytest.approx(1.0)
-    # Quality-aware metrics must be zero when the third is wrong.
     assert scores.scores["majmin"] == pytest.approx(0.0)
     assert scores.scores["thirds"] == pytest.approx(0.0)

@@ -1,5 +1,3 @@
-"""Immutable eligibility decision between beat tracking and section inference."""
-
 from __future__ import annotations
 
 import hashlib
@@ -65,8 +63,6 @@ _V1_FATAL_ANALYZER_WARNING_CODES = (
 
 
 class BeatInputQualityPolicyConfig(FrozenQualityModel):
-    """Every behaviour-affecting value covered by the policy digest."""
-
     gate_id: Literal["beat-input-validity"] = "beat-input-validity"
     gate_version: VersionString
     minimum_beats: int = Field(default=16, ge=1)
@@ -231,7 +227,6 @@ def decide_beat_input_quality(
     implementation_revision: str = "workspace-local",
     contract_invalid: bool = False,
 ) -> BeatInputQualityDecision:
-    """Apply only the fatal classifications owned by gate version 1."""
 
     fatal: list[BeatInputFatalReason] = []
     provenance_matches = (
@@ -399,7 +394,6 @@ def measure_beat_input_quality(
     sample_rate: int,
     policy_config: BeatInputQualityPolicyConfig,
 ) -> BeatInputQualityMeasurements:
-    """Measure beat support from the same decoded, pre-separation waveform."""
 
     samples = np.asarray(audio, dtype=np.float64)
     if samples.ndim == 1:

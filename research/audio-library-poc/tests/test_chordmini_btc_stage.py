@@ -1,5 +1,3 @@
-"""Tests for the ChordMini BTC stage bridge, label normalization, and contracts."""
-
 from __future__ import annotations
 
 import hashlib
@@ -219,7 +217,6 @@ def test_evidence_settings_preserve_baseline_and_verified_timing() -> None:
 
 
 def test_build_segments_merges_and_stretches() -> None:
-    # 10 frames × 0.1 s = 1.0 s. First 3 frames are D, next 5 are F#, last 2 are N.
     idx_to_chord = {0: "N", 1: "D", 2: "F#"}
     predictions = [1, 1, 1, 2, 2, 2, 2, 2, 0, 0]
     segments = build_segments(
@@ -240,12 +237,10 @@ def test_build_segments_merges_and_stretches() -> None:
     assert segments[1].start_seconds == pytest.approx(0.3)
     assert segments[1].end_seconds == pytest.approx(0.8)
     assert segments[2].start_seconds == pytest.approx(0.8)
-    # tail stretched to the source duration
     assert segments[2].end_seconds == pytest.approx(1.0)
 
 
 def test_build_segments_absorbs_short_flicker() -> None:
-    # C -> single frame of A#:min flicker -> C. min_segment 0.2 s absorbs it.
     idx_to_chord = {0: "N", 1: "C", 2: "A#:min"}
     predictions = [1, 1, 1, 1, 1, 2, 1, 1, 1, 1]
     segments = build_segments(
@@ -255,13 +250,11 @@ def test_build_segments_absorbs_short_flicker() -> None:
         duration_seconds=1.0,
         min_segment_seconds=0.2,
     )
-    # The single-frame A#:min segment is absorbed into the preceding C.
     assert len(segments) == 2
     assert segments[0].label is ChordLabel.MAJOR
     assert segments[0].root_pc == 0
     assert segments[1].label is ChordLabel.MAJOR
     assert segments[1].root_pc == 0
-    # The whole [0, 1.0) is covered.
     assert segments[0].start_seconds == pytest.approx(0.0)
     assert segments[-1].end_seconds == pytest.approx(1.0)
 
@@ -342,7 +335,7 @@ def test_chord_analysis_result_rejects_overlap() -> None:
                     candidate_label="C",
                 ),
                 ChordSegment(
-                    start_seconds=1.0,  # overlaps the previous segment
+                    start_seconds=1.0,
                     end_seconds=2.0,
                     label=ChordLabel.MINOR,
                     root_pc=9,
@@ -396,7 +389,7 @@ def test_chord_analysis_result_rejects_gaps() -> None:
                     candidate_label="C",
                 ),
                 ChordSegment(
-                    start_seconds=1.0,  # 0.5s gap
+                    start_seconds=1.0,
                     end_seconds=2.0,
                     label=ChordLabel.MINOR,
                     root_pc=9,

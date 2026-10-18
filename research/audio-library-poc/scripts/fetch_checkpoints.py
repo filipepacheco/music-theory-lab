@@ -1,16 +1,3 @@
-"""Command-line entry point for the offline checkpoint fetcher.
-
-Kept separate from ``audio_library_poc.cli`` so the ``audio-library-poc``
-command stays fully offline. Invoke with the same virtualenv:
-
-    .venv\\Scripts\\python.exe scripts/fetch_checkpoints.py \\
-        --manifest workspace/checkpoints.local.yaml \\
-        --target workspace/models
-
-Downloads are hash-verified before being placed at the target path. A
-mismatch raises without touching any existing file.
-"""
-
 from __future__ import annotations
 
 import argparse

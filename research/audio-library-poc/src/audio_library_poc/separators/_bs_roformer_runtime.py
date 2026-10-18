@@ -1,21 +1,3 @@
-"""Real BS-RoFormer inference runtime, kept out of the adapter module.
-
-Splitting the torch-heavy inference off means importing
-``audio_library_poc.separators.bs_roformer`` in the offline harness never
-drags in ``torch`` or ``bs_roformer``. The Phase 1 test suite still runs
-without the ``inference`` extras installed.
-
-Contract with the bridge:
-- The bridge has already validated the config against ``BsRoformerStageConfig``,
-  resolved ``source_relative_path`` under the workspace, and hashed it against
-  ``identity.input_sha256``. ``request.source_sha256`` is authoritative.
-- The bridge has NOT touched ``checkpoint_relative_path`` or
-  ``config_relative_path``; this runtime resolves and reads both.
-- The bridge validates the returned ``SeparationResult`` against the committed
-  ``StageIdentity``: ``provenance.model_identifier / model_sha256 /
-  implementation_version / code_revision`` must all match.
-"""
-
 from __future__ import annotations
 
 import math
@@ -71,12 +53,6 @@ def run_bs_roformer_inference(
     candidate_id: str,
     implementation_version: str,
 ) -> SeparatorResponse:
-    """Run the pinned six-stem BS-RoFormer model on ``request.source_path``.
-
-    Emits exactly five app-stem WAV files (16-bit PCM, source sample rate)
-    into ``request.staging_directory`` and returns the strict descriptor
-    bundle the bridge translates into the atomically-published artifact set.
-    """
 
     config = request.config
     identity = request.stage_identity
@@ -222,13 +198,11 @@ def _require_supported_precision(precision: SeparatorPrecision) -> None:
 
 
 def _resolve_workspace(source_path: Path, source_relative_path: str) -> Path:
-    """Delegate to the inference-free helper the adapter also uses."""
 
     return resolve_workspace(source_path, source_relative_path)
 
 
 def _resolve_asset(workspace: Path, relative_path: str, *, label: str) -> Path:
-    """Delegate to the inference-free helper the adapter also uses."""
 
     return resolve_workspace_asset(
         workspace,
@@ -325,7 +299,6 @@ def _load_source_audio(path: Path) -> tuple[np.ndarray, int]:
 
 
 def _fold_stems(raw_stems: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
-    """Fold candidate-native stems into the five app-stem WAV filenames."""
 
     folded: dict[str, np.ndarray] = {
         "vocals.wav": raw_stems["vocals"],

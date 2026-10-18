@@ -1,27 +1,3 @@
-"""Real section-boundary inference runtime, kept out of the stage module.
-
-Splitting the librosa/numpy imports off here means importing
-``section_stage`` in the offline harness never drags in MIR deps. The
-same pattern is used by ``_hpcp_key_runtime`` and ``_chordmini_btc_runtime``.
-
-Algorithm (following the librosa segmentation tutorial):
-
-1. Load audio via soundfile, mono-mix, resample to ``config.sample_rate``.
-2. Extract a 12-bin CQT chromagram via ``librosa.feature.chroma_cqt``.
-3. Run ``librosa.segment.agglomerative`` with ``k = n_segments`` to get the
-   boundary frames.
-4. Turn boundary frames into ``[start, end)`` seconds intervals that cover
-   the whole ``[0, duration_seconds]`` span (the last interval is stretched
-   to exactly ``duration_seconds`` so downstream contracts never see a
-   sub-frame gap at the tail).
-5. Assign a letter label to each section: compute one mean-chroma vector
-   per section, cosine-cluster them with a 0.9 similarity threshold, then
-   letter the resulting clusters A, B, C, ... in order of first appearance.
-   Labels are opaque cluster ids — they do not name the section
-   semantically (chorus vs. verse), matching the MSAF ``foote`` convention
-   the peer session's brief called out.
-"""
-
 from __future__ import annotations
 
 import time
@@ -130,11 +106,6 @@ def detect_sections(
     n_segments: int,
     duration_seconds: float,
 ) -> list[SectionSegment]:
-    """Turn a chroma feature matrix into labeled, gap-free SectionSegments.
-
-    Requested ``n_segments`` is clamped to at most the number of feature
-    frames so librosa never raises on a very short source.
-    """
 
     n_frames = chroma.shape[1] if chroma.ndim == 2 else 0
     if n_frames <= 1:
@@ -151,12 +122,9 @@ def detect_sections(
     boundary_times = librosa.frames_to_time(
         boundary_frames, sr=sr, hop_length=hop_length
     )
-    # librosa returns boundary starts (with 0 as the first). Build (start, end)
-    # pairs by appending duration_seconds as the tail.
     starts = list(float(t) for t in boundary_times)
     if not starts or starts[0] > 1e-3:
         starts.insert(0, 0.0)
-    # Drop any duplicated or non-monotonic boundaries defensively.
     monotonic: list[float] = []
     for value in starts:
         if not monotonic or value > monotonic[-1] + 1e-6:
@@ -164,7 +132,6 @@ def detect_sections(
     monotonic = [max(0.0, t) for t in monotonic if t < duration_seconds]
     monotonic.append(duration_seconds)
 
-    # Cluster the per-section mean chroma vectors so repeats share a label.
     labels = _label_sections(
         chroma=chroma,
         boundary_times=monotonic,
@@ -203,13 +170,6 @@ def _label_sections(
     sr: int,
     hop_length: int,
 ) -> list[str]:
-    """Assign A, B, C, ... labels by cosine-clustering per-section mean chroma.
-
-    Two sections whose mean-chroma cosine similarity exceeds 0.9 share a
-    label. New sections that do not match any existing cluster get the next
-    unused letter (A0, A1, ... after the alphabet runs out — but 26 is well
-    beyond any reasonable pop-song section count).
-    """
 
     means: list[np.ndarray] = []
     for index in range(len(boundary_times) - 1):
@@ -229,7 +189,7 @@ def _label_sections(
     cluster_centroids: list[np.ndarray] = []
     for mean_vector in means:
         assigned: str | None = None
-        best_similarity = 0.9  # threshold to join an existing cluster
+        best_similarity = 0.9
         for cluster_index, centroid in enumerate(cluster_centroids):
             similarity = _cosine_similarity(mean_vector, centroid)
             if similarity > best_similarity:
@@ -251,7 +211,6 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def _letter_label(cluster_index: int) -> str:
-    """A, B, ..., Z, A1, B1, ... — stays within the SectionSegment label pattern."""
 
     letter = chr(ord("A") + (cluster_index % 26))
     suffix = cluster_index // 26

@@ -1,37 +1,3 @@
-"""Publish analysis results from workspace/runs/ into the React app's public/library/.
-
-Walks workspace/runs/ for succeeded chord + key + beat stages and optional
-beat-quality + section stages,
-groups them by ``source_sha256`` (i.e. per source track), and writes:
-
-- ``public/library/index.json``: the top-level track list the app reads on
-  boot (title, artist, duration, detected key/tempo, per-track detail URLs).
-  Title, artist and the audio to copy come from ``corpus.local.yaml`` and
-  ``intake-tracks.local.yaml`` in the workspace; a track described by neither
-  still publishes, as "Untitled" by "Unknown" with no player.
-- Per-track analysis JSONs the app fetches on demand. Section export always
-  exists: without a calibrated passing quality decision it is one neutral,
-  editable fallback section marked for review.
-
-Design constraints for the app's benefit:
-
-- Idempotent: rewrites the same files if inputs unchanged; per-file writes
-  are atomic (staging + os.replace) so partial writes never surface.
-- No stems yet — WAVs are large and their serving story deserves its own
-  slice. Only the analysis JSONs (kilobyte-sized) get copied.
-- Uses ``source_sha256`` as the stable directory key, prefixed to the first
-  12 hex chars for shorter URLs. Collisions extremely unlikely at this
-  prefix length for a personal library.
-- No cloud, no upload, no backend runtime — the React app reads static
-  assets served by Vite. Zero JavaScript runtime dependency.
-
-Invocation:
-
-    .venv\\Scripts\\python.exe scripts/sync_workspace_to_public.py \\
-        --workspace workspace \\
-        --public ../../public
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -93,15 +59,11 @@ _STAGE_TO_ARTIFACT = {
     ),
 }
 
-# Chord + beat + key must all be present for a track to appear in the index;
-# section analysis is optional and ships alongside when it exists.
 _REQUIRED_STAGES = ("chord.chordmini_btc", "beat.beat_this", "key.hpcp")
 
 
 @dataclass(frozen=True)
 class TrackAnalyses:
-    """Analysis JSONs a track carries — chord/beat/key required, section optional."""
-
     source_sha256: str
     chord: ChordAnalysisResult
     beat: BeatAnalysisResult
@@ -113,11 +75,6 @@ class TrackAnalyses:
 
 
 def _version_key(value: Any) -> tuple[int, ...]:
-    """Sortable form of a stage's implementation version.
-
-    Anything unparseable sorts lowest, so a malformed version can never
-    shadow a good result.
-    """
 
     try:
         return tuple(int(part) for part in str(value or "").split("."))
@@ -126,15 +83,6 @@ def _version_key(value: Any) -> tuple[int, ...]:
 
 
 def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
-    """Group succeeded analysis stages by source_sha256; keep only complete triples.
-
-    A workspace accumulates a result for every code version that has run in
-    it, and the same track is often reachable through several run ids. Where
-    a stage has more than one succeeded result for one source, the newest
-    implementation version wins -- picking by directory or cache-key order
-    would publish whichever hash happened to sort last, which is how a
-    corrected stage can re-run successfully and change nothing.
-    """
 
     per_source: dict[str, dict[str, tuple[tuple[int, ...], Any, str]]] = defaultdict(
         dict
@@ -224,21 +172,10 @@ def _quality_matches_beat(
     )
 
 
-#: Manifests carrying display metadata, in increasing priority. The corpus is
-#: the curated evaluation set; the intake file is written by the local upload
-#: service, where the title and artist are what a person just typed into the
-#: form, so it wins when both describe the same audio.
 _METADATA_MANIFESTS = ("corpus.local.yaml", INTAKE_TRACKS_MANIFEST)
 
 
 def load_track_metadata(workspace: Path) -> dict[str, dict[str, Any]]:
-    """Return per-source_sha256 display metadata from the workspace manifests.
-
-    Relative ``source_path`` values resolve against their own manifest's
-    directory, the rule `resolve_source_path` documents, and are returned
-    absolute. Neither manifest present → empty dict; the app just gets less
-    friendly display and no audio.
-    """
 
     entries: dict[str, dict[str, Any]] = {}
     for name in _METADATA_MANIFESTS:
@@ -314,11 +251,6 @@ def sync(
     generated_at: datetime | None = None,
     copy_audio: bool = False,
 ) -> tuple[Path, list[Path], list[Path]]:
-    """Write the library manifest + per-track detail files.
-
-    Returns ``(index_path, detail_files, audio_files)``. ``audio_files`` is
-    always the empty list when ``copy_audio`` is False.
-    """
 
     analyses = collect_analyses(workspace)
     track_meta = load_track_metadata(workspace)
@@ -474,26 +406,12 @@ def _copy_audio_source(
     meta: dict[str, Any],
     track_dir: Path,
 ) -> Path | None:
-    """Copy a track's source audio into ``track_dir/source<ext>``.
-
-    Returns the destination path when the file is in place, ``None`` when the
-    manifest entry has no ``source_path`` or the file is missing on disk. The
-    original file extension is preserved so the client can probe a small set
-    of common formats.
-
-    An unchanged track is left alone. These are the only large files the
-    export writes, they never change once published, and rewriting one on
-    every publish is both wasted I/O and an unnecessary run at a file the dev
-    server may be holding open.
-    """
 
     source_path = meta.get("source_path")
     if source_path is None or not source_path.is_file():
         return None
     ext = source_path.suffix.lower() or ".bin"
     destination = track_dir / f"source{ext}"
-    # Remove sibling source.* files for other extensions so old formats do
-    # not linger when the corpus swaps the source (e.g. wav → mp3).
     for existing in track_dir.glob("source.*"):
         if existing != destination:
             existing.unlink()
@@ -506,11 +424,6 @@ def _copy_audio_source(
 
 
 def _same_file_contents(source: Path, destination: Path) -> bool:
-    """Whether `destination` already holds exactly `source`'s bytes.
-
-    Size first because it settles almost every call without reading anything;
-    the hash is what makes a match trustworthy.
-    """
 
     if not destination.is_file():
         return False
@@ -529,7 +442,7 @@ def _load_json(path: Path) -> dict | None:
 def _load_pydantic(path: Path, model_cls):
     try:
         return model_cls.model_validate_json(path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
@@ -552,23 +465,6 @@ def _atomic_write_json(path: Path, payload: Any) -> Path:
 
 
 def _replace_with_retry(staging: Path, path: Path) -> None:
-    """Put `staging`'s bytes at `path`, by rename if allowed, else in place.
-
-    POSIX rename is unconditional. On Windows it needs delete access to the
-    destination, and a process holding that file open without
-    FILE_SHARE_DELETE makes os.replace raise PermissionError even though the
-    same file can still be opened for writing. The Vite dev server serving
-    public/ does exactly that, so publishing while the app was running failed
-    every time: all four stages would succeed and the run would be thrown
-    away at the final rename.
-
-    A short retry covers a scanner or watcher that lets go on its own. When
-    the handle is durable, overwriting in place is the way through. That is a
-    real loss of atomicity -- a concurrent reader can observe a truncated
-    file -- which is acceptable here and nowhere else: these are derived
-    artifacts, the app re-fetches them, and the alternative is discarding a
-    completed analysis.
-    """
 
     denied: PermissionError | None = None
     for attempt in range(_REPLACE_ATTEMPTS):

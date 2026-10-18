@@ -1,5 +1,3 @@
-"""Behaviour tests for stable beat-synchronous structural segmentation."""
-
 from __future__ import annotations
 
 import numpy as np

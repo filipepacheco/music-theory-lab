@@ -1,5 +1,3 @@
-"""Deterministic identities for stage configuration and results."""
-
 from __future__ import annotations
 
 import hashlib

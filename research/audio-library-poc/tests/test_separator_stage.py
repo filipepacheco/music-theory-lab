@@ -1,5 +1,3 @@
-"""Tests for the Separator-to-stage bridge."""
-
 from __future__ import annotations
 
 import hashlib
@@ -198,9 +196,6 @@ def test_runtime_checkpoint_error_propagates_through_bridge(tmp_path: Path) -> N
             tmp_path=tmp_path,
         )
 
-    # With no checkpoint file at the configured workspace path, the runtime
-    # rejects before importing torch — proving the bridge / runtime seam is
-    # wired without needing model weights.
     assert captured.value.error.code == "separator.checkpoint_missing"
     assert captured.value.error.details["relative_path"] == (
         "models/bs-rofo-sw-fixed.ckpt"
@@ -242,8 +237,6 @@ def test_bridge_hashes_the_source_file_exactly_once(
 
 
 class _RecordingSeparator:
-    """Test separator that records the request instead of doing inference."""
-
     candidate_id: ClassVar[str] = "recording"
     implementation_version: ClassVar[str] = "0.0.0"
     ConfigModel: ClassVar[type[BsRoformerStageConfig]] = BsRoformerStageConfig

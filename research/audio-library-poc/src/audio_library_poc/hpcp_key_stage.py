@@ -1,11 +1,3 @@
-"""Bridge for the transparent HPCP + Krumhansl-Kessler key baseline.
-
-No external model — the runtime is pure numpy + librosa. Cache identity
-still flows through ``code_revision`` + ``implementation_version`` +
-``config_sha256`` (same as every other stage). ``model_identifier`` and
-``model_sha256`` are absent by design for this stage kind.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,13 +28,6 @@ _RESULT_ARTIFACT_FILENAME = "key-analysis-result.json"
 
 
 class HpcpKeyStageConfig(ContractModel):
-    """Config surface for the key.hpcp stage.
-
-    ``sample_rate`` and ``hop_length`` control librosa's chromagram
-    extraction. ``n_chroma`` is fixed at 12 by the profile geometry; the
-    field is exposed so the recorded settings show it explicitly.
-    """
-
     source_relative_path: str = Field(min_length=1)
     sample_rate: int = Field(default=22050, ge=8000, le=96000)
     hop_length: int = Field(default=2048, ge=64, le=8192)
@@ -54,8 +39,6 @@ class HpcpKeyStageConfig(ContractModel):
 
 
 class HpcpKeyStageExecutor:
-    """StageExecutor for the key.hpcp stage kind."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
 

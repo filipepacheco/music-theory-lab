@@ -1,12 +1,3 @@
-"""Metrics for the normalized chord labels consumed by Biblioteca.
-
-This module deliberately does not replace :mod:`chord_evaluation`.  The
-existing mir_eval figures score raw, post-smoothing ``candidate_label`` values
-and remain useful historical diagnostics.  These functions score the separate
-four-label product contract (major, minor, unknown, no_chord) and make every
-duration denominator explicit.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
@@ -45,9 +36,7 @@ _ROOTS = {
 
 @dataclass(frozen=True)
 class ReferenceChord:
-    """One reference label after the documented product reduction."""
-
-    kind: str  # harmonic, no_chord, unsupported
+    kind: str
     root_pc: int | None = None
     label: ChordLabel | None = None
     reduced_richer: bool = False
@@ -55,14 +44,6 @@ class ReferenceChord:
 
 @dataclass(frozen=True)
 class AcceptedChordScore:
-    """Duration counts and ratios for one excerpt or an aggregate.
-
-    ``accepted_label_precision`` has accepted harmonic duration as its
-    denominator; coverage and overall agreement have valid harmonic reference
-    duration as their denominator.  A ``None`` ratio means its denominator is
-    zero, never a hidden zero score.
-    """
-
     reference_harmonic_seconds: float
     reference_no_chord_seconds: float
     excluded_reference_seconds: float
@@ -123,7 +104,6 @@ class AcceptedChordScore:
         return _ratio(self.correct_no_chord_seconds, self.reference_no_chord_seconds)
 
     def as_dict(self) -> dict[str, float | None]:
-        """JSON-safe counts, ratios, and their named denominators."""
 
         accepted_duration = self.accepted_harmonic_seconds
         harmonic_duration = self.reference_harmonic_seconds
@@ -154,8 +134,6 @@ class AcceptedChordScore:
 
 @dataclass(frozen=True)
 class KeyRankingScore:
-    """Rank-based key evidence; analyzer scores are not probabilities."""
-
     reference_label: str
     top_label: str
     reference_rank: int | None
@@ -167,13 +145,6 @@ class KeyRankingScore:
 
 
 def normalize_reference_chord(label: str) -> ReferenceChord:
-    """Reduce a MIREX-style reference label to the product vocabulary.
-
-    Rooted major/minor extensions are intentionally reduced because Biblioteca
-    can only display a triad.  Suspended, diminished, augmented and malformed
-    labels remain unsupported exclusions.  ``X`` is *not* treated as silence:
-    only the MIREX ``N`` token means no chord.
-    """
 
     raw = label.strip()
     if raw == "N":
@@ -203,7 +174,6 @@ def evaluate_accepted_chords(
     reference_labels: Sequence[str],
     estimate_segments: Sequence[ChordSegment],
 ) -> AcceptedChordScore:
-    """Score normalized product labels over explicit overlapping intervals."""
 
     if len(reference_intervals) != len(reference_labels):
         raise ValueError("reference intervals and labels must have equal length")
@@ -254,7 +224,6 @@ def evaluate_accepted_chords(
 def aggregate_accepted_chord_scores(
     scores: Iterable[AcceptedChordScore],
 ) -> AcceptedChordScore:
-    """Sum durations first, then calculate corpus ratios from the full totals."""
 
     counts = dict.fromkeys(_COUNT_FIELDS, 0.0)
     for score in scores:
@@ -266,7 +235,6 @@ def aggregate_accepted_chord_scores(
 def macro_accepted_chord_metrics(
     scores: Iterable[AcceptedChordScore],
 ) -> dict[str, float | int | None]:
-    """Equal-recording mean of ratios, omitting undefined denominators."""
 
     values = list(scores)
     output: dict[str, float | int | None] = {}
@@ -285,7 +253,6 @@ def bootstrap_recording_intervals(
     replicates: int = 2000,
     seed: int = 0,
 ) -> dict[str, dict[str, float | int | None]]:
-    """Percentile intervals from recording-level resampling, never excerpts."""
 
     if replicates < 1:
         raise ValueError("replicates must be positive")
@@ -326,7 +293,6 @@ def bootstrap_recording_intervals(
 def evaluate_key_ranking(
     reference_label: str, result: KeyAnalysisResult
 ) -> KeyRankingScore:
-    """Evaluate top-1/top-3 membership and expose the raw peak margin."""
 
     reference = _parse_key(reference_label)
     rank = next(
@@ -413,7 +379,6 @@ def _same_duration(left: float, right: float) -> bool:
 
 
 def _validate_intervals(intervals: Sequence[tuple[float, float]], label: str) -> None:
-    """Reject invalid/meaningfully overlapping spans before duration scoring."""
 
     previous_end: float | None = None
     tolerance = 1e-6

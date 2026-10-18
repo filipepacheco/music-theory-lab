@@ -1,5 +1,3 @@
-"""Offline contracts for the pinned ChordNet stage."""
-
 import pytest
 from pydantic import ValidationError
 

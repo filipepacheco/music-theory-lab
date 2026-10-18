@@ -1,5 +1,3 @@
-"""Tests for scripts/sync_workspace_to_public.py."""
-
 from __future__ import annotations
 
 import hashlib
@@ -126,7 +124,6 @@ def _chord_result(source_sha: str, duration: float = 8.0) -> ChordAnalysisResult
 
 
 def _beat_result(source_sha: str, duration: float = 8.0) -> BeatAnalysisResult:
-    # Eight quarter-note beats: 0.5s .. 4.0s at 120 bpm-ish spacing.
     times = [0.5 * (i + 1) for i in range(8)]
     beats = tuple(
         BeatEstimate(time_seconds=t, is_downbeat=(i % 4 == 0))
@@ -273,7 +270,6 @@ def _write_intake_manifest(workspace: Path, entries: list[dict]) -> None:
 def test_collect_analyses_returns_only_complete_triples(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    # Track A has all three; track B is missing key.
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
     _write_stage_result(
         workspace,
@@ -332,7 +328,6 @@ def test_load_track_metadata_maps_by_sha(tmp_path: Path) -> None:
                 "annotation": {"title": "Come Together", "artist": "The Beatles"},
             },
             {
-                # No annotation → still indexed with track_id, missing title/artist.
                 "track_id": "unknown-song",
                 "expected_sha256": SOURCE_SHA_B,
             },
@@ -426,7 +421,6 @@ def test_sync_writes_index_and_per_track_details(tmp_path: Path) -> None:
     assert (track_dir / "section-analysis-result.json").is_file()
     assert len(detail_files) == 4
 
-    # Per-track JSONs must round-trip through the frozen Pydantic contracts.
     ChordAnalysisResult.model_validate_json(
         (track_dir / "chord-analysis-result.json").read_text(encoding="utf-8")
     )
@@ -448,10 +442,8 @@ def test_sync_is_idempotent(tmp_path: Path) -> None:
     first_bytes = index_path.read_bytes()
     first_mtime = index_path.stat().st_mtime_ns
 
-    # A second run with unchanged inputs produces byte-identical output.
     sync_module.sync(workspace, public)
     assert index_path.read_bytes() == first_bytes
-    # mtime may change (atomic rename), but content must not.
     assert index_path.stat().st_mtime_ns >= first_mtime
 
 
@@ -459,7 +451,6 @@ def test_sync_skips_incomplete_tracks(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
-    # Only chord — no beat, no key.
     _write_stage_result(
         workspace,
         "run-lonely",
@@ -482,8 +473,6 @@ def test_sync_copy_audio_copies_source_when_present(tmp_path: Path) -> None:
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
-    # Relative source paths resolve against the manifest's own directory, so
-    # a corpus at workspace/corpus.local.yaml points into workspace/originals.
     audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"ID3 fake mp3 bytes")
@@ -562,8 +551,6 @@ def test_sync_copy_audio_removes_stale_extension(tmp_path: Path) -> None:
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
-    # A previous run left a .wav in the destination; the fresh corpus points
-    # at an .mp3 and we expect the .wav to be swept.
     prefix = SOURCE_SHA_A[:12]
     stale = public / "library" / "tracks" / prefix / "source.wav"
     stale.parent.mkdir(parents=True, exist_ok=True)
@@ -738,7 +725,6 @@ def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
     section = json.loads(section_path.read_text(encoding="utf-8"))
     assert section["origin"] == "automatic"
     assert section["review_required"] is False
-    # Section plus quality join the existing three detail files.
     assert section_path in detail_files
     assert len(detail_files) == 5
 
@@ -756,7 +742,6 @@ def test_sync_exports_one_reviewable_fallback_when_quality_is_missing(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
-    # Full chord/beat/key triple but no section stage — track still ships.
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
@@ -806,8 +791,6 @@ def test_sync_skips_orphan_section_without_required_triple(tmp_path: Path) -> No
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
-    # A lone section result with no chord/beat/key — the triple guard
-    # excludes the track entirely; no section JSON should be written.
     _seed_section(workspace, SOURCE_SHA_A)
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
@@ -844,13 +827,6 @@ def teardown_module(_module) -> None:
 
 
 class TestAtomicWritePublish:
-    """Publishing while the dev server watches public/ used to lose the run.
-
-    On Windows a process holding the destination open without
-    FILE_SHARE_DELETE makes os.replace raise PermissionError. Every stage
-    would succeed and the results would be discarded at the final rename.
-    """
-
     def test_retries_a_transient_permission_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -894,8 +870,6 @@ class TestAtomicWritePublish:
     def test_raises_the_original_denial_when_nothing_works(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # A directory in the destination's place fails the in-place write too,
-        # standing in for a handle that denies writes as well.
         target = tmp_path / "out.json"
         target.mkdir()
 
@@ -908,7 +882,6 @@ class TestAtomicWritePublish:
         with pytest.raises(OSError):
             sync_module._atomic_write_json(target, {"ok": True})
 
-        # No .part left behind for the next run to trip over.
         assert [p.name for p in tmp_path.iterdir()] == ["out.json"]
 
 
@@ -936,9 +909,6 @@ def test_load_track_metadata_reads_uploaded_tracks(tmp_path: Path) -> None:
 
 
 def test_load_track_metadata_prefers_the_intake_row(tmp_path: Path) -> None:
-    # Someone re-uploaded a corpus track and typed their own title; that is a
-    # more recent, explicit statement than the corpus annotation, and only
-    # display fields are at stake -- trusted_key is never read here.
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     _write_corpus(
@@ -1060,10 +1030,6 @@ def test_sync_copy_audio_rewrites_a_changed_file(tmp_path: Path) -> None:
 def test_collect_analyses_prefers_the_newest_implementation_version(
     tmp_path: Path,
 ) -> None:
-    # Both results are for the same source and both succeeded; only the
-    # version separates them. Ordering by run id or cache key would publish
-    # whichever string sorted last, so the cache keys here are chosen to make
-    # the stale result win under that rule.
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)

@@ -1,5 +1,3 @@
-"""Tests for the separator protocol and both stub adapters."""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -116,9 +114,6 @@ def test_demucs_config_rejects_extra_keys() -> None:
 def test_bs_roformer_reports_missing_checkpoint_before_touching_torch(
     tmp_path: Path,
 ) -> None:
-    # The real runtime resolves the checkpoint path before importing the
-    # heavy torch/bs_roformer packages, so this test proves the wiring
-    # without needing any model weights on disk.
     from audio_library_poc.execution import ExpectedStageFailure
 
     request = _request(
@@ -138,9 +133,6 @@ def test_bs_roformer_reports_missing_checkpoint_before_touching_torch(
 def test_demucs_reports_missing_checkpoint_before_touching_torch(
     tmp_path: Path,
 ) -> None:
-    # The real runtime resolves the checkpoint path before importing the
-    # heavy torch/demucs packages, so this test proves the wiring without
-    # needing any model weights on disk.
     from audio_library_poc.execution import ExpectedStageFailure
 
     request = _request(
@@ -176,10 +168,8 @@ def test_separator_response_defaults_have_no_retained_native(tmp_path: Path) -> 
 
     _ = NoopSeparator()
     metrics = Metrics()
-    # Confirm the dataclass defaults do not carry retained-native filenames or
-    # a non-JSON result artifact name — a real separator must opt into either.
     example = SeparatorResponse(
-        result=cast(object, None),  # not read by these assertions
+        result=cast(object, None),
         stem_artifact_names=("vocals.wav", "drums.wav"),
         metrics=metrics,
     )
