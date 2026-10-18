@@ -7,11 +7,6 @@ import {
   type LibraryRoute,
 } from '@/domain/libraryRoute';
 
-/**
- * The screen of the Biblioteca, kept in the hash of the address. A new
- * screen is a new history entry, so the browser Back button returns to the
- * one before.
- */
 export function useLibraryRoute() {
   const [hash, setHash] = useState(() => window.location.hash);
 
@@ -21,8 +16,6 @@ export function useLibraryRoute() {
       setHash(LIBRARY_HASH);
     }
     const onChange = () => {
-      // Forward can reach an entry that a different module cleared. The
-      // Biblioteca is still on the screen, so its list address returns.
       if (!isLibraryHash(window.location.hash)) {
         window.history.replaceState(null, '', LIBRARY_HASH);
       }

@@ -11,13 +11,6 @@ import {
   type LineLength,
 } from '@/domain/chartSettings';
 
-/**
- * The line lengths of one chart, from its chart settings. They reload when
- * `refreshKey` changes (a synchronization or the copy from the browser brings
- * new ones). `setLength` stores a choice through the settings path and
- * synchronizes it without waiting; it never touches the chart, so playback
- * and the cursor stay as they are.
- */
 export function useSectionLineLengths(chartId: string, refreshKey: unknown) {
   const [settings, setSettings] = useState<ChartSettings | null>(null);
 
@@ -27,9 +20,7 @@ export function useSectionLineLengths(chartId: string, refreshKey: unknown) {
       try {
         const stored = await rocksmithLibrary.getSettings(chartId);
         if (!cancelled) setSettings(stored);
-      } catch {
-        // No local store: the automatic layout stays.
-      }
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -41,7 +32,6 @@ export function useSectionLineLengths(chartId: string, refreshKey: unknown) {
     [settings],
   );
 
-  /** Shows a change at once, stores it, then synchronizes without waiting. */
   const write = useCallback(
     async (
       change: (shown: ChartSettings | null, now: string) => ChartSettings,
@@ -68,7 +58,6 @@ export function useSectionLineLengths(chartId: string, refreshKey: unknown) {
     [chartId, write],
   );
 
-  /** One write: the song line length, and no section line lengths. */
   const setSongLength = useCallback(
     (length: LineLength) =>
       write((s, now) => withSongLineLength(s, chartId, length, now)),

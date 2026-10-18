@@ -6,30 +6,17 @@ import {
   type ChartBars,
 } from '@/domain/bassChart';
 
-/**
- * The cursor of the song screen: where the playback is in the chart. The
- * frame draws it and scrolls to it; a part reads it to mark what sounds.
- */
 export interface SongCursor {
-  /** Seconds of the playback, or NaN before the song has played. */
   clock: number;
-  /** The bar under the playhead, or -1. */
   activeBar: number;
-  /** The section of that bar, or -1. */
   activeSection: number;
   playing: boolean;
   canPlay: boolean;
-  /** Jump to a time; null while there is nothing to play. */
   seek: ((seconds: number) => void) | null;
   togglePlay: () => void;
-  /** 0–1 position of the playhead inside a bar, or null in another bar. */
   playhead: (barIndex: number) => number | null;
 }
 
-/**
- * The cursor of a chart that `audio` plays. It reads only the bars and the
- * sections of the chart, so it serves a chart of any part.
- */
 export function useSongCursor(
   chart: ChartBars,
   audio: LibraryAudio,
@@ -43,8 +30,6 @@ export function useSongCursor(
   const activeSection =
     activeBar >= 0 ? sectionIndexOfBar(chart, activeBar) : -1;
 
-  // The audio hooks hand out fresh closures every render; a stable seek
-  // keeps the memoised bars from re-rendering on every animation frame.
   const audioRef = useRef(audio);
   audioRef.current = audio;
   const stableSeek = useCallback(

@@ -5,12 +5,6 @@ import { kickBeatsByBar } from '@/domain/bassKick';
 import { isDrumChart } from '@/domain/drumChart';
 import type { ChartSummary } from '@/domain/chartSummary';
 
-/**
- * The kick beats of each bar from the drum chart of the same file as the bass
- * chart `bassId`, or null. The drum id is a hash of the file hash (the bass
- * id) and the part name, so the same file is proven from stored ids, not from
- * titles.
- */
 export function useSameFileKick(
   bassId: string,
   charts: readonly ChartSummary[],
@@ -29,7 +23,6 @@ export function useSameFileKick(
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bassId, key]);
   return kick;
 }

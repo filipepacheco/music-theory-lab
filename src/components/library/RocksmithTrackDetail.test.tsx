@@ -47,7 +47,6 @@ vi.mock('@/hooks/useBassSynthPlayback', async () => {
   return {
     useBassSynthPlayback: (chart: BassChart) => {
       state.synthChart = chart;
-      // A seek moves the clock, as the transport of the real player does.
       const [currentSeconds, setCurrentSeconds] = useState(0);
       return {
         ready: true,
@@ -373,7 +372,6 @@ describe('Biblioteca bar layout', () => {
     8,
     walking(Array.from({ length: 8 }, () => [48, 52, 55, 59])),
   );
-  /** Bar 4 is in 3/4, the others in 4/4. */
   const mixed: BassChart = {
     ...eightBars,
     source: 'gp',
@@ -404,7 +402,6 @@ describe('Biblioteca bar layout', () => {
     ...document.querySelectorAll<HTMLButtonElement>('button[data-bar]'),
   ];
   const widths = () => bars().map((bar) => parseFloat(bar.style.width));
-  /** The rows of a section with a set line length. */
   const lines = () => [
     ...document.querySelectorAll<HTMLElement>('[data-line]'),
   ];
@@ -425,7 +422,6 @@ describe('Biblioteca bar layout', () => {
   it('makes the bars of a line share its full width at one beat width', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     setLineLength('4');
-    // (1000 - 3 gaps of 4 - 4 × 16 of padding and border) / 16 beats.
     expect(widths()).toEqual([247, 247, 247, 189.25, 247, 247, 247, 247]);
     expect(247 * 4 + 4 * 3).toBe(LINE_WIDTH);
     expect(new Set(bars().map((bar) => bar.dataset.beatWidth))).toEqual(
@@ -436,15 +432,12 @@ describe('Biblioteca bar layout', () => {
   it('narrows the beats to keep the line length, at one type size', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     const automatic = typeSizes();
-    // 7 bars do not fit at the base width (152 px): the beats narrow.
     setLineLength('7');
     expect(widths().slice(0, 3)).toEqual([139.375, 139.375, 139.375]);
     expect(139.375 * 7 + 4 * 6).toBeLessThanOrEqual(LINE_WIDTH);
     expect(139.375 * 7 + 4 * 6).toBeGreaterThan(LINE_WIDTH - 1);
     expect(typeSizes()).toEqual(automatic);
-    // 8 bars narrow the beats under 0.8 of the base: the length still holds.
     setLineLength('8');
-    // (1000 - 7 gaps of 4 - 8 × 16) / 32 beats = 26.375 < 27.2.
     expect(widths()[0]).toBe(16 + 4 * 26.375);
     expect(typeSizes()).toEqual(automatic);
   });
@@ -460,7 +453,6 @@ describe('Biblioteca bar layout', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     fireEvent.click(screen.getByLabelText('Mostrar graus'));
     const automatic = typeSizes();
-    // Frets and degree labels.
     expect(new Set(automatic).size).toBe(2);
     expect(Math.min(...automatic)).toBeGreaterThanOrEqual(10);
     for (const length of ['1', '4', '16']) {
@@ -476,7 +468,6 @@ describe('Biblioteca bar layout', () => {
 
   it('keeps a line of a set length on one row, with exactly its bars', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
-    // The automatic layout has no lines: its bars wrap where they must.
     expect(lines()).toEqual([]);
     expect(bars()[0].parentElement?.classList.contains('flex-wrap')).toBe(true);
     const barsOfLines = () =>
@@ -493,14 +484,12 @@ describe('Biblioteca bar layout', () => {
       [4, 5, 6, 7],
     ]);
     expect(wrapping()).toEqual([]);
-    // The bars keep their width: none shrinks to make room.
     expect(bars().every((bar) => bar.classList.contains('shrink-0'))).toBe(
       true,
     );
     setLineLength('7');
     expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6], [7]]);
     expect(wrapping()).toEqual([]);
-    // 8 bars at a narrow beat: the line length holds, and does not wrap.
     setLineLength('8');
     expect(barsOfLines()).toEqual([[0, 1, 2, 3, 4, 5, 6, 7]]);
     expect(wrapping()).toEqual([]);
@@ -516,7 +505,6 @@ describe('Biblioteca bar layout', () => {
     );
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
     setLineLength('4');
-    // The bars still have the base width, which may not fit the line.
     expect(widths()[0]).toBe(152);
     expect(lines().length).toBe(2);
     expect(lines().every((line) => line.classList.contains('flex-wrap'))).toBe(
@@ -532,11 +520,9 @@ describe('Biblioteca bar layout', () => {
         .filter((bar) => bar.classList.contains('border-live'))
         .map((bar) => Number(bar.dataset.bar));
     expect(activeBars()).toEqual([]);
-    // Bar 6 is the second bar of the second line.
     fireEvent.click(bars()[5]);
     expect(state.seeks).toEqual([mixed.bars[5].startTime]);
     expect(activeBars()).toEqual([5]);
-    // The playhead is the only line the cursor adds, at the start of the bar.
     const playhead = bars()[5].querySelector(
       'line[stroke="var(--color-accent)"]',
     );
@@ -559,7 +545,6 @@ describe('Biblioteca bar layout', () => {
     fireEvent.click(screen.getByLabelText('Marcar repetições'));
     setLineLength('4');
     expect(bars().every((bar) => !bar.disabled)).toBe(true);
-    // Bars 5-7 show the same tab as bars 1-3 above; bar 8 is over a 3/4 bar.
     expect(
       bars().filter((bar) => bar.title.includes('igual ao compasso')).length,
     ).toBe(3);
@@ -568,7 +553,6 @@ describe('Biblioteca bar layout', () => {
 
 describe('Biblioteca dense sections', () => {
   const LINE_WIDTH = 1000;
-  /** Bars 1-2 hold quarter notes; bars 3-4 hold sixteenths on frets 12-14. */
   const dense = fixtureChart(
     4,
     [
@@ -623,7 +607,6 @@ describe('Biblioteca dense sections', () => {
     const [a, b, c, d] = beatWidths();
     expect(a).toBe(34);
     expect(b).toBe(34);
-    // Two digits (13.2 px) and 4 px over a quarter beat: 68.8 px.
     expect(c).toBeCloseTo(68.8);
     expect(d).toBe(c);
   });
@@ -642,11 +625,8 @@ describe('Biblioteca dense sections', () => {
     );
     render(<RocksmithTrackDetail chart={sixDense} onRemove={vi.fn()} />);
     setLineLength(0, '6');
-    // 6 bars of 68.8 px beats would need 6 × 291 px; the line length holds
-    // anyway: (1000 - 20 - 96) / 24 beats, rounded down to 1/64 px.
     expect(new Set(beatWidths())).toEqual(new Set([36.828125]));
     expect(36.828125).toBeLessThan(68.8);
-    // With exactly that number of bars in each line.
     const rows = [...document.querySelectorAll('[data-line]')];
     expect(
       rows.map((row) => row.querySelectorAll('button[data-bar]').length),
@@ -654,7 +634,6 @@ describe('Biblioteca dense sections', () => {
   });
 
   describe('degree lane', () => {
-    /** Bars 1-2 hold quarter notes; bars 3-4 hold thirty-second notes. */
     const fast = fixtureChart(
       4,
       [
@@ -675,12 +654,10 @@ describe('Biblioteca dense sections', () => {
         { name: 'chorus', parts: 1, startBar: 2, endBar: 4 },
       ],
     );
-    /** Character width of the 10 px degree labels, in pixels. */
     const CHAR = 6;
     const barButtons = () => [
       ...document.querySelectorAll<HTMLButtonElement>('button[data-bar]'),
     ];
-    /** The degree labels of a bar as boxes: level, left edge, right edge. */
     const labelBoxes = (bar: HTMLButtonElement) =>
       [...bar.querySelectorAll('text[data-degree-level]')].map((text) => {
         const x = Number(text.getAttribute('x'));
@@ -721,13 +698,10 @@ describe('Biblioteca dense sections', () => {
     it('puts a label that touches the one before it on the second level', () => {
       render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);
       showDegrees();
-      // The section needs more than three times the base width: it stops
-      // there, and the labels of thirty-second notes touch.
       expect(beatWidths().slice(2)).toEqual([102, 102]);
       const boxes = labelBoxes(barButtons()[2]);
       expect(boxes.length).toBe(32);
       expect(new Set(boxes.map((box) => box.level))).toEqual(new Set([1, 2]));
-      // The second level is drawn under the first.
       const y = (level: number) =>
         new Set(boxes.filter((b) => b.level === level).map((b) => b.y));
       expect(y(1).size).toBe(1);
@@ -756,7 +730,6 @@ describe('Biblioteca dense sections', () => {
       const [plain] = svgHeights();
       showDegrees();
       const [a, b, c, d] = svgHeights();
-      // One level of 12 px in the sparse section, two in the dense one.
       expect([a, b]).toEqual([plain + 12, plain + 12]);
       expect([c, d]).toEqual([plain + 24, plain + 24]);
     });
@@ -787,7 +760,6 @@ describe('Biblioteca section line length in the chart settings', () => {
     const saved = await rocksmithLibrary.getSettings(eight.id);
     expect(saved?.sectionLineLengths).toEqual({ 0: 4 });
     expect(saved?.songLineLength).toBe('auto');
-    // A second device pulls this record, which the settings check accepts.
     expect(parseChartSettings(saved)).toEqual(saved);
     expect(await rocksmithLibrary.listSettings()).toEqual([saved]);
     expect(lines()).toBe(2);
@@ -831,7 +803,6 @@ describe('Biblioteca section line length in the chart settings', () => {
     expect(active()).toEqual(['5']);
     fireEvent.change(select(), { target: { value: '3' } });
     await waitFor(() => expect(syncChartSettings).toHaveBeenCalled());
-    // The player gets the same chart object, and no seek follows the change.
     expect(state.synthChart).toBe(playing);
     expect(state.seeks).toEqual(seeks);
     expect(active()).toEqual(['5']);
@@ -862,7 +833,6 @@ describe('Biblioteca section line length in the chart settings', () => {
       const saved = await rocksmithLibrary.getSettings(eight.id);
       expect(saved?.songLineLength).toBe(4);
       expect(saved?.sectionLineLengths).toEqual({});
-      // A section with no value shows the song line length.
       expect((select() as HTMLSelectElement).value).toBe('4');
       expect(lines()).toBe(2);
       expect(document.querySelector('[data-own-length]')).toBeNull();
@@ -902,7 +872,6 @@ describe('Biblioteca section line length in the chart settings', () => {
       await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(1));
       fireEvent.change(select(), { target: { value: '2' } });
       await waitFor(() => expect(syncChartSettings).toHaveBeenCalledTimes(2));
-      // The change applies to that section only.
       expect(
         (await rocksmithLibrary.getSettings(eight.id))?.songLineLength,
       ).toBe(4);
@@ -1076,7 +1045,6 @@ describe('Biblioteca kick row under the bass tab', () => {
       'Marcar repetições',
     ) as HTMLInputElement;
     if (!marks.checked) fireEvent.click(marks);
-    // Let the stored settings load first, or they replace the change.
     await new Promise((r) => setTimeout(r, 30));
     fireEvent.change(screen.getByLabelText(/^Compassos por linha em/), {
       target: { value: '2' },

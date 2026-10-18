@@ -86,46 +86,32 @@ import {
 
 interface Props {
   chart: BassChart;
-  /** A new value reloads the line lengths (a synchronization brought some). */
   settingsKey?: unknown;
   onRemove: () => void;
-  /** The charts of the song; a drum chart of the same file gives the kick row. */
   songCharts?: readonly ChartSummary[];
-  /** The clock of the two parts of one file; it lives above the part. */
   parts?: SongPartsPlayback;
 }
 
 const CIRCLE_OPEN_KEY = 'music-theory-lab:fifths-window-open';
-/** The circle's largest size; narrower screens get what fits. */
 const CIRCLE_SIZE = 300;
 
-/** Open as last left; by default open on wide screens, closed on phones. */
 function readCircleOpen(): boolean {
   try {
     const stored = localStorage.getItem(CIRCLE_OPEN_KEY);
     if (stored !== null) return stored === 'true';
-  } catch {
-    // Blocked storage: fall back to the screen-size default.
-  }
+  } catch {}
   return window.innerWidth >= 1024;
 }
 
 function writeCircleOpen(open: boolean): void {
   try {
     localStorage.setItem(CIRCLE_OPEN_KEY, String(open));
-  } catch {
-    // Blocked storage: the default applies next time.
-  }
+  } catch {}
 }
 
 const NO_NOTES: readonly number[] = [];
 const NO_CHARTS: readonly ChartSummary[] = [];
 
-/**
- * The bass part of the song detail. It supplies the bass tab bar and the
- * bass panels (transposition, tuning, fingering, degrees, key, fretboard,
- * circle of fifths) to the frame, which owns the rest of the screen.
- */
 export default function RocksmithTrackDetail({
   chart: originalChart,
   settingsKey,
@@ -170,8 +156,6 @@ export default function RocksmithTrackDetail({
   const [octaveBar, setOctaveBar] = useState<number | null>(null);
   const [octaveAlike, setOctaveAlike] = useState(false);
   useEffect(() => setOctaveBar(null), [originalChart.id]);
-  // The octaves that hold in this view: a bar that would leave the neck after
-  // the transposition plays as written.
   const octaves = useMemo(() => {
     const held: Record<number, number> = {};
     if (!supportsTransposition) return held;
@@ -200,7 +184,6 @@ export default function RocksmithTrackDetail({
   const [mixMode, setMixMode] = useState<BassMixMode>('full');
   const crossoverHz = useMemo(() => bassCrossoverHz(chart), [chart]);
   const recording = useLibraryAudio(audioUrl, { mode: mixMode, crossoverHz });
-  // With no recording to follow, the sampled bass plays the chart itself.
   const synthOnly = audioState.status === 'missing';
   const together = synthOnly && !!parts?.active;
   const synth = useBassSynthPlayback(chart, synthOnly && !together, shift);
@@ -210,8 +193,6 @@ export default function RocksmithTrackDetail({
   const recordingLinked = audioState.status !== 'missing';
   const recordingKnown = audioState.status !== 'loading';
   useEffect(() => {
-    // A part that was just opened has not read its storage: keep the answer
-    // of the part before it, so a change of part does not stop the playback.
     if (recordingKnown) reportRecording?.(originalChart.id, recordingLinked);
   }, [reportRecording, originalChart.id, recordingLinked, recordingKnown]);
   useEffect(() => {
@@ -237,7 +218,6 @@ export default function RocksmithTrackDetail({
     () => (shift === 0 ? originalAnalysis : analyzeBassChart(chart)),
     [chart, shift, originalAnalysis],
   );
-  // One summary and one harmony for each section, by its index in the chart.
   const summaries = useMemo(
     () =>
       chart.sections.map((section) =>
@@ -285,7 +265,6 @@ export default function RocksmithTrackDetail({
   );
   const current = activeNotes.map((i) => chart.notes[i]);
 
-  // The floating fretboard and circle follow the bar under the playhead.
   const fretCount = useMemo(
     () =>
       Math.min(
@@ -326,8 +305,6 @@ export default function RocksmithTrackDetail({
         note: null,
       };
     }
-    // A third the bass played decides the ring; with none, or both, the
-    // key's reading of the chord stands in and is marked as a guess.
     const settled = (s: HarmonicSegment) =>
       s.evidence.third === 'minor' || s.evidence.third === 'major';
     const minor = (s: HarmonicSegment) =>
@@ -364,7 +341,6 @@ export default function RocksmithTrackDetail({
     () => new Set(chart.notes.map((n) => n.bar)),
     [chart],
   );
-  // The degree lane has labels only while the degrees are shown.
   const shownAnalysis = showDegrees ? analysis : null;
   const barLanes = useCallback(
     (barIndex: number) =>
@@ -378,8 +354,6 @@ export default function RocksmithTrackDetail({
     () => bassBarDrawing(chart, barNotes),
     [chart, barNotes],
   );
-  // The degree lane takes a second level where a label touches the label
-  // before it; all bars of the section keep room for it, at one height.
   const degreeLevels = useCallback(
     (section: BassChartSection, beatWidth: number) =>
       Math.max(

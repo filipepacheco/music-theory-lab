@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 
-// The key keeps its first name, so a stored choice still holds.
 const STORAGE_KEY = 'music-theory-lab:bass-dock-collapsed';
 
 function readCollapsed(): boolean {
@@ -14,36 +13,24 @@ function readCollapsed(): boolean {
 function writeCollapsed(collapsed: boolean): void {
   try {
     localStorage.setItem(STORAGE_KEY, String(collapsed));
-  } catch {
-    // Blocked storage: the dock just opens expanded next time.
-  }
+  } catch {}
 }
 
 interface Props {
   dockRef: RefObject<HTMLDivElement | null>;
-  /** Names the dock for assistive technology, e.g. "Braço do baixo". */
   label: string;
-  /** Reports the dock's height so the page can leave room under it. */
   onHeightChange: (height: number) => void;
   title: ReactNode;
   status: string;
   playing: boolean;
   canPlay: boolean;
   onTogglePlay: () => void;
-  /** Extra header buttons, e.g. the circle of fifths toggle. */
   actions: ReactNode;
-  /** The part's panel under the header, e.g. the fretboard. */
   panel: ReactNode;
-  /** The text of the button that opens the panel, and that closes it. */
   showLabel: string;
   hideLabel: string;
 }
 
-/**
- * The dock of the song screen, fixed to the bottom of the screen above the
- * mobile navigation, with play/pause, what is sounding now, and the panel of
- * the part (the fretboard, for the bass). It can be collapsed to its header.
- */
 export default function PlaybackDock({
   dockRef,
   label,

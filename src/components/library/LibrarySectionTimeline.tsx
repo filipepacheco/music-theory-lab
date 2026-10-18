@@ -8,19 +8,11 @@ import {
 interface Props {
   sections: SectionSegment[];
   durationSeconds: number;
-  /** Index of the section under the playhead, or -1 for none. */
   activeIndex: number;
-  /** Playhead position in seconds, or null to hide the marker. */
   progressSeconds: number | null;
-  /** Null when there is no audio to seek. */
   onSeek: ((seconds: number) => void) | null;
 }
 
-/**
- * Proportional strip of the track's detected sections. Widths follow real
- * durations so the shape of the arrangement is readable at a glance, with a
- * floor wide enough that a two-second section is still a clickable target.
- */
 export default function LibrarySectionTimeline({
   sections,
   durationSeconds,

@@ -12,16 +12,10 @@ import { formatLibraryRoute, routeOfChart } from '@/domain/libraryRoute';
 import { LINE_LENGTH_MIGRATED_KEY } from '@/services/lineLengthMigration';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 
-// The Biblioteca with the real chart list hook, the real song detail, the
-// real local store and the real synchronization. Only the network and the
-// audio are fakes. A song is open, and a synchronization then brings chart
-// settings of a different device and no chart.
-
 const state = vi.hoisted(() => ({
   synthChart: null as unknown,
   seeks: [] as number[],
 }));
-// The clock of the two parts imports the audio engine, which needs a browser.
 vi.mock('@/hooks/useSongPartsPlayback', () => ({
   useSongPartsPlayback: () => ({
     active: false,
@@ -106,19 +100,16 @@ function chartOf(id: string, title: string, source: 'gp' | 'midi'): BassChart {
   };
 }
 
-/** One route of the fake cloud: a read with a counter, and a write. */
 function route() {
   const rows = new Map<string, { record: unknown; counter: number }>();
   let last = 0;
   let gate: Promise<void> = Promise.resolve();
   return {
     reads: 0,
-    /** A write of a different device. */
     put(key: string, record: unknown) {
       rows.set(key, { record, counter: ++last });
       return last;
     },
-    /** The route answers no read before the returned function runs. */
     hold() {
       let release = () => {};
       gate = new Promise((resolve) => {
@@ -176,7 +167,6 @@ function network() {
   return { settings: routes['/api/chart-settings'] };
 }
 
-/** The address of the song screen of a chart, as a saved link has it. */
 function addressOf(chart: BassChart, all: BassChart[] = [chart]) {
   const summary = summarizeChart(chart);
   const song = groupLibrarySongs(all.map(summarizeChart), []).find((item) =>
@@ -203,11 +193,6 @@ const select = () =>
   screen.getByLabelText(/^Compassos por linha em/) as HTMLSelectElement;
 const lines = () => document.querySelectorAll('[data-line]').length;
 
-/**
- * The next synchronization of the Biblioteca. The event "online" starts it,
- * as a focus does; a focus also starts the sql.js library, which has no
- * WASM file here.
- */
 const synchronizeAgain = () => window.dispatchEvent(new Event('online'));
 
 let cloud: ReturnType<typeof network>;
@@ -223,7 +208,6 @@ beforeEach(() => {
   );
   localStorage.clear();
   localStorage.setItem('music-theory-lab:fifths-window-open', 'false');
-  // The copy of the browser line lengths ran on an earlier start.
   localStorage.setItem(LINE_LENGTH_MIGRATED_KEY, 'true');
   state.synthChart = null;
   state.seeks = [];
@@ -244,7 +228,6 @@ describe('chart settings of a different device, with the song open', () => {
       eight.id,
       settingsOf(eight, { sectionLineLengths: { 0: 2 } }),
     );
-    // The settings route answers after the song detail is on the screen.
     const release = cloud.settings.hold();
     window.history.replaceState(null, '', addressOf(eight));
     render(<LibraryModule />);
@@ -256,7 +239,6 @@ describe('chart settings of a different device, with the song open', () => {
     release();
     await waitFor(() => expect(lines()).toBe(4));
     expect(select().value).toBe('2');
-    // The player keeps its chart object, and no seek follows the reload.
     expect(state.synthChart).toBe(playing);
     expect(state.seeks).toEqual([]);
   });
@@ -293,7 +275,6 @@ describe('chart settings of a different device, with the song open', () => {
 
     await waitFor(() => expect(select().value).toBe(''));
     await waitFor(() => expect(cloud.settings.reads).toBeGreaterThan(0));
-    // Two songs: the open one has one source, so no source selector.
     expect(screen.queryByText('MIDI')).toBeNull();
     const playing = state.synthChart;
 
@@ -303,7 +284,6 @@ describe('chart settings of a different device, with the song open', () => {
     );
     synchronizeAgain();
 
-    // The open song now holds the two sources.
     expect(await screen.findByText('MIDI')).toBeTruthy();
     expect(screen.getByText('Guitar Pro')).toBeTruthy();
     expect(state.synthChart).toBe(playing);

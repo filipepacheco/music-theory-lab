@@ -11,10 +11,6 @@ interface Props {
   onToggle: (part: PlaybackPart) => void;
 }
 
-/**
- * One mute button for each part, for the musician who plays a part on a real
- * instrument. A pressed button means the part is silent.
- */
 export default function PartMuteControls({ mutes, onToggle }: Props) {
   return (
     <div role="group" aria-label="Silenciar partes" className="flex gap-1">

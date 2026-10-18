@@ -91,8 +91,6 @@ export default function LibraryTrackDetail({ track }: Props) {
     );
   }, [data, track.duration_seconds]);
 
-  // Stable identity while loading, so the memos below do not re-run on every
-  // render just because `?? []` built a fresh array.
   const sections = data?.section?.sections ?? NO_SECTIONS;
 
   const editableSections = useMemo(
@@ -477,9 +475,7 @@ function SectionBlock({
   );
 }
 
-/** Width of one bar's cell. Collapsed runs are a small multiple of it. */
 const CELL_WIDTH_REM = 4;
-/** Past this many bars a collapsed run stops growing — it is already clear. */
 const MAX_COLLAPSED_SPAN = 3;
 
 function ChordCells({
@@ -552,9 +548,7 @@ function ChordCells({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-bg-card border border-border-default px-3 py-2">
-      <dt className="lh-label">
-        {label}
-      </dt>
+      <dt className="lh-label">{label}</dt>
       <dd className="font-heading text-sm text-text-primary mt-0.5">{value}</dd>
     </div>
   );

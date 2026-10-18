@@ -25,7 +25,6 @@ import { importGpChart } from '@/services/gp/importGpChart';
 
 const state = vi.hoisted(() => ({
   summaries: [] as ChartSummary[],
-  /** The full charts that the hook can open; a different id opens a stub. */
   charts: [] as Chart[],
   tracks: [] as Array<{
     source_sha256: string;
@@ -39,7 +38,6 @@ const state = vi.hoisted(() => ({
   settings: new Map<string, ChartSettings>(),
   failSave: false,
 }));
-// The clock of the two parts imports the audio engine, which needs a browser.
 vi.mock('@/hooks/useSongPartsPlayback', () => ({
   useSongPartsPlayback: () => ({
     active: false,
@@ -229,7 +227,6 @@ describe('drum charts in the Biblioteca', () => {
     for (const label of ['GP', 'Baixo', 'Bateria']) {
       expect(badges.getByText(label)).toBeTruthy();
     }
-    // The row opens the bass chart.
     fireEvent.click(row('Billie Jean'));
     await waitFor(() => expect(state.open).toHaveBeenCalledWith(charts[0].id));
   });
@@ -246,8 +243,6 @@ describe('drum charts in the Biblioteca', () => {
     expect(window.location.hash).toBe(
       `#/biblioteca/${encodeURIComponent('rosanna|toto')}/gp/drums`,
     );
-    // The song screen shows the drum part in place of the bass tab, and the
-    // notice of the time before the drum grid is gone.
     expect(screen.queryByText(/visualização da bateria/)).toBeNull();
     expect(screen.queryByTestId('chart')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
@@ -457,7 +452,6 @@ describe('Biblioteca screens and addresses', () => {
   });
 });
 
-/** The app shell in small: the Biblioteca shows when it is the module. */
 function Shell() {
   const activeModule = useAppStore((s) => s.activeModule);
   return activeModule === 'library' ? <LibraryModule /> : <p>Outro módulo</p>;
@@ -496,10 +490,8 @@ describe('Biblioteca address and the other modules', () => {
     render(<Shell />);
     fireEvent.click(row('Other Song'));
     await screen.findByTestId('chart');
-    // The song entry of the history loses its address here.
     act(() => useAppStore.getState().setActiveModule('scales'));
     expect(window.location.hash).toBe('');
-    // The entry before it is the list of the Biblioteca.
     window.history.back();
     await waitFor(() =>
       expect(screen.getAllByRole('columnheader')).toHaveLength(6),
@@ -693,7 +685,6 @@ describe('Correct the group of a chart', () => {
     expect(state.settings.get('b1')?.groupOverride).toBe(
       'come together|the beatles',
     );
-    // The song screen now holds both sources.
     expect(await screen.findByText('Guitar Pro')).toBeTruthy();
     expect(screen.getByText('MIDI')).toBeTruthy();
   });
@@ -761,7 +752,6 @@ describe('Correct the group of a chart', () => {
       source: 'midi',
     });
     const { container } = render(<LibraryModule />);
-    // The override is loaded: the two charts make one row.
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2));
     fireEvent.change(
       container.querySelector('input[type=file]') as HTMLElement,
