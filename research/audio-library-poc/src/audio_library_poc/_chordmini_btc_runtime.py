@@ -1,11 +1,3 @@
-"""Real ChordMini BTC inference runtime.
-
-Kept out of ``chordmini_btc_stage.py`` so importing the stage in the
-offline harness never drags in torch, librosa, or the vendored model. The
-lazy import mirrors the pattern used by the separator and beat_this
-runtimes.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,8 +21,6 @@ from audio_library_poc.execution import ExpectedStageFailure
 from audio_library_poc.models import Metrics, StageIdentity, TypedError
 from audio_library_poc.separation import SeparatorPrecision
 
-#: Floor for the log, so digital silence maps to a large finite number
-#: instead of -inf.
 _LOG_EPSILON = 1e-6
 
 
@@ -44,12 +34,6 @@ def run_chordmini_btc_inference(
     candidate_id: str = CHORDMINI_BTC_CANDIDATE_ID,
     verified: bool = False,
 ) -> tuple[ChordAnalysisResult, Metrics, ChordFrameEvidenceArtifact]:
-    """Run the verified BTC path after the bridge has verified checkpoint bytes.
-
-    Heavy imports deliberately start here. The executor verifies both path and
-    SHA-256 first, so a missing or replaced checkpoint cannot be hidden by an
-    unavailable torch/librosa environment.
-    """
 
     from audio_library_poc.metadata import hash_file
 
@@ -78,9 +62,6 @@ def run_chordmini_btc_inference(
 
     model_config = ModelConfig()
     model = BTC_model(model_config)
-    # Keep the cheap bridge check, then bind the exact bytes again at the
-    # deserialization boundary. A checkpoint may be replaced while imports and
-    # model construction are in progress.
     if hash_file(checkpoint_path) != identity.model_sha256:
         raise ExpectedStageFailure(
             TypedError(
@@ -152,7 +133,7 @@ def run_chordmini_btc_inference(
         n_bins=model_config.n_bins,
         bins_per_octave=model_config.bins_per_octave,
     )
-    cqt_mag = np.abs(cqt).astype(np.float32).T  # (T, n_bins)
+    cqt_mag = np.abs(cqt).astype(np.float32).T
 
     # Log magnitude, not linear. The checkpoint's normalization statistics
     # (mean -2.37, std 1.96) are log-domain -- a magnitude spectrogram cannot
@@ -168,9 +149,6 @@ def run_chordmini_btc_inference(
         normalization_mean = mean
         normalization_std = std
     else:
-        # Exact historical baseline: normalize the full CQT first, then pad
-        # normalized final windows with zeros. It remains runnable under its
-        # preserved 1.2.0 identity for Phase 4 comparison.
         inference_features = (raw_features.to(device) - mean) / std
         normalization_mean = 0.0
         normalization_std = 1.0
@@ -315,7 +293,6 @@ def _run_inference(
     precision: SeparatorPrecision,
     device,
 ) -> tuple[object, list[dict[str, object]], float]:
-    """Run raw-pad → normalize windows and retain pre/post decision evidence."""
 
     import time
 
@@ -362,9 +339,6 @@ def _run_inference(
                     seq_len - window.shape[0], window.shape[1], device=device
                 )
                 window = torch.cat([window, pad], dim=0)
-            # Upstream pads raw log-CQT features, then applies checkpoint
-            # normalization. Padding with already-normalized zero changes the
-            # final-window distribution unless mean is exactly zero.
             batch = ((window.to(device) - mean) / std).unsqueeze(0)
             if autocast_dtype is not None and device.type == "cuda":
                 with torch.autocast(device_type="cuda", dtype=autocast_dtype):
@@ -431,7 +405,6 @@ def _run_inference(
 
 
 def _smooth_categorical(predictions, window: int, num_chords: int):
-    """Apply the documented optional majority filter after logit decoding."""
 
     if window <= 1:
         return predictions, [1] * int(predictions.shape[0])

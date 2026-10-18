@@ -1,10 +1,10 @@
-import { useAppStore } from "@/store/useAppStore";
-import { NOTE_NAMES } from "@/constants/notes";
-import { getPreferredRootName } from "@/utils/noteHelpers";
-import PresetSelector from "./PresetSelector";
-import MetronomeControl from "@/components/shared/MetronomeControl";
-import Segmented from "@/components/shared/Segmented";
-import Select from "@/components/shared/Select";
+import { useAppStore } from '@/store/useAppStore';
+import { NOTE_NAMES } from '@/constants/notes';
+import { getPreferredRootName } from '@/utils/noteHelpers';
+import PresetSelector from './PresetSelector';
+import MetronomeControl from '@/components/shared/MetronomeControl';
+import Segmented from '@/components/shared/Segmented';
+import Select from '@/components/shared/Select';
 
 export default function KeySelector() {
   const rootNote = useAppStore((s) => s.rootNote);
@@ -18,7 +18,6 @@ export default function KeySelector() {
         <div className="lh-field">
           <span className="lh-label">Tom</span>
 
-          {/* Desktop: sharp names */}
           <Select
             id="root-note-select"
             className="hidden sm:inline-flex"
@@ -33,7 +32,6 @@ export default function KeySelector() {
             ))}
           </Select>
 
-          {/* Mobile: the name the key prefers */}
           <Select
             className="sm:hidden"
             value={rootNote}
@@ -50,23 +48,20 @@ export default function KeySelector() {
 
         <Segmented
           label="Modo"
-          value={isMinor ? "minor" : "major"}
-          onChange={(mode) => setIsMinor(mode === "minor")}
+          value={isMinor ? 'minor' : 'major'}
+          onChange={(mode) => setIsMinor(mode === 'minor')}
           options={[
-            { value: "major", label: "Maior" },
-            { value: "minor", label: "Menor" },
+            { value: 'major', label: 'Maior' },
+            { value: 'minor', label: 'Menor' },
           ]}
         />
 
-        {/* Desktop: divider */}
         <div className="w-px h-6 bg-border-default hidden sm:block" />
 
-        {/* Preset selector - on mobile pushed right via ml-auto */}
         <div className="ml-auto sm:ml-0 min-w-0">
           <PresetSelector />
         </div>
 
-        {/* Desktop spacer + metronome */}
         <div className="flex-1 hidden sm:block" />
         <div className="hidden sm:flex">
           <MetronomeControl />

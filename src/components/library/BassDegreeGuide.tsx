@@ -8,7 +8,6 @@ import { fieldChords, keyLabel, type MusicalKey } from '@/domain/bassHarmony';
 
 const STORAGE_KEY = 'music-theory-lab:bass-degree-guide';
 
-/** Open unless the viewer closed it before; storage may be unavailable. */
 function readOpen(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) !== 'closed';
@@ -20,12 +19,9 @@ function readOpen(): boolean {
 function writeOpen(open: boolean): void {
   try {
     localStorage.setItem(STORAGE_KEY, open ? 'open' : 'closed');
-  } catch {
-    // A private window or blocked storage: the guide just reopens next time.
-  }
+  } catch {}
 }
 
-/** Degrees by semitones over the root (§1.1), as a bassist counts frets. */
 const DEGREES: {
   label: string;
   frets: string;
@@ -89,7 +85,6 @@ const DEGREES: {
   },
 ];
 
-/** Interval shapes on a bass in fourths (E A D G). */
 const SHAPES: [string, string][] = [
   ['5ª', 'uma corda acima, 2 casas à frente'],
   ['oitava', 'duas cordas acima, 2 casas à frente'],
@@ -99,7 +94,6 @@ const SHAPES: [string, string][] = [
   ['7ª maior (7)', 'duas cordas acima, 1 casa à frente'],
 ];
 
-/** Cadence effects from §4.1. */
 const CADENCES: [string, string][] = [
   ['Autêntica (V→I)', 'a mais conclusiva, o “ponto final”'],
   ['Modal (v→i)', 'resolve sem a sensível; soa mais suave'],
@@ -120,10 +114,6 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/**
- * Beginner's guide to the degree view: what each label, colour and tag
- * means, with the harmonic field of the key in use.
- */
 export default function BassDegreeGuide({
   musicalKey,
 }: {

@@ -3,7 +3,6 @@ import { zlibSync } from 'fflate';
 import { hexBytes } from '@/services/rocksmith/psarc';
 import { SngError, decryptSng, parseSng } from '@/services/rocksmith/sng';
 
-/** Little-endian writer mirroring the SNG layout the parser walks. */
 class Writer {
   private bytes: number[] = [];
   private view = new DataView(new ArrayBuffer(8));
@@ -81,10 +80,9 @@ function writeNote(w: Writer, n: NoteSpec) {
     .zeros(5)
     .i16(0);
   w.f32(n.sustain ?? 0).f32(0);
-  w.i32(0); // bends
+  w.i32(0);
 }
 
-/** A two-bar 4/4 arrangement at 120 bpm with two difficulty levels. */
 function buildSngBody(): Uint8Array {
   const w = new Writer();
   w.i32(8);
@@ -95,22 +93,22 @@ function buildSngBody(): Uint8Array {
       .i32(0)
       .i32(0);
   }
-  w.i32(1).zeros(4).i32(1).i32(0).text('riff', 32); // phrases
-  w.i32(1).u32(0); // chord templates
+  w.i32(1).zeros(4).i32(1).i32(0).text('riff', 32);
+  w.i32(1).u32(0);
   [0, -1, 2, -1, -1, -1].forEach((f) => w.i8(f));
   w.zeros(6 + 24).text('B5', 32);
-  w.i32(0); // chord notes
-  w.i32(0); // vocals
-  w.i32(1).i32(0).f32(10).f32(14).zeros(12); // phrase iterations
-  w.i32(0); // phrase extra info
-  w.i32(1).i32(0).i32(1).i32(0); // linked difficulty with one phrase
-  w.i32(0); // actions
-  w.i32(1).f32(10).text('TS:4/4', 256); // events
-  w.i32(0).i32(0); // tones, DNAs
-  w.i32(2); // sections
+  w.i32(0);
+  w.i32(0);
+  w.i32(1).i32(0).f32(10).f32(14).zeros(12);
+  w.i32(0);
+  w.i32(1).i32(0).i32(1).i32(0);
+  w.i32(0);
+  w.i32(1).f32(10).text('TS:4/4', 256);
+  w.i32(0).i32(0);
+  w.i32(2);
   w.text('intro', 32).i32(1).f32(10).f32(12).i32(0).i32(0).zeros(36);
   w.text('verse', 32).i32(1).f32(12).f32(14).i32(0).i32(0).zeros(36);
-  w.i32(2); // levels
+  w.i32(2);
   const levels: NoteSpec[][] = [
     [{ time: 10, string: 0, fret: 7, iteration: 0 }],
     [
@@ -121,8 +119,8 @@ function buildSngBody(): Uint8Array {
   ];
   levels.forEach((notes, difficulty) => {
     w.i32(difficulty);
-    w.i32(1).zeros(28); // anchors
-    w.i32(0).i32(0).i32(0); // anchor extensions, fingerprints
+    w.i32(1).zeros(28);
+    w.i32(0).i32(0).i32(0);
     w.i32(notes.length);
     notes.forEach((n) => writeNote(w, n));
     w.i32(1).f32(1).i32(1).i32(notes.length).i32(1).i32(notes.length);

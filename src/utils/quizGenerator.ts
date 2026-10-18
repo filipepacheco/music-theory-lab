@@ -11,19 +11,12 @@ export type QuizMode = 'interval' | 'chordType' | 'degree' | 'chordId';
 
 export interface QuizQuestion {
   type: QuizMode;
-  /** Note indices (0-11) to play */
   notes: number[];
-  /** Octave for playback */
   octave: number;
-  /** Whether notes are played sequentially (interval) or simultaneously (chord) */
   sequential: boolean;
-  /** The correct answer label */
   correctAnswer: string;
-  /** All answer options (shuffled, includes correct) */
   options: string[];
-  /** Key for tips lookup */
   tipKey: string | number;
-  /** Tonic notes for degree-mode replay reference (captured at generation) */
   referenceNotes?: number[];
 }
 
@@ -51,7 +44,6 @@ function pickDistractors(
 
 export function generateIntervalQuestion(): QuizQuestion {
   const rootNote = randomInt(0, 11);
-  // Exclude unison (0) for more interesting questions, include 1-12
   const semitones = randomInt(1, 12);
   const secondNote = (rootNote + semitones) % 12;
 
@@ -75,7 +67,6 @@ export function generateIntervalQuestion(): QuizQuestion {
 
 export function generateChordTypeQuestion(): QuizQuestion {
   const rootNote = randomInt(0, 11);
-  // Quiz chord types: major, minor, dim, aug, maj7, min7, dom7
   const quizTypes = ['major', 'minor', 'dim', 'aug', 'maj7', 'min7', 'dom7'];
   const chosenId = quizTypes[randomInt(0, quizTypes.length - 1)];
   const chord = CHORD_TYPES[chosenId];
@@ -102,14 +93,11 @@ export function generateDegreeQuestion(
 ): QuizQuestion {
   const field = getHarmonicField(rootNote, isMinor);
   const numerals = isMinor ? ROMAN_NUMERALS_MINOR : ROMAN_NUMERALS_MAJOR;
-  // Pick a random degree (0-6)
   const degree = randomInt(0, 6);
   const correct = numerals[degree];
   const distractors = pickDistractors(correct, [...numerals], 3);
   const options = shuffle([correct, ...distractors]);
 
-  // Notes are resolved at generation, so playback can't drift when the key
-  // changes between generate and play.
   const chord = field[degree];
   const tonic = field[0];
 
@@ -145,11 +133,9 @@ export function generateChordIdQuestion(
   const rootName = getPreferredRootName(rootNote);
   const correctLabel = `${rootName}${chord.symbol || ''}`;
 
-  // Build distractors that are plausible
   const distractors: string[] = [];
   const used = new Set<string>([correctLabel]);
 
-  // 1. Same root, different type
   const otherTypes = quizTypes.filter((id) => id !== chosenId);
   const sameRootType = otherTypes[randomInt(0, otherTypes.length - 1)];
   const sameRootLabel = `${rootName}${CHORD_TYPES[sameRootType].symbol || ''}`;
@@ -158,7 +144,6 @@ export function generateChordIdQuestion(
     used.add(sameRootLabel);
   }
 
-  // 2. Same type, different root
   const nearbyRoots = [
     (rootNote + 5) % 12,
     (rootNote + 7) % 12,
@@ -175,7 +160,6 @@ export function generateChordIdQuestion(
     }
   }
 
-  // 3. Fill remaining with random chords
   while (distractors.length < 3) {
     const rr = randomInt(0, 11);
     const rt = quizTypes[randomInt(0, quizTypes.length - 1)];
@@ -211,7 +195,6 @@ function generateDiatonicChordIdQuestion(
   const distractors = pickDistractors(correctLabel, allLabels, 3);
   const options = shuffle([correctLabel, ...distractors]);
 
-  // Map chordSymbol back to a CHORD_TYPES key for tips
   const chordTypeEntry = Object.entries(CHORD_TYPES).find(
     ([, ct]) => ct.symbol === chord.chordSymbol,
   );

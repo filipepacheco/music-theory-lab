@@ -1,5 +1,3 @@
-"""Deterministic JSON Schema export for POC contracts."""
-
 from pathlib import Path
 from typing import Literal
 
@@ -51,7 +49,6 @@ SCHEMA_MODES: tuple[SchemaMode, ...] = ("validation", "serialization")
 
 
 def export_json_schemas(destination: Path) -> tuple[Path, ...]:
-    """Atomically export stable validation and serialization schemas."""
 
     output_directory = Path(destination)
     written: list[Path] = []

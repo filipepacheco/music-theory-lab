@@ -1,12 +1,3 @@
-"""Versioned contracts for Phase 3 beat analysis output.
-
-Kept separate from ``separation.py`` on purpose: beat analysis has its own
-contract vocabulary (``beats``, ``downbeats``, ``tempo``) that never mixes
-with stem-separation output. The two contracts share ``SeparatorPrecision``
-from ``separation.py`` because the precision-selection surface is identical
-across GPU-inference stages.
-"""
-
 from __future__ import annotations
 
 from typing import Literal, Self
@@ -31,8 +22,6 @@ from audio_library_poc.separation import SeparatorPrecision
 
 
 class FrozenBeatModel(ContractModel):
-    """Immutable base for the committed beat contracts."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 

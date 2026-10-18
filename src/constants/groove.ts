@@ -1,9 +1,7 @@
 import type { DrumPiece, GrooveMeasureCount, GrooveSubdivision } from '@/types';
 
-/** The default groove resolution retained by existing patterns. */
 export const GROOVE_STEPS = 16;
 
-/** Supported subdivisions for one 4/4 groove measure. */
 export const GROOVE_SUBDIVISIONS: ReadonlyArray<{
   id: GrooveSubdivision;
   label: string;
@@ -71,7 +69,6 @@ export function grooveTotalStepCount(
   return grooveStepCount(subdivision) * grooveMeasureCount(measureCount);
 }
 
-/** The drum pieces, in display order, with compact pt-BR labels. */
 export const DRUM_PIECES: { id: DrumPiece; label: string }[] = [
   { id: 'chimbal', label: 'HH' },
   { id: 'caixa', label: 'C' },

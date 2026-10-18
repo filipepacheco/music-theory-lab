@@ -12,12 +12,9 @@ async function db() {
   return _turso;
 }
 
-/**
- * Read the JSON body without depending on the runtime's body parsing.
- * `req.body` may be undefined on some deployments; fall back to reading
- * the raw stream.
- */
-async function readJsonBody(req: VercelRequest): Promise<Record<string, unknown>> {
+async function readJsonBody(
+  req: VercelRequest,
+): Promise<Record<string, unknown>> {
   if (req.body && typeof req.body === 'object') {
     return req.body as Record<string, unknown>;
   }
@@ -33,7 +30,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const deviceId = req.query.device_id as string;
-      if (!deviceId) return res.status(400).json({ error: 'device_id required' });
+      if (!deviceId)
+        return res.status(400).json({ error: 'device_id required' });
 
       const result = await turso.execute({
         sql: 'SELECT * FROM saved_progressions WHERE device_id = ?',
@@ -46,7 +44,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       const body = await readJsonBody(req);
       const { device_id, records } = body;
-      if (!device_id || !records) return res.status(400).json({ error: 'device_id and records required' });
+      if (!device_id || !records)
+        return res
+          .status(400)
+          .json({ error: 'device_id and records required' });
 
       for (const r of records) {
         await turso.execute({
@@ -74,7 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'DELETE') {
       const id = req.query.id as string;
       const deviceId = req.query.device_id as string;
-      if (!id || !deviceId) return res.status(400).json({ error: 'id and device_id required' });
+      if (!id || !deviceId)
+        return res.status(400).json({ error: 'id and device_id required' });
 
       await turso.execute({
         sql: 'DELETE FROM saved_progressions WHERE id = ? AND device_id = ?',

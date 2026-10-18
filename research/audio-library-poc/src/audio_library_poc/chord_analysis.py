@@ -1,24 +1,3 @@
-"""Versioned contracts for Phase 3 chord analysis output.
-
-Kept separate from ``separation.py`` and ``beat_analysis.py`` for the same
-reason those two are separate: chord recognition has its own vocabulary
-(``root_pc``, ``quality``, ``label``) that never mixes with stem separation
-or beat-tracking output.
-
-Vocabulary policy (per the architecture doc's Phase 3 anti-pattern guards):
-
-- Every accepted segment is normalized to major / minor.
-- Segments the model is confident are silent map to ``no_chord``.
-- Segments the model recognized as something else (7ths, sus, augmented,
-  half-diminished, and the model's own explicit no-chord token) are folded
-  into ``unknown`` so downstream consumers can treat abstention explicitly
-  rather than falsely reading a triad.
-
-The applied quality-normalization thresholds are recorded on the result
-under ``normalization`` so a future run with different thresholds gets a
-distinct cache identity via ``config_sha256``.
-"""
-
 from __future__ import annotations
 
 from enum import StrEnum
@@ -42,8 +21,6 @@ from audio_library_poc.separation import SeparatorPrecision
 
 
 class FrozenChordModel(ContractModel):
-    """Immutable base for the committed chord contracts."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 
@@ -299,7 +276,6 @@ class ChordAnalysisResult(FrozenChordModel):
 def summarize_coverage(
     segments: tuple[ChordSegment, ...] | list[ChordSegment],
 ) -> ChordCoverage:
-    """Sum segment durations per normalized label."""
 
     per_label = {label: 0.0 for label in ChordLabel}
     for segment in segments:

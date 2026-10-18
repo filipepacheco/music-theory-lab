@@ -21,19 +21,12 @@ import {
   type RocksmithLibraryRepository,
 } from '@/services/rocksmithLibrary';
 
-/** The settings route: a read with a counter, and a write of many records. */
 export type ChartSettingsCloud = SyncCloud<ChartSettings>;
 export type ChartSettingsSyncStore = SyncStore<ChartSettingsVersion>;
 
 const SYNC_STATE_KEY = 'music-theory-lab-chart-settings-sync';
-/**
- * The version of the settings records that this client can read. Raise it
- * when the client starts to read a record that an earlier client skipped (a
- * new field, a new value): each device then reads from counter 0 one time.
- */
 export const CHART_SETTINGS_SYNC_FORMAT = 2;
 const ROUTE = '/api/chart-settings';
-/** The settings route refuses a write with more records. */
 const WRITE_LIMIT = 100;
 
 function isSettingsVersion(value: unknown): boolean {
@@ -44,7 +37,6 @@ function isSettingsVersion(value: unknown): boolean {
   );
 }
 
-/** The last counter of the settings route, in the storage of the browser. */
 export function createChartSettingsSyncStore(
   storage: () => Pick<Storage, 'getItem' | 'setItem'>,
   format = CHART_SETTINGS_SYNC_FORMAT,
@@ -93,11 +85,6 @@ type LocalSettings = Pick<
   'listSettings' | 'applySettings'
 >;
 
-/**
- * Local-first, last-write-wins synchronization of the chart settings. It
- * reads and writes only settings records: no chart goes with them, and a
- * chart deletion removes none.
- */
 export function synchronizeChartSettings(
   local: LocalSettings,
   cloud: ChartSettingsCloud,
@@ -116,8 +103,6 @@ export function synchronizeChartSettings(
 
 const syncStore = createChartSettingsSyncStore(() => localStorage);
 
-// One synchronization at a time. A change that a screen saves during a
-// running synchronization gets its own pass.
 let pending: Promise<void> = Promise.resolve();
 export function syncChartSettings(): Promise<void> {
   const next = pending

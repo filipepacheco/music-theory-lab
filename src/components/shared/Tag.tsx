@@ -27,10 +27,6 @@ interface TagProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: TagTone;
 }
 
-/**
- * The Lighthouse tag: `<WORD>`, upper case. The colour never carries the
- * meaning alone, so the word must say it too.
- */
 export default function Tag({ tone = 'dim', className, ...rest }: TagProps) {
   const classes = ['lh-tag', TONE_CLASS[tone], className]
     .filter(Boolean)

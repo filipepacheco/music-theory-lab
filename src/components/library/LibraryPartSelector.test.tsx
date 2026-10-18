@@ -17,13 +17,9 @@ import type { Chart } from '@/domain/drumChart';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 
-// The part selector of the song screen, with the real bass part and the real
-// drum part under it.
-
 const state = vi.hoisted(() => ({
   charts: [] as unknown[],
   remove: vi.fn(),
-  /** The shared clock of the two parts: inert unless a test turns it on. */
   shared: {
     active: false,
     playing: false,
@@ -34,7 +30,6 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-// The clock of the two parts imports the audio engine, which needs a browser.
 vi.mock('@/hooks/useSongPartsPlayback', () => ({
   useSongPartsPlayback: () => ({
     active: state.shared.active,
@@ -141,7 +136,6 @@ function bassOf(id: string, source: 'gp' | 'midi'): Chart {
   };
 }
 
-/** Four bars of kick and snare, from the Guitar Pro file of the bass. */
 const drums: Chart = {
   ...fixtureDrumChart(
     4,
@@ -223,7 +217,6 @@ describe('part selector of the song screen', () => {
     expect(tab()).toBeNull();
     expect(part('Bateria').getAttribute('aria-pressed')).toBe('true');
     expect(part('Baixo').getAttribute('aria-pressed')).toBe('false');
-    // The grid of the drum chart: a row for the snare and a row for the kick.
     expect(document.querySelectorAll('button[data-bar]')).toHaveLength(4);
     expect(
       [...document.querySelectorAll('[role="listitem"]')].map(
@@ -231,9 +224,7 @@ describe('part selector of the song screen', () => {
       ),
     ).toEqual(['Caixa', 'Bumbo']);
     expect(screen.getByText(/Bateria importada de test\.gp/)).toBeTruthy();
-    // The notice of the time before the drum grid is gone.
     expect(screen.queryByText(/visualização da bateria/)).toBeNull();
-    // The drum part has no control of the bass.
     for (const text of [/Afinação/, /Mostrar graus/, /Transpor/, /Braço/]) {
       expect(screen.queryByText(text)).toBeNull();
     }
@@ -256,7 +247,6 @@ describe('part selector of the song screen', () => {
     window.history.replaceState(null, '', `#/biblioteca/${KEY}/gp/drums`);
     render(<LibraryModule />);
     await waitFor(() => expect(grid()).toBeTruthy());
-    // The MIDI file has only the bass.
     fireEvent.click(source('MIDI'));
     expect(window.location.hash).toBe(`#/biblioteca/${KEY}/midi/bass`);
     await waitFor(() => expect(tab()).toBeTruthy());
@@ -281,7 +271,6 @@ describe('part selector of the song screen', () => {
       ).toEqual([GP_DRUMS]),
     );
 
-    // The bass part of the same file keeps its own.
     fireEvent.click(part('Baixo'));
     await waitFor(() => expect(tab()).toBeTruthy());
     expect(lineLength().value).toBe('');
@@ -307,7 +296,6 @@ describe('part selector of the song screen', () => {
     window.history.replaceState(null, '', `#/biblioteca/${KEY}/gp/drums`);
     render(<LibraryModule />);
     await waitFor(() => expect(grid()).toBeTruthy());
-    // One source and one part: no selector.
     expect(partGroup()).toBeNull();
     expect(screen.queryByRole('group', { name: 'Fonte' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
@@ -319,7 +307,6 @@ describe('part selector of the song screen', () => {
     window.history.replaceState(null, '', `#/biblioteca/${KEY}/gp/bass`);
     state.shared.active = true;
     state.shared.playing = true;
-    // Bars last 2 s at 120 bpm: 3 s is inside the second bar.
     state.shared.currentSeconds = 3;
     render(<LibraryModule />);
     await waitFor(() => expect(tab()).toBeTruthy());
@@ -331,7 +318,6 @@ describe('part selector of the song screen', () => {
       .filter((item) => (item as HTMLElement).dataset.active === 'true')
       .map((item) => Number((item as HTMLElement).dataset.bar));
     expect(active).toEqual([1]);
-    // Still playing, and the change of part stopped nothing.
     expect(screen.getAllByLabelText('Pausar').length).toBeGreaterThan(0);
     expect(state.shared.pause).not.toHaveBeenCalled();
     expect(state.shared.seek).not.toHaveBeenCalled();

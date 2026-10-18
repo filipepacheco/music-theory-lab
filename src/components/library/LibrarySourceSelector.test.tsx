@@ -27,7 +27,6 @@ const state = vi.hoisted(() => ({
   fileByChart: {} as Record<string, string>,
 }));
 
-// The clock of the two parts imports the audio engine, which needs a browser.
 vi.mock('@/hooks/useSongPartsPlayback', () => ({
   useSongPartsPlayback: () => ({
     active: false,
@@ -73,7 +72,6 @@ vi.mock('@/components/library/LibraryTrackDetail', () => ({
     <div data-testid="analysis">{track.source_sha256}</div>
   ),
 }));
-// The recording is looked up by chart id: each source has its own.
 vi.mock('@/hooks/useRocksmithAudio', () => ({
   useRocksmithAudio: (chartId: string) => ({
     audioState: state.fileByChart[chartId]
@@ -205,14 +203,12 @@ describe('source selector of the song screen', () => {
     expect(window.location.hash).toBe(`#/biblioteca/${KEY}/midi/bass`);
     await waitFor(() => expect(pressed('MIDI')).toBe('true'));
     expect(pressed('Guitar Pro')).toBe('false');
-    // The MIDI chart has 6 bars; the Guitar Pro chart has 4.
     expect(screen.getByText('Compassos').nextElementSibling?.textContent).toBe(
       '6',
     );
   });
 
   it('keeps the line lengths of each source apart', async () => {
-    // The line lengths are chart settings, which need a stored chart id.
     vi.stubGlobal('indexedDB', new IDBFactory());
     state.charts = [
       chartOf('a'.repeat(64), 'midi'),

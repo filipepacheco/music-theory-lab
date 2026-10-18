@@ -1,5 +1,3 @@
-"""Neutral execution contracts shared by stage adapters and orchestration."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,8 +17,6 @@ from audio_library_poc.paths import validate_portable_filename
 
 
 class StagedArtifact(ContractModel):
-    """One immutable file descriptor proposed from an attempt staging area."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
     artifact_name: str = Field(min_length=1)
@@ -42,8 +38,6 @@ class StagedArtifact(ContractModel):
 
 
 class StageOutput(ContractModel):
-    """Strict manifest for files completed inside an attempt staging area."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
     artifacts: tuple[StagedArtifact, ...] = Field(min_length=1)
@@ -60,26 +54,21 @@ class StageOutput(ContractModel):
 
 
 def validate_artifact_filename(value: str) -> str:
-    """Re-export the shared portable filename contract for stage adapters."""
 
     return validate_portable_filename(value)
 
 
 class ExpectedStageFailure(RuntimeError):
-    """Expected stage failure carrying the shared typed error contract."""
-
     def __init__(self, error: TypedError) -> None:
         super().__init__(error.message)
         self.error = error
 
 
 class StageInterruption(RuntimeError):
-    """Abrupt stop after local work but before result publication."""
+    pass
 
 
 class StageExecutor(Protocol):
-    """Adapter boundary implemented by fake and future real stages."""
-
     def execute(
         self,
         *,

@@ -1,5 +1,3 @@
-"""Tests for the stage-kind dispatcher registry and its orchestrator seam."""
-
 from __future__ import annotations
 
 import json

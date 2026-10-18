@@ -1,14 +1,14 @@
-import { useMemo } from "react";
-import { motion } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { resolveStep } from "@/domain/stepResolution";
-import { functionColor, functionTint } from "@/constants/functionColors";
-import type { HarmonicFunction } from "@/constants/harmonicFields";
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { resolveStep } from '@/domain/stepResolution';
+import { functionColor, functionTint } from '@/constants/functionColors';
+import type { HarmonicFunction } from '@/constants/harmonicFields';
 
 const FUNCTION_LABELS: Record<string, string> = {
-  T: "Tônica",
-  SD: "Subdominante",
-  D: "Dominante",
+  T: 'Tônica',
+  SD: 'Subdominante',
+  D: 'Dominante',
 };
 
 interface StepInfo {
@@ -42,7 +42,6 @@ export default function ProgressionChordStrip() {
 
   if (!prog || steps.length === 0) return null;
 
-  // Compute current step index from currentEighth
   let activeStepIdx = -1;
   if (currentEighth >= 0) {
     let accumulated = 0;
@@ -59,12 +58,15 @@ export default function ProgressionChordStrip() {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
+      animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.3 }}
       className="mt-2"
     >
-      <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+      <div
+        className="flex gap-1.5 overflow-x-auto"
+        style={{ scrollbarWidth: 'thin' }}
+      >
         {steps.map((step, idx) => {
           const isActive = idx === activeStepIdx;
           const fn = step.harmonicFunction;
@@ -76,10 +78,9 @@ export default function ProgressionChordStrip() {
               className="flex-1 min-w-0 px-2 py-1.5"
               style={{
                 backgroundColor: functionTint(fn, isActive ? 35 : 12),
-                // The lamp marks the chord that sounds now.
                 borderLeft: isActive
-                  ? "3px solid var(--color-live)"
-                  : "3px solid transparent",
+                  ? '3px solid var(--color-live)'
+                  : '3px solid transparent',
                 flex: step.beats / 4,
               }}
             >
@@ -95,7 +96,7 @@ export default function ProgressionChordStrip() {
                 </span>
               </div>
               <div className="font-mono text-micro text-text-muted truncate">
-                {step.noteNames.join(" ")}
+                {step.noteNames.join(' ')}
               </div>
               {fn && (
                 <div

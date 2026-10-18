@@ -31,11 +31,6 @@ interface ChromaticChordPickerProps {
   onSelect: (step: ProgressionStep) => void;
 }
 
-/**
- * Chromatic chord picker: manual root+type selection and pre-organized
- * common chromatic chords. Builds steps via the chromatic-step
- * construction module; callers only supply their add leaf.
- */
 export default function ChromaticChordPicker({
   stepCount,
   onSelect,
@@ -57,11 +52,7 @@ export default function ChromaticChordPicker({
   const handleTypeClick = (chordTypeId: string) => {
     if (selectedRoot === null || !hasRoom) return;
 
-    const built = buildManualChromaticStep(
-      selectedRoot,
-      chordTypeId,
-      rootNote,
-    );
+    const built = buildManualChromaticStep(selectedRoot, chordTypeId, rootNote);
     playChord(built.notes);
     onSelect(built.step);
 
@@ -111,11 +102,8 @@ export default function ChromaticChordPicker({
             className="overflow-hidden"
           >
             <div className="pt-3 space-y-3">
-              {/* Root note selection */}
               <div>
-                <span className="lh-label block mb-1.5">
-                  Nota raiz
-                </span>
+                <span className="lh-label block mb-1.5">Nota raiz</span>
                 <div className="flex gap-1 flex-wrap">
                   {NOTE_NAMES.map((name, i) => (
                     <button
@@ -133,7 +121,6 @@ export default function ChromaticChordPicker({
                 </div>
               </div>
 
-              {/* Chord type selection */}
               <AnimatePresence>
                 {selectedRoot !== null && (
                   <motion.div
@@ -168,10 +155,10 @@ export default function ChromaticChordPicker({
                 )}
               </AnimatePresence>
 
-              {/* Common chromatic chords */}
               <div>
                 <span className="lh-label block mb-1.5">
-                  Acordes comuns (na tonalidade de {getNoteName(rootNote, rootName)})
+                  Acordes comuns (na tonalidade de{' '}
+                  {getNoteName(rootNote, rootName)})
                 </span>
                 <div className="space-y-2">
                   {CHROMATIC_CATEGORIES.map((cat) => (

@@ -1,5 +1,3 @@
-"""Tests for scripts/sum_stems.py."""
-
 from __future__ import annotations
 
 import importlib.util
@@ -31,8 +29,6 @@ sum_stems_module = _load_script()
 
 def _write_wav(path: Path, waveform: np.ndarray, sample_rate: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Explicit PCM_16 write via wave to keep the fixture deterministic and
-    # independent of soundfile default subtype choices.
     with wave.open(str(path), "wb") as sink:
         sink.setnchannels(waveform.shape[1] if waveform.ndim == 2 else 1)
         sink.setsampwidth(2)
@@ -41,7 +37,6 @@ def _write_wav(path: Path, waveform: np.ndarray, sample_rate: int) -> None:
 
 
 def test_sum_normalizes_summed_audio_to_target_peak(tmp_path: Path) -> None:
-    # Two stereo stems, both ±0.6 → summed peak 1.2 → normalized to 0.95.
     sr = 22050
     frames = 4096
     a = np.full((frames, 2), 0.6 * 32767, dtype=np.int16)
@@ -104,7 +99,6 @@ def test_sum_handles_single_input(tmp_path: Path) -> None:
     waveform, _sr, source_peak = sum_stems_module.sum_stems(
         [tmp_path / "solo.wav"], peak=0.95
     )
-    # Solo input still gets peak-normalized to 0.95 (from ~0.3).
     peak_after = float(np.max(np.abs(waveform))) / 32767.0
     assert peak_after == pytest.approx(0.95, rel=1e-3)
     assert source_peak == pytest.approx(0.3, rel=1e-3)
@@ -121,7 +115,6 @@ def test_write_wav_returns_sha256_and_replaces_atomically(tmp_path: Path) -> Non
     sha256 = sum_stems_module.write_wav(output, waveform, 22050)
     assert len(sha256) == 64
     assert output.is_file()
-    # Round-trip through soundfile to confirm the file is valid PCM_16 WAV.
     round_trip, sr = sf.read(str(output), dtype="int16", always_2d=True)
     assert sr == 22050
     assert round_trip.shape == waveform.shape

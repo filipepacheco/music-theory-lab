@@ -1,11 +1,3 @@
-"""Frozen, hash-bound inputs for a private harmony evaluation.
-
-The manifest selects artifacts by their successful result envelopes. It never
-searches ``runs/``. Original audio is bound through a private corpus manifest:
-that lets a corpus intentionally use an absolute, external source path without
-putting a machine-specific path in this public contract.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -51,8 +43,6 @@ class AnnotationKind(StrEnum):
 
 
 class HashBoundFile(ContractModel):
-    """One private workspace file whose bytes are fixed by the manifest."""
-
     path: str = Field(min_length=1)
     sha256: Sha256
 
@@ -262,7 +252,7 @@ class EvaluationManifest(ContractModel):
 
 
 class EvaluationSelectionError(RuntimeError):
-    """A manifest-selected private input did not pass verification."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -288,7 +278,6 @@ class ResolvedArtifact:
 
 
 def load_evaluation_manifest(path: Path) -> EvaluationManifest:
-    """Load a private YAML manifest without discovering any local runs."""
 
     with Path(path).open(encoding="utf-8") as source:
         payload = yaml.safe_load(source)
@@ -299,7 +288,6 @@ def resolve_manifest_artifacts(
     manifest: EvaluationManifest,
     workspace: Path,
 ) -> tuple[ResolvedArtifact, ...]:
-    """Verify exactly the manifest selections; never sweep ``runs/``."""
 
     root = Path(workspace).resolve()
     resolved: list[ResolvedArtifact] = []
@@ -324,12 +312,6 @@ def resolve_manifest_annotations(
     manifest: EvaluationManifest,
     workspace: Path,
 ) -> tuple[ResolvedAnnotation, ...]:
-    """Parse included references, apply declared overlays/offsets, and clip them.
-
-    References whose source master has a different duration require documented
-    evidence. They are clipped to the selected artifact's source duration and
-    the manifest excerpts, which makes the evaluated interval explicit.
-    """
 
     root = Path(workspace).resolve()
     verified = resolve_manifest_artifacts(manifest, root)

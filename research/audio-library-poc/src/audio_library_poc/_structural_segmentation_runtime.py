@@ -1,5 +1,3 @@
-"""Heavy audio/runtime adapter for stable structural segmentation."""
-
 from __future__ import annotations
 
 import platform

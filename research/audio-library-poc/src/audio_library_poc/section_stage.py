@@ -1,20 +1,3 @@
-"""Bridge that runs the librosa-based section-boundary detector.
-
-Mirrors ``HpcpKeyStageExecutor``: validate config, resolve the source
-audio inside the workspace, hash-verify it against ``input_sha256``, then
-call the runtime. The runtime returns a strict ``SectionAnalysisResult``
-plus a Metrics payload.
-
-Detector choice: **librosa** — the ``librosa.segment`` module is already a
-transitive dep of the POC's chord and key runtimes, so no new install
-burden. MSAF's ``foote`` detector was considered but its dep tree
-(scikit-learn pinned to <0.22, madmom) does not resolve on modern Python
-3.12 environments the way the rest of the POC installs. Letter labels
-follow the same "opaque cluster id" convention MSAF uses for its
-unsupervised detectors — see ``section_analysis.SectionSegment`` for the
-downstream contract.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,16 +29,6 @@ _RESULT_ARTIFACT_FILENAME = "section-analysis-result.json"
 
 
 class SectionLibrosaStageConfig(ContractModel):
-    """Config surface for the section.librosa_segment stage.
-
-    No model checkpoint — the librosa detector is a pure algorithm. The
-    knobs mirror librosa's own defaults for the segmentation tutorial:
-    22050 Hz mono, 2048-sample hop, chroma_cqt features, 7 segments.
-    ``n_segments`` bounds the agglomerative clustering; downstream can
-    still get ``n_segments`` back on the result under ``settings`` so a
-    later run with a different value produces a distinct cache identity.
-    """
-
     source_relative_path: str = Field(min_length=1)
     sample_rate: int = Field(default=22050, ge=8000, le=96000)
     hop_length: int = Field(default=2048, ge=64, le=8192)
@@ -73,8 +46,6 @@ class SectionLibrosaStageConfig(ContractModel):
 
 
 class SectionLibrosaStageExecutor:
-    """StageExecutor for the section.librosa_segment stage kind."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
 
@@ -133,7 +104,6 @@ def build_section_metrics(
     section_count: int,
     unique_label_count: int,
 ) -> Metrics:
-    """Shared metrics shape the runtime returns and tests assert against."""
 
     return Metrics(
         duration_seconds=wall_seconds,

@@ -8,22 +8,18 @@ function octaveText(octave: number): string {
 }
 
 interface Props {
-  /** The selected bar, or null before a click on a bar. */
   bar: number | null;
   octave: number;
   canLower: boolean;
   canRaise: boolean;
-  /** How many bars have the same notes as the selected one, itself included. */
   likeCount: number;
   alike: boolean;
-  /** How many bars of the song have an octave choice. */
   movedCount: number;
   onAlike: (alike: boolean) => void;
   onOctave: (octave: number) => void;
   onClear: () => void;
 }
 
-/** The octave of one bar of the tab, chosen by the musician. */
 export default function BarOctavePanel({
   bar,
   octave,

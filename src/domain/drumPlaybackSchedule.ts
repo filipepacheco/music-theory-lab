@@ -5,7 +5,6 @@ import type {
   DrumHit,
 } from '@/domain/drumChart';
 
-/** The sample files of `public/drum-samples/`, without the extension. */
 export const DRUM_SAMPLE_IDS = [
   'kick',
   'snare',
@@ -22,13 +21,6 @@ export const DRUM_SAMPLE_IDS = [
 ] as const;
 export type DrumSampleId = (typeof DRUM_SAMPLE_IDS)[number];
 
-/**
- * Trim of each sample in dB, so that the pieces balance. Assumes decoded peaks
- * (ffmpeg volumedetect, dBFS) kick -0.5, snare -3.9, cross-stick -6.4,
- * closed -13.8, open -6.9, pedal -21.1, high tom -7.3, low tom -8.6, crash
- * -8.3, ride -21.1, bell -14.5, splash -28: the engine adds the trim, then
- * the gain of the dynamic goes on top.
- */
 export const DRUM_SAMPLE_TRIM_DB: Record<DrumSampleId, number> = {
   kick: -4.5,
   snare: -1.1,
@@ -44,7 +36,6 @@ export const DRUM_SAMPLE_TRIM_DB: Record<DrumSampleId, number> = {
   splash: 16,
 };
 
-/** A sample, played faster or slower to tune it. */
 export interface DrumSampleChoice {
   sample: DrumSampleId;
   rate: number;
@@ -55,11 +46,6 @@ const choice = (sample: DrumSampleId, rate = 1): DrumSampleChoice => ({
   rate,
 });
 
-/**
- * The sample of a drum piece and articulation. The kit has two toms: the
- * middle tom and the floor tom are the low tom tuned up and down. A piece
- * with no sample (`outros`) gives `null`, and its hits make no sound.
- */
 export function drumSampleFor(
   piece: DrumChartPiece,
   articulation: DrumArticulation,
@@ -88,7 +74,6 @@ export function drumSampleFor(
   }
 }
 
-/** The loudness of a hit, 0 to 1: a ghost note is soft, an accent is loud. */
 export const DRUM_DYNAMIC_GAIN: Record<DrumDynamic, number> = {
   ghost: 0.3,
   normal: 0.7,
@@ -96,14 +81,12 @@ export const DRUM_DYNAMIC_GAIN: Record<DrumDynamic, number> = {
 };
 
 export interface DrumPlaybackHit {
-  /** Seconds from the start of the chart. */
   time: number;
   sample: DrumSampleId;
   rate: number;
   gain: number;
 }
 
-/** What the player sounds for the hits of a drum chart, in time order. */
 export function drumPlaybackHits(hits: DrumHit[]): DrumPlaybackHit[] {
   const result: DrumPlaybackHit[] = [];
   for (const hit of hits) {

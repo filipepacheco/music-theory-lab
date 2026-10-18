@@ -1,5 +1,3 @@
-"""Model-agnostic seam for candidate stem-separator implementations."""
-
 from audio_library_poc.separators.bs_roformer import (
     BS_ROFORMER_STAGE_KIND,
     BsRoformerSeparator,

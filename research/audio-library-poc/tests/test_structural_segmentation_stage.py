@@ -1,5 +1,3 @@
-"""Contract tests for the production structural-segmentation stage."""
-
 from __future__ import annotations
 
 import hashlib

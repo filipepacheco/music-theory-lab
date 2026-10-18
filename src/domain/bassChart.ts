@@ -1,34 +1,21 @@
 import type { SngArrangement, SngNote } from '@/services/rocksmith/sng';
 
-/**
- * A bass arrangement imported from a Rocksmith chart, laid out on the chart's
- * own beat grid. Rocksmith stores every difficulty level of every phrase; the
- * chart keeps only the hardest level of each phrase, which is the full part
- * as recorded.
- */
 export interface BassChart {
   schemaVersion: 1;
-  /** SHA-256 of the imported file, so re-importing it is idempotent. */
   id: string;
   sourceFileName: string;
-  /**
-   * `midi` and `gp` imports keep suggested fingering in `notes`. Absent on
-   * charts stored before MIDI import, all Rocksmith.
-   */
   source?: BassChartSource;
   importedAt: string;
   title: string;
   artist: string;
   album: string;
   year: number | null;
-  /** Semitone offset from E-A-D-G for each string, low to high. */
   tuning: number[];
   songLengthSeconds: number;
   averageTempoBpm: number;
   bars: BassChartBar[];
   sections: BassChartSection[];
   notes: BassChartNote[];
-  /** GP string/fret positions, aligned with `notes`; absent on older imports. */
   originalFingering?: BassFretPosition[];
 }
 
@@ -47,20 +34,12 @@ export interface BassChartBar {
 }
 
 export interface BassChartSection {
-  /** Rocksmith's section name, e.g. `verse`. */
   name: string;
-  /** How many consecutive Rocksmith sections of this name were merged. */
   parts: number;
   startBar: number;
-  /** Exclusive. */
   endBar: number;
 }
 
-/**
- * What the layout of the song screen reads of a chart: its bars and its
- * sections. A chart of any part has them, so the layout functions take this
- * and not a bass chart.
- */
 export interface ChartBars {
   bars: BassChartBar[];
   sections: BassChartSection[];
@@ -83,15 +62,12 @@ export type BassTechnique =
 
 export interface BassChartNote {
   time: number;
-  /** When the fretboard stops showing the note. */
   endTime: number;
-  /** 0 = lowest (E) string. */
   string: number;
   fret: number;
   midi: number;
   sustain: number;
   bar: number;
-  /** Beats from the bar's downbeat, quantised to twelfths of a beat. */
   beatInBar: number;
   slideToFret: number | null;
   techniques: BassTechnique[];
@@ -104,7 +80,6 @@ export interface BassChartMetadata {
   year: number | null;
 }
 
-/** Twelve ticks per beat covers straight 8ths, 16ths and triplets. */
 export const TICKS_PER_BEAT = 12;
 export const STANDARD_OPEN_MIDI = [28, 33, 38, 43];
 const STRING_COUNT = 4;
@@ -181,8 +156,6 @@ export function buildBassChart(input: {
     year: input.metadata.year,
     tuning,
     songLengthSeconds,
-    // The median beat, not the package's average: a fast count-in before the
-    // song skews the mean.
     averageTempoBpm: medianTempo(beatTimes),
     bars,
     sections: buildSections(arrangement, bars),
@@ -190,10 +163,6 @@ export function buildBassChart(input: {
   };
 }
 
-/**
- * The notes of each phrase iteration at that phrase's highest difficulty,
- * with chords expanded into one note per string, ordered by time then string.
- */
 export function hardestNotes(arrangement: SngArrangement): SngNote[] {
   const levels = new Map(arrangement.levels.map((l) => [l.difficulty, l]));
   const notes: SngNote[] = [];
@@ -248,7 +217,6 @@ function lastBeatLength(beatTimes: number[]): number {
   return n >= 2 ? beatTimes[n - 1] - beatTimes[n - 2] : 0.5;
 }
 
-/** Fractional beat index of `time` on the chart's (non-uniform) beat grid. */
 export function beatPosition(beatTimes: number[], time: number): number {
   if (beatTimes.length === 0) return 0;
   const i = Math.max(0, lastIndexAtOrBefore(beatTimes, time + 1e-4));
@@ -258,7 +226,6 @@ export function beatPosition(beatTimes: number[], time: number): number {
   return i + (time - beatTimes[i]) / length;
 }
 
-/** Index of the last sorted value `<= target`, or 0 when all are greater. */
 function lastIndexAtOrBefore(sorted: number[], target: number): number {
   let lo = 0;
   let hi = sorted.length - 1;
@@ -275,11 +242,6 @@ function lastIndexAtOrBefore(sorted: number[], target: number): number {
   return found;
 }
 
-/**
- * A note is shown until the next onset, but never longer than its sustain or
- * one beat — whichever is longer — so a short note before a rest does not
- * linger on the fretboard.
- */
 function assignEndTimes(notes: BassChartNote[], bars: BassChartBar[]): void {
   let nextOnset = Infinity;
   for (let i = notes.length - 1; i >= 0; i -= 1) {
@@ -342,8 +304,6 @@ function medianTempo(beatTimes: number[]): number {
   return 60 / gaps[Math.floor(gaps.length / 2)];
 }
 
-// ---------------------------------------------------------------- queries
-
 const SECTION_LABELS: Record<string, string> = {
   '': 'Início',
   intro: 'Intro',
@@ -377,14 +337,12 @@ const SECTION_LABELS: Record<string, string> = {
   ambient: 'Ambiente',
 };
 
-/** pt-BR label for a Rocksmith section name. */
 export function sectionLabel(name: string): string {
   const label = SECTION_LABELS[name.toLowerCase()];
   if (label) return label;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/** Index of the bar containing `seconds`, or -1 outside the chart. */
 export function barIndexAt(
   chart: Pick<ChartBars, 'bars'>,
   seconds: number,
@@ -397,7 +355,6 @@ export function barIndexAt(
   return seconds < chart.bars[index].endTime ? index : -1;
 }
 
-/** Index of the section containing bar `barIndex`, or -1. */
 export function sectionIndexOfBar(
   chart: Pick<ChartBars, 'sections'>,
   barIndex: number,
@@ -407,11 +364,6 @@ export function sectionIndexOfBar(
   );
 }
 
-/**
- * Indexes of the notes sounding at `seconds` (several for a double stop).
- * `noteTimes` must be `chart.notes.map(n => n.time)`, passed in so a caller
- * polling every animation frame does not rebuild it.
- */
 export function activeNoteIndexes(
   chart: BassChart,
   noteTimes: number[],
@@ -428,10 +380,6 @@ export function activeNoteIndexes(
   return active;
 }
 
-/**
- * Distinct time signatures in order of first appearance, e.g. `['7/4']`.
- * Charts end on a lone closing beat, which is not a real 1/4 bar.
- */
 export function timeSignatures(chart: Pick<ChartBars, 'bars'>): string[] {
   const bars = chart.bars.filter(
     (bar, i) => !(i === chart.bars.length - 1 && bar.beatCount === 1),
@@ -454,12 +402,10 @@ const NOTE_NAMES = [
   'B',
 ];
 
-/** Scientific pitch name, e.g. 35 → `B1`. */
 export function midiNoteName(midi: number): string {
   return `${NOTE_NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
 }
 
-/** `E A D G` for standard tuning, otherwise the tuned open-string names. */
 export function tuningLabel(tuning: number[]): string {
   return tuning
     .map((offset, i) => NOTE_NAMES[(STANDARD_OPEN_MIDI[i] + offset) % 12])
@@ -477,21 +423,12 @@ export type SectionBlockItem =
 export interface BassChartSectionBlock {
   section: BassChartSection;
   index: number;
-  /** Slot for the section's colour, by first appearance of its name. */
   colorIndex: number;
-  /** Which appearance of this name this is, 1-based. */
   occurrence: number;
   occurrenceTotal: number;
   items: SectionBlockItem[];
 }
 
-/**
- * Lay the chart out section by section. A run of two or more bars without
- * notes collapses into one rest item, so a long count-in or a tacet stretch
- * does not push the line off screen; bars with notes are never merged.
- * `barsWithNotes` names the bars that a part fills; by default they are the
- * bars of the chart's bass notes, and none for a chart that has no notes.
- */
 export function sectionBlocks(
   chart: Pick<ChartBars, 'sections'> & { notes?: readonly { bar: number }[] },
   barsWithNotes: ReadonlySet<number> = new Set(
@@ -534,12 +471,6 @@ export function sectionBlocks(
   });
 }
 
-/**
- * Break a section into lines of `barsPerRow` bars counted from its first
- * bar, so every line starts on the same bar numbers whatever comes before
- * it. A rest stays whole on the line where it starts; lines a rest covers
- * entirely are dropped.
- */
 export function sectionRows(
   block: BassChartSectionBlock,
   barsPerRow: number,
@@ -554,17 +485,10 @@ export function sectionRows(
   return rows.filter((row) => row !== undefined);
 }
 
-/** How many times its base width a beat may grow to fill a line. */
 export const MAX_BEAT_WIDTH_SCALE = 3;
 /**
- * The beat width, in pixels, that makes `barsPerLine` bars of `beatCount`
- * beats share a line `lineWidth` wide. Each bar also takes `barChrome`
- * pixels that do not grow (padding and border), and `gap` separates the
- * bars. A set line length always wins: there is no lower limit, so labels
- * may touch. Past three times `baseBeatWidth` the line keeps free space at
- * its end. It is rounded down to 1/64 px, the layout unit of Chromium, so
- * the bars do not overflow the line there. Firefox lays out in 1/60 px and
- * can round a bar up by a fraction: the caller's rows must not wrap.
+ * Chromium lays out in 1/64 px, so the width is rounded down to it. Firefox
+ * lays out in 1/60 px and can round a bar up by a fraction.
  */
 export function lineBeatWidth(line: {
   lineWidth: number;
@@ -584,36 +508,20 @@ export function lineBeatWidth(line: {
   );
 }
 
-/**
- * The beat width of a section in the automatic layout: the larger of the
- * base width and the width its labels need, up to three times the base.
- */
 export function sectionBeatWidth(base: number, needed: number): number {
   return Math.min(base * MAX_BEAT_WIDTH_SCALE, Math.max(base, needed));
 }
 
-/** A label in a lane: where it starts, in beats, and its character count. */
 export interface LaneLabel {
   beat: number;
   chars: number;
 }
 
-/**
- * Labels that share a row, such as the fret numbers of one string or the
- * degree lane. The font has one character width, so a label is as wide as
- * `chars * charWidth`.
- */
 export interface LabelLane {
   charWidth: number;
   labels: LaneLabel[];
 }
 
-/**
- * The beat width, in pixels, at which no two neighbouring labels of any
- * lane touch: the label before the nearest pair is `gap` pixels clear of the
- * next one. Labels at the same beat are ignored (a double stop is one
- * label). Zero when no lane has two labels.
- */
 export function neededBeatWidth(lanes: LabelLane[], gap: number): number {
   let needed = 0;
   for (const { charWidth, labels } of lanes) {
@@ -630,34 +538,15 @@ export function neededBeatWidth(lanes: LabelLane[], gap: number): number {
   return needed;
 }
 
-/** Where the degree lane draws one of its labels. */
 export interface LaneLabelPlace {
-  /** 0 for the first level, 1 for the second. */
   level: number;
-  /** The label's left edge, in pixels from the bar's first beat. */
   x: number;
-  /** How far right of its note the label moved, in pixels; mostly 0. */
   shift: number;
 }
 
-/** How many levels the degree lane has. */
 export const DEGREE_LANE_LEVELS = 2;
-/** Rounding slack, in pixels, when a label is exactly `gap` clear. */
 const TOUCH_SLACK = 1e-6;
 
-/**
- * Where the degree lane draws each of its labels at `beatWidth` pixels a
- * beat, in the order of `lane.labels`. A label touches another when it is
- * less than `gap` pixels clear of it. A label stays on the first level when
- * it has the space; when it touches the label before it, it goes to the
- * second level. When it touches on both levels, it moves right by the
- * missing distance, on the level where that distance is smaller, but only
- * when `beatWidth` is at least `shiftFrom`, the largest width of a beat
- * (`neededBeatWidth` keeps one level clear below that in the automatic
- * layout). Below `shiftFrom` (a set line length that squeezes the beats) the
- * labels never move: they stay at their notes on two levels and may touch,
- * so none leaves its bar. `shiftFrom` defaults to never.
- */
 export function degreeLanePlaces(
   lane: LabelLane,
   beatWidth: number,
@@ -667,7 +556,6 @@ export function degreeLanePlaces(
   const order = lane.labels
     .map((_, index) => index)
     .sort((a, b) => lane.labels[a].beat - lane.labels[b].beat);
-  // Per level, the leftmost x where its next label is clear of the last one.
   const free = Array.from({ length: DEGREE_LANE_LEVELS }, () => -Infinity);
   const places: LaneLabelPlace[] = [];
   for (const index of order) {
@@ -685,13 +573,6 @@ export function degreeLanePlaces(
   return places;
 }
 
-/**
- * Bars that draw the same as the bar right above them when a section is
- * drawn `barsPerRow` to a line, each mapped to that bar. `drawing` gives
- * what a bar draws, as a text that is equal for two bars that look the same,
- * or null for a bar that draws nothing: such a bar never counts as a repeat.
- * Each part gives its own `drawing`, so this reads no notes.
- */
 export function repeatsAbove(
   block: BassChartSectionBlock,
   barsPerRow: number,
@@ -710,11 +591,6 @@ export function repeatsAbove(
   return repeats;
 }
 
-/**
- * What a bar of the bass tab draws, for `repeatsAbove`: its meter and its
- * notes at their beats, strings and frets, with their slides and techniques;
- * sustain is not drawn, so it is not compared. Null for a bar without notes.
- */
 export function bassBarDrawing(
   chart: Pick<ChartBars, 'bars'>,
   notes: { note: BassChartNote }[][],
@@ -737,13 +613,6 @@ export function bassBarDrawing(
   };
 }
 
-/**
- * Bars that show the same tab as the bar right above them when a section
- * is drawn `barsPerRow` to a line, each mapped to that bar. The same tab
- * means the same meter and the same notes at the same beats, strings and
- * frets, with the same slides and techniques; sustain is not drawn, so it
- * is not compared. Bars without notes never count as repeats.
- */
 export function barsRepeatingAbove(
   chart: BassChart,
   block: BassChartSectionBlock,
@@ -753,7 +622,6 @@ export function barsRepeatingAbove(
   return repeatsAbove(block, barsPerRow, bassBarDrawing(chart, notes));
 }
 
-/** The chart's notes bucketed by bar, each paired with its chart index. */
 export function notesByBar(
   chart: BassChart,
 ): { note: BassChartNote; index: number }[][] {

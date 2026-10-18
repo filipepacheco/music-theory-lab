@@ -9,7 +9,6 @@ export interface ChordSegment {
   confidence: number | null;
 }
 
-/** Display name for a detected chord or its explicit terminal state. */
 export function chordDisplayName(segment: ChordSegment): string {
   if (segment.label === 'no_chord') return 'N.C.';
   if (segment.label === 'unknown' || segment.root_pc === null) return '?';
@@ -25,7 +24,6 @@ export interface LibraryChordVisualState {
 
 export type LibraryFretHighlightKind = 'root' | 'tone' | null;
 
-/** Classify one visible bass fret against the atomically resolved chord. */
 export function libraryFretHighlightKind(
   pitchClass: number,
   chord: Pick<LibraryChordVisualState, 'pitchClasses' | 'rootPitchClass'>,
@@ -40,11 +38,6 @@ const NO_ACTIVE_CHORD: LibraryChordVisualState = {
   pitchClasses: [],
 };
 
-/**
- * Derive the Biblioteca fretboard state solely from the media clock.
- * Segments are interpreted as half-open intervals so a boundary belongs to
- * the segment that starts there, never to the one that just ended.
- */
 export function resolveLibraryChordAt(
   segments: ChordSegment[],
   currentSeconds: number,

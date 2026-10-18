@@ -1,33 +1,30 @@
-import { useLayoutEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import Header from "@/components/layout/Header";
-import KeySelector from "@/components/layout/KeySelector";
-import BottomNav from "@/components/layout/BottomNav";
-import HarmonicFieldModule from "@/components/harmonicField/HarmonicFieldModule";
-import ProgressionsModule from "@/components/progressions/ProgressionsModule";
-import ScalesModule from "@/components/scales/ScalesModule";
-import QuizModule from "@/components/quiz/QuizModule";
-import TranscriptionModule from "@/components/transcription/TranscriptionModule";
-import StructureModule from "@/components/structure/StructureModule";
-import LibraryModule from "@/components/library/LibraryModule";
-import AnalyzeModule from "@/components/analyze/AnalyzeModule";
-import ConfirmHost from "@/components/shared/ConfirmHost";
-import Frame from "@/components/shared/Frame";
-import Piano from "@/components/instruments/Piano";
-import BassNeck from "@/components/instruments/BassNeck";
-import { useAppStore } from "@/store/useAppStore";
+import { useLayoutEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import Header from '@/components/layout/Header';
+import KeySelector from '@/components/layout/KeySelector';
+import BottomNav from '@/components/layout/BottomNav';
+import HarmonicFieldModule from '@/components/harmonicField/HarmonicFieldModule';
+import ProgressionsModule from '@/components/progressions/ProgressionsModule';
+import ScalesModule from '@/components/scales/ScalesModule';
+import QuizModule from '@/components/quiz/QuizModule';
+import TranscriptionModule from '@/components/transcription/TranscriptionModule';
+import StructureModule from '@/components/structure/StructureModule';
+import LibraryModule from '@/components/library/LibraryModule';
+import AnalyzeModule from '@/components/analyze/AnalyzeModule';
+import ConfirmHost from '@/components/shared/ConfirmHost';
+import Frame from '@/components/shared/Frame';
+import Piano from '@/components/instruments/Piano';
+import BassNeck from '@/components/instruments/BassNeck';
+import { useAppStore } from '@/store/useAppStore';
 
 export default function App() {
   const activeModule = useAppStore((s) => s.activeModule);
   const instrumentsPanelOpen = useAppStore((s) => s.instrumentsPanelOpen);
-  const setInstrumentsPanelOpen = useAppStore(
-    (s) => s.setInstrumentsPanelOpen,
-  );
+  const setInstrumentsPanelOpen = useAppStore((s) => s.setInstrumentsPanelOpen);
   const theme = useAppStore((s) => s.theme);
 
-  // On <html> so the body ground, portals and color-scheme follow the theme.
   useLayoutEffect(() => {
-    document.documentElement.classList.toggle("light", theme === "light");
+    document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
 
   return (
@@ -36,14 +33,14 @@ export default function App() {
       <KeySelector />
 
       <main className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8 max-w-full">
-        {activeModule === "harmonicField" && <HarmonicFieldModule />}
-        {activeModule === "progressions" && <ProgressionsModule />}
-        {activeModule === "scales" && <ScalesModule />}
-        {activeModule === "quiz" && <QuizModule />}
-        {activeModule === "transcription" && <TranscriptionModule />}
-        {activeModule === "structure" && <StructureModule />}
-        {activeModule === "library" && <LibraryModule />}
-        {activeModule === "analyze" && import.meta.env.DEV && <AnalyzeModule />}
+        {activeModule === 'harmonicField' && <HarmonicFieldModule />}
+        {activeModule === 'progressions' && <ProgressionsModule />}
+        {activeModule === 'scales' && <ScalesModule />}
+        {activeModule === 'quiz' && <QuizModule />}
+        {activeModule === 'transcription' && <TranscriptionModule />}
+        {activeModule === 'structure' && <StructureModule />}
+        {activeModule === 'library' && <LibraryModule />}
+        {activeModule === 'analyze' && import.meta.env.DEV && <AnalyzeModule />}
 
         <Frame
           collapsed={!instrumentsPanelOpen}
@@ -54,7 +51,7 @@ export default function App() {
               aria-expanded={instrumentsPanelOpen}
               className="cursor-pointer uppercase hover:text-text-primary focus-visible:bg-accent focus-visible:text-on-accent focus-visible:outline-none"
             >
-              {instrumentsPanelOpen ? "[-]" : "[+]"} Instrumentos
+              {instrumentsPanelOpen ? '[-]' : '[+]'} Instrumentos
             </button>
           }
         >
@@ -62,9 +59,9 @@ export default function App() {
             {instrumentsPanelOpen && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
+                animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25, ease: "easeInOut" }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
                 className="overflow-hidden"
               >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

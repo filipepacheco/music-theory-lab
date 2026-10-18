@@ -29,7 +29,6 @@ interface Props {
   songs: LibrarySong[];
   view: ListView;
   onViewChange: (view: ListView) => void;
-  /** Charts that have a recording in this browser. */
   linkedChartIds: ReadonlySet<string>;
   importStatus: RocksmithImportStatus;
   onSelect: (song: LibrarySong) => void;

@@ -57,15 +57,12 @@ const BassFret = memo(function BassFret({
         ${isOctaveStart ? 'border-l-[3px] border-l-text-muted' : ''}
       `}
     >
-      {/* String line */}
       <div className="absolute inset-x-0 top-1/2 h-[2px] bg-string" />
 
-      {/* Fret marker */}
       {hasFretMarker && (
         <div className="absolute bottom-0.5 w-2 h-2 rounded-full bg-text-muted opacity-40" />
       )}
 
-      {/* Note indicator */}
       <div className="relative z-10">
         {shouldShowNote ? (
           isHighlighted ? (

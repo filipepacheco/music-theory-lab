@@ -1,5 +1,3 @@
-"""Versioned data contracts for the standalone POC."""
-
 from __future__ import annotations
 
 from enum import StrEnum
@@ -31,8 +29,6 @@ CodeRevision = Annotated[str, StringConstraints(min_length=1, max_length=256)]
 
 
 class ContractModel(BaseModel):
-    """Strict base for committed, versioned contracts."""
-
     model_config = ConfigDict(
         extra="forbid",
         allow_inf_nan=False,
@@ -414,8 +410,6 @@ class MetadataResult(ContractModel):
 
 
 class FfprobeModel(BaseModel):
-    """Tolerant boundary model for version-dependent ffprobe fields."""
-
     model_config = ConfigDict(extra="allow")
 
 

@@ -9,9 +9,6 @@ import { groupLibrarySongs } from '@/domain/librarySong';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
 
-// The hook with the real local store and the real synchronization. Only the
-// network is a fake: the two routes, with the contract of the handlers.
-
 const chart = {
   ...fixtureChart(2, [{ bar: 0, beat: 0, midi: 33 }]),
   id: 'a'.repeat(64),
@@ -28,7 +25,6 @@ const settings: ChartSettings = {
 interface Sent {
   method: string;
   path: string;
-  /** The records of a write, or the records that a read returned. */
   records: unknown[];
 }
 
@@ -38,7 +34,6 @@ function route<R>(id: (record: R) => string) {
   return {
     failing: false,
     record: (key: string) => rows.get(key)?.record,
-    /** A write of a different device. */
     put(record: R) {
       rows.set(id(record), { record, counter: ++last });
       return last;
@@ -106,7 +101,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** The hook of a device that holds the chart, after its first synchronization. */
 async function openLibrary() {
   await rocksmithLibrary.save(chart, null);
   const view = renderHook(useRocksmithCharts);
@@ -137,14 +131,11 @@ describe('chart settings in the Biblioteca', () => {
     });
 
     expect(result.current.syncStatus).toBe('synced');
-    // One write, to the settings route, with the settings record only.
     expect(cloud.sent.filter((item) => item.method === 'POST')).toEqual([
       { method: 'POST', path: '/api/chart-settings', records: [settings] },
     ]);
     expect(chartsSent()).toEqual([]);
     expect(cloud.settings.record(chart.id)).toEqual(settings);
-    // The playback follows the open chart object: the same object means no
-    // new transport and no lost position.
     expect(result.current.openChart).toBe(openChart);
     expect(result.current.summaries[0]).toBe(row);
     expect(await rocksmithLibrary.listRecords()).toEqual(chartRecords);
@@ -160,7 +151,6 @@ describe('chart settings in the Biblioteca', () => {
     });
 
     expect(await rocksmithLibrary.getSettings(chart.id)).toEqual(settings);
-    // The two reads run at one time, so their order is not fixed.
     const reads = [...cloud.sent].sort((x, y) => x.path.localeCompare(y.path));
     expect(reads).toEqual([
       { method: 'GET', path: '/api/bass-charts', records: [] },
@@ -179,7 +169,6 @@ describe('chart settings in the Biblioteca', () => {
       await result.current.synchronize();
     });
 
-    // The list keeps its identity, so it cannot tell a screen to reload.
     expect(result.current.summaries).toBe(summaries);
     expect(result.current.settingsRevision).toBe(before + 1);
 
@@ -196,8 +185,6 @@ describe('chart settings in the Biblioteca', () => {
     const { result } = await openLibrary();
     expect(groupLibrarySongs(result.current.summaries, [])).toHaveLength(1);
 
-    // The settings route gives nothing during the deletion, so the device
-    // keeps the record by itself.
     cloud.settings.failing = true;
     await act(async () => {
       await result.current.remove(chart.id);
@@ -213,8 +200,6 @@ describe('chart settings in the Biblioteca', () => {
     expect(await rocksmithLibrary.listSummaries()).toEqual([]);
     expect(await rocksmithLibrary.getSettings(chart.id)).toEqual(settings);
 
-    // The cloud keeps the record too, and the next synchronization reads
-    // none and removes none.
     cloud.settings.failing = false;
     cloud.sent.length = 0;
     await act(async () => {
@@ -263,7 +248,6 @@ describe('chart settings in the Biblioteca', () => {
     const chartOnCloud = structuredClone(cloud.charts.record(chart.id));
     first.unmount();
 
-    // A second device: an empty local store that synchronizes.
     vi.stubGlobal('indexedDB', new IDBFactory());
     const second = renderHook(useRocksmithCharts);
     await waitFor(() =>

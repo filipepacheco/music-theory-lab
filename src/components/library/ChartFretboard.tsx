@@ -10,33 +10,23 @@ export interface FretPosition {
 }
 
 interface Props {
-  /** Semitone offset from E-A-D-G for each string, low to high. */
   tuning: number[];
-  /** Highest fret drawn. */
   fretCount: number;
   rootPitchClass: number | null;
   tones: ChordTone[];
-  /** The notes sounding now, drawn on their exact string and fret. */
   active: FretPosition[];
   noteNames: readonly string[];
 }
 
 const STRING_COUNT = 4;
-/** Highest string (G) on top, as players see their own neck in tab. */
 const DISPLAY_ORDER = [3, 2, 1, 0];
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24]);
-/** Dark text that stays readable on the amber highlight in both themes. */
 const ON_HIGHLIGHT = 'var(--color-on-accent)';
 
 function mod12(n: number): number {
   return ((n % 12) + 12) % 12;
 }
 
-/**
- * A compact fretboard for the playback dock: the current bar's chord tones
- * wherever they fall (solid when the bass played them, dashed when the key
- * implies them) and the note sounding now, in amber, on its exact fret.
- */
 function ChartFretboard({
   tuning,
   fretCount,
@@ -48,8 +38,6 @@ function ChartFretboard({
   const { playBassNote } = useBassSynth();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // On a narrow screen the neck scrolls sideways: bring the note being
-  // played into view when it falls outside, without moving the page.
   const activeKey = active.map((p) => `${p.string}-${p.fret}`).join(',');
   useEffect(() => {
     const container = scrollRef.current;

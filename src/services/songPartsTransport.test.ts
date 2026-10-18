@@ -78,7 +78,6 @@ describe('createSongPartsTransport', () => {
     const t = setup();
     await t.transport.play();
     t.advance(0.6);
-    // Both parts share the anchor (0.05 after the start): same offsets.
     expect(t.log).toContain('bass@0.05#0');
     expect(t.log).toContain('drums@0.05#0');
     expect(t.log).toContain('drums@0.55#0.5');
@@ -110,7 +109,6 @@ describe('createSongPartsTransport', () => {
   });
 
   it('keeps a bass note and a drum hit on one beat together after a tempo change', async () => {
-    // 120 bpm, then 60 bpm from 2 s: beat 5 sounds at 3 s, not at 2.5 s.
     const t = setup(NO_MUTES, [0, 2, 3], [0, 2, 3]);
     await t.transport.play();
     for (const at of [0.5, 1.2, 1.9, 2.2, 2.9, 3.1]) t.advance(at);

@@ -5,8 +5,6 @@ import type {
   BassTechnique,
 } from '@/domain/bassChart';
 
-// Hand-built bass charts for the bass analysis tests.
-
 const BEAT = 0.5;
 const OPEN_MIDI = [28, 33, 38, 43];
 
@@ -16,15 +14,10 @@ export interface NoteSpec {
   midi?: number;
   string?: number;
   fret?: number;
-  /** Charted sustain, in beats. */
   sustain?: number;
   techniques?: BassTechnique[];
 }
 
-/**
- * A chart of `barCount` 4/4 bars at 120 bpm starting at t=0, one section
- * over every bar unless `sections` says otherwise.
- */
 export function fixtureChart(
   barCount: number,
   specs: NoteSpec[],
@@ -74,7 +67,6 @@ export function fixtureChart(
   };
 }
 
-/** Quarter notes from beat 1, one bar per array. */
 export function walking(bars: number[][]): NoteSpec[] {
   return bars.flatMap((midis, bar) =>
     midis.map((midi, beat) => ({ bar, beat, midi })),

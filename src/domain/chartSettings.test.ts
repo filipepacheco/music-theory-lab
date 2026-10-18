@@ -95,7 +95,6 @@ describe('chart settings record', () => {
       { updatedAt: '2026-10-05' },
       { updatedAt: 1759658400000 },
       { updatedAt: '2026-13-45T10:00:00.000Z' },
-      // A chart, or a field that the record does not have.
       { chart: { title: 'A chart' } },
       { deviceId: 'device' },
     ];
@@ -136,12 +135,10 @@ describe('chart settings record', () => {
 
   it('refuses a text in another script that `songKey` does not give', () => {
     const refused = [
-      // Upper case, an accent, and the decomposed form.
       'Группа крови|кино',
       'ζορμπάς|',
       'ありがとう|'.normalize('NFD'),
       '사랑|'.normalize('NFD'),
-      // Punctuation, a symbol, a control, and a second separator.
       '夜に駆ける!|yoasobi',
       '夜に、駆ける|yoasobi',
       '群青 |yoasobi',
@@ -162,8 +159,7 @@ describe('chart settings record', () => {
   });
 
   it('writes a song key of another script in ASCII, and reads it back', () => {
-    // 𠀀 goes before ｶ in the browser and after it in the database, so the
-    // text of a record never holds such a letter itself.
+    // 𠀀 goes before ｶ in the browser and after it in the database.
     const astral = { ...settings, groupOverride: '\u{20000}|' };
     const halfWidth = { ...settings, groupOverride: '\uff76|' };
     for (const record of [astral, halfWidth]) {

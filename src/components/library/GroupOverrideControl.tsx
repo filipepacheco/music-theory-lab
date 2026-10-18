@@ -4,18 +4,14 @@ import Select from '@/components/shared/Select';
 import type { LibrarySong } from '@/domain/librarySong';
 
 interface GroupOverrideControlProps {
-  /** The song that holds the open chart. */
   song: LibrarySong;
-  /** The songs of the library that can take the chart. */
   targets: LibrarySong[];
-  /** Whether the chart has a group override now. */
   overridden: boolean;
   onMove: (songKey: string) => void;
   onSeparate: () => void;
   onRemove: () => void;
 }
 
-/** The controls that correct the group of the open chart. */
 export default function GroupOverrideControl({
   song,
   targets,

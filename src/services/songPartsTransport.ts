@@ -1,9 +1,3 @@
-// Plays the bass part and the drum part of one file on one clock.
-//
-// It speaks the session interface of the recording player. Each part reads its
-// events from one timeline, so a seek or a change of tempo in the chart moves
-// both. A mute decides at the moment of scheduling and silences only its part.
-
 import type {
   DrumPlaybackHit,
   DrumSampleId,
@@ -25,12 +19,10 @@ const START_DELAY_SECONDS = 0.05;
 const LATE_SECONDS = 0.05;
 
 export interface SongPartsVoice {
-  /** Resolves once the audio clock runs and these sounds can play. */
   prepare(bassMidi: number[], samples: DrumSampleId[]): Promise<void>;
   now(): number;
   scheduleBass(note: BassSynthNote, when: number): void;
   scheduleDrum(hit: DrumPlaybackHit, when: number): void;
-  /** Silences one part, or both, and cancels what was scheduled. */
   stop(part?: PlaybackPart): void;
 }
 
@@ -45,7 +37,6 @@ const browserTimer: SongPartsTimer = (callback, milliseconds) => {
 };
 
 export interface SongPartsSession extends LibraryAudioSession {
-  /** The mutes changed: the muted part goes silent at once. */
   muteChanged(part: PlaybackPart): void;
 }
 
@@ -56,7 +47,6 @@ export function createSongPartsTransport(
     durationSeconds: number;
   },
   voice: SongPartsVoice,
-  /** Which parts sound now; read at each scheduling, so a mute is live. */
   sounding: () => PartMutes,
   onStateChange: (state: LibraryAudioState) => void,
   timer: SongPartsTimer = browserTimer,
@@ -76,7 +66,6 @@ export function createSongPartsTransport(
   let stopTimer: (() => void) | null = null;
   let anchor = { audioTime: 0, position: 0 };
   let next = 0;
-  // Hits may still ring after the end of the chart, when playing is false.
   let ringing = false;
 
   const update = (change: Partial<LibraryAudioState>) => {
@@ -114,14 +103,11 @@ export function createSongPartsTransport(
       const event = events[next];
       next += 1;
       const when = anchor.audioTime + (event.time - anchor.position);
-      // A silent part is skipped; a throttled tab drops what it missed.
       if (!audible[event.part] || when < now - LATE_SECONDS) continue;
       if (event.part === 'bass') voice.scheduleBass(event.note, when);
       else voice.scheduleDrum(event.hit, when);
     }
     if (current >= duration) {
-      // The end of the chart lets the scheduled hits ring out: only the timer
-      // stops. Pause, seek, and dispose silence the voice, also after the end.
       stopTimer?.();
       stopTimer = null;
       ringing = true;

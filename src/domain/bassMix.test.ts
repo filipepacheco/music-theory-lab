@@ -18,7 +18,6 @@ describe('midiFrequency', () => {
 
 describe('bassCrossoverHz', () => {
   it('sits above the highest fundamental in the chart', () => {
-    // G3 (196 Hz) × 1.5
     expect(bassCrossoverHz(chartWith(28, 40, 55))).toBe(294);
   });
 

@@ -19,7 +19,6 @@ import {
   type MusicalKey,
 } from '@/domain/bassHarmony';
 
-// MIDI pitches in the bass register (C2 = 36).
 const D2 = 38;
 const E2 = 40;
 const F2 = 41;
@@ -39,7 +38,6 @@ const AB3 = 56;
 const BB3 = 58;
 const B3 = 59;
 
-/** Root, third, fifth and seventh of common chords, as walking bars. */
 const Dm7 = [D2, F2, A2, C3];
 const G7 = [G2, B2, D3, F3];
 const Cmaj7 = [C3, E3, G3, B3];
@@ -51,7 +49,6 @@ const G = [G2, B2, D3, B2];
 const E7 = [E2, GS2, B2, D3];
 const Bb = [BB2, D3, F3, D3];
 
-/** Root and fifth only: the bass never says major or minor. */
 const D5 = [D2, A2, D2, A2];
 const G5 = [G2, D3, G2, D3];
 const Bb5 = [BB2, F3, BB2, F3];
@@ -107,7 +104,6 @@ describe('suggestKeys', () => {
   });
 
   it('does not take a rarely heard final note as the tonic', () => {
-    // Ten bars around C, then one stray E (9% of bars) to end on.
     const chart = fixtureChart(
       11,
       walking([C, Dm7, G7, C, F, G7, C, Am, Dm7, G7, [E2]]),
@@ -149,7 +145,6 @@ describe('analyzeHarmony', () => {
     expect(analysis.segments[3].harmony.detail).toBe(
       'Dominante secundária de ii',
     );
-    // The last two bars hold one chord.
     expect(analysis.segments[6]).toMatchObject({ startBar: 6, endBar: 8 });
     expect(analysis.barSegments).toEqual([0, 1, 2, 3, 4, 5, 6, 6]);
     expect(eventLabels(analysis)).toEqual([
@@ -222,7 +217,6 @@ describe('analyzeHarmony', () => {
   });
 
   it('calls v→i modal, not authentic, when the bass plays no leading tone', () => {
-    // i–iv–VI–v ×2 in D minor on roots and fifths, then home.
     const bars = [D5, G5, Bb5, A5, D5, G5, Bb5, A5, D5];
     const chart = fixtureChart(bars.length, walking(bars));
     const [best] = suggestKeys(chart, analyzeBassChart(chart));
@@ -240,7 +234,6 @@ describe('analyzeHarmony', () => {
       'v',
       'i',
     ]);
-    // No Phrygian / augmented-sixth reading: VI→v is a step, not a cadence.
     expect(eventLabels(analysis)).toEqual([
       'Cadência modal (v→i, sem sensível)',
       'Cadência modal (v→i, sem sensível)',
@@ -287,16 +280,13 @@ describe('analyzeHarmony', () => {
     expect(analysis.events.map((e) => e.kind)).toContain('blues');
     const blues = analysis.events.find((e) => e.kind === 'blues');
     expect(blues).toMatchObject({ startBar: 0, endBar: 12 });
-    // I7 resolving to IV reads as its secondary dominant (§6.2 rule 2).
     expect(numerals(analysis)[0]).toBe('V7/IV');
   });
 
   it('flags prominent avoid notes, and the 13 of ii only before V', () => {
-    // F on beat 3 over C: the 11, a b9 above the major third.
     const avoidOnI = analyze([[C3, E3, F3, G3], Am], C_MAJOR);
     expect([...avoidOnI.avoidNotes]).toEqual([2]);
 
-    // B on beat 3 over Dm: the 13 is avoided in a ii–V only.
     const iiV = analyze([[D2, F2, B2, A2], G7], C_MAJOR);
     expect([...iiV.avoidNotes]).toEqual([2]);
     const iiAlone = analyze([[D2, F2, B2, A2], C], C_MAJOR);
@@ -364,13 +354,10 @@ describe('barChordTones', () => {
   }
 
   it('fills the chord from the key when the bass plays only the root', () => {
-    // i in D minor is Dm7: the b3, 5 and b7 are implied, not played.
     expect(tones([D5, A5, D5], D_MINOR)).toEqual(['R', 'b3?', '5', 'b7?']);
   });
 
   it('prefers what the bass played over the key', () => {
-    // Two bars of D read as ii in C major (min7). The second bar plays F#:
-    // its played major third wins over the b3 the reading implies.
     const FS2 = 42;
     expect(
       tones([[D2, F2, A2, F2], [D2, FS2, A2, FS2], G7], C_MAJOR, 1),
@@ -378,7 +365,6 @@ describe('barChordTones', () => {
   });
 
   it('adds the tensions the bass played', () => {
-    // F# on beat 3 over C major: the #11.
     expect(tones([[C3, E3, 54, G3]], C_MAJOR)).toEqual([
       'R',
       '3',

@@ -1,5 +1,3 @@
-"""Private-output boundary tests for the Phase 3 diagnostics report."""
-
 from __future__ import annotations
 
 import importlib.util

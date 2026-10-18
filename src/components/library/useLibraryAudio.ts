@@ -22,16 +22,6 @@ export interface BassMixSetting {
   crossoverHz: number;
 }
 
-/**
- * Wrap an <audio> element for the Biblioteca player. `url` may be null while
- * the source is being probed (no player rendered upstream); a fresh URL
- * swaps the source and rewinds to zero. Cleans up on unmount so we never
- * leak the underlying media element or its ticker.
- *
- * `bassMix` filters playback into a practice mix. The Web Audio graph is
- * built only when a filtered mix is first chosen, so plain playback never
- * depends on an AudioContext.
- */
 export function useLibraryAudio(
   url: string | null,
   bassMix?: BassMixSetting,

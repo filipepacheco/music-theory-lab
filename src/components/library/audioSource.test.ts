@@ -56,9 +56,7 @@ describe('probeAudioUrl', () => {
 
     const found = await probeAudioUrl(entry);
     expect(found).toBe(`/library/${entry.detail_directory}/source.wav`);
-    // Should have stopped after the .wav probe (mp3, m4a, wav — 3 calls).
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    // And every call must be a HEAD.
     for (const call of fetchMock.mock.calls) {
       expect(call[1]?.method).toBe('HEAD');
     }
@@ -79,7 +77,6 @@ describe('probeAudioUrl', () => {
       controller.abort();
       const err = new Error('aborted');
       err.name = 'AbortError';
-      // Reflect the aborted signal so probeAudioUrl sees it on the catch path.
       if (init?.signal?.aborted) throw err;
       throw err;
     });
@@ -122,7 +119,6 @@ describe('probeAudioUrl content-type guard', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    // Every candidate "exists" as far as the status goes; none is audio.
     await expect(probeAudioUrl(entry)).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(AUDIO_SOURCE_EXTENSIONS.length);
   });

@@ -1,11 +1,3 @@
-// Decoder for Rocksmith 2014 `.sng` arrangement files.
-//
-// An SNG is AES-256-CTR encrypted (platform key, per-file IV), then a
-// little-endian uint32 plaintext size followed by a zlib stream. The payload
-// is a fixed sequence of counted arrays; every array must be walked even when
-// its contents are ignored, because nothing in the file says where the next
-// one starts. Layout follows the community Rocksmith 2014 toolkit.
-
 import { unzlibSync } from 'fflate';
 import { hexBytes } from '@/services/rocksmith/psarc';
 
@@ -29,7 +21,6 @@ export class SngError extends Error {
 export interface SngBeat {
   time: number;
   measure: number;
-  /** Beat index within its measure; 0 marks a downbeat. */
   beat: number;
 }
 
@@ -88,9 +79,7 @@ export async function decryptSng(raw: Uint8Array): Promise<Uint8Array> {
     try {
       const body = unzlibSync(plain.subarray(4));
       if (body.length === size) return body;
-    } catch {
-      // Wrong key: the "zlib stream" is noise. Try the next platform.
-    }
+    } catch {}
   }
   throw new SngError('undecryptable');
 }
@@ -148,7 +137,6 @@ class Reader {
   }
   array<T>(readItem: () => T): T[] {
     const count = this.i32();
-    // Every item is at least one byte, so a larger count means corruption.
     if (count < 0 || count > this.remaining) throw new SngError('corrupt');
     return Array.from({ length: count }, readItem);
   }
@@ -190,8 +178,6 @@ export function parseSng(body: Uint8Array): SngArrangement {
   });
   r.skipArray(CHORD_NOTES_BYTES);
   const vocalCount = r.i32();
-  // Vocals are followed by glyph tables whose layout we do not read; only a
-  // vocals arrangement has them, and we never parse that one.
   if (vocalCount !== 0) throw new SngError('unsupported-vocals');
   const phraseIterations = r.array(() => {
     const phraseId = r.i32();

@@ -1,10 +1,3 @@
-"""Tests for the upload-intake manifest builder.
-
-The point of these is that a manifest built here loads through the same
-``PipelineManifest`` the CLI uses. A manifest that only looks right is worth
-nothing: the operator finds out it is wrong halfway through a GPU run.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -97,7 +90,6 @@ class TestSlugify:
         assert not slug.endswith("-")
 
     def test_output_is_a_valid_identifier(self) -> None:
-        # Identifier's pattern: lowercase runs joined by single . _ or -
         manifest = build(slug=slugify("Björk — Jóga (Live!)"))
         PipelineManifest.model_validate(manifest)
 
@@ -127,7 +119,6 @@ class TestManifest:
         )
 
     def test_omits_the_chord_root_key_baseline(self) -> None:
-        # It is an evaluation baseline; sync_workspace_to_public never reads it.
         assert "key.chord_root_profile" not in INTAKE_STAGE_KINDS
 
     def test_every_stage_points_at_the_same_source(self) -> None:
@@ -183,14 +174,10 @@ class TestManifest:
         assert section["section_calibration"]["calibration_id"] == "section-held-out-v1"
 
     def test_stage_kinds_are_unique(self) -> None:
-        # PipelineManifest enforces this; the assertion documents that the
-        # single-run design depends on it.
         kinds = [stage["stage_kind"] for stage in build()["stages"]]
         assert len(kinds) == len(set(kinds))
 
     def test_beat_and_chord_run_before_the_cpu_stages(self) -> None:
-        # A GPU failure should surface before minutes of CPU work, and the
-        # orchestrator stops at the first failed stage.
         kinds = [stage["stage_kind"] for stage in build()["stages"]]
         assert kinds.index("beat.beat_this") < kinds.index("key.hpcp")
         assert kinds.index("chord.chordmini_btc") < kinds.index(
@@ -252,8 +239,6 @@ class TestUpsertIntakeTrack:
         assert row["track_id"] == "come-together-remaster"
 
     def test_replaces_the_row_whose_slug_named_the_same_file(self) -> None:
-        # A re-upload under the same title overwrites originals/<slug>.mp3, so
-        # the old row would describe bytes that no longer exist there.
         first = upsert_intake_track(None, **self.ROW)
         second = upsert_intake_track(first, **{**self.ROW, "sha256": "c" * 64})
         (row,) = second["tracks"]

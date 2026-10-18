@@ -53,19 +53,12 @@ function settingsOf(
 }
 const settings = settingsOf(0, { chartId: chart.id });
 
-/**
- * A cloud that follows the settings route: each write that it accepts gets
- * the next counter, a write that loses changes nothing, and a read returns
- * one page of the records after a counter.
- */
 function settingsCloud(pageLimit = 100, writeLimit = 100) {
   const rows = new Map<string, { record: ChartSettings; counter: number }>();
   let last = 0;
   const fake = {
     writeLimit,
-    /** Each read: the counter that it sent and the ids that it downloaded. */
     reads: [] as { after: number; ids: string[] }[],
-    /** The chart ids of each write. */
     writes: [] as string[][],
     record: (chartId: string) => rows.get(chartId)?.record,
     async pull(after: number) {
@@ -97,7 +90,6 @@ function settingsCloud(pageLimit = 100, writeLimit = 100) {
   return fake satisfies ChartSettingsCloud;
 }
 
-/** The fake cloud of the chart tests, with the ids that it moved. */
 function chartCloud() {
   const rows = new Map<string, { record: BassChartRecord; counter: number }>();
   let last = 0;
@@ -136,7 +128,6 @@ function memoryStorage() {
   };
 }
 
-/** One browser: its local database and its storage. */
 function device() {
   const storage = memoryStorage();
   return {
@@ -151,7 +142,6 @@ type Device = ReturnType<typeof device>;
 const syncSettings = (item: Device, cloud: ChartSettingsCloud) =>
   synchronizeChartSettings(item.library, cloud, item.settingsStore);
 
-/** The synchronization of the app: the charts and the chart settings. */
 async function syncAll(
   item: Device,
   clouds: { charts: ChartCloud; settings: ChartSettingsCloud },
@@ -190,10 +180,8 @@ describe('chart settings synchronization', () => {
 
     expect(await second.library.getSettings(chart.id)).toEqual(settings);
     expect(clouds.settings.writes).toEqual([[chart.id]]);
-    // No device sent a chart, and no device downloaded one.
     expect(clouds.charts.writes).toEqual([]);
     expect(clouds.charts.downloaded).toEqual([]);
-    // The chart record of each device is the one from before the change.
     expect(await first.library.listRecords()).toEqual(chartRecords);
     expect(await second.library.listRecords()).toEqual(chartRecords);
   });
@@ -242,7 +230,6 @@ describe('chart settings synchronization', () => {
       songLineLength: 2,
       groupOverride: 'separate',
     };
-    // The device with the later write synchronizes first.
     await second.library.saveSettings(later);
     await first.library.saveSettings(earlier);
     await syncSettings(second, cloud);
@@ -288,12 +275,10 @@ describe('chart settings synchronization', () => {
   it('lets a change on a device with a slow clock win after it got the record of the other device', async () => {
     const [fast, slow] = [device(), device()];
     const cloud = settingsCloud();
-    // The clock of the first device is one hour fast.
     const fromFast = { ...settings, updatedAt: '2026-10-05T11:00:00.000Z' };
     await fast.library.saveSettings(fromFast);
     await syncSettings(fast, cloud);
     await syncSettings(slow, cloud);
-    // A later change, with a clock that reads an earlier time.
     await slow.library.saveSettings({
       ...settings,
       updatedAt: '2026-10-05T10:05:00.000Z',
@@ -430,8 +415,6 @@ describe('chart settings synchronization', () => {
     await first.library.saveSettings(newer);
     await first.library.saveSettings(settingsOf(1));
     await syncSettings(first, cloud);
-    // The device knows the record of the cloud, and its local database holds
-    // an older one.
     const older = device().library;
     await older.applySettings({ ...settings, songLineLength: 8 });
     await older.applySettings(settingsOf(1));
@@ -522,12 +505,10 @@ describe('chart settings and the deletion of their chart', () => {
     expect(await ids(second.library.listSummaries())).toEqual([chart.id]);
 
     await first.library.remove(chart.id);
-    // Before a synchronization: the device keeps the record by itself.
     expect(await first.library.listSummaries()).toEqual([]);
     expect(await first.library.listSettings()).toEqual([settings]);
     await syncAll(first, remote);
     await syncAll(second, remote);
-    // The settings synchronization read no record again to repair a loss.
     expect(remote.settings.reads.map((read) => read.after)).toEqual([
       0, 0, 1, 1,
     ]);
@@ -537,7 +518,6 @@ describe('chart settings and the deletion of their chart', () => {
       expect(await item.library.getChart(chart.id)).toBeNull();
       expect(await item.library.getSettings(chart.id)).toEqual(settings);
     }
-    // In the cloud: a deletion record of the chart, and the settings record.
     expect(remote.charts.record(chart.id)?.chart).toBeNull();
     expect(remote.settings.record(chart.id)).toEqual(settings);
   });
@@ -552,8 +532,6 @@ describe('chart settings and the deletion of their chart', () => {
     expect(await third.library.listSummaries()).toEqual([]);
     expect(await third.library.getSettings(chart.id)).toEqual(settings);
 
-    // The same file gives the same chart id. The import is later than the
-    // deletion on the clock.
     await new Promise((resolve) => setTimeout(resolve, 5));
     await third.library.save({ ...chart }, null);
     expect(await third.library.getSettings(chart.id)).toEqual(settings);
@@ -647,7 +625,6 @@ describe('the settings route, from the browser', () => {
     expect(JSON.parse(init.body)).toEqual({ device_id: 'device', records });
     expect(chartSettingsCloud.writeLimit).toBe(100);
 
-    // A response without counters says nothing of the records.
     fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     expect(await chartSettingsCloud.push(records)).toEqual([null, null]);
   });
@@ -691,10 +668,8 @@ describe('the copy of the browser line lengths', () => {
       sectionLineLengths: { 0: 4, 8: 2 },
       groupOverride: null,
     });
-    // A chart that this browser does not hold gets nothing.
     expect(await item.library.listSettings()).toHaveLength(1);
     expect(item.storage.getItem(LINE_LENGTH_MIGRATED_KEY)).toBe('true');
-    // A second start copies nothing, also after a later edit.
     const edited = {
       ...(await item.library.getSettings(chart.id))!,
       updatedAt: '2026-10-06T10:00:00.000Z',

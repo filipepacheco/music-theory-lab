@@ -14,16 +14,10 @@ import DrumPartDetail from '@/components/library/DrumPartDetail';
 import { fixtureDrumChart, type HitSpec } from '@/domain/drumChartFixture';
 import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 
-// The drum part of the song detail: the grid in the frame of the song
-// detail, with a recording that this browser links to the drum chart.
-
 const state = vi.hoisted(() => ({
-  /** The file name of the linked recording, or null with none. */
   recording: null as string | null,
   seeks: [] as number[],
-  /** The seeks of the sample player, which sounds when no recording links. */
   sampleSeeks: [] as number[],
-  /** The `enabled` argument of each call to the sample player. */
   sampleEnabled: [] as boolean[],
 }));
 vi.mock('@/services/confirm', () => ({
@@ -47,7 +41,6 @@ vi.mock('@/hooks/useRocksmithAudio', () => ({
     saveError: false,
   }),
 }));
-// A seek moves the clock, as the transport of a real player does.
 vi.mock('@/components/library/useLibraryAudio', () => ({
   useLibraryAudio: (url: string | null) => {
     const [currentSeconds, setCurrentSeconds] = useState(0);
@@ -66,7 +59,6 @@ vi.mock('@/components/library/useLibraryAudio', () => ({
   },
 }));
 
-// The sample player moves the clock, as its transport does, and sounds nothing.
 vi.mock('@/hooks/useDrumSamplePlayback', () => ({
   useDrumSamplePlayback: (_chart: unknown, enabled: boolean) => {
     state.sampleEnabled.push(enabled);
@@ -94,7 +86,6 @@ const HIGH_TOM = 48;
 const FLOOR_TOM = 41;
 const CRASH = 49;
 
-/** Eighth notes on the hi-hat, the kick on 1 and 3, the snare on 2 and 4. */
 const groove = (bar: number): HitSpec[] => [
   ...Array.from({ length: 8 }, (_, i) => ({
     bar,
@@ -107,12 +98,6 @@ const groove = (bar: number): HitSpec[] => [
   { bar, beat: 3, midi: SNARE },
 ];
 
-/**
- * Ten bars: an intro of two bars with no hit, then a verse of eight bars.
- * Bar 3 opens the verse with an accent on the crash, a ghost note on the
- * snare, an accent on the kick, and an open hi-hat. Bars 4 to 9 are the plain
- * groove. Bar 10 is a fill on the toms.
- */
 const specs: HitSpec[] = [
   { bar: 2, beat: 0, midi: CRASH, dynamic: 'accent' },
   { bar: 2, beat: 0, midi: KICK, dynamic: 'accent' },
@@ -133,7 +118,6 @@ const sections = [
 ];
 const chart = fixtureDrumChart(10, specs, sections);
 
-/** Room for the writes of the settings in the local store. */
 const SLOW = { timeout: 5000 };
 const ROWS = ['pratos', 'chimbal', 'toms', 'caixa', 'surdo', 'bumbo'];
 const LABELS = ['Pratos', 'Chimbal', 'Tons', 'Caixa', 'Surdo', 'Bumbo'];
@@ -172,7 +156,6 @@ beforeEach(() => {
   state.sampleEnabled = [];
   localStorage.clear();
   vi.stubGlobal('indexedDB', new IDBFactory());
-  // A line that the frame can measure: 1000 pixels wide.
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -213,7 +196,6 @@ describe('drum part of the song detail', () => {
     );
     expect(screen.getByText('Intro')).toBeTruthy();
     expect(screen.getByText('Verso')).toBeTruthy();
-    // The two bars of the intro have no hit: they are one rest.
     expect(screen.getByText('Pausa ×2')).toBeTruthy();
     expect(bars().map((item) => Number(item.dataset.bar))).toEqual([
       2, 3, 4, 5, 6, 7, 8, 9,
@@ -222,9 +204,7 @@ describe('drum part of the song detail', () => {
 
   it('gives each bar one row for each drum piece of the chart, from the cymbals down', () => {
     renderPart();
-    // The chart has no hi-hat pedal and no other piece: no row for them.
     for (const item of bars()) expect(rowsOf(item)).toEqual(ROWS);
-    // The fill of bar 10 has only toms, and it still shows the six rows.
     expect(
       bar(9).querySelectorAll('[data-mark="chimbal"]').length +
         bar(9).querySelectorAll('[data-mark="bumbo"]').length,
@@ -262,19 +242,15 @@ describe('drum part of the song detail', () => {
       const start = line.firstElementChild as HTMLElement;
       expect('lineStart' in start.dataset).toBe(true);
       expect(labelsOf(start)).toEqual(LABELS);
-      // The bars come after the labels.
       expect(start.nextElementSibling?.hasAttribute('data-bar')).toBe(true);
     }
-    // The line of the intro is one rest: it has no row to name.
     expect(labelsOf(intro)).toEqual([]);
-    // The labels are as tall as a bar, so each one is at its row.
     const labels = verse[0].querySelector('[data-row-labels]') as HTMLElement;
     const grid = Number(bar(2).querySelector('svg')?.getAttribute('height'));
     expect(labels.style.height).toBe(`${grid + 2}px`);
   });
 
   it('shows the row labels at the start of each line that the browser wraps', () => {
-    // The browser puts bars 3 to 6 on a first line and 7 to 10 on a second.
     const offsetTop = vi
       .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
       .mockImplementation(function (this: HTMLElement) {
@@ -311,7 +287,6 @@ describe('drum part of the song detail', () => {
     const open = mark(2, 'chimbal', 3.5);
     expect(open.dataset.symbol).toBe('o');
     expect(open.textContent).toBe('o');
-    // The open hi-hat is in the row of the closed one.
     expect(mark(2, 'chimbal', 3).textContent).toBe('x');
   });
 
@@ -328,7 +303,6 @@ describe('drum part of the song detail', () => {
     const ghostSnare = mark(2, 'caixa', 1.5);
     expect(ghostSnare.textContent).toBe('()');
     expect(ghostSnare.querySelectorAll('circle')).toHaveLength(1);
-    // The parentheses are on the two sides of the symbol.
     const [before, after] = [...ghostSnare.querySelectorAll('text')].map(
       (text) => Number(text.getAttribute('x')),
     );
@@ -343,17 +317,14 @@ describe('drum part of the song detail', () => {
     expect(accentCrash.textContent).toBe('>x');
     const [sign, symbol] = [...accentCrash.querySelectorAll('text')];
     expect(weight(symbol)).toBe('600');
-    // The > is above the symbol, at the same place in the beat.
     expect(sign.getAttribute('x')).toBe(symbol.getAttribute('x'));
     expect(Number(sign.getAttribute('y'))).toBeLessThan(
       Number(symbol.getAttribute('y')),
     );
-    // A dot has no bold form: the dot of an accent is larger.
     const accentKick = mark(2, 'bumbo', 0);
     expect(accentKick.textContent).toBe('>');
     expect(radius(accentKick)).toBeGreaterThan(radius(mark(3, 'bumbo', 0)));
 
-    // A plain hit has no parenthesis, no >, and no bold.
     const plain = mark(3, 'chimbal', 0);
     expect(plain.dataset.dynamic).toBe('normal');
     expect(weight(plain.querySelector('text'))).toBe('400');
@@ -367,7 +338,6 @@ describe('drum part of the song detail', () => {
       .filter((size, index, all) => all.indexOf(size) === index);
     expect(sizes.length).toBeGreaterThan(0);
     expect(Math.min(...sizes)).toBeGreaterThanOrEqual(10);
-    // The bar number and the row labels use the classes of the type scale.
     expect(bar(2).querySelector('span')?.classList.contains('text-micro')).toBe(
       true,
     );
@@ -391,8 +361,6 @@ describe('drum part of the song detail', () => {
   });
 
   it('widens the beats so that two symbols of a row do not touch', () => {
-    // Sixteenth notes on the hi-hat: 6.6 px a symbol and 4 px clear need
-    // 42.4 px a beat, more than the 34 px of the base.
     const dense = fixtureDrumChart(
       2,
       [0, 1].flatMap((item) =>
@@ -411,12 +379,9 @@ describe('drum part of the song detail', () => {
     const steps = xs.slice(1).map((x, i) => x - xs[i]);
     expect(Math.min(...steps)).toBeGreaterThanOrEqual(6.6 + 4 - 1e-6);
     cleanup();
-    // Eighth notes have the room at the base width.
     renderPart(fixtureDrumChart(2, [...groove(0), ...groove(1)]));
     expect(bar(0).dataset.beatWidth).toBe('34');
     cleanup();
-    // A ghost note after an eighth note takes the room of its parenthesis:
-    // (2 × 6.6 + 4) / 0.5. All bars of the section share the width.
     renderPart();
     expect(
       new Set(bars().map((item) => Number(item.dataset.beatWidth))),
@@ -442,7 +407,6 @@ describe('drum part of the song detail', () => {
       expect(screen.queryByText(text)).toBeNull();
     }
     expect(screen.queryByRole('radiogroup')).toBeNull();
-    // The options of the chart are the ones of the frame.
     expect(
       [...document.querySelectorAll('input[type="checkbox"]')].map(
         (input) => input.parentElement?.textContent,
@@ -467,9 +431,7 @@ describe('drum part of the song detail', () => {
     await waitFor(() =>
       expect(document.querySelectorAll('[data-own-length]')).toHaveLength(1),
     );
-    // The control for all sections asks first, then removes the own value.
     fireEvent.change(allLengths(), { target: { value: '2' } });
-    // Each write reads the stored settings back; a loaded machine is slow.
     await waitFor(() => expect(verseLength().value).toBe('2'), SLOW);
     await waitFor(
       () =>
@@ -480,7 +442,6 @@ describe('drum part of the song detail', () => {
       lines().map((line) => line.querySelectorAll('[data-bar]').length),
     ).toEqual([0, 2, 2, 2, 2]);
     cleanup();
-    // The lengths come back from the settings of the chart.
     renderPart();
     await waitFor(() => expect(verseLength().value).toBe('2'), SLOW);
   });
@@ -489,8 +450,6 @@ describe('drum part of the song detail', () => {
     renderPart();
     fireEvent.change(verseLength(), { target: { value: '2' } });
     fireEvent.click(screen.getByLabelText('Marcar repetições'));
-    // Lines: 3-4, 5-6, 7-8, 9-10. Bars 4 to 9 are the same groove; bar 3
-    // has its own opening and bar 10 is the fill. Indexes start at zero.
     const repeated = bars()
       .filter((item) => item.querySelector('svg g[aria-hidden]'))
       .map((item) => Number(item.dataset.bar));
@@ -499,7 +458,6 @@ describe('drum part of the song detail', () => {
     expect(bar(5).querySelector('svg')?.getAttribute('aria-label')).toBe(
       'Compasso 6: igual ao compasso 4',
     );
-    // A bar under a repeat mark keeps the rows of the chart.
     expect(rowsOf(bar(5))).toEqual(ROWS);
     expect(bar(3).querySelectorAll('[data-mark]')).toHaveLength(12);
   });
@@ -510,7 +468,6 @@ describe('drum part of the song detail', () => {
       screen.getByText(/a bateria toca com as amostras do app/),
     ).toBeTruthy();
     expect(bars().every((item) => !item.disabled)).toBe(true);
-    // A click on a bar moves the sample player, not the recording.
     fireEvent.click(bar(4));
     expect(state.sampleSeeks).toEqual([chart.bars[4].startTime]);
     expect(state.seeks).toEqual([]);
@@ -533,14 +490,12 @@ describe('drum part of the song detail', () => {
 
     fireEvent.click(bar(4));
     expect(state.seeks).toEqual([chart.bars[4].startTime]);
-    // With a recording the sample player is off and gets no seek.
     expect(state.sampleSeeks).toEqual([]);
     expect(state.sampleEnabled.includes(true)).toBe(false);
     expect(active()).toEqual([4]);
     expect(bar(4).classList.contains('border-live')).toBe(true);
     expect(bar(4).querySelectorAll('[data-playhead]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-playhead]')).toHaveLength(1);
-    // The frame marks the section of the cursor, and the dock names the bar.
     expect(
       screen.getByText('Verso').classList.contains('text-text-primary'),
     ).toBe(true);
@@ -550,10 +505,8 @@ describe('drum part of the song detail', () => {
       within(dock).getByText('Chimbal x x x x x x x x · Caixa ● ● · Bumbo ● ●'),
     ).toBeTruthy();
 
-    // The recording plays on: the cursor is in the next bar.
     fireEvent.click(bar(7));
     expect(active()).toEqual([7]);
-    // A click on the rest goes to its first bar.
     fireEvent.click(screen.getByText('Pausa ×2'));
     expect(state.seeks).toEqual([
       chart.bars[4].startTime,
@@ -564,12 +517,9 @@ describe('drum part of the song detail', () => {
 
   it('shows the section groove with the groove chart, and a fill mark on a bar that leaves it', () => {
     renderPart();
-    // The intro has no hit: no groove. The verse has one chart.
     const grooves = document.querySelectorAll('[data-section-groove]');
     expect(grooves).toHaveLength(1);
     expect(grooves[0].querySelector('svg[role="img"]')).toBeTruthy();
-    // Bar 3 differs in the snare, hi-hat, and kick pattern: a fill. Bar 10
-    // differs only in the toms: no mark. The plain bars have none.
     const filled = [...document.querySelectorAll('[data-fill-mark]')].map(
       (mark) => mark.closest('button')?.dataset.bar,
     );

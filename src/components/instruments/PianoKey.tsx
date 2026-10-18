@@ -11,8 +11,6 @@ interface PianoKeyProps {
   onClick: (noteIndex: number) => void;
 }
 
-// A key keeps its own ink in both themes (see .ink-day / .ink-night), so the
-// highlight colour always has contrast against the keys beside it.
 const PianoKey = memo(function PianoKey({
   noteIndex,
   noteName,

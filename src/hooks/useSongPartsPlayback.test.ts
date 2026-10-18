@@ -92,7 +92,6 @@ describe('useSongPartsPlayback', () => {
     expect(engine.scheduleDrumHit).toHaveBeenCalled();
     const bassWhen = engine.scheduleBassNote.mock.calls[0][3] as number;
     const drumWhen = engine.scheduleDrumHit.mock.calls[0][1] as number;
-    // Both first events sit at chart time 0: the same moment on the clock.
     expect(Math.abs(bassWhen - drumWhen)).toBeLessThan(0.001);
     act(() => result.current.audio.pause());
   });
@@ -116,7 +115,6 @@ describe('useSongPartsPlayback', () => {
     act(() => {
       result.current.reportRecording(bass.id, false);
     });
-    // Let the pair lookup and the chart loads settle.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
     });
@@ -182,8 +180,6 @@ describe('useSongPartsPlayback', () => {
 
   it('keeps playing across a change of part: the new part reports only after its storage answers', async () => {
     const { drums, hook } = await playingPair();
-    // The new detail mounts with its audio still loading and reports nothing;
-    // then its storage answers "missing".
     hook.rerender({ id: drums.id, part: 'drums' });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 60));

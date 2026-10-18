@@ -89,7 +89,6 @@ export function DraggableBar({
   );
 }
 
-/** Floating overlay bar shown while dragging */
 export function BarOverlay({
   bar,
   displayIndex,

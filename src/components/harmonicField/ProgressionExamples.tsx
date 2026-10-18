@@ -21,7 +21,6 @@ export default function ProgressionExamples() {
       <h3 className="font-heading text-sm text-text-secondary mb-3">
         Progressões de Exemplo
       </h3>
-      {/* Mobile: horizontal scroll / Desktop: grid */}
       <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:overflow-visible sm:pb-0">
         {PROGRESSION_EXAMPLES.map((prog) => {
           const isPlaying = currentId === prog.id;

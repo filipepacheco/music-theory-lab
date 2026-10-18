@@ -1,9 +1,5 @@
 import { NOTE_NAMES, NOTE_NAMES_FLAT, FLAT_KEYS } from '@/constants/notes';
 
-/**
- * Get the display name of a note index (0-11), choosing sharps or flats
- * based on the current key context.
- */
 export function getNoteName(noteIndex: number, rootName?: string): string {
   const idx = ((noteIndex % 12) + 12) % 12;
   if (rootName && FLAT_KEYS.has(rootName)) {
@@ -12,28 +8,18 @@ export function getNoteName(noteIndex: number, rootName?: string): string {
   return NOTE_NAMES[idx];
 }
 
-/**
- * Convert a note index + octave to a Tone.js-compatible string (e.g. "C4", "F#3").
- */
 export function noteToToneString(noteIndex: number, octave: number): string {
   const idx = ((noteIndex % 12) + 12) % 12;
   const name = NOTE_NAMES[idx];
   return `${name}${octave}`;
 }
 
-/**
- * Convert a MIDI note number to a note name + octave string.
- */
 export function midiToNoteName(midi: number): string {
   const noteIndex = midi % 12;
   const octave = Math.floor(midi / 12) - 1;
   return `${NOTE_NAMES[noteIndex]}${octave}`;
 }
 
-/**
- * Get the preferred display name for a root note, choosing flats for
- * keys that conventionally use flat notation (F, Bb, Eb, Ab, Db, Gb).
- */
 export function getPreferredRootName(noteIndex: number): string {
   const idx = ((noteIndex % 12) + 12) % 12;
   const flatName = NOTE_NAMES_FLAT[idx];
@@ -48,12 +34,6 @@ export interface VoicedNote {
   octave: number;
 }
 
-/**
- * The ascending-voicing rule: walk note indices in order and bump the octave
- * each time a note wraps around (index decreases), so the sequence always
- * rises. Returns the octave-bumped sequence; adapters map it onto a UI
- * octave map (computeVoicingOctaveMap) or Tone note strings (useSynth).
- */
 export function ascendVoicing(
   noteIndices: number[],
   baseOctave: number,
@@ -71,11 +51,6 @@ export function ascendVoicing(
   return voiced;
 }
 
-/**
- * Compute a per-note octave map matching the chord voicing used for audio
- * playback. Notes that wrap around (index decreases) get bumped to the next
- * octave so the visual highlight matches the ascending voicing.
- */
 export function computeVoicingOctaveMap(
   noteIndices: number[],
   baseOctave: number,
@@ -87,9 +62,6 @@ export function computeVoicingOctaveMap(
   return map;
 }
 
-/**
- * Get the note index (0-11) from a note name string.
- */
 export function noteNameToIndex(name: string): number {
   let idx = NOTE_NAMES.indexOf(name as (typeof NOTE_NAMES)[number]);
   if (idx === -1) {

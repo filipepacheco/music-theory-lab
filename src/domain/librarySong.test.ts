@@ -64,7 +64,6 @@ describe('songKey', () => {
   });
 
   it('keeps a letter and its mark as one word, in the composed form', () => {
-    // The voiced mark of kana and the vowel signs of Hindi are not accents.
     expect(songKey('ありがとう', '')).toBe('ありがとう|');
     expect(songKey('ありがとう', '')).not.toBe(songKey('ありかとう', ''));
     expect(songKey('दिल से', '')).toBe('दिल से|');
@@ -155,7 +154,6 @@ describe('groupLibrarySongs', () => {
   });
 
   it('never groups a chart or a track whose key has no title', () => {
-    // A title of only punctuation, brackets, or file words gives no title.
     const empty = summary('e1', '', '', 'midi');
     const marks = summary('e2', '???', '', 'gp');
     const untitled = summary('e3', '(Untitled)', 'The Beatles', 'gp');
@@ -180,7 +178,6 @@ describe('groupLibrarySongs', () => {
     for (const song of songs) {
       expect(song.charts.length + song.analysed.length).toBe(1);
     }
-    // The import message names no song for such a file.
     expect(songJoinedByImport([empty, untitled], tracks, marks)).toBeNull();
   });
 
@@ -210,7 +207,6 @@ describe('groupLibrarySongs', () => {
     const songs = groupLibrarySongs(input, []);
     expect(songs).toHaveLength(1);
     expect(songs[0].charts.map((c) => c.id).sort()).toEqual(['gp1', 'midi1']);
-    // The group reads its input and writes nothing.
     expect({ input, settings, recordings }).toEqual(before);
     for (const chart of songs[0].charts) {
       expect(settings.find((s) => s.chartId === chart.id)).toBeDefined();

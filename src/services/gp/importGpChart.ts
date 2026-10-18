@@ -37,23 +37,11 @@ export function gpChartImportErrorMessage(error: unknown): string {
   return 'Não foi possível importar este arquivo Guitar Pro.';
 }
 
-/**
- * Export the score's playback order to MIDI before using the existing bass
- * adapter. alphaTab owns repeats, alternate endings, ties and tempo changes;
- * the same BassChart drives analysis and playback for every import format.
- * Keep the MIDI adapter's fingering and recover the score's original positions
- * on the same expanded playback timeline as an alternative practice view.
- *
- * The percussion channel of the same export gives the drum chart. A file gives
- * one chart for each part that it has, the bass chart first, and it asks no
- * question about tracks. A file with no bass and no drums is an error.
- */
 export async function importGpChart(
   file: Blob & { name: string },
   now: Date = new Date(),
 ): Promise<{ charts: Chart[]; audio: null }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  // Keep Biblioteca's .gp support aligned with the GP7/8 transcription flow.
   parseGpFile(bytes);
   const settings = new Settings();
   const score = importer.ScoreLoader.loadScoreFromBytes(bytes, settings);
@@ -91,12 +79,10 @@ export async function importGpChart(
     charts.push(
       bassChartOf(score, parsed, generator, channel, {
         ...shared,
-        // The id of the bass chart stays the hash of the file.
         id: await partChartId(fileHash, 'bass'),
       }),
     );
   }
-  // The two charts read one export, so they have one bar grid.
   const drums = midiToDrumChart({
     ...shared,
     id: await partChartId(fileHash, 'drums'),
@@ -121,7 +107,6 @@ function bassChartOf(
       candidate.playbackInfo.primaryChannel === channel ||
       candidate.playbackInfo.secondaryChannel === channel,
   );
-  // The drum chart reads the same export after this: change a copy.
   let bass = parsed;
   if (track) {
     const channels = new Set([
@@ -163,12 +148,6 @@ function bassChartOf(
   return chart;
 }
 
-/**
- * The ghost note or the accent of each percussion note of the score, on the
- * playback timeline. The export shows them only as a step in velocity from
- * the dynamic of the passage, so the velocity cannot tell a ghost note from a
- * soft passage.
- */
 function scoreDynamics(
   generator: midi.MidiFileGenerator,
 ): (note: MidiNote) => DrumDynamic {
@@ -207,7 +186,6 @@ function scoreDynamics(
       : 'normal';
 }
 
-/** Match by sounding pitch and playback onset, never by written bar number. */
 function recoverOriginalFingering(
   chart: BassChart,
   parsed: MidiFile,
@@ -231,8 +209,6 @@ function recoverOriginalFingering(
             generator.applyTranspositionPitches,
             true,
           );
-          // Harmonics/ornaments whose sounding pitch differs from the written
-          // fret cannot be represented faithfully by a plain fret position.
           if (
             pitch !==
             STANDARD_OPEN_MIDI[string] + chart.tuning[string] + note.fret
@@ -249,7 +225,6 @@ function recoverOriginalFingering(
   const original: BassFretPosition[] = [];
   for (const note of chart.notes) {
     const position = positions.get(`${note.time}:${note.midi}`)?.shift();
-    // Never advertise invented fingering as the original GP transcription.
     if (!position) return undefined;
     original.push(position);
   }

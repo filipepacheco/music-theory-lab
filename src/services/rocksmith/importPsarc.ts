@@ -19,7 +19,6 @@ export class PsarcImportError extends Error {
   }
 }
 
-/** User-facing (pt-BR) message for an import failure. */
 export function psarcImportErrorMessage(error: unknown): string {
   const kind = error instanceof PsarcImportError ? error.kind : null;
   switch (kind) {
@@ -41,7 +40,6 @@ export interface ImportedAudio {
 
 export interface PsarcImportResult {
   chart: BassChart;
-  /** Null when the package carries no song audio. */
   audio: ImportedAudio | null;
 }
 
@@ -99,7 +97,6 @@ export async function importPsarc(
   return { chart, audio: await extractSongAudio(archive, chart.title) };
 }
 
-/** The main bass arrangement; a bonus `_bass2` only when it is the only one. */
 export function pickBassArrangement(names: string[]): string | null {
   const bass = names
     .filter((n) => /^songs\/bin\/[^/]+\/[^/]+_bass\d*\.sng$/i.test(n))
@@ -144,7 +141,6 @@ async function extractSongAudio(
     .sort((a, b) => b.bytes.length - a.bytes.length);
   if (wems.length === 0) return null;
   try {
-    // Loaded on demand: the converter carries ~200 KB of codebook tables.
     const { wemToOgg } = await import('@/services/rocksmith/wemAudio');
     const ogg = wemToOgg(wems[0].bytes);
     return {
@@ -152,7 +148,6 @@ async function extractSongAudio(
       fileName: `${title}.ogg`,
     };
   } catch {
-    // A chart without audio is still useful: the user can attach a file.
     return null;
   }
 }

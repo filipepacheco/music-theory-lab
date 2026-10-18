@@ -37,7 +37,6 @@ describe('library route', () => {
         part: 'bass',
       };
       const hash = formatLibraryRoute(route);
-      // The address holds only ASCII, so a reload gives it back unchanged.
       expect(hash).toMatch(/^[\x21-\x7e]+$/);
       expect(parseLibraryRoute(hash)).toEqual(route);
     }

@@ -50,7 +50,6 @@ export default function SongList() {
                   </span>
                 )}
 
-                {/* Section pills */}
                 <span className="flex gap-1 flex-wrap mt-1.5">
                   {song.sections.map((sec) => (
                     <span

@@ -2,21 +2,14 @@ import type { ChartBars } from '@/domain/bassChart';
 import type { DrumGridMark, DrumGridRow } from '@/domain/drumGrid';
 import type { GrooveSubdivision } from '@/types';
 
-/** The rows that count for the groove of a section: kick, snare, hi-hat. */
 const GROOVE_ROWS: readonly DrumGridRow[] = ['bumbo', 'caixa', 'chimbal'];
 
 type SectionRange = { startBar: number; endBar: number };
 
-/** The kick, snare, and hi-hat marks of a bar, in the order of the grid. */
 function grooveMarks(marks: DrumGridMark[] | undefined): DrumGridMark[] {
   return (marks ?? []).filter((mark) => GROOVE_ROWS.includes(mark.row));
 }
 
-/**
- * The kick, snare, and hi-hat pattern of a bar as text: the same text for the
- * same pattern. Null for a bar with none of the three. The dynamic and the
- * open hi-hat do not count: the pattern is where the three pieces hit.
- */
 export function drumBarGroovePattern(
   chart: Pick<ChartBars, 'bars'>,
   marks: DrumGridMark[][],
@@ -28,19 +21,11 @@ export function drumBarGroovePattern(
   return `${chart.bars[bar]?.beatCount}|${cells.join(',')}`;
 }
 
-/** The bar that holds the section groove, and how often the groove repeats. */
 export interface SectionGroove {
-  /** The first bar of the section that plays the section groove. */
   bar: number;
-  /** The bars of the section that play it. */
   count: number;
 }
 
-/**
- * The section groove: the kick, snare, and hi-hat pattern that the section
- * repeats most. On a tie the pattern that comes first wins. Null for a
- * section with none of the three pieces.
- */
 export function sectionGroove(
   chart: Pick<ChartBars, 'bars'>,
   marks: DrumGridMark[][],
@@ -61,11 +46,6 @@ export function sectionGroove(
   return best;
 }
 
-/**
- * The bars of a section that are fills: they play kick, snare, or hi-hat, and
- * not the section groove. A bar with none of the three, or that differs only
- * in other pieces of the kit, is not a fill. Empty with no section groove.
- */
 export function sectionFillBars(
   chart: Pick<ChartBars, 'bars'>,
   marks: DrumGridMark[][],
@@ -82,7 +62,6 @@ export function sectionFillBars(
   return fills;
 }
 
-/** The pattern that the groove chart of the Estrutura module draws. */
 export interface GrooveChartInput {
   subdivision: GrooveSubdivision;
   measureCount: 1;
@@ -100,11 +79,6 @@ const SUBDIVISIONS: readonly { id: GrooveSubdivision; perBeat: number }[] = [
 
 const EPSILON = 1e-6;
 
-/**
- * Converts the section groove to the input of the groove chart: one 4/4
- * measure on the coarsest step grid that holds every hit. Null when the chart
- * cannot draw it: the bar is not 4/4, or a hit is off the finest grid.
- */
 export function grooveChartInput(
   chart: Pick<ChartBars, 'bars'>,
   marks: DrumGridMark[][],

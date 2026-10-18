@@ -63,7 +63,6 @@ describe('parseMidi', () => {
         [
           [0, 0xc2, 33],
           [0, 0x92, 40, 100],
-          // Running status: no status byte on the next two events.
           [480, 40, 0],
           [0, 43, 90],
           [240, 0x82, 43, 0],
@@ -168,7 +167,6 @@ describe('parseMidi', () => {
       'unsupported',
     );
     expect(errorOf(() => parseMidi(file(2, 480, [[END]])))).toBe('unsupported');
-    // A note-on cut off before its velocity byte.
     expect(errorOf(() => parseMidi(file(0, 480, [[[0, 0x90, 40]]])))).toBe(
       'corrupt',
     );

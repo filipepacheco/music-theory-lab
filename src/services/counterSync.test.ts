@@ -7,14 +7,12 @@ import {
   type SyncRecords,
 } from '@/services/counterSync';
 
-/** A small record: the later `at` wins. `kind` names its type. */
 interface Note {
   id: string;
   at: number;
   kind: string;
 }
 
-/** The rules of a client that reads only the `kinds` that it knows. */
 function rulesFor(kinds: string[]): SyncRecords<Note, number> {
   return {
     parse: (raw) => {
@@ -92,7 +90,6 @@ const store = (items: ReturnType<typeof storage>, format: number) =>
   );
 
 describe('the format version of the stored sync state', () => {
-  /** A cloud with a record of a type that the first client does not read. */
   async function withSkippedRecord() {
     const remote = cloud();
     await remote.push([
@@ -138,7 +135,6 @@ describe('the format version of the stored sync state', () => {
       counter: 3,
     });
 
-    // One time only: the next read starts at the last counter.
     remote.reads.length = 0;
     await synchronizeRecords(later, local, remote, store(items, 2));
     expect(remote.reads).toEqual([3]);
@@ -162,8 +158,6 @@ describe('a local record that loses to the record of the cloud', () => {
     await synchronizeRecords(basic, first, remote, store(firstItems, 1));
     await synchronizeRecords(basic, second, remote, store(secondItems, 1));
 
-    // A change with a slow clock: the local store takes it, and it is older
-    // than the record that the cloud holds.
     second.notes.set('a', { id: 'a', at: 10, kind: 'basic' });
     remote.reads.length = 0;
     remote.writes.length = 0;
@@ -173,7 +167,6 @@ describe('a local record that loses to the record of the cloud', () => {
     expect(remote.note('a')?.at).toBe(50);
     expect(remote.writes).toEqual([]);
 
-    // The two agree, so the next read starts at the last counter.
     remote.reads.length = 0;
     await synchronizeRecords(basic, second, remote, store(secondItems, 1));
     expect(remote.reads).toEqual([2]);

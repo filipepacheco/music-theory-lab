@@ -50,7 +50,6 @@ describe('resolveStep', () => {
   });
 
   it('spells flat for flat keys', () => {
-    // Root Bb (10): interval 0 is Bb, not A#.
     const resolved = resolveStep(
       step({ degree: null, label: 'Bb', intervals: [0, 4] }),
       field,
@@ -61,7 +60,6 @@ describe('resolveStep', () => {
   });
 
   it('spells flat for the F key', () => {
-    // Root F (5): interval 1 is Gb, not F#.
     const resolved = resolveStep(
       step({ degree: null, label: 'F', intervals: [0, 1] }),
       field,
@@ -85,7 +83,11 @@ describe('resolveStep', () => {
   });
 
   it('returns empty notes for a step with no degree and no intervals', () => {
-    const resolved = resolveStep(step({ degree: null, label: 'Sem acorde' }), field, 0);
+    const resolved = resolveStep(
+      step({ degree: null, label: 'Sem acorde' }),
+      field,
+      0,
+    );
 
     expect(resolved).toEqual({
       chordName: 'Sem acorde',

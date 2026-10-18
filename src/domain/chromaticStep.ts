@@ -3,17 +3,10 @@ import type { ProgressionStep } from '@/constants/progressions';
 import { getNoteName, getPreferredRootName } from '@/utils/noteHelpers';
 
 export interface ChromaticStepConstruction {
-  /** Absolute note indices for preview/playback. */
   notes: number[];
-  /** The progression step to persist (intervals relative to the key root). */
   step: ProgressionStep;
 }
 
-/**
- * Manual chromatic step: root note + chord type, expressed against the
- * current key. The inverse of `resolveStep` — everything produced here
- * resolves back correctly.
- */
 export function buildManualChromaticStep(
   root: number,
   chordTypeId: string,
@@ -28,17 +21,11 @@ export function buildManualChromaticStep(
     step: {
       degree: null,
       label: `${rootName}${chordType.symbol}`,
-      intervals: chordType.intervals.map(
-        (i) => (root - keyRoot + i + 12) % 12,
-      ),
+      intervals: chordType.intervals.map((i) => (root - keyRoot + i + 12) % 12),
     },
   };
 }
 
-/**
- * Common chromatic step (secondary dominants, modal interchange, passing
- * diminished): a pre-organized template resolved against the current key.
- */
 export function buildCommonChromaticStep(
   label: string,
   rootOffset: number,

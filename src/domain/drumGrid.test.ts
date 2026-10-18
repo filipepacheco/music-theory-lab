@@ -142,7 +142,6 @@ describe('marks of the bars', () => {
   });
 });
 
-/** The clear pixels between each two neighbouring marks of each row. */
 function clearances(
   marks: DrumGridMark[],
   beatWidth: number,
@@ -216,7 +215,6 @@ describe('layout of the grid with the functions of the bass tab', () => {
       })),
     );
     const marks = drumGridMarksByBar(chart)[0];
-    // At the base width two neighbours would be 1.9 px apart.
     expect(Math.min(...clearances(marks, BASE, CHAR))).toBeLessThan(GAP);
     const lanes = drumGridLanes(marks, ['chimbal'], CHAR);
     expect(neededBeatWidth(lanes, GAP)).toBeCloseTo((CHAR + GAP) / 0.25);
@@ -244,7 +242,6 @@ describe('repeat marks of the grid', () => {
       ...groove(0),
       ...groove(1),
       ...groove(2),
-      // Bar 3 has an accent that bar 1 lacks.
       { bar: 3, beat: 0, midi: KICK },
       { bar: 3, beat: 2, midi: SNARE, dynamic: 'accent' },
       ...groove(4),

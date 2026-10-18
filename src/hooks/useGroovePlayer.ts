@@ -36,7 +36,6 @@ function toScheduledGroove(groove: GroovePattern): ScheduledGroove {
   };
 }
 
-/** Plays one section groove on the shared Tone transport. */
 export function useGroovePlayer(): GroovePlayer {
   const focusedSectionId = useAppStore((state) => state.focusedSectionId);
   const structureSections = useAppStore((state) => state.structureSections);
@@ -89,7 +88,6 @@ export function useGroovePlayer(): GroovePlayer {
       const sectionId = state.focusedSectionId;
       const transport = Tone.getTransport();
 
-      // Groove playback owns the shared transport while it is active.
       previousTransportBpmRef.current = transport.bpm.value;
       stopScheduledMetronomes();
       transport.stop();
@@ -167,8 +165,6 @@ export function useGroovePlayer(): GroovePlayer {
       return;
     }
 
-    // Read the latest store value on every edit so the next scheduled tick
-    // reflects changes made while the groove is already playing.
     grooveRef.current = toScheduledGroove(section.groove);
   }, [structureSections, stop]);
 

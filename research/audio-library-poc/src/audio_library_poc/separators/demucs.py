@@ -1,11 +1,3 @@
-"""Demucs htdemucs_6s separator adapter.
-
-The Hybrid-Transformer six-source Demucs model outputs the same six stems
-as BS-RoFormer (``drums``, ``bass``, ``other``, ``vocals``, ``guitar``,
-``piano``); the ``piano`` output folds into the app ``other`` stem per the
-``SeparationResult`` contract.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -28,15 +20,6 @@ DEMUCS_HTDEMUCS_6S_CANDIDATE_ID = "demucs_htdemucs_6s"
 
 
 class DemucsStageConfig(BaseSeparatorStageConfig):
-    """Demucs htdemucs_6s knobs on top of the shared separator surface.
-
-    ``checkpoint_relative_path`` locates the pinned single-model ``.th`` file
-    inside the workspace; Demucs weights are self-describing so no separate
-    YAML config is needed. ``segment`` / ``overlap`` / ``shifts`` are honoured
-    verbatim by ``apply_model``; ``split`` / ``jobs`` are Demucs-specific
-    scheduler knobs.
-    """
-
     checkpoint_relative_path: str = Field(min_length=1)
     split: bool = True
     jobs: int = Field(default=0, ge=0, le=16)
@@ -48,8 +31,6 @@ class DemucsStageConfig(BaseSeparatorStageConfig):
 
 
 class DemucsSeparator:
-    """Real Demucs htdemucs_6s inference adapter."""
-
     candidate_id: ClassVar[str] = DEMUCS_HTDEMUCS_6S_CANDIDATE_ID
     implementation_version: ClassVar[str] = "1.0.0"
     ConfigModel: ClassVar[type[DemucsStageConfig]] = DemucsStageConfig
@@ -57,13 +38,8 @@ class DemucsSeparator:
     def separate(self, request: SeparatorRequest) -> SeparatorResponse:
         if not isinstance(request.config, self.ConfigModel):
             raise TypeError("DemucsSeparator requires a validated DemucsStageConfig")
-        # Resolve the checkpoint BEFORE the lazy import below: a missing
-        # checkpoint must surface as a typed failure, not as the
-        # ModuleNotFoundError the torch import would raise first on a
-        # machine without the inference extras.
         _resolve_demucs_assets(request)
 
-        # Lazy import so bs_roformer.py / demucs.py load without torch installed.
         from audio_library_poc.separators._demucs_runtime import (
             run_demucs_inference,
         )
@@ -76,11 +52,6 @@ class DemucsSeparator:
 
 
 def _resolve_demucs_assets(request: SeparatorRequest) -> None:
-    """Validate the checkpoint exists inside the workspace.
-
-    Mirrors the resolution the runtime performs, so the typed failure is
-    identical whether or not torch is importable.
-    """
 
     config = request.config
     workspace = resolve_workspace(request.source_path, config.source_relative_path)

@@ -1,11 +1,3 @@
-// Reader for Rocksmith 2014 `.psarc` archives.
-//
-// A PSARC is a big-endian container: a 32-byte header, a table of contents
-// (encrypted with AES-256-CFB under a key that is public knowledge in the
-// modding community), a block-size table, and the file data split into
-// zlib-compressed blocks. Entry 0 is the manifest: the newline-separated
-// names of every other entry.
-
 import { unzlibSync } from 'fflate';
 
 const PSARC_KEY = hexBytes(
@@ -22,7 +14,6 @@ export class PsarcError extends Error {
 }
 
 export interface PsarcArchive {
-  /** Entry names in archive order, e.g. `songs/bin/generic/x_bass.sng`. */
   names: string[];
   read(name: string): Uint8Array;
 }

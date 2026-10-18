@@ -7,20 +7,11 @@ import {
   type ChartSettings,
 } from '../src/domain/chartSettings.js';
 
-/** The most records in one page of a read. A settings record is small. */
 const PAGE_LIMIT = 100;
-/** The most records in one write. */
 const WRITE_LIMIT = 100;
 
-// The counter only increases: no route deletes a row, so the largest value
-// never goes down, and each write takes the value after it.
 const NEXT_COUNTER = `(SELECT COALESCE(MAX(sync_counter), 0) + 1 FROM chart_settings)`;
 
-// The table is new, and each statement does nothing when it ran before. So
-// the migration is safe on each cold start and from two instances at one
-// time. It reads and writes no other table. The triggers give the counter in
-// the transaction of the write, and an upsert that loses changes no row and
-// fires no trigger. An update of the counter alone fires neither trigger.
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS chart_settings (
     chart_id TEXT PRIMARY KEY,
@@ -46,7 +37,6 @@ const SCHEMA = [
 ];
 
 let ready: Promise<Client> | null = null;
-/** The client, after the migration ran one time in this instance. */
 function database(): Promise<Client> {
   ready ??= (async () => {
     const { createClient } = await import('@libsql/client');
@@ -57,7 +47,6 @@ function database(): Promise<Client> {
     await turso.batch(SCHEMA, 'write');
     return turso;
   })().catch((error) => {
-    // The next request tries the migration again.
     ready = null;
     throw error;
   });
@@ -79,17 +68,12 @@ function toRecords(rows: Row[]): ChartSettings[] {
   });
 }
 
-/**
- * The chart settings of the shared library: no login, and the last write
- * wins. The read and the write follow the contract of the chart route.
- */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   try {
     if (req.method === 'GET') {
-      // A read without a counter starts at the first record.
       const after: unknown = req.query?.after ?? '0';
       if (typeof after !== 'string' || !/^\d{1,15}$/.test(after)) {
         return res.status(400).json({ error: 'invalid counter' });
@@ -104,7 +88,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const last = result.rows[result.rows.length - 1];
       return res.status(200).json({
         records: toRecords(result.rows),
-        // The counter of the last row of the page, for the next read.
         counter: last ? Number(last.sync_counter) : Number(after),
         more: result.rows.length === PAGE_LIMIT,
       });
@@ -146,8 +129,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const settings = chartSettingsBody(record);
         return [
           {
-            // The later update time wins. Two writes with one update time
-            // have the order of their text, as `isNewerChartSettings` has.
             sql: `INSERT INTO chart_settings
               (chart_id, device_id, settings, updated_at)
             VALUES (?, ?, ?, ?)
@@ -171,8 +152,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     return res.status(200).json({
       ok: true,
-      // For each record of the request: its counter when the table now holds
-      // that record, or null when a newer record won.
       counters: valid.map((_, index) => {
         const counter = results[index * 2 + 1].rows[0]?.sync_counter;
         return counter == null ? null : Number(counter);

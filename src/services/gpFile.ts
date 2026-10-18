@@ -1,17 +1,3 @@
-// Parses Guitar Pro 7 (`.gp`) files in the browser: a zip container holding
-// `Content/score.gpif` (XML). Ported from the research prototype at
-// `research/gp-import/gpif.ts`, which stays frozen as the historical record.
-//
-// Two changes from that prototype, both forced by the browser:
-//   - input is a `Uint8Array` (from a `File`), not a path — there is no `fs`
-//   - unzipping uses `fflate`, not `adm-zip` (Node-only)
-//
-// This module is an internal seam of the GP import flow: the panel assembles
-// through `gpImport.ts`, which calls `parseGpFile` and `matchBar` — never the
-// raw parser.
-//
-// See the map: https://github.com/filipepacheco/music-theory-lab/issues/9
-
 import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
 import { NOTE_NAMES } from '@/constants/notes';
@@ -20,20 +6,12 @@ export function pitchClassName(midi: number): string {
   return NOTE_NAMES[((midi % 12) + 12) % 12];
 }
 
-/**
- * Why a file could not be read. The UI branches on this to say which problem
- * the user actually has: a `.gp5` is unsupported, a truncated download is
- * broken, and telling one story for both sends people looking in the wrong
- * place. `missing-track` is raised by the transcription module, not the
- * parser: the file itself is fine, it just has no track with the name the
- * transcription needs.
- */
 export type GpParseErrorKind =
-  | 'legacy-binary' // .gp3/.gp4/.gp5 — a different format, not a broken file
-  | 'gpx-container' // GP6 .gpx — BCFZ/BCFS container, also not zip+XML
-  | 'not-a-zip' // not a zip at all
-  | 'not-a-gp-file' // a zip, but no Content/score.gpif inside
-  | 'corrupt'; // zip or XML that should have parsed and did not
+  | 'legacy-binary'
+  | 'gpx-container'
+  | 'not-a-zip'
+  | 'not-a-gp-file'
+  | 'corrupt';
 
 export class GpParseError extends Error {
   readonly kind: GpParseErrorKind;
@@ -45,7 +23,6 @@ export class GpParseError extends Error {
   }
 }
 
-/** User-facing (pt-BR) message for a GP import failure, keyed by error kind. */
 export function gpParseErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) {
     switch (error.kind) {
@@ -72,35 +49,20 @@ export interface BarPitches {
 
 export interface MasterBarInfo {
   barIndex: number;
-  /** Raw signature as written in the file, e.g. `"4/4"`. */
   timeSignature: string;
-  /**
-   * Length in quarter-note beats: numerator * 4 / denominator. 4/4 -> 4,
-   * 3/4 -> 3, 6/8 -> 3. This is the unit `ProgressionStep.beats` uses.
-   */
   quarterNoteBeats: number;
 }
 
 export interface GpFile {
   gpVersion: string;
-  /**
-   * `<Score><Title>` as written in the file. Tabs are hand-entered, so this is
-   * a hint, not a fact - the sample file has the song name in `Artist` and the
-   * artist in `Title`. The user fixes it in the metadata bar after importing.
-   */
   title: string;
-  /** `<Score><Artist>`. Same caveat as {@link title}. */
   artist: string;
   trackNames: string[];
   masterBarCount: number;
   chordDictionaryFound: boolean;
-  /** Per-bar time signatures, indexed to match `barIndex`. */
   masterBars: MasterBarInfo[];
-  /** Every (bar, track) pair — including empty ones. */
   results: BarPitches[];
-  /** Convenience lookup: pitches for a given bar index + track name. */
   pitchesFor(barIndex: number, trackName: string): number[];
-  /** Convenience lookup: quarter-note beats for a bar, 4 when unknown. */
   quarterNoteBeats(barIndex: number): number;
 }
 
@@ -132,14 +94,6 @@ function startsWith(data: Uint8Array, ascii: string): boolean {
   return true;
 }
 
-/**
- * Identifies the container before attempting to unzip, so an unsupported
- * format reports itself as unsupported rather than as a zip failure.
- *
- * Legacy `.gp3`/`.gp4`/`.gp5` open with a Pascal-style version string
- * (`FICHIER GUITAR PRO v...`) a few bytes in; GP6 `.gpx` uses a BCFZ/BCFS
- * container; GP7 `.gp` is an ordinary zip.
- */
 function assertSupportedContainer(data: Uint8Array): void {
   if (startsWith(data, 'BCFZ') || startsWith(data, 'BCFS')) {
     throw new GpParseError(
@@ -148,7 +102,6 @@ function assertSupportedContainer(data: Uint8Array): void {
     );
   }
 
-  // The version string is length-prefixed, so scan the opening bytes.
   const head = new TextDecoder('latin1').decode(data.subarray(0, 64));
   if (head.includes('FICHIER GUITAR PRO')) {
     throw new GpParseError(
@@ -213,8 +166,6 @@ export function parseGpFile(data: Uint8Array): GpFile {
     asArray(gpif.Notes?.Note).map((n) => [String(n['@_id']), n]),
   );
 
-  // Fast-path check — a file whose author annotated chords by hand carries
-  // them here. See research/gp-import/CHORD-METADATA-FINDINGS.md.
   let chordDictionaryFound = false;
   for (const track of tracks) {
     for (const staff of asArray(track.Staves?.Staff)) {
@@ -287,7 +238,6 @@ export function parseGpFile(data: Uint8Array): GpFile {
   for (const r of results)
     pitchIndex.set(`${r.barIndex}::${r.track}`, r.pitches);
 
-  // `parseTagValue` turns a numeric title into a number, hence the String().
   const asTrimmedString = (v: unknown): string =>
     v === undefined || v === null ? '' : String(v).trim();
 
@@ -302,7 +252,6 @@ export function parseGpFile(data: Uint8Array): GpFile {
     results,
     pitchesFor: (barIndex, trackName) =>
       pitchIndex.get(`${barIndex}::${trackName}`) ?? [],
-    quarterNoteBeats: (barIndex) =>
-      masterBars[barIndex]?.quarterNoteBeats ?? 4,
+    quarterNoteBeats: (barIndex) => masterBars[barIndex]?.quarterNoteBeats ?? 4,
   };
 }

@@ -4,7 +4,6 @@ import {
 } from '@/utils/growlybass';
 
 export const GROWLYBASS_RELEASE_SECONDS = 0.5;
-/** A sequenced line needs each note out of the way of the next one. */
 export const GROWLYBASS_SEQUENCE_RELEASE_SECONDS = 0.08;
 
 export interface GrowlybassAssetCache<T> {
@@ -43,13 +42,7 @@ export interface GrowlybassSampler {
     velocity?: number,
     duration?: string,
   ): Promise<void>;
-  /** Download and decode the samples these notes need. */
   preload(midiNotes: number[], velocity?: number): Promise<void>;
-  /**
-   * Start a note at `time` on the audio clock. Its sample must already be
-   * loaded: a note cannot wait for a download and still land on the beat, so
-   * one that is not ready is skipped.
-   */
   schedule(
     midiNote: number,
     velocity: number,

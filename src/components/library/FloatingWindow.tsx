@@ -23,9 +23,7 @@ function readPosition(storageKey: string): Position | null {
     ) {
       return parsed as Position;
     }
-  } catch {
-    // Nothing stored, unreadable, or storage blocked: use the anchor.
-  }
+  } catch {}
   return null;
 }
 
@@ -33,28 +31,18 @@ function writePosition(storageKey: string, position: Position | null): void {
   try {
     if (position) localStorage.setItem(storageKey, JSON.stringify(position));
     else localStorage.removeItem(storageKey);
-  } catch {
-    // Blocked storage: the window just returns to its anchor next time.
-  }
+  } catch {}
 }
 
 interface Props {
   title: string;
-  /** Where the dragged position is remembered. */
   storageKey: string;
-  /** Distance from the bottom of the screen until the window is moved. */
   anchorBottom: number;
-  /** Which bottom corner it starts in. */
   anchorSide: 'left' | 'right';
   onClose: () => void;
   children: ReactNode;
 }
 
-/**
- * A window fixed over the page that the reader can drag by its title bar,
- * kept inside the screen. Until it is moved it sits in a bottom corner,
- * `anchorBottom` pixels up; a double click on the title sends it back.
- */
 export default function FloatingWindow({
   title,
   storageKey,
@@ -139,9 +127,7 @@ export default function FloatingWindow({
         <span aria-hidden className="text-text-muted text-xs leading-none">
           ⠿
         </span>
-        <span className="lh-dialog-title">
-          {title}
-        </span>
+        <span className="lh-dialog-title">{title}</span>
         <button
           type="button"
           onClick={onClose}

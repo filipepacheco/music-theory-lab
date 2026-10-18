@@ -42,8 +42,6 @@ export function useQuiz() {
   const selectChord = useAppStore((s) => s.selectChord);
   const setHighlightedNotes = useAppStore((s) => s.setHighlightedNotes);
 
-  // Pending playback timers. Cleared on mode change / key toggle so stale
-  // audio from a dead question never fires.
   const timersRef = useRef<number[]>([]);
   const schedule = useCallback((fn: () => void, ms: number) => {
     timersRef.current.push(window.setTimeout(fn, ms));
@@ -65,13 +63,10 @@ export function useQuiz() {
       }
 
       if (q.sequential) {
-        // Play notes one by one (intervals), ascending: the shared voicing
-        // rule bumps the second note an octave when it wraps around.
         const voiced = ascendVoicing(q.notes, q.octave);
         playNote(voiced[0].note, voiced[0].octave);
         schedule(() => playNote(voiced[1].note, voiced[1].octave), 500);
       } else {
-        // Play all notes at once (chords)
         playChord(q.notes, q.octave);
         const chordRootName = getPreferredRootName(q.notes[0]);
         const octaveMap = computeVoicingOctaveMap(q.notes, q.octave);
@@ -96,7 +91,6 @@ export function useQuiz() {
     dispatch({ type: 'questionGenerated', question: q });
     selectChord(null);
 
-    // Auto-play with a small delay for UI to update
     schedule(() => playQuestion(q), 300);
   }, [
     mode,
@@ -113,7 +107,6 @@ export function useQuiz() {
     if (!question) return;
     cancelPending();
     if (question.type === 'degree' && question.referenceNotes) {
-      // Play tonic first as reference
       playChord(question.referenceNotes, question.octave);
       selectChord(0);
       schedule(() => playQuestion(question), 1200);
@@ -129,8 +122,6 @@ export function useQuiz() {
       const correct = selected === question.correctAnswer;
       dispatch({ type: 'answer', selectedAnswer: selected });
 
-      // If wrong, replay the correct answer after a short delay — the same
-      // playback path, so the two can't drift.
       if (!correct) {
         schedule(() => playQuestion(question), 800);
       }

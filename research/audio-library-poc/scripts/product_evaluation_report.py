@@ -1,5 +1,3 @@
-"""Write Phase 2 normalized-output reports from a frozen private manifest."""
-
 from __future__ import annotations
 
 import argparse
@@ -58,7 +56,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _private_report_path(workspace: Path, output: Path) -> Path:
-    """Keep reports under the private workspace; never permit public exports."""
 
     reports_root = (workspace.resolve() / "reports").resolve()
     target = output.resolve()

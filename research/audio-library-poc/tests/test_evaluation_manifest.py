@@ -1,5 +1,3 @@
-"""Focused integrity tests for frozen private harmony selections."""
-
 from __future__ import annotations
 
 import hashlib

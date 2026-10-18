@@ -1,5 +1,3 @@
-"""Tests for scripts/bakeoff_report.py."""
-
 from __future__ import annotations
 
 import importlib.util
@@ -325,16 +323,12 @@ def test_render_report_includes_headings_and_metrics(
     assert "Runs: 4" in report
     assert "Candidates: bs_roformer, demucs_htdemucs_6s" in report
 
-    # Per-track headings identify each source_sha256's leading 12 hex chars.
     assert f"`{SHA_TRACK_A[:12]}…`" in report
     assert f"`{SHA_TRACK_B[:12]}…`" in report
 
-    # Aggregate table exists and reports both candidates.
     assert "## Aggregate" in report
-    # Averaged wall seconds: bs_roformer = (60 + 55)/2 = 57.50; demucs = 9.00.
     assert "57.50" in report
     assert "9.00" in report
-    # Averaged reconstruction rel RMS: bs_roformer = 0.0225; demucs = 0.1050.
     assert "0.0225" in report
     assert "0.1050" in report
 
@@ -366,5 +360,4 @@ def test_main_prints_to_stdout(capsys, fixture_workspace: Path) -> None:
 
 
 def teardown_module(_module) -> None:
-    # Drop the ad-hoc import so pytest teardown is idempotent.
     sys.modules.pop("bakeoff_report", None)
