@@ -21,11 +21,6 @@ const engineVoice: DrumSampleVoice = {
   stop: () => playbackEngine.stopDrumHits(),
 };
 
-/**
- * A player for a drum chart that has no recording: the drum samples play the
- * chart's hits. It has the shape of `useLibraryAudio`, so the same player and
- * playhead drive either.
- */
 export function useDrumSamplePlayback(
   chart: DrumChart,
   enabled: boolean,

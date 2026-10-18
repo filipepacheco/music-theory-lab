@@ -12,7 +12,6 @@ export type RocksmithAudioState =
       url: string;
       fileName: string;
       origin: StoredChartAudio['origin'];
-      /** False when this browser reports it cannot decode the stored file. */
       playable: boolean;
     };
 
@@ -24,12 +23,6 @@ function canPlay(blob: Blob): boolean {
   return probe.canPlayType(type) !== '';
 }
 
-/**
- * Object URL for the audio stored with an imported chart. The user may swap
- * it for a file of their own (e.g. an MP3 where the browser cannot play the
- * extracted Ogg Vorbis); no hash check applies, since a package's audio has no
- * published fingerprint to compare against.
- */
 export function useRocksmithAudio(chartId: string) {
   const [state, setState] = useState<RocksmithAudioState>({
     status: 'loading',
