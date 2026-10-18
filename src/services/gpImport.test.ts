@@ -116,7 +116,6 @@ describe('analyzeBars', () => {
   });
 
   it('spells flats when the chosen key is flat', () => {
-    // C# major chord in Bb major: the label must read Db, not C#.
     const bars = analyzeBars(
       fixture({ pitchesFor: () => [1, 5, 8] }),
       HARMONY,
@@ -133,10 +132,44 @@ describe('analyzeBars', () => {
 describe('summarise', () => {
   it('counts outcomes without double-counting carried bars', () => {
     const bars: ImportedBar[] = [
-      { bar: 1, result: { kind: 'chord', root: 0, quality: 'maj', intervals: [0, 4, 7] }, detected: 'C', carried: false, step: { degree: 0, label: 'I', beats: 4 } },
-      { bar: 2, result: { kind: 'chord', root: 1, quality: 'maj', intervals: [1, 5, 8] }, detected: 'C#', carried: false, step: { degree: null, label: 'C#', intervals: [1, 5, 8], beats: 4 } },
-      { bar: 3, result: { kind: 'unclear' }, detected: null, carried: true, step: { degree: 0, label: 'I', beats: 4, confidence: 'unsure' } },
-      { bar: 4, result: { kind: 'no-chord-data' }, detected: null, carried: true, step: { degree: 0, label: 'I', beats: 4, confidence: 'unsure' } },
+      {
+        bar: 1,
+        result: {
+          kind: 'chord',
+          root: 0,
+          quality: 'maj',
+          intervals: [0, 4, 7],
+        },
+        detected: 'C',
+        carried: false,
+        step: { degree: 0, label: 'I', beats: 4 },
+      },
+      {
+        bar: 2,
+        result: {
+          kind: 'chord',
+          root: 1,
+          quality: 'maj',
+          intervals: [1, 5, 8],
+        },
+        detected: 'C#',
+        carried: false,
+        step: { degree: null, label: 'C#', intervals: [1, 5, 8], beats: 4 },
+      },
+      {
+        bar: 3,
+        result: { kind: 'unclear' },
+        detected: null,
+        carried: true,
+        step: { degree: 0, label: 'I', beats: 4, confidence: 'unsure' },
+      },
+      {
+        bar: 4,
+        result: { kind: 'no-chord-data' },
+        detected: null,
+        carried: true,
+        step: { degree: 0, label: 'I', beats: 4, confidence: 'unsure' },
+      },
     ];
 
     expect(summarise(bars)).toEqual({

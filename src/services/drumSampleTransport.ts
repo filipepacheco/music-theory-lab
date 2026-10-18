@@ -1,9 +1,3 @@
-// Plays a drum chart through the drum samples when no recording is attached.
-//
-// The transport speaks the same session interface as the recording player,
-// so the chart follows it the same way. Hits are handed to the voice a little
-// ahead of time, pinned to the audio clock, as the bass transport does.
-
 import {
   drumPlaybackHits,
   type DrumPlaybackHit,
@@ -21,12 +15,9 @@ const START_DELAY_SECONDS = 0.05;
 const LATE_SECONDS = 0.05;
 
 export interface DrumSampleVoice {
-  /** Resolves once the audio clock runs and these samples can sound. */
   prepare(samples: DrumSampleId[]): Promise<void>;
-  /** Seconds on the audio clock. */
   now(): number;
   schedule(hit: DrumPlaybackHit, when: number): void;
-  /** Silences sounding hits and cancels scheduled ones. */
   stop(): void;
 }
 
@@ -60,7 +51,6 @@ export function createDrumSampleTransport(
   let stopTimer: (() => void) | null = null;
   let anchor = { audioTime: 0, position: 0 };
   let next = 0;
-  // Hits may still ring after the end of the chart, when playing is false.
   let ringing = false;
 
   const update = (change: Partial<LibraryAudioState>) => {
@@ -97,12 +87,9 @@ export function createDrumSampleTransport(
       const hit = hits[next];
       next += 1;
       const when = anchor.audioTime + (hit.time - anchor.position);
-      // A throttled background tab wakes up late: what it missed is dropped.
       if (when >= now - LATE_SECONDS) voice.schedule(hit, when);
     }
     if (current >= duration) {
-      // The end of the chart lets the scheduled hits ring out: only the timer
-      // stops. Pause, seek, and dispose silence the voice, also after the end.
       stopTimer?.();
       stopTimer = null;
       ringing = true;

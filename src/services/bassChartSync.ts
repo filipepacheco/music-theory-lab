@@ -19,36 +19,22 @@ import {
   type RocksmithLibraryRepository,
 } from '@/services/rocksmithLibrary';
 
-/** One page of a read with a counter. */
 export type ChartPage = SyncPage;
 
 export interface ChartCloud {
-  /** The records with a counter larger than `after`, in counter order. */
   pull(after: number): Promise<ChartPage>;
-  /**
-   * Resolves to the counter of the record when the cloud now holds it, or to
-   * null when the cloud does not say.
-   */
   push(record: BassChartRecord): Promise<number | null>;
 }
 
-/** What orders two records of one chart. */
 interface ChartVersion {
   updatedAt: string;
   deleted: boolean;
 }
 
-/** What this device knows of the cloud, between two synchronizations. */
 export type ChartSyncState = SyncState<ChartVersion>;
 export type ChartSyncStore = SyncStore<ChartVersion>;
 
 const SYNC_STATE_KEY = 'music-theory-lab-chart-sync';
-/**
- * The version of the chart records that this client can read. Raise it when
- * the client starts to read a record that an earlier client skipped (a new
- * chart type, a new field): each device then reads from counter 0 one time.
- * Version 2 reads the drum chart records.
- */
 export const CHART_SYNC_FORMAT = 2;
 
 function isChartVersion(value: unknown): boolean {
@@ -59,7 +45,6 @@ function isChartVersion(value: unknown): boolean {
   );
 }
 
-/** The last counter of the chart route, in the storage of the browser. */
 export function createChartSyncStore(
   storage: () => Pick<Storage, 'getItem' | 'setItem'>,
   format = CHART_SYNC_FORMAT,
@@ -72,8 +57,6 @@ export const chartCloud: ChartCloud = {
     const response = await fetch(`/api/bass-charts?after=${after}`);
     if (!response.ok) throw new Error(`Chart sync: HTTP ${response.status}`);
     const page: unknown = await response.json();
-    // An earlier version of the route ignores the counter and returns all
-    // records. They are a last page that moves no counter.
     if (Array.isArray(page)) {
       return { records: page, counter: after, more: false };
     }
@@ -104,7 +87,6 @@ const chartRecords: SyncRecords<BassChartRecord, ChartVersion> = {
     updatedAt: record.updatedAt,
     deleted: record.chart === null,
   }),
-  /** The order of `isNewerChartRecord`. */
   isNewer: (incoming, current) =>
     incoming.updatedAt > current.updatedAt ||
     (incoming.updatedAt === current.updatedAt &&
@@ -117,10 +99,6 @@ type LocalRecords = Pick<
   'listRecords' | 'applyRecord'
 >;
 
-/**
- * Local-first, last-write-wins chart sync, including durable deletions. A
- * chart is large, so each write holds one record.
- */
 export function synchronizeBassCharts(
   local: LocalRecords,
   cloud: ChartCloud,
@@ -143,8 +121,6 @@ export function synchronizeBassCharts(
 
 const syncStore = createChartSyncStore(() => localStorage);
 
-// Serialize overlapping startup, focus and import syncs. A save queued during
-// a running sync gets its own pass, so the new chart cannot be missed.
 let pending: Promise<void> = Promise.resolve();
 export function syncBassCharts(): Promise<void> {
   const next = pending

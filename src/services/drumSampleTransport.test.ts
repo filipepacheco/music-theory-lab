@@ -7,7 +7,6 @@ import {
 } from '@/services/drumSampleTransport';
 import type { LibraryAudioState } from '@/services/libraryAudioSession';
 
-// Kick on beat 0, snare on beat 2 (1 s), hit with no sample on beat 3.
 const chart = () => ({
   ...fixtureDrumChart(2, [
     { bar: 0, beat: 0, midi: 36 },

@@ -1,10 +1,3 @@
-// Plays a bass chart through the sampled bass when no recording is attached.
-//
-// The transport speaks the same session interface as the recording player,
-// so the chart follows it the same way. Notes are handed to the voice a
-// little ahead of time, pinned to the audio clock, so their timing does not
-// depend on how punctually the scheduler timer fires.
-
 import type { BassChart, BassChartNote } from '@/domain/bassChart';
 import type {
   LibraryAudioSession,
@@ -17,34 +10,25 @@ import {
 
 const TICK_MS = 25;
 const LOOKAHEAD_SECONDS = 0.2;
-/** Head start so the first note is scheduled before it is due. */
 const START_DELAY_SECONDS = 0.05;
-/** How late a note may be handed over and still be worth playing. */
 const LATE_SECONDS = 0.05;
 const MIN_NOTE_SECONDS = 0.08;
 const MUTED_NOTE_SECONDS = 0.06;
 
 export interface BassSynthNote {
-  /** Seconds from the start of the chart. */
   time: number;
-  /** Pitch folded into the range the sampled bass covers. */
   midi: number;
-  /** Shift the sample to the chart's exact pitch, including its octave. */
   transposeSemitones?: number;
   seconds: number;
 }
 
 export interface BassSynthVoice {
-  /** Resolves once the audio clock runs and these pitches can sound. */
   prepare(midiNotes: number[]): Promise<void>;
-  /** Seconds on the audio clock. */
   now(): number;
   schedule(note: BassSynthNote, when: number): void;
-  /** Silences sounding notes and cancels scheduled ones. */
   stop(): void;
 }
 
-/** Calls `callback` every `milliseconds`; returns how to stop. */
 export type BassSynthTimer = (
   callback: () => void,
   milliseconds: number,
@@ -55,11 +39,6 @@ const browserTimer: BassSynthTimer = (callback, milliseconds) => {
   return () => clearInterval(id);
 };
 
-/**
- * What the synth plays for each chart note. A note lasts its sustain, or as
- * long as the chart shows it when it has none, and never runs into the next
- * onset: a bass line is one voice. Dead notes are a short thud.
- */
 export function bassSynthNotes(
   notes: BassChartNote[],
   transposeSemitones = 0,
@@ -106,7 +85,6 @@ export function createBassSynthTransport(
   let disposed = false;
   let starting = false;
   let stopTimer: (() => void) | null = null;
-  /** Chart position `position` sounds at `audioTime` on the audio clock. */
   let anchor = { audioTime: 0, position: 0 };
   let next = 0;
 
@@ -143,8 +121,6 @@ export function createBassSynthTransport(
       const note = notes[next];
       next += 1;
       const when = anchor.audioTime + (note.time - anchor.position);
-      // A throttled background tab wakes up late: what it missed is dropped
-      // rather than played in a burst.
       if (when >= now - LATE_SECONDS) voice.schedule(note, when);
     }
     if (current >= duration) {

@@ -27,24 +27,16 @@ const chart = {
   originalFingering: [{ string: 1, fret: 0 }],
 };
 
-/** A valid chart with its own id. */
 function numbered(index: number) {
   const id = index.toString(16).padStart(64, '0');
   return { ...chart, id, title: `Chart ${index}` };
 }
 
-/**
- * A cloud that follows the chart route: each write that it accepts gets the
- * next counter, a write that loses changes nothing, and a read returns one
- * page of the records after a counter.
- */
 function cloud(pageLimit = 10) {
   const rows = new Map<string, { record: BassChartRecord; counter: number }>();
   let last = 0;
   const fake = {
-    /** Each read: the counter that it sent and the ids that it downloaded. */
     reads: [] as { after: number; ids: string[] }[],
-    /** The id of each record that a device sent. */
     writes: [] as string[],
     record: (id: string) => rows.get(id)?.record,
     async pull(after: number) {
@@ -83,7 +75,6 @@ function memoryStorage() {
   };
 }
 
-// Each device keeps its own last counter, as each browser does.
 const stores = new WeakMap<object, ChartSyncStore>();
 function storeOf(local: RocksmithLibraryRepository): ChartSyncStore {
   let store = stores.get(local);
@@ -365,7 +356,6 @@ describe('bass chart persistence and sync', () => {
 describe('incremental chart synchronization', () => {
   const device = () => createIndexedDbRocksmithLibrary(new IDBFactory());
 
-  /** A library of `count` charts in the cloud, from one device. */
   async function library(count: number, pageLimit?: number) {
     const remote = cloud(pageLimit);
     const first = device();
@@ -431,7 +421,6 @@ describe('incremental chart synchronization', () => {
     await sync(second, remote);
     remote.reads.length = 0;
 
-    // The device that got the charts, and the device that sent them.
     await sync(second, remote);
     await sync(first, remote);
     expect(remote.reads).toEqual([
@@ -481,8 +470,6 @@ describe('incremental chart synchronization', () => {
     const second = device();
     await sync(second, remote);
 
-    // The clock of this device is years late: its record looks older than
-    // each record of the cloud and than the last read of the second device.
     const slow = device();
     const late = numbered(9);
     await slow.applyRecord({
@@ -502,8 +489,6 @@ describe('incremental chart synchronization', () => {
     const { remote, first } = await library(2);
     const second = device();
     await sync(second, remote);
-    // The second device writes. Then the first device reads, and the second
-    // device writes again before the first device sends its own record.
     await second.save(numbered(3), null);
     await sync(second, remote);
     await first.save(numbered(5), null);
@@ -519,8 +504,6 @@ describe('incremental chart synchronization', () => {
         return page;
       },
     });
-    // The counter of the first device stays before the write that it did
-    // not read, so the next read gets it.
     expect(storeOf(first).read().counter).toBe(3);
     await sync(first, remote);
     expect(await first.listCharts()).toHaveLength(5);
@@ -567,8 +550,6 @@ describe('incremental chart synchronization', () => {
     const remote = cloud();
     const [first, slow] = [device(), device()];
     const kept = numbered(1);
-    // The cloud holds the chart with an update time that the clock of the
-    // second device has not reached.
     const record = {
       id: kept.id,
       updatedAt: '2099-01-01T00:00:00.000Z',
@@ -594,11 +575,9 @@ describe('incremental chart synchronization', () => {
       ).toEqual([kept.id, numbered(2).id]);
     }
     expect(remote.record(kept.id)).toEqual(record);
-    // The device read from the start, and it sent no record.
     expect(remote.reads.map((read) => read.after)).toEqual([2, 0, 2]);
     expect(remote.writes).toEqual([]);
 
-    // The two agree, so the next read starts at the last counter.
     remote.reads.length = 0;
     await sync(slow, remote);
     expect(remote.reads).toEqual([{ after: 2, ids: [] }]);
@@ -611,7 +590,6 @@ describe('incremental chart synchronization', () => {
     await first.applyRecord({ id: chart.id, updatedAt: time, chart: null });
     await sync(first, remote);
     await sync(second, remote);
-    // An import on the second device in the same millisecond.
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(time));
     await second.save(chart, null);
@@ -678,7 +656,6 @@ describe('incremental chart synchronization', () => {
     expect(remote.reads[0].after).toBe(0);
   });
 
-  /** A record of a later client: a chart of a part that this client does not know. */
   const unread = {
     id: numbered(7).id,
     updatedAt: '2026-10-05T10:00:00.000Z',
@@ -704,7 +681,6 @@ describe('incremental chart synchronization', () => {
     const stored = async () =>
       (await local.listCharts()).map((item) => item.id);
 
-    // This client skips the record, and its counter moves past it.
     await synchronizeBassCharts(
       local,
       remote,
@@ -724,8 +700,6 @@ describe('incremental chart synchronization', () => {
     );
     expect(remote.reads).toEqual([{ after: 4, ids: [] }]);
 
-    // The client that reads more has the next format version. Its first read
-    // starts at counter 0, so the record comes again.
     remote.reads.length = 0;
     remote.writes.length = 0;
     await synchronizeBassCharts(
@@ -740,10 +714,6 @@ describe('incremental chart synchronization', () => {
   });
 
   it('keeps format version 2 only while the client reads no record of a third chart type', () => {
-    // Format version 2 came with the drum chart records. This test fails
-    // when the client starts to read a record that it skips now. Then raise
-    // CHART_SYNC_FORMAT in the same change, and change the values here: a
-    // device that skipped the record must read it again.
     expect({
       format: CHART_SYNC_FORMAT,
       readsDrumCharts:
@@ -767,7 +737,6 @@ describe('incremental chart synchronization', () => {
     expect(remote.record(drumChart.id)?.chart).toEqual(drumChart);
     remote.reads.length = 0;
     await sync(second, remote);
-    // The second device downloads the drum record alone.
     expect(remote.reads).toEqual([{ after: 2, ids: [drumChart.id] }]);
     expect(await second.getChart(drumChart.id)).toEqual(drumChart);
     expect(
@@ -775,7 +744,6 @@ describe('incremental chart synchronization', () => {
     ).toMatchObject({ part: 'drums', noteCount: 3, tuning: null });
     expect(await second.listCharts()).toHaveLength(3);
 
-    // The deletion of the drum chart moves in the same way.
     await second.remove(drumChart.id);
     await sync(second, remote);
     await sync(first, remote);
@@ -794,7 +762,6 @@ describe('incremental chart synchronization', () => {
     );
     await first.save(drumChart, null);
     await sync(first, remote);
-    // The earlier client skipped the record, and its counter moved past it.
     const key = 'music-theory-lab-chart-sync';
     const stored = JSON.parse(storage.items.get(key)!);
     expect(stored).toMatchObject({ format: 1, counter: 2 });
@@ -847,7 +814,6 @@ describe('incremental chart synchronization', () => {
       more: false,
     });
 
-    // The earlier route does not give the counter of a write.
     fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     expect(await chartCloud.push(record)).toBeNull();
     fetch.mockResolvedValue({

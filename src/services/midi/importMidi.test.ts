@@ -19,7 +19,6 @@ function chunk(tag: string, body: number[]): number[] {
   ];
 }
 
-// Deltas stay under 128 ticks, so each is one byte.
 function midiBytes(events: Event[]): Uint8Array<ArrayBuffer> {
   const body = events.flatMap(([delta, ...bytes]) => [delta, ...bytes]);
   return Uint8Array.from([
@@ -88,7 +87,6 @@ describe('MIDI import with a drum part', () => {
     const now = new Date('2026-01-01T00:00:00Z');
     const first = await importMidi(file(events), now);
     const again = await importMidi(file(events), new Date('2026-02-01'));
-    // The id of the bass chart is the hash of the file, as before the drums.
     expect(first.charts[0].id).toBe(fileHash);
     expect(again.charts[0]).toEqual({
       ...first.charts[0],

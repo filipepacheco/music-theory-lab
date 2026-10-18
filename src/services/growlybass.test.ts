@@ -101,7 +101,6 @@ describe('Growlybass sampler', () => {
     const play = vi.fn();
     const sampler = createGrowlybassSampler({ load, play });
 
-    // E1 and F1 share one sample: preloading fetches each file once.
     await sampler.preload([28, 29, 28]);
     expect(load).toHaveBeenCalledTimes(1);
     expect(sampler.getStatus()).toBe('ready');

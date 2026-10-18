@@ -42,9 +42,7 @@ export interface PlaybackEngine {
     velocity?: number,
     duration?: string,
   ): Promise<void>;
-  /** Load the bass samples a sequenced line will need. */
   preloadBassNotes(midiNotes: number[], velocity?: number): Promise<void>;
-  /** Start a preloaded bass note at `time` on the audio clock. */
   scheduleBassNote(
     midiNote: number,
     velocity: number,
@@ -52,19 +50,14 @@ export interface PlaybackEngine {
     time: number,
     transposeSemitones?: number,
   ): void;
-  /** Silence sounding bass notes and cancel scheduled ones. */
   stopBassNotes(): void;
-  /** Seconds on the audio clock that scheduled notes are timed against. */
   now(): number;
   getBassSamplerStatus(): GrowlybassSamplerStatus;
   subscribeBassSampler(
     listener: (status: GrowlybassSamplerStatus) => void,
   ): () => void;
-  /** Load the drum samples a sequenced drum chart will need. */
   preloadDrumSamples(samples: DrumSampleId[]): Promise<void>;
-  /** Start a preloaded drum sample at `time` on the audio clock. */
   scheduleDrumHit(hit: DrumPlaybackHit, time: number): void;
-  /** Silence sounding drum hits and cancel scheduled ones. */
   stopDrumHits(): void;
   playGrooveHit(piece: DrumPiece, time: number): void;
   stopGroove(): void;
@@ -201,9 +194,6 @@ function getReadySampler(preset: TonePreset): Tone.Sampler | null {
   return entry.sampler;
 }
 
-// Acoustic-leaning groove voices are shared for the lifetime of the module,
-// just like the metronome clicks. They all pass through the existing effects
-// chain, with filtered noise providing the skin and cymbal textures.
 const grooveKick = new Tone.MembraneSynth({
   pitchDecay: 0.045,
   octaves: 4,
@@ -247,9 +237,6 @@ interface GrooveSample {
   ready: Promise<boolean>;
 }
 
-// The groove player uses the app's own drum samples (`public/drum-samples/`).
-// They are cached once and still pass through the app's reverb and limiter
-// rather than creating a separate destination path.
 const DRUM_SAMPLE_BASE_URL = `${import.meta.env.BASE_URL}drum-samples/`;
 const GROOVE_SAMPLE_BASE_URL = DRUM_SAMPLE_BASE_URL;
 
@@ -299,8 +286,6 @@ function stopGrooveSources() {
   grooveHiHat.triggerRelease();
 }
 
-// Drum chart samples: buffers load once, on first use, and are never
-// disposed. Each hit plays from its own buffer source, so hits overlap.
 const drumBuffers = new Map<
   DrumSampleId,
   Promise<Tone.ToneAudioBuffer | null>
@@ -319,7 +304,6 @@ function loadDrumSample(
         return buffer;
       })
       .catch(() => {
-        // Let a later play try again.
         drumBuffers.delete(id);
         return null;
       });
@@ -332,9 +316,7 @@ function stopDrumSources() {
   for (const source of activeDrumSources) {
     try {
       source.stop();
-    } catch {
-      // A source that never started has nothing to stop.
-    }
+    } catch {}
   }
   activeDrumSources.clear();
 }
@@ -463,7 +445,6 @@ export function createPlaybackEngine(): PlaybackEngine {
 
     scheduleDrumHit: (hit, time) => {
       const buffer = loadedDrumBuffers.get(hit.sample);
-      // A hit with no loaded sample makes no sound and no error.
       if (!buffer) return;
       const gain = new Tone.Gain(
         hit.gain * Tone.dbToGain(DRUM_SAMPLE_TRIM_DB[hit.sample]),

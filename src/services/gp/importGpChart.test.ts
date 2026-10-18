@@ -26,7 +26,6 @@ function score(tex = '0.4.4 2.4 3.4 0.3 | 2.3.4 3.3 0.2 2.2') {
 const BASS_BARS = '0.4.4 2.4 3.4 0.3 | 2.3.4 3.3 0.2 2.2';
 const DRUM_BARS = ':4 (36 42) 42 (38{ac} 42) 38{g} | 37 46 44 49{hac}';
 
-/** A score with a bass track and a percussion track. */
 function bandScore(bass = BASS_BARS, drums = DRUM_BARS) {
   return importer.ScoreLoader.loadAlphaTex(
     String.raw`\title "Teste" \artist "Artista" \tempo 120
@@ -35,7 +34,6 @@ function bandScore(bass = BASS_BARS, drums = DRUM_BARS) {
   );
 }
 
-/** A score with a percussion track alone. */
 function drumScore(drums = ':4 36 38 36 38') {
   return importer.ScoreLoader.loadAlphaTex(
     String.raw`\title "Só bateria" \artist "Artista" \tempo 120 \instrument percussion ${drums}`,
@@ -52,7 +50,6 @@ function file(bytes: Uint8Array, name = 'Teste.gp') {
   };
 }
 
-/** The import of a file with a bass part: its bass chart. */
 async function importBass(source: Blob & { name: string }) {
   const { charts, audio } = await importGpChart(source);
   const chart = charts[0];
@@ -280,7 +277,6 @@ describe('Guitar Pro import of the drum part', () => {
     expect(bass.originalFingering).toHaveLength(8);
     expect(parseBassChart(bass)).not.toBeNull();
     expect(parseDrumChart(drums)).not.toBeNull();
-    // One song: the two charts have one song key.
     const songs = groupLibrarySongs(charts.map(summarizeChart), []);
     expect(songs).toHaveLength(1);
     expect(songs[0].parts).toEqual(['bass', 'drums']);
@@ -310,7 +306,6 @@ describe('Guitar Pro import of the drum part', () => {
     );
     expect(charts[1].id).toMatch(/^[a-f0-9]{64}$/);
     expect(charts[1].id).not.toBe(fileHash);
-    // A file with only drums: the id of its chart is not the file hash.
     const alone = gp(drumScore());
     const only = await importGpChart(file(alone));
     expect(only.charts[0].id).toBe(
@@ -378,8 +373,6 @@ describe('Guitar Pro import of the drum part', () => {
   });
 
   it('takes the ghost note and the accent of a hit from the score, not from the intensity', async () => {
-    // A ghost note in a loud passage, then plain notes and an accent in a
-    // soft passage.
     const original = drumScore(':4 38{g} 38 38 38{ac}');
     const beats = original.tracks[0].staves[0].bars[0].voices[0].beats;
     beats[0].dynamics = model.DynamicValue.FFF;
@@ -397,10 +390,8 @@ describe('Guitar Pro import of the drum part', () => {
       'normal',
       'accent',
     ]);
-    // The export only moves the intensity one step from the passage.
     expect(ghost.intensity).toBeLessThan(loud.intensity);
     expect(accent.intensity).toBeGreaterThan(soft.intensity);
-    // So the intensity alone gives the wrong answer for the two hits.
     expect(ghost.intensity).toBeGreaterThan(accent.intensity);
     expect(ghost.intensity).toBeGreaterThan(soft.intensity);
   });
@@ -418,7 +409,6 @@ describe('Guitar Pro import of the drum part', () => {
     expect(drums.sections).toEqual(bass.sections);
     expect(drums.songLengthSeconds).toBe(bass.songLengthSeconds);
     expect(drums.averageTempoBpm).toBe(bass.averageTempoBpm);
-    // The repeat plays the two bars two times: 2 s at 120 bpm, 4 s at 60.
     expect(drums.bars.map((bar) => [bar.startTime, bar.endTime])).toEqual([
       [0, 2],
       [2, 6],
@@ -437,7 +427,6 @@ describe('Guitar Pro import of the drum part', () => {
     expect(drums.hits.map((hit) => hit.bar)).toEqual(
       [0, 1, 2, 3].flatMap((bar) => [bar, bar, bar, bar]),
     );
-    // The bass note and the drum hit of one beat have one time.
     expect(drums.hits.map((hit) => hit.time)).toEqual(
       bass.notes.map((note) => note.time),
     );
