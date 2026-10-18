@@ -7,7 +7,6 @@ import { execFileSync } from 'node:child_process';
 import { fixtureChart } from '@/domain/bassChartFixture';
 
 // Vite resolves @/ imports in unit tests; Vercel's Node runtime does not.
-// Build with the real function builder, then invoke its output without Vite.
 const require = createRequire(import.meta.url);
 const { build } = require('@vercel/node');
 const { FileFsRef, FileBlob } = require('@vercel/build-utils');

@@ -3,17 +3,10 @@ import type { Client, Row } from '@libsql/client';
 // Vercel emits ESM without Vite's aliases; use the emitted .js module path.
 import { parseBassChartRecord } from '../src/domain/bassChartRecord.js';
 
-/** The most records in one page of a read with a counter. */
 const PAGE_LIMIT = 10;
 
-// The counter only increases: no route deletes a row, so the largest value
-// never goes down, and each write takes the value after it.
 const NEXT_COUNTER = `(SELECT COALESCE(MAX(sync_counter), 0) + 1 FROM bass_charts)`;
 
-// The triggers give the counter in the database, in the transaction of the
-// write. So a write from an earlier version of this function gets a counter
-// too, and an upsert that loses changes no row and fires no trigger. An update
-// of the counter alone fires neither trigger.
 const COUNTER_SCHEMA = [
   `CREATE UNIQUE INDEX IF NOT EXISTS bass_charts_sync_counter
     ON bass_charts (sync_counter)`,
@@ -38,12 +31,6 @@ async function hasCounterColumn(turso: Client): Promise<boolean> {
   }
 }
 
-/**
- * Add the counter to the chart table. Each step does nothing when it ran
- * before, so the migration is safe on each cold start and from two instances
- * at one time. It writes only the counter column: no chart, update time, or
- * row order changes.
- */
 async function migrate(turso: Client): Promise<void> {
   await turso.execute(`CREATE TABLE IF NOT EXISTS bass_charts (
     id TEXT PRIMARY KEY,
@@ -57,12 +44,10 @@ async function migrate(turso: Client): Promise<void> {
         'ALTER TABLE bass_charts ADD COLUMN sync_counter INTEGER',
       );
     } catch (error) {
-      // A second instance can add the column between the check and here.
       if (!(await hasCounterColumn(turso))) throw error;
     }
   }
   await turso.batch(COUNTER_SCHEMA, 'write');
-  // The rows from before the counter get their values in update-time order.
   const pending = await turso.execute(
     `SELECT id FROM bass_charts WHERE sync_counter IS NULL
       ORDER BY updated_at, id`,
@@ -80,7 +65,6 @@ async function migrate(turso: Client): Promise<void> {
 }
 
 let ready: Promise<Client> | null = null;
-/** The client, after the migration ran one time in this instance. */
 function database(): Promise<Client> {
   ready ??= (async () => {
     const { createClient } = await import('@libsql/client');
@@ -91,7 +75,6 @@ function database(): Promise<Client> {
     await migrate(turso);
     return turso;
   })().catch((error) => {
-    // The next request tries the migration again.
     ready = null;
     throw error;
   });
@@ -113,7 +96,6 @@ function toRecords(rows: Row[]) {
   });
 }
 
-/** Same shared, single-user library model as songs and annotations. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -123,8 +105,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const after: unknown = req.query?.after;
       if (after === undefined) {
-        // A read without a counter keeps the full response, for an open tab
-        // with an earlier client.
         const result = await turso.execute('SELECT * FROM bass_charts');
         return res.status(200).json(toRecords(result.rows));
       }
@@ -139,7 +119,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const last = result.rows[result.rows.length - 1];
       return res.status(200).json({
         records: toRecords(result.rows),
-        // The counter of the last row of the page, for the next read.
         counter: last ? Number(last.sync_counter) : Number(after),
         more: result.rows.length === PAGE_LIMIT,
       });
@@ -195,8 +174,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     return res.status(200).json({
       ok: true,
-      // For each record of the request: its counter when the table now holds
-      // that record, or null when a newer record won.
       counters: records.map((_: unknown, index: number) => {
         const counter = results[index * 2 + 1].rows[0]?.sync_counter;
         return counter == null ? null : Number(counter);

@@ -35,7 +35,6 @@ const drumRecord = {
   chart: drums,
 };
 
-/** A valid record with its own id; `minute` orders the update times. */
 function numbered(index: number, minute = index) {
   const id = index.toString(16).padStart(64, '0');
   return {
@@ -92,13 +91,11 @@ async function counters(): Promise<Record<string, number>> {
   );
 }
 
-/** A new instance of the function: its first request runs the migration. */
 async function coldStart() {
   vi.resetModules();
   handler = (await import('./bass-charts')).default;
 }
 
-// The write of the function version before the counter, word for word.
 const EARLIER_WRITE = `INSERT INTO bass_charts (id, device_id, chart, updated_at)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
@@ -180,7 +177,6 @@ describe('drum chart on the chart route', () => {
   it('gives a drum chart of one device to a second device, in the table of the bass charts', async () => {
     expect((await write([record, drumRecord], 'first')).status).toBe(200);
     expect((await request('GET')).body).toEqual([record, drumRecord]);
-    // The read of a second device, with a counter.
     const page = await readAfter(0);
     expect(page.records).toEqual([record, drumRecord]);
     expect(page.counter).toBe(2);
@@ -199,7 +195,6 @@ describe('drum chart on the chart route', () => {
   it('refuses a bad drum chart and writes nothing', async () => {
     const hit = drums.hits[0];
     const bad: unknown[] = [
-      // A bass chart that names the part.
       { ...chart, id: drums.id, part: 'drums' },
       { ...drums, tuning: [0, 0, 0, 0] },
       { ...drums, notes: chart.notes },
@@ -220,7 +215,6 @@ describe('drum chart on the chart route', () => {
       const result = await write([{ ...drumRecord, chart: item }]);
       expect([index, result.status]).toEqual([index, 400]);
     }
-    // A good record in the same write is not written.
     expect(
       (await write([record, { ...drumRecord, chart: bad[1] }])).status,
     ).toBe(400);
@@ -248,10 +242,8 @@ describe('bass chart counter', () => {
     };
     await accept(first.id);
     await accept(second.id);
-    // A newer record of a chart that exists.
     await accept(first.id, { updatedAt: '2026-10-05T11:00:00.000Z' });
     await accept(second.id, { updatedAt: '2026-10-05T12:00:00.000Z' });
-    // A deletion record on a tie of update times.
     await accept(second.id, {
       updatedAt: '2026-10-05T12:00:00.000Z',
       chart: null,
@@ -294,7 +286,6 @@ describe('bass chart counter', () => {
       counters: [3],
     });
     const before = await rows();
-    // The same deletion again, from the same device and from a different one.
     for (const device of ['second', 'third']) {
       expect((await write([deletion], device)).body).toEqual({
         ok: true,
@@ -311,8 +302,6 @@ describe('bass chart counter', () => {
 
   it('reads only the records with a larger counter, in counter order, 10 at most', async () => {
     const items = Array.from({ length: 12 }, (_, index) => numbered(index + 1));
-    // The update times run against the write order: the read follows the
-    // counter, not the clock of a device.
     for (const item of [...items].reverse()) await write([item]);
     const newest = { ...items[11], updatedAt: '2026-10-05T11:00:00.000Z' };
     await write([newest]);
@@ -355,8 +344,6 @@ describe('bass chart counter', () => {
     await write([deletion]);
     const result = await request('GET');
     expect(result.status).toBe(200);
-    // All records in one array, in the row order of the table, with no
-    // counter field.
     expect(result.body).toEqual([deletion, ...items.slice(1)]);
   });
 
@@ -389,7 +376,6 @@ describe('bass chart counter migration', () => {
     { ...numbered(4, 10), device: 'laptop' },
   ];
 
-  /** A database as the function version before the counter left it. */
   async function earlierDatabase() {
     const actual =
       await vi.importActual<typeof import('@libsql/client')>('@libsql/client');
@@ -423,7 +409,6 @@ describe('bass chart counter migration', () => {
     const before = await rows();
     await coldStart();
     expect((await request('GET')).body).toEqual(records);
-    // Same rows, same values, same order.
     expect(await withoutCounter()).toEqual(before);
     expect(await counters()).toEqual({
       [old[1].id]: 1,
@@ -477,7 +462,6 @@ describe('bass chart counter migration', () => {
     };
     await earlierWrite(added);
     await earlierWrite(deletion);
-    // A write that loses, through the earlier version.
     await earlierWrite({
       ...records[0],
       updatedAt: '2026-10-05T09:00:00.000Z',
@@ -492,7 +476,6 @@ describe('bass chart counter migration', () => {
   it('gives a row without a counter the next value at a cold start', async () => {
     await coldStart();
     await request('GET');
-    // A row with no counter: the next cold start gives it the next value.
     await state.client!.execute({
       sql: 'UPDATE bass_charts SET sync_counter = NULL WHERE id = ?',
       args: [old[1].id],

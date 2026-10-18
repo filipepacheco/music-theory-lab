@@ -12,12 +12,9 @@ async function db() {
   return _turso;
 }
 
-/**
- * Read the JSON body without depending on the runtime's body parsing.
- * `req.body` may be undefined on some deployments; fall back to reading
- * the raw stream.
- */
-async function readJsonBody(req: VercelRequest): Promise<Record<string, unknown>> {
+async function readJsonBody(
+  req: VercelRequest,
+): Promise<Record<string, unknown>> {
   if (req.body && typeof req.body === 'object') {
     return req.body as Record<string, unknown>;
   }
@@ -32,8 +29,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const turso = await db();
 
     if (req.method === 'GET') {
-      // Structures are shared globally, like songs: every device sees every
-      // saved arrangement without authentication.
       const result = await turso.execute('SELECT * FROM structures');
 
       return res.status(200).json(result.rows);
@@ -42,17 +37,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       const body = await readJsonBody(req);
       const { device_id, records } = body;
-      if (!device_id || !records) return res.status(400).json({ error: 'device_id and records required' });
+      if (!device_id || !records)
+        return res
+          .status(400)
+          .json({ error: 'device_id and records required' });
 
-      // The Turso schema predates the client's `bpm` column. Keep it in sync
-      // (idempotent; the client db.ts does the same for its local copy).
       try {
         await turso.execute(
           'ALTER TABLE structures ADD COLUMN bpm INTEGER NOT NULL DEFAULT 120',
         );
-      } catch {
-        // Column already exists
-      }
+      } catch {}
 
       for (const r of records) {
         await turso.execute({
@@ -80,7 +74,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const id = req.query.id as string;
       if (!id) return res.status(400).json({ error: 'id required' });
 
-      // Deletes propagate globally, matching the global visibility above.
       await turso.execute({
         sql: 'DELETE FROM structures WHERE id = ?',
         args: [id],

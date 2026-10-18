@@ -29,7 +29,6 @@ import chartHandler from './bass-charts';
 
 let handler = liveHandler;
 
-/** A valid record with its own chart id; `minute` orders the update times. */
 function numbered(index: number, minute = index): ChartSettings {
   return {
     chartId: index.toString(16).padStart(64, '0'),
@@ -99,7 +98,6 @@ async function counters(): Promise<Record<string, number>> {
   );
 }
 
-/** A new instance of the function: its first request runs the migration. */
 async function coldStart() {
   vi.resetModules();
   handler = (await import('./chart-settings')).default;
@@ -141,7 +139,6 @@ describe('chart settings API', () => {
     await write([{ ...record, songLineLength: 8 }], 'first');
     const later = { ...numbered(1, 5), songLineLength: 2 };
     await write([later], 'second');
-    // An earlier write that arrives late changes nothing.
     await write([{ ...numbered(1, 3), songLineLength: 16 }], 'offline');
     expect((await readAfter(0)).records).toEqual([later]);
   });
@@ -197,7 +194,6 @@ describe('chart settings API', () => {
     }));
     expect((await write(moved)).status).toBe(200);
     expect((await readAfter(0)).records).toEqual(moved);
-    // The stored text holds only ASCII, as the order of two writes needs.
     for (const row of await rows()) {
       expect(String(row.settings)).toMatch(/^[\x20-\x7e]+$/);
     }
@@ -220,8 +216,6 @@ describe('chart settings API', () => {
   });
 
   it('keeps the same one of two song keys of another script with one update time, as the browser does', async () => {
-    // 𠀀 goes before ｶ in the text order of the browser and after it in the
-    // byte order of the database.
     const astral = { ...record, groupOverride: '\u{20000}|' };
     const halfWidth = { ...record, groupOverride: '\uff76|' };
     const winner = isNewerChartSettings(astral, halfWidth) ? astral : halfWidth;
@@ -280,7 +274,6 @@ describe('chart settings API', () => {
     const secret = { ...record, groupOverride: 'do not log this|artist' };
     expect((await write([secret])).status).toBe(500);
     expect(logged.mock.calls).toEqual([['chart settings API error:', failure]]);
-    // A refused record is not a failure, and it leaves no log.
     logged.mockClear();
     await write([{ ...secret, songLineLength: 99 }]);
     expect(logged).not.toHaveBeenCalled();
@@ -299,7 +292,6 @@ describe('chart settings counter', () => {
     };
     await accept(numbered(1));
     await accept(numbered(2));
-    // A later write of a record that exists.
     await accept({ ...numbered(1, 30), songLineLength: 8 });
     await accept({ ...numbered(2, 40), groupOverride: 'separate' });
     expect(seen).toEqual([1, 2, 3, 4]);
@@ -313,7 +305,6 @@ describe('chart settings counter', () => {
       ok: true,
       counters: [null],
     });
-    // The same record again: the route answers with the counter that it has.
     expect((await write([numbered(1, 30)], 'second')).body).toEqual({
       ok: true,
       counters: [1],
@@ -324,8 +315,6 @@ describe('chart settings counter', () => {
 
   it('reads only the records with a larger counter, in counter order, up to the page limit', async () => {
     const items = Array.from({ length: 205 }, (_, index) =>
-      // The update times run against the write order: the read follows the
-      // counter, not the clock of a device.
       numbered(index + 1, 59 - (index % 60)),
     );
     await write(items.slice(0, 100));
@@ -437,11 +426,9 @@ describe('chart settings and the chart route', () => {
 });
 
 describe('chart settings migration', () => {
-  // The write of the chart route before this version, as production has it.
   const EARLIER_CHART = `INSERT INTO bass_charts (id, device_id, chart, updated_at)
     VALUES (?, ?, ?, ?)`;
 
-  /** A database as production holds it: charts, and no settings table. */
   async function productionDatabase() {
     const actual =
       await vi.importActual<typeof import('@libsql/client')>('@libsql/client');
@@ -483,7 +470,6 @@ describe('chart settings migration', () => {
     songs: await tableRows('songs'),
   });
 
-  // The other tests keep their database.
   let shared: Client | null = null;
   beforeEach(async () => {
     shared = state.client;
@@ -512,7 +498,6 @@ describe('chart settings migration', () => {
       ['trigger', 'chart_settings_count_insert', 'chart_settings'],
       ['trigger', 'chart_settings_count_update', 'chart_settings'],
     ]);
-    // Each object that was there keeps its definition.
     expect(
       (await schema()).filter(
         (item) => !added.some((other) => other.name === item.name),
@@ -531,7 +516,6 @@ describe('chart settings migration', () => {
     await readAfter(0);
     expect({ schema: await schema(), rows: await rows() }).toEqual(before);
     expect(await otherTables()).toEqual(tables);
-    // The counter continues after the largest value.
     expect((await write([numbered(3)])).body).toEqual({
       ok: true,
       counters: [3],
@@ -568,7 +552,6 @@ describe('chart settings migration', () => {
 });
 
 describe('two devices through the settings route', () => {
-  /** The network of a browser, into the handler of this test. */
   function connect() {
     vi.stubGlobal('localStorage', { getItem: () => 'device' });
     const requests: { method: string; url: string; body: unknown }[] = [];
@@ -588,7 +571,6 @@ describe('two devices through the settings route', () => {
         return {
           ok: result.status === 200,
           status: result.status,
-          // The response crosses the network as text.
           json: async () => JSON.parse(JSON.stringify(result.body)),
         };
       },
@@ -618,7 +600,6 @@ describe('two devices through the settings route', () => {
     await sync(second);
     expect(await second.library.getSettings(record.chartId)).toEqual(record);
     expect(second.store.read().counter).toBe(1);
-    // One write with one settings record, and no chart.
     expect(requests.filter((item) => item.method === 'POST')).toEqual([
       {
         method: 'POST',
@@ -627,7 +608,6 @@ describe('two devices through the settings route', () => {
       },
     ]);
 
-    // With no change, a synchronization reads no record and writes none.
     requests.length = 0;
     await sync(first);
     await sync(second);
