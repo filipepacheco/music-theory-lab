@@ -17,33 +17,19 @@ import {
 import type { BassChart } from '@/domain/bassChart';
 import { getPreferredRootName } from '@/utils/noteHelpers';
 
-// Places the bar roots read by `bassAnalysis` in a key: suggests the key,
-// names each chord's degree and function, and finds cadences and common
-// progressions. The bass rarely proves a chord's quality, so a root on a
-// degree of the harmonic field keeps the field's quality unless a third,
-// fifth or seventh the bass played contradicts it; only then is the chord
-// read as a secondary dominant, SubV, diminished or borrowed chord.
-// Rules cite the music-theory reference (§n).
-
 export type KeyMode = 'major' | 'minor';
 
 export interface MusicalKey {
-  /** Pitch class of the tonic, 0–11. */
   tonic: number;
   mode: KeyMode;
 }
 
 export interface KeyEvidence {
-  /** Share of bars with a root whose root is the tonic. */
   tonicBars: number;
-  /** Share of sections whose first chord is on the tonic. */
   sectionStarts: number;
-  /** Share of sections whose last chord is on the tonic. */
   sectionEnds: number;
-  /** Chord changes from the fifth degree into the tonic, of any quality. */
   dominantArrivals: number;
   endsOnTonic: boolean;
-  /** Share of sounding notes inside the key's scale. */
   scaleFit: number;
 }
 
@@ -61,36 +47,20 @@ export type HarmonyKind =
   | 'chromatic';
 
 export interface SegmentHarmony {
-  /** Roman numeral, e.g. `ii`, `V7/vi`, `bVII`, `#i°`. */
   numeral: string;
   func: HarmonicFunction | null;
   kind: HarmonyKind;
-  /** pt-BR explanation, e.g. `Dominante secundária de vi`. */
   detail: string;
-  /**
-   * True when the bass played the third that the reading needs; false when
-   * the quality is the harmonic field's, assumed from the root alone.
-   */
   confirmed: boolean;
-  /** Intervals over the root that are avoid notes on this degree (§8). */
   avoid: number[];
-  /**
-   * The `CHORD_TYPES` chord this reading implies, e.g. `min7` for i in a
-   * minor key; null when nothing implies one (a chromatic root with no
-   * quality played).
-   */
   chordType: string | null;
 }
 
-/** One chord: a run of consecutive bars on the same root. */
 export interface HarmonicSegment {
   startBar: number;
-  /** Exclusive. */
   endBar: number;
   root: number;
-  /** Semitones from the tonic to the root. */
   fromTonic: number;
-  /** The evidence of every bar in the run, pooled. */
   evidence: ChordEvidence;
   harmony: SegmentHarmony;
 }
@@ -110,16 +80,13 @@ export interface HarmonicEvent {
   kind: HarmonicEventKind;
   label: string;
   startBar: number;
-  /** Exclusive. */
   endBar: number;
 }
 
 export interface HarmonyAnalysis {
   key: MusicalKey;
   segments: HarmonicSegment[];
-  /** Index into `segments` for each bar, or -1 for a bar without a root. */
   barSegments: number[];
-  /** Chart note indexes of prominent notes that are avoid notes (§8.6). */
   avoidNotes: Set<number>;
   events: HarmonicEvent[];
 }
@@ -129,11 +96,9 @@ const FIELDS: Record<KeyMode, DegreeTemplate[]> = {
   minor: MINOR_FIELD,
 };
 
-/** Below this share of the bars a root is not a credible tonic. */
 const MIN_TONIC_SHARE = 0.1;
 
 const MAJOR_SCALE = SCALE_PATTERNS.major.intervals;
-/** Natural minor plus the raised seventh its V7 borrows (§2.3). */
 const MINOR_SCALE = [...SCALE_PATTERNS.aeolian.intervals, 11];
 
 function mod12(n: number): number {
@@ -150,7 +115,6 @@ function rootedBars(bars: BarAnalysis[]): RootedBar[] {
   return bars.filter((bar): bar is RootedBar => bar.root !== null);
 }
 
-/** Consecutive root pairs where the root changes, in bar order. */
 function rootChanges(rooted: RootedBar[]): [number, number][] {
   const changes: [number, number][] = [];
   rooted.forEach((bar, i) => {
@@ -160,16 +124,6 @@ function rootChanges(rooted: RootedBar[]): [number, number][] {
   return changes;
 }
 
-/**
- * Keys ranked by where the bass rests, not just which notes it uses: a
- * scale collection fits its relative major and minor equally, so the tonic
- * is chosen by the share of bars on it, how sections start and end,
- * arrivals from the fifth degree and (at half weight, one chord being one
- * data point) the final chord; the notes' fit to the scale breaks ties. A
- * tonic under `MIN_TONIC_SHARE` of the bars ranks below every other: rarely
- * heard, it is evidence against itself. The mode follows the third the bass
- * plays over the tonic, else the scale.
- */
 export function suggestKeys(
   chart: BassChart,
   bars: BarAnalysis[],
@@ -254,10 +208,6 @@ export function suggestKeys(
     .slice(0, limit);
 }
 
-/**
- * Degree, function, cadences and progressions of the chart in `key`.
- * Chords are runs of bars on one root, split where a section starts.
- */
 export function analyzeHarmony(
   chart: BassChart,
   bars: BarAnalysis[],
@@ -266,7 +216,6 @@ export function analyzeHarmony(
   const sectionStarts = new Set(chart.sections.map((s) => s.startBar));
   const runs = buildRuns(bars, sectionStarts);
   const segments: HarmonicSegment[] = runs.map((run, i) => {
-    // Resolution and approach look past a split that kept the same root.
     const prev = runs
       .slice(0, i)
       .reverse()
@@ -352,7 +301,6 @@ function buildRuns(bars: BarAnalysis[], sectionStarts: Set<number>): Run[] {
   }));
 }
 
-/** True when a slot the bass played differs from the chord type's. */
 function contradicts(evidence: ChordEvidence, chordType: string): boolean {
   const expected = readEvidence(CHORD_TYPES[chordType].intervals);
   const clash = (played: string | null, wanted: string | null) =>
@@ -364,7 +312,6 @@ function contradicts(evidence: ChordEvidence, chordType: string): boolean {
   );
 }
 
-/** Nothing played rules out a dominant 7 chord. */
 function couldBeDominant(evidence: ChordEvidence): boolean {
   return !contradicts(evidence, 'dom7');
 }
@@ -373,16 +320,10 @@ function isDiminished(degree: DegreeTemplate): boolean {
   return degree.chordType === 'halfDim7' || degree.chordType === 'dim7';
 }
 
-/**
- * Avoid notes by degree, as intervals over the chord root: a tension a b9
- * above a chord tone (§8.2), per the major field (§8.3) and the minor
- * field's modes (§8.5). The 13 of ii7 is added only in a ii–V (§8.3 note).
- */
 const AVOID: Record<KeyMode, Record<number, number[]>> = {
   major: { 0: [5], 2: [], 4: [1, 8], 5: [], 7: [5], 9: [8], 11: [1] },
   minor: { 0: [8], 2: [1], 3: [5], 5: [], 7: [1, 8], 8: [], 10: [5] },
 };
-/** On a dominant chord only the natural 11 is avoided (§8.2, §8.4). */
 const DOMINANT_AVOID = [5];
 
 const FUNCTION_NAMES: Record<HarmonicFunction, string> = {
@@ -394,7 +335,6 @@ const FUNCTION_NAMES: Record<HarmonicFunction, string> = {
 interface Borrowing {
   fromTonic: number;
   numeral: (evidence: ChordEvidence) => string;
-  /** The chord as it stands in the field it is borrowed from (§2.2–2.3). */
   chordType: (evidence: ChordEvidence) => string;
   func: HarmonicFunction;
   source: string;
@@ -403,11 +343,6 @@ interface Borrowing {
 
 const notMinor = (e: ChordEvidence) => e.third !== 'minor';
 
-/**
- * Borrowed chords (§5.2): the parallel minor's chords in a major key, with
- * the functions they have in the minor field (§2.3); and the other way round
- * (§5.1), the parallel major's IV and I in a minor key.
- */
 const BORROWINGS: Record<KeyMode, Borrowing[]> = {
   major: [
     {
@@ -508,7 +443,6 @@ const SHARP_NUMERALS = [
   'VII',
 ];
 
-/** Numeral for a chromatic root, cased and marked by what the bass played. */
 function chromaticNumeral(
   fromTonic: number,
   spelling: 'flat' | 'sharp',
@@ -543,7 +477,6 @@ function classify(
   const target = nextFromTonic === null ? undefined : fieldAt(nextFromTonic);
   const intoNext = next ? mod12(next.root - run.root) : null;
 
-  // A minor key takes its V7 and vii°7 from the harmonic minor (§2.3–2.4).
   if (key.mode === 'minor') {
     if (
       fromTonic === 7 &&
@@ -590,8 +523,6 @@ function classify(
     };
   }
 
-  // Dominante secundária (§6.2): a dominant a fifth above a diatonic chord
-  // it resolves to; never of a diminished chord, and V/I is just V.
   if (
     intoNext === 5 &&
     target &&
@@ -611,7 +542,6 @@ function classify(
     };
   }
 
-  // SubV (§6.3): a dominant 7 resolving down a half step to its target.
   if (
     intoNext === 11 &&
     target &&
@@ -630,8 +560,6 @@ function classify(
     };
   }
 
-  // Diminuto de passagem ou auxiliar (§7.2): a diminished chord whose root
-  // moves by half steps between its neighbours.
   if (
     evidence.fifth === 'diminished' &&
     evidence.third !== 'major' &&
@@ -689,9 +617,6 @@ function classify(
   };
 }
 
-// ---------------------------------------------------------------- events
-
-/** Progressions from §13.1, as semitones from the tonic per chord. */
 const PROGRESSIONS: {
   name: string;
   numerals: string;
@@ -736,7 +661,6 @@ const PROGRESSIONS: {
   },
 ];
 
-/** 12-bar blues (§13.1), with the quick change to IV in bar 2 allowed. */
 const BLUES_BARS = [
   [0],
   [0, 5],
@@ -752,7 +676,6 @@ const BLUES_BARS = [
   [0, 7],
 ];
 
-/** A chain link: a chord change, with section splits of one root merged. */
 interface Link {
   segment: HarmonicSegment;
   startBar: number;
@@ -782,10 +705,6 @@ function findEvents(
 
   const events: HarmonicEvent[] = [];
   const numeral = (link: Link) => link.segment.harmony.numeral;
-  // A dominant needs its major third, the leading tone (§3.2). The major
-  // field's V has it, so an unplayed third is assumed major; the natural
-  // minor field's v does not (§2.3 note), so in a minor key only a major
-  // third the bass actually played makes it V.
   const majorDominant = (link: Link) => {
     const { third, fifth } = link.segment.evidence;
     if (fifth === 'diminished') return false;
@@ -796,8 +715,6 @@ function findEvents(
   chain.forEach((a, i) => {
     const b = chain[i + 1];
     const c = chain[i + 2];
-    // ii–V–I (§4.2), or a ii–V into another degree when its V is a proven
-    // secondary dominant (§6.2 rule 4).
     if (
       b &&
       c &&
@@ -830,7 +747,6 @@ function findEvents(
     const pair = { startBar: a.startBar, endBar: b.endBar };
     const arrow = `${numeral(a)}→${numeral(b)}`;
     if (from === 7 && to === 0 && !resolvedByTwoFive.has(i)) {
-      // Without the leading tone v→i is a modal cadence, not an authentic one.
       events.push(
         majorDominant(a)
           ? {
@@ -866,7 +782,6 @@ function findEvents(
       to === 7 &&
       majorDominant(b)
     ) {
-      // Both resolve to a major V (§4.1, §15.2); b6 → v is only a step.
       events.push({
         kind: 'phrygianBass',
         label: 'Baixo b6→5: cadência frígia (iv6→V) ou sexta aumentada',
@@ -875,7 +790,6 @@ function findEvents(
     }
   });
 
-  // Semicadência: a section's last chord is V and the next one is not I.
   chain.forEach((link, i) => {
     const next = chain[i + 1];
     const endsSection =
@@ -950,8 +864,6 @@ function findEvents(
     bar += choruses * BLUES_BARS.length;
   }
 
-  // Inside a named progression its V→I, v→i, IV→I and V→vi are the
-  // progression itself, not cadences worth listing on every repeat.
   const patterns = events.filter(
     (e) => e.kind === 'progression' || e.kind === 'blues',
   );
@@ -968,9 +880,6 @@ function findEvents(
     .sort((a, b) => a.startBar - b.startBar);
 }
 
-// ---------------------------------------------------------------- labels
-
-/** e.g. `Bb maior`, `F# menor`. */
 export function keyLabel(key: MusicalKey): string {
   return `${getPreferredRootName(key.tonic)} ${key.mode === 'major' ? 'maior' : 'menor'}`;
 }
@@ -979,7 +888,6 @@ function percent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-/** pt-BR reasons a key was suggested, strongest first. */
 export function describeKeyEvidence(suggestion: KeySuggestion): string {
   const { evidence } = suggestion;
   const tonic = getPreferredRootName(suggestion.tonic);
@@ -996,10 +904,6 @@ export function describeKeyEvidence(suggestion: KeySuggestion): string {
     .join(' · ');
 }
 
-/**
- * The shortest cycle `items` repeats exactly, e.g. I V vi IV I V vi IV →
- * (I V vi IV) ×2; the items themselves once when they do not repeat.
- */
 export function repeatingCycle<T>(
   items: T[],
   same: (a: T, b: T) => boolean,
@@ -1013,10 +917,6 @@ export function repeatingCycle<T>(
   return { cycle: items, repeats: 1 };
 }
 
-/**
- * Note names for a key: flats for F, Bb, Eb, Ab, Db and Gb major and their
- * relative minors (so D minor has Bb, not A#), sharps otherwise.
- */
 export function keyNoteNames(key: MusicalKey): readonly string[] {
   const relativeMajor = key.mode === 'major' ? key.tonic : mod12(key.tonic + 3);
   return FLAT_KEYS.has(getPreferredRootName(relativeMajor))
@@ -1026,12 +926,10 @@ export function keyNoteNames(key: MusicalKey): readonly string[] {
 
 export interface FieldChord {
   numeral: string;
-  /** e.g. `Dm7`, `Bbmaj7`. */
   name: string;
   func: HarmonicFunction;
 }
 
-/** The key's harmonic field (§2.2–2.3) as numerals and chord names. */
 export function fieldChords(key: MusicalKey): FieldChord[] {
   const names = keyNoteNames(key);
   return FIELDS[key.mode].map((degree) => ({
@@ -1042,12 +940,9 @@ export function fieldChords(key: MusicalKey): FieldChord[] {
 }
 
 export interface ChordTone {
-  /** Semitones above the bar's root. */
   interval: number;
   category: Exclude<DegreeCategory, 'ornament'>;
-  /** e.g. `R`, `b3`, `5`, `b7`, `9`. */
   label: string;
-  /** The bass played it in this bar; false when the key's reading implies it. */
   played: boolean;
 }
 
@@ -1057,11 +952,6 @@ const SLOT_INTERVALS = {
   seventh: { diminished: [9], minor: [10], major: [11], both: [10, 11] },
 } as const;
 
-/**
- * The bar's chord tones for the fretboard: the root, then for the third,
- * fifth and seventh what the bass played in this bar or, failing that, what
- * the chord's reading in the key implies; then the tensions it played.
- */
 export function barChordTones(
   bar: BarAnalysis,
   segment: HarmonicSegment | null,

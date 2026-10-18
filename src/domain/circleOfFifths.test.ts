@@ -21,7 +21,6 @@ describe('circle of fifths', () => {
   });
 
   it('puts minor chords under their relative major', () => {
-    // Dm sits under F; Am under C.
     expect(chordCell(2, true)).toEqual({ ring: 'minor', position: 11 });
     expect(MINOR_RING[chordCell(9, true).position]).toBe('Am');
     expect(chordCell(10, false)).toEqual({ ring: 'major', position: 10 });
@@ -44,9 +43,9 @@ describe('circle of fifths', () => {
   });
 
   it('counts root motion in steps, a fourth up being one step back', () => {
-    expect(circleSteps(7, 0)).toBe(-1); // G → C: V→I
-    expect(circleSteps(0, 7)).toBe(1); // C → G
-    expect(circleSteps(0, 6)).toBe(6); // a tritone is half the circle
+    expect(circleSteps(7, 0)).toBe(-1);
+    expect(circleSteps(0, 7)).toBe(1);
+    expect(circleSteps(0, 6)).toBe(6);
   });
 
   it('describes root moves for a beginner', () => {

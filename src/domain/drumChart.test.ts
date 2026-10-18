@@ -60,7 +60,6 @@ describe('drum piece map', () => {
         mapped.add(number);
       }
     }
-    // All other numbers are the piece "outros".
     for (let number = 0; number <= 127; number += 1) {
       if (mapped.has(number)) continue;
       expect([number, drumSoundOf(number)]).toEqual([
@@ -172,8 +171,6 @@ describe('drum chart checks', () => {
   });
 
   it('a check that knows only bass charts refuses a drum chart', () => {
-    // The bass check is the check of an earlier client: it knows no part
-    // field, so the earlier client skips the record.
     expect(parseBassChart(drums)).toBeNull();
   });
 
@@ -232,7 +229,6 @@ describe('midiToDrumChart', () => {
     endTick: startTick + 60,
     bent: false,
   });
-  /** Two 4/4 bars; the second bar is at half the tempo, with a marker. */
   const file: MidiFile = {
     ticksPerQuarter: QUARTER,
     tempos: [
@@ -288,7 +284,6 @@ describe('midiToDrumChart', () => {
         midi: 42,
       },
       {
-        // A 32nd note.
         time: 0.0625,
         bar: 0,
         beatInBar: 0.125,
@@ -299,7 +294,6 @@ describe('midiToDrumChart', () => {
         midi: 42,
       },
       {
-        // A sextuplet.
         time: expect.closeTo(0.5 / 6, 6),
         bar: 0,
         beatInBar: 8 / 48,

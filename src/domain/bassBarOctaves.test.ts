@@ -14,7 +14,6 @@ import {
 } from '@/domain/chartSettings';
 import { STANDARD_OPEN_MIDI, type BassChart } from '@/domain/bassChart';
 
-// A1 riff, the same riff, then a riff on the open E string.
 const chart = {
   ...fixtureChart(
     3,

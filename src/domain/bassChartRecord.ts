@@ -11,11 +11,9 @@ import {
   type DrumChart,
 } from './drumChart.js';
 
-/** A null chart is a durable deletion, so offline devices cannot resurrect it. */
 export interface BassChartRecord {
   id: string;
   updatedAt: string;
-  /** A bass chart or a drum chart: the two use one table and one route. */
   chart: Chart | null;
 }
 
@@ -57,7 +55,6 @@ function timestamp(value: unknown): value is string {
   );
 }
 
-/** The fields that a bass chart and a drum chart share. */
 const SHARED_FIELDS = [
   'schemaVersion',
   'id',
@@ -74,11 +71,6 @@ const SHARED_FIELDS = [
   'sections',
 ];
 
-/**
- * The checks of the id, the metadata, the bars, and the sections, which are
- * the same for the two chart types. `own` names the other fields that the
- * chart type allows.
- */
 function validSharedFields(
   value: Record<string, unknown>,
   own: string[],
@@ -143,10 +135,6 @@ function validSharedFields(
   );
 }
 
-/**
- * Validate an external bass chart before it reaches analysis or playback. A
- * bass chart has no part field, so a drum chart fails here.
- */
 export function parseBassChart(value: unknown): BassChart | null {
   if (!object(value)) return null;
   if (!validSharedFields(value, ['tuning', 'notes', 'originalFingering']))
@@ -236,10 +224,6 @@ const pieces = new Set<unknown>(DRUM_CHART_PIECES);
 const articulations = new Set<unknown>(DRUM_ARTICULATIONS);
 const dynamics = new Set<unknown>(DRUM_DYNAMICS);
 
-/**
- * Validate an external drum chart. The piece of a hit is not compared with
- * its MIDI number: a chart from an earlier map of drum pieces stays valid.
- */
 export function parseDrumChart(value: unknown): DrumChart | null {
   if (!object(value) || value.part !== 'drums') return null;
   if (!validSharedFields(value, ['part', 'hits'])) return null;
@@ -281,10 +265,6 @@ export function parseDrumChart(value: unknown): DrumChart | null {
   return value as unknown as DrumChart;
 }
 
-/**
- * Validate a chart of the one or the other type. A chart with a part field
- * is a drum chart; a bass chart has none, so stored bass charts stay valid.
- */
 export function parseChart(value: unknown): Chart | null {
   return object(value) && 'part' in value
     ? parseDrumChart(value)

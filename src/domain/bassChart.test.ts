@@ -39,10 +39,6 @@ function note(partial: Partial<SngNote> & { time: number }): SngNote {
   };
 }
 
-/**
- * Bars of `beatsPerBar` beats at 120 bpm starting at t=0: two 4/4 bars of
- * count-in, two 7/4 bars of riff, then a lone closing beat.
- */
 function arrangement(overrides: Partial<SngArrangement> = {}): SngArrangement {
   const beatsPerBar = [4, 4, 7, 7, 1];
   const beats: SngArrangement['beats'] = [];
@@ -78,7 +74,6 @@ function arrangement(overrides: Partial<SngArrangement> = {}): SngArrangement {
         difficulty: 2,
         notes: [
           note({ time: riffStart, phraseIterationId: 1, sustain: 0.1 }),
-          // A swung offbeat: two thirds of the way through beat 2.
           note({
             time: riffStart + (1 + 2 / 3) * BEAT,
             phraseIterationId: 1,
@@ -180,7 +175,6 @@ describe('buildBassChart', () => {
 
   it('holds a note until the next onset, capped at max(sustain, one beat)', () => {
     const [first, swung, chordLow, chordHigh, last] = built.notes;
-    // 0.83 s to the next onset, but an unsustained note stops after a beat.
     expect(first.endTime).toBeCloseTo(first.time + BEAT);
     expect(swung.endTime).toBeCloseTo(swung.time + BEAT);
     expect(chordLow.endTime).toBeCloseTo(chordLow.time + BEAT);
@@ -216,7 +210,6 @@ describe('queries', () => {
     expect(activeNoteIndexes(built, times, 3.9)).toEqual([]);
     expect(activeNoteIndexes(built, times, 4.2)).toEqual([0]);
     expect(activeNoteIndexes(built, times, 7.6)).toEqual([2, 3]);
-    // Past the cap, before the next onset: silence.
     expect(activeNoteIndexes(built, times, 8.2)).toEqual([]);
   });
 
@@ -253,8 +246,6 @@ describe('queries', () => {
       5, 5, 5, 1,
     ]);
 
-    // Lines stay on the same bar numbers around a rest, which is never
-    // split, and a line the rest fills on its own disappears.
     const rest = { kind: 'rest' as const, startBar: 12, count: 6 };
     const withRest = {
       ...block,
@@ -281,14 +272,12 @@ describe('queries', () => {
       (l.barsPerLine - 1) * l.gap;
 
     it('shares the full width of the line between its bars', () => {
-      // 1000 - 3 gaps - 4 × 16 of chrome = 924 over 16 beats.
       expect(lineBeatWidth(line)).toBe(57.75);
       expect(lineUsed(line)).toBe(1000);
     });
 
     it('gives narrower beats to a longer line length', () => {
       const five = { ...line, barsPerLine: 5 };
-      // 904 / 20 = 45.2, rounded down to 1/64 px.
       expect(lineBeatWidth(five)).toBe(45.1875);
       expect(lineUsed(five)).toBeLessThanOrEqual(1000);
       expect(lineUsed(five)).toBeGreaterThan(999);
@@ -312,13 +301,11 @@ describe('queries', () => {
 
     it('narrows the beats to keep the line length', () => {
       const tight = { ...line, lineWidth: 600 };
-      // 600 - 12 - 64 = 524 over 16 beats, under the base 34.
       expect(lineBeatWidth(tight)).toBe(32.75);
       expect(lineUsed(tight)).toBe(600);
     });
 
     it('has no lower limit for a dense section: the line length holds', () => {
-      // 375 px, 8 bars of 4 beats: (375 - 28 - 128) / 32 beats = 6.84 px.
       const dense = { ...line, lineWidth: 375, barsPerLine: 8 };
       expect(lineBeatWidth(dense)).toBe(6.84375);
       expect(lineBeatWidth(dense)).toBeLessThan(34 * 0.8);
@@ -343,7 +330,6 @@ describe('queries', () => {
     });
 
     it('keeps the nearest pair of one lane clear of touching', () => {
-      // Two digits (12 px) + 4 px gap over a third of a beat.
       const needed = neededBeatWidth(
         [
           lane([
@@ -355,7 +341,6 @@ describe('queries', () => {
         4,
       );
       expect(needed).toBeCloseTo(48);
-      // The first label ends before the next one starts.
       expect(1 * 6 <= (1 / 3) * needed).toBe(true);
       expect(2 * 6 + 4 <= (1 / 3) * needed + 1e-9).toBe(true);
     });
@@ -411,7 +396,6 @@ describe('queries', () => {
       charWidth: CHAR,
       labels: labels.map(([beat, chars]) => ({ beat, chars })),
     });
-    /** Pairs of labels on one level whose boxes overlap. */
     const overlaps = (l: LabelLane, beatWidth: number): number => {
       const places = degreeLanePlaces(l, beatWidth, GAP, BASE * 3);
       let count = 0;
@@ -427,7 +411,6 @@ describe('queries', () => {
     };
 
     it('keeps a label with enough space on the first level, at its note', () => {
-      // Two characters (12 px) and the 4 px gap fit in half a beat of 34 px.
       const places = degreeLanePlaces(
         lane([
           [0, 1],
@@ -447,7 +430,6 @@ describe('queries', () => {
     });
 
     it('moves a label that touches the label before it to the second level', () => {
-      // Sixteenths at 34 px a beat are 8.5 px apart: a 12 px label touches.
       const places = degreeLanePlaces(
         lane([
           [0, 2],
@@ -460,13 +442,11 @@ describe('queries', () => {
         GAP,
       );
       expect(places.map((p) => p.level)).toEqual([0, 1, 0, 1, 0]);
-      // A second level is enough: no label moves.
       expect(places.map((p) => p.shift)).toEqual([0, 0, 0, 0, 0]);
       expect(places.map((p) => p.x)).toEqual([0, 8.5, 17, 25.5, 68]);
     });
 
     it('counts a label under the gap away as touching', () => {
-      // A 12 px label then 3 px of space: closer than the 4 px gap.
       const near = lane([
         [0, 2],
         [15 / BASE, 1],
@@ -480,8 +460,6 @@ describe('queries', () => {
     });
 
     it('moves a label right by the missing distance at the largest width', () => {
-      // Three characters (18 px + 4 px) at twelfths of a 102 px beat: the
-      // third label is 17 px after the first, 5 px short of the 22 it needs.
       const places = degreeLanePlaces(
         lane([
           [0, 3],
@@ -499,11 +477,9 @@ describe('queries', () => {
       expect(places[2].level).toBe(0);
       expect(places[2].shift).toBeCloseTo(5);
       expect(places[2].x).toBeCloseTo(22);
-      // The move carries on: the fourth label clears the second by 22 px.
       expect(places[3].level).toBe(1);
       expect(places[3].x).toBeCloseTo(30.5);
       expect(places[3].shift).toBeCloseTo(5);
-      // A label with space is back at its note.
       expect(places[4]).toEqual({ level: 0, x: 204, shift: 0 });
     });
 
@@ -518,8 +494,6 @@ describe('queries', () => {
         GAP,
         BASE * 3,
       );
-      // Level 1 is free again at 34 px, level 2 at 20.2 px; the note is at
-      // 15.3 px.
       expect(places[2].level).toBe(1);
       expect(places[2].x).toBeCloseTo(20.2);
     });
@@ -540,7 +514,6 @@ describe('queries', () => {
     });
 
     it('keeps every label inside its bar at a set line length', () => {
-      // 16 sixteenths of 3 characters over a 4-beat bar at 5.8 px a beat.
       const dense = lane(
         Array.from({ length: 16 }, (_, i) => [i / 4, 1 + (i % 3)]),
       );
@@ -561,7 +534,6 @@ describe('queries', () => {
       const thirtySeconds = lane(
         Array.from({ length: 32 }, (_, i) => [i / 8, 1 + (i % 3)]),
       );
-      // The finest grid of a chart: twelfths of a beat, with double stops.
       const twelfths = lane(
         Array.from({ length: 48 }, (_, i) => [i / 12, 1 + ((i * 7) % 5)]),
       );
@@ -579,8 +551,6 @@ describe('queries', () => {
             gap: 4,
             baseBeatWidth: BASE,
           };
-          // The widths where labels never touch: the automatic layout, and a
-          // line length with room to spare (a tighter one may touch).
           const widths = [
             sectionBeatWidth(BASE, needed),
             lineBeatWidth({ ...line, lineWidth: 1600, barsPerLine: 1 }),
@@ -591,7 +561,6 @@ describe('queries', () => {
 
       it('uses one level, with no move, when the width is not capped', () => {
         const needed = neededBeatWidth([sixteenths], GAP);
-        // Three characters and the gap over a quarter beat: 88 px, under 102.
         expect(needed).toBe(88);
         const places = degreeLanePlaces(
           sixteenths,
@@ -608,7 +577,6 @@ describe('queries', () => {
         expect(width).toBe(BASE * 3);
         const places = degreeLanePlaces(thirtySeconds, width, GAP);
         expect(new Set(places.map((p) => p.level))).toEqual(new Set([0, 1]));
-        // Two levels are enough for thirty-seconds: no label moves.
         expect(places.every((p) => p.shift === 0)).toBe(true);
       });
 
@@ -622,8 +590,6 @@ describe('queries', () => {
   });
 
   it('finds bars that repeat the one above them', () => {
-    // Bars 0-3, then the same four bars again, except that bar 6 gains a
-    // dead note where bar 2 is empty and bar 7 moves its last note.
     const line = (offset: number): NoteSpec[] => [
       { bar: offset, beat: 0, string: 1, fret: 5 },
       { bar: offset, beat: 2, string: 1, fret: 5 },
@@ -641,7 +607,6 @@ describe('queries', () => {
       [4, 0],
       [5, 1],
     ]);
-    // Drawn two to a line, nothing sits under an identical bar.
     expect(barsRepeatingAbove(built, block, 2).size).toBe(0);
   });
 

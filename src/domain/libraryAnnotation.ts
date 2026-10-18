@@ -1,11 +1,8 @@
 export interface LibraryAnnotationSection {
   id: string;
   name: string;
-  /** Inclusive, zero-based index of the first bar. */
   startBar: number;
-  /** Exclusive, zero-based index after the final bar. */
   endBar: number;
-  /** Provenance of the boundary that starts this section. */
   origin: 'automatic' | 'fallback' | 'manual';
 }
 
@@ -156,7 +153,6 @@ export function migrateLibraryAnnotation(
     : createLibraryAnnotation(sourceSha256, barCount, []);
 }
 
-/** Strict parser for untrusted cloud data; unlike migration, never repairs it. */
 export function parseLibraryAnnotation(
   raw: unknown,
 ): LibraryAnnotationDocument | null {

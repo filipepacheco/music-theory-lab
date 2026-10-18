@@ -5,11 +5,6 @@ export interface ScaleHighlights {
   kinds: ScaleHighlightKind[];
 }
 
-/**
- * Classify the union of two scale note collections: notes in both are
- * 'shared', the rest belong to 'a' or 'b'. With no comparison scale every
- * note belongs to 'a'.
- */
 export function classifyScaleNotes(
   notesA: number[],
   notesB: number[] | null,

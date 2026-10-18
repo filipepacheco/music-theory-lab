@@ -2,16 +2,6 @@ import { CHORD_TYPES } from '@/constants/chords';
 import { NOTE_NAMES } from '@/constants/notes';
 import type { BassChart, BassChartNote } from '@/domain/bassChart';
 
-// Reads the harmony a bass line implies, bar by bar. Everything here comes
-// from the bass notes alone, so it states only what the bass shows: the root
-// is the note heard on the downbeat, and a chord quality is named only when
-// the notes actually played leave a single reading in the chord vocabulary.
-// Theory rules follow the project's music-theory reference; `§n` cites it.
-
-/**
- * How a note behaves in the line (§12.1–12.2). Only `chordTone` notes count
- * as evidence of the bar's harmony; the ornaments pass through it.
- */
 export type NoteRole =
   | 'chordTone'
   | 'passing'
@@ -20,7 +10,6 @@ export type NoteRole =
   | 'anticipation'
   | 'dead';
 
-/** What a note is to the bar's root once the bar's quality is read. */
 export type DegreeCategory =
   | 'root'
   | 'third'
@@ -38,48 +27,34 @@ export const DEGREE_CATEGORIES: DegreeCategory[] = [
   'ornament',
 ];
 
-/**
- * Where the bar's root came from: a note on the downbeat, a note from the
- * previous bar still sounding across the bar line (a tie or a pushed
- * anticipation), or — with neither — the bar's strongest-placed note.
- */
 export type RootSource = 'downbeat' | 'tied' | 'estimated';
 
 export interface AnalyzedNote {
-  /** Position in `chart.notes`. */
   index: number;
-  /** Sounding pitch, or null for a dead note. */
   midi: number | null;
-  /** Semitones above the bar's root, 0–11; null without a pitch or root. */
   interval: number | null;
   role: NoteRole;
   category: DegreeCategory | null;
 }
 
 export interface ChordEvidence {
-  /** Distinct intervals above the root heard as harmony, ascending. */
   intervals: number[];
   third: 'minor' | 'major' | 'both' | null;
   fifth: 'diminished' | 'perfect' | 'augmented' | null;
   seventh: 'diminished' | 'minor' | 'major' | 'both' | null;
-  /** A `CHORD_TYPES` key, only when the notes played allow one reading. */
   chordType: string | null;
 }
 
 export interface MelodicMotion {
-  /** Same pitch as the previous note. */
   repeats: number;
-  /** One or two semitones: grau conjunto (§12.1). */
   steps: number;
   leaps: number;
 }
 
 export interface BarAnalysis {
   bar: number;
-  /** Pitch class, 0–11. */
   root: number | null;
   rootSource: RootSource | null;
-  /** The bar's notes, in chart order. */
   notes: AnalyzedNote[];
   evidence: ChordEvidence;
   counts: Record<DegreeCategory, number>;
@@ -91,11 +66,6 @@ export interface AnalysisSummary {
   motion: MelodicMotion;
 }
 
-/**
- * Semitones above the open string that a natural harmonic sounds, by the
- * fret it is played over: the node splits the string into 1/2, 1/3, 1/4, 1/5
- * or 1/6, sounding that partial. The chart's `midi` is the fretted pitch.
- */
 const HARMONIC_SEMITONES: Record<number, number> = {
   3: 31,
   4: 28,
@@ -108,7 +78,6 @@ const HARMONIC_SEMITONES: Record<number, number> = {
   24: 24,
 };
 
-/** The pitch a note sounds, or null for a dead (muted) note. */
 export function soundingMidi(note: BassChartNote): number | null {
   if (note.techniques.includes('mute')) return null;
   if (note.techniques.includes('harmonic')) {
@@ -118,7 +87,6 @@ export function soundingMidi(note: BassChartNote): number | null {
   return note.midi;
 }
 
-/** One onset of the bass line: its lowest sounding note. */
 interface LineNote {
   index: number;
   note: BassChartNote;
@@ -126,10 +94,6 @@ interface LineNote {
   level: MetricLevel;
 }
 
-/**
- * 0 = downbeat, 1 = the other strong beat (beat 3 of 4/4), 2 = a weak beat,
- * 3 = off the beat. Chord tones sit on 0–1, ornaments on 2–3 (§12.1).
- */
 type MetricLevel = 0 | 1 | 2 | 3;
 
 function metricLevel(beatInBar: number, beatCount: number): MetricLevel {
@@ -160,8 +124,6 @@ export function analyzeBassChart(chart: BassChart): BarAnalysis[] {
   line.forEach((entry) => lineByBar[entry.note.bar]?.push(entry));
 
   const linePosition = new Map(line.map((entry, i) => [entry.index, i]));
-  // Line notes are in time order, so bars are too: the note before a bar's
-  // first line note is the last one sounding into it.
   let firstInBar = 0;
   const roots = chart.bars.map((_, bar) => {
     while (firstInBar < line.length && line[firstInBar].note.bar < bar) {
@@ -179,7 +141,6 @@ export function analyzeBassChart(chart: BassChart): BarAnalysis[] {
   const roles: NoteRole[] = chart.notes.map((_, index) => {
     if (sounding[index] === null) return 'dead';
     const position = linePosition.get(index);
-    // The upper note of a double stop sounds with the line: harmony.
     if (position === undefined) return 'chordTone';
     return lineRole(chart, line, position, roots, beatSeconds);
   });
@@ -221,7 +182,6 @@ export function analyzeBassChart(chart: BassChart): BarAnalysis[] {
   });
 }
 
-/** The lowest sounding note at each onset, in time order. */
 function bassLine(chart: BassChart, sounding: (number | null)[]): LineNote[] {
   const line: LineNote[] = [];
   chart.notes.forEach((note, index) => {
@@ -261,8 +221,6 @@ function inferRoot(
   if (first?.level === 0) {
     return { root: pitchClass(first.midi), source: 'downbeat' };
   }
-  // The last line note before this bar, if it is still ringing a quarter
-  // beat past the bar line, is the bass the bar starts on.
   const barStart = chart.bars[bar].startTime;
   if (
     before &&
@@ -277,11 +235,6 @@ function inferRoot(
   return { root: pitchClass(strongest.midi), source: 'estimated' };
 }
 
-/**
- * The role of the line note at `position`. A note on a strong beat, or held
- * for two beats or more, is structural; weak-beat notes are ornaments when
- * their neighbours make them one (§12.2), otherwise arpeggiated chord tones.
- */
 function lineRole(
   chart: BassChart,
   line: LineNote[],
@@ -294,7 +247,6 @@ function lineRole(
   const beat = beatSeconds[note.bar];
   if (current.level <= 1 || note.sustain >= 2 * beat) return 'chordTone';
 
-  // Neighbours more than two beats away are across a rest, not a line.
   const prevEntry = line[position - 1];
   const nextEntry = line[position + 1];
   const prev =
@@ -302,7 +254,6 @@ function lineRole(
   const next =
     nextEntry && nextEntry.note.time - note.time <= 2 * beat ? nextEntry : null;
 
-  // Antecipação: the next bar's root, played in the last half beat.
   const ownRoot = roots[note.bar].root;
   const nextRoot = roots[note.bar + 1]?.root ?? null;
   const beatCount = chart.bars[note.bar].beatCount;
@@ -315,12 +266,8 @@ function lineRole(
   ) {
     return 'anticipation';
   }
-  // The bar's own root is a chord tone wherever it falls, even when it also
-  // leads by step into the next bar (B♭ on beat 4 of a B♭ bar before A).
   if (pc === ownRoot) return 'chordTone';
 
-  // Aproximação cromática (§12.3): a half step into the next downbeat, or
-  // from off the beat into a note on the beat.
   if (next && Math.abs(next.midi - current.midi) === 1) {
     const intoDownbeat =
       next.note.bar === note.bar + 1 && next.note.beatInBar === 0;
@@ -341,13 +288,6 @@ function lineRole(
   return 'chordTone';
 }
 
-/**
- * Chord slots from the intervals heard as harmony. A tritone is the fifth
- * only over a minor third (b5 of a diminished chord), a minor sixth only over
- * a major third (#5), a major sixth only over a diminished triad (bb7);
- * otherwise they are tensions (#11, b13, 13). Also pools the evidence of a
- * chord held over several bars.
- */
 export function readEvidence(harmonic: number[]): ChordEvidence {
   const intervals = [...new Set(harmonic)].sort((a, b) => a - b);
   const has = (interval: number) => intervals.includes(interval);
@@ -389,12 +329,6 @@ export function readEvidence(harmonic: number[]): ChordEvidence {
   };
 }
 
-/**
- * The single `CHORD_TYPES` entry the slots allow, or null. A missing slot is
- * unknown, not absent: a major third alone could be major or augmented, so
- * it names nothing. A major third with a minor seventh is the dominant's
- * tritone (§3.2) and names a 7 chord even without the fifth.
- */
 function chordTypeOf(
   third: ChordEvidence['third'],
   fifth: ChordEvidence['fifth'],
@@ -473,7 +407,6 @@ function countCategories(
   return counts;
 }
 
-/** Motion into each line note of the bar from the note before it. */
 function barMotion(
   line: LineNote[],
   own: LineNote[],
@@ -492,7 +425,6 @@ function barMotion(
   return motion;
 }
 
-/** Totals over bars `startBar` (inclusive) to `endBar` (exclusive). */
 export function summarizeBars(
   bars: BarAnalysis[],
   startBar: number,
@@ -510,8 +442,6 @@ export function summarizeBars(
   }
   return { counts, motion };
 }
-
-// ---------------------------------------------------------------- labels
 
 const PLAIN_DEGREES = [
   'R',
@@ -537,14 +467,12 @@ const TENSION_DEGREES: Record<number, string> = {
   9: '13',
 };
 
-/** Degree of a note over the bar's root, e.g. `b3`, `5`, `#11`, `bb7`. */
 export function degreeLabel(note: AnalyzedNote): string {
   return note.interval === null
     ? ''
     : intervalDegreeLabel(note.interval, note.category);
 }
 
-/** Degree label for `interval` semitones over a root heard as `category`. */
 export function intervalDegreeLabel(
   interval: number,
   category: DegreeCategory | null,
@@ -559,11 +487,6 @@ export function intervalDegreeLabel(
   return PLAIN_DEGREES[interval];
 }
 
-/**
- * Chord symbol for a bar or a run of bars, e.g. `G7`, `Bm7(b5)`; the root
- * name alone when the bass does not settle the quality, or null without a
- * root. Spelled with `noteNames`, sharps unless the key calls for flats.
- */
 export function barChordSymbol(
   bar: Pick<BarAnalysis, 'root' | 'evidence'>,
   noteNames: readonly string[] = NOTE_NAMES,
@@ -592,7 +515,6 @@ const SEVENTH_TEXT = {
   both: '7ª menor e maior',
 } as const;
 
-/** pt-BR summary of what the bass played, e.g. `3ª menor · 5ª justa · sem 7ª`. */
 export function describeEvidence(evidence: ChordEvidence): string {
   return [
     evidence.third ? THIRD_TEXT[evidence.third] : 'sem 3ª',

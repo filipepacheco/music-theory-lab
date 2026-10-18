@@ -22,7 +22,6 @@ function note(partial: Partial<MidiNote> & { pitch: number }): MidiNote {
   };
 }
 
-/** 120 bpm in 4/4 unless overridden: a quarter note lasts half a second. */
 function midi(overrides: Partial<MidiFile> = {}): MidiFile {
   return {
     ticksPerQuarter: QUARTER,
@@ -83,8 +82,6 @@ describe('suggestFingering', () => {
   });
 
   it('stays in position instead of jumping to the lowest fret and back', () => {
-    // C#3 E2 C#3: the E is under the hand at the 7th fret of the A string,
-    // though the D string plays it at the 2nd.
     expect(positions([49, 40, 49])).toEqual([
       [3, 6],
       [1, 7],
@@ -223,11 +220,9 @@ describe('midiToArrangement', () => {
         0,
       );
     expect(tuningFor(28).metadata.tuning).toEqual([0, 0, 0, 0]);
-    // Drop D: only the fourth string moves.
     const dropD = tuningFor(26);
     expect(dropD.metadata.tuning).toEqual([-2, 0, 0, 0]);
     expect(dropD.levels[0].notes[0]).toMatchObject({ string: 0, fret: 0 });
-    // A five-string's low B: every string a fourth down.
     expect(tuningFor(23).metadata.tuning).toEqual([-5, -5, -5, -5]);
   });
 });

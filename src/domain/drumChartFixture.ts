@@ -6,23 +6,16 @@ import {
   type DrumHit,
 } from '@/domain/drumChart';
 
-// Hand-built drum charts for the tests.
-
 const BEAT = 0.5;
 
 export interface HitSpec {
   bar: number;
   beat: number;
-  /** General MIDI percussion number. */
   midi: number;
   dynamic?: DrumDynamic;
   intensity?: number;
 }
 
-/**
- * A drum chart of `barCount` 4/4 bars at 120 bpm starting at t=0, one section
- * over every bar unless `sections` says otherwise.
- */
 export function fixtureDrumChart(
   barCount: number,
   specs: HitSpec[],
