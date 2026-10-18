@@ -14,26 +14,26 @@ export default function QuizOptions({
   onSelect,
 }: QuizOptionsProps) {
   return (
-    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Opções de resposta">
+    <div
+      className="grid grid-cols-2 gap-2"
+      role="group"
+      aria-label="Opções de resposta"
+    >
       {options.map((option) => {
         const isRight = showingResult && option === correctAnswer;
-        const isWrong =
-          showingResult && option === selectedAnswer && !isRight;
+        const isWrong = showingResult && option === selectedAnswer && !isRight;
 
-        // A choice of one, as Lighthouse draws it: ( ) before the answer,
-        // then a check mark or a cross. The mark carries the result, not
-        // the colour alone.
         let style =
-          "border-border-default bg-bg-card hover:border-border-strong hover:bg-bg-tertiary";
-        let mark = "( )";
+          'border-border-default bg-bg-card hover:border-border-strong hover:bg-bg-tertiary';
+        let mark = '( )';
         if (isRight) {
-          style = "border-success text-success";
-          mark = "(\u2713)";
+          style = 'border-success text-success';
+          mark = '(\u2713)';
         } else if (isWrong) {
-          style = "border-danger text-danger";
-          mark = "(x)";
+          style = 'border-danger text-danger';
+          mark = '(x)';
         } else if (showingResult) {
-          style = "border-border-default bg-bg-card opacity-50";
+          style = 'border-border-default bg-bg-card opacity-50';
         }
 
         return (
@@ -46,7 +46,7 @@ export default function QuizOptions({
           >
             <span
               aria-hidden="true"
-              className={isRight || isWrong ? "" : "text-text-muted"}
+              className={isRight || isWrong ? '' : 'text-text-muted'}
             >
               {mark}
             </span>

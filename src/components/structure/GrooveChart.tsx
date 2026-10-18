@@ -34,7 +34,6 @@ function isPieceHit(
   return hits[step]?.includes(piece) ?? false;
 }
 
-/** Compact standard-style percussion chart for a section groove. */
 export function GrooveChart({
   groove,
   color,

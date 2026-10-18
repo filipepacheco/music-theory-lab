@@ -49,8 +49,6 @@ export default function AnalyzeModule() {
     return () => controller.abort();
   }, [refresh]);
 
-  // Poll only while something is actually moving. A finished list is static,
-  // and this hits a local process that is busy doing inference.
   const hasPending = jobs.some((job) => !isTerminal(job.status));
   useEffect(() => {
     if (!hasPending && !offline) return;
@@ -98,9 +96,9 @@ export default function AnalyzeModule() {
       className="flex flex-col gap-4"
     >
       <p className="text-xs text-text-muted">
-        Envia um arquivo de áudio para o pipeline local (compassos, acordes,
-        tom e trechos) e publica o resultado na Biblioteca. Roda na sua
-        máquina — nada é enviado para a internet.
+        Envia um arquivo de áudio para o pipeline local (compassos, acordes, tom
+        e trechos) e publica o resultado na Biblioteca. Roda na sua máquina —
+        nada é enviado para a internet.
       </p>
 
       {offline && <OfflineNotice />}
@@ -121,9 +119,7 @@ export default function AnalyzeModule() {
           }}
         >
           <label className="flex flex-col gap-1">
-            <span className="lh-label">
-              Arquivo
-            </span>
+            <span className="lh-label">Arquivo</span>
             <input
               ref={fileInput}
               type="file"

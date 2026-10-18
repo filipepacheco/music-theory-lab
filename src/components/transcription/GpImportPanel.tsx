@@ -1,10 +1,3 @@
-// Imports a Guitar Pro `.gp` file as a new Song. Split layout: controls on the
-// left, the transcription that would be produced permanently visible on the
-// right - so the key, the one input nobody can verify on its own, is chosen
-// while watching it re-map every bar.
-//
-// Shape decided on https://github.com/filipepacheco/music-theory-lab/issues/14.
-
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
@@ -63,10 +56,6 @@ export default function GpImportPanel() {
     [bars],
   );
 
-  // Without a dirty flag in the store, compare against what was persisted.
-  // Cheap, exact, and it avoids nagging when nothing has actually changed.
-  // Every field the editor can change counts, including key/mode/BPM/preset —
-  // the import replaces the whole open song.
   const dirty = useMemo(() => {
     if (!activeSongId) {
       return songSections.length > 0 || songTitle.trim() !== '';
@@ -108,9 +97,6 @@ export default function GpImportPanel() {
     setHarmonyTrack(null);
     setRootTrack(null);
     setFileName(file.name);
-    // Re-seed from the app's current key here, not at mount: the panel is
-    // mounted for the whole session, so a key chosen after it mounted - by
-    // opening a saved song, say - would otherwise never reach it.
     setKeyRoot(rootNote);
     setIsMinor(storeIsMinor);
     try {
@@ -180,11 +166,6 @@ export default function GpImportPanel() {
         </span>
       </button>
 
-      {/* Enter-only, and deliberately not wrapped in AnimatePresence. An exit
-          animation keeps the old children mounted while it runs, and this body
-          holds 206 focusable cells; if the animation is ever interrupted - a
-          backgrounded tab throttling rAF is enough - they are stranded in the
-          DOM at opacity 0. Closing here unmounts immediately. */}
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -274,9 +255,7 @@ export default function GpImportPanel() {
                 <div className="flex flex-col gap-3">
                   {summary && (
                     <p className="text-xs font-mono text-text-secondary">
-                      <span className="text-success">
-                        {summary.diatonic}
-                      </span>{' '}
+                      <span className="text-success">{summary.diatonic}</span>{' '}
                       no campo{' '}
                       <span className="text-accent">{summary.chromatic}</span>{' '}
                       cromáticos{' '}

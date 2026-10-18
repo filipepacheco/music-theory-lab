@@ -6,10 +6,6 @@ import {
 } from '@/services/confirm';
 import Button from '@/components/shared/Button';
 
-/**
- * Draws the open `confirmDialog` request as a Lighthouse dialog. Mounted
- * once, in App. Escape and the backdrop both answer no.
- */
 export default function ConfirmHost() {
   const request = useSyncExternalStore(subscribeConfirm, getPendingConfirm);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -27,7 +23,6 @@ export default function ConfirmHost() {
       className="lh-dialog m-auto w-[min(52ch,calc(100vw-32px))] overflow-hidden"
       onClose={() => settleConfirm(false)}
       onClick={(event) => {
-        // A click on the dialog element itself is a click on the backdrop.
         if (event.target === event.currentTarget) settleConfirm(false);
       }}
     >

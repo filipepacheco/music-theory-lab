@@ -12,7 +12,6 @@ export default function SpeedControl({
   const effectiveBpm = Math.round((originalBpm * percent) / 100);
 
   const handleChange = (value: number) => {
-    // Snap to increments of 5
     const snapped = Math.round(value / 5) * 5;
     onChange(Math.max(50, Math.min(150, snapped)));
   };

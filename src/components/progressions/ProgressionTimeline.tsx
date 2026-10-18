@@ -1,16 +1,14 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { resolveStep } from "@/domain/stepResolution";
-import { functionColor } from "@/constants/functionColors";
-import { confirmDialog } from "@/services/confirm";
-import Button from "@/components/shared/Button";
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { resolveStep } from '@/domain/stepResolution';
+import { functionColor } from '@/constants/functionColors';
+import { confirmDialog } from '@/services/confirm';
+import Button from '@/components/shared/Button';
 
 export default function ProgressionTimeline() {
   const customProgression = useAppStore((s) => s.customProgression);
   const removeProgressionStep = useAppStore((s) => s.removeProgressionStep);
-  const setProgressionStepBeats = useAppStore(
-    (s) => s.setProgressionStepBeats,
-  );
+  const setProgressionStepBeats = useAppStore((s) => s.setProgressionStepBeats);
   const clearProgression = useAppStore((s) => s.clearProgression);
   const harmonicField = useAppStore((s) => s.harmonicField);
   const rootNote = useAppStore((s) => s.rootNote);
@@ -38,15 +36,15 @@ export default function ProgressionTimeline() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="font-heading text-sm text-text-secondary">
-          Sua progressão ({customProgression.length} acordes, {totalBeats}{" "}
+          Sua progressão ({customProgression.length} acordes, {totalBeats}{' '}
           tempos)
         </h3>
         <Button
           size="sm"
           onClick={async () => {
             const confirmed = await confirmDialog({
-              title: "Limpar toda a progressão?",
-              confirmLabel: "Limpar",
+              title: 'Limpar toda a progressão?',
+              confirmLabel: 'Limpar',
               danger: true,
             });
             if (confirmed) clearProgression();
@@ -58,7 +56,7 @@ export default function ProgressionTimeline() {
 
       <div
         className="flex gap-2 overflow-x-auto pb-1"
-        style={{ scrollbarWidth: "thin" }}
+        style={{ scrollbarWidth: 'thin' }}
       >
         <AnimatePresence mode="popLayout">
           {customProgression.map((step, idx) => {
@@ -77,7 +75,6 @@ export default function ProgressionTimeline() {
                 className="relative flex flex-col items-center gap-0.5 px-3 py-3 bg-bg-card border min-w-[80px] group"
                 style={{ borderColor }}
               >
-                {/* Remove button */}
                 <button
                   onClick={() => removeProgressionStep(idx)}
                   aria-label="Remover acorde"
@@ -86,7 +83,6 @@ export default function ProgressionTimeline() {
                   X
                 </button>
 
-                {/* Chord info */}
                 <span
                   className="font-mono text-base font-medium"
                   style={{ color: borderColor }}
@@ -97,10 +93,9 @@ export default function ProgressionTimeline() {
                   {resolved.chordName}
                 </span>
                 <span className="font-mono text-micro text-text-muted">
-                  {resolved.noteNames.join(" ")}
+                  {resolved.noteNames.join(' ')}
                 </span>
 
-                {/* Beat controls */}
                 <div className="flex items-center gap-1 mt-1 border-t border-border-default pt-1 w-full justify-center">
                   <button
                     onClick={() => setProgressionStepBeats(idx, beats - 0.5)}

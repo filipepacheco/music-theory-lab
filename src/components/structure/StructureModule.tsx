@@ -61,7 +61,6 @@ export default function StructureModule() {
     if (!name) return;
     addStructureSection(name, newSectionColor);
     setNewSectionName('');
-    // Cycle to next color
     const idx = STRUCTURE_PALETTE.indexOf(newSectionColor);
     setNewSectionColor(STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length]);
   }
@@ -121,19 +120,12 @@ export default function StructureModule() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Frame
-        title="Estrutura"
-        titleAs="h2"
-        className="flex flex-col gap-5"
-      >
-        {/* -- Metadata -- */}
+      <Frame title="Estrutura" titleAs="h2" className="flex flex-col gap-5">
         <StructureMetadataBar />
 
-        {/* -- Controls: compasso + add section -- */}
         <div className="flex flex-col gap-4">
           <StructureRecorder />
 
-          {/* New section creation */}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <Field
@@ -169,7 +161,6 @@ export default function StructureModule() {
               </Button>
             </div>
 
-            {/* Quick suggestion chips */}
             <div className="flex flex-wrap gap-1.5">
               {SECTION_SUGGESTIONS.map((s) => (
                 <button
@@ -190,10 +181,8 @@ export default function StructureModule() {
           </div>
         </div>
 
-        {/* -- Separator -- */}
         <div className="border-t border-border-default" />
 
-        {/* -- Content: sections with DnD -- */}
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
@@ -214,7 +203,6 @@ export default function StructureModule() {
           </DragOverlay>
         </DndContext>
 
-        {/* -- Actions -- */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
           <SaveStructureButton />
           {structureBars.length > 0 && (
@@ -256,10 +244,7 @@ export default function StructureModule() {
             </div>
           )}
           {(activeStructureId || structureBars.length > 0) && (
-            <Button
-              onClick={clearStructure}
-              className="text-danger"
-            >
+            <Button onClick={clearStructure} className="text-danger">
               Limpar estrutura
             </Button>
           )}

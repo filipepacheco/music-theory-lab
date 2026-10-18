@@ -122,7 +122,6 @@ function InlineSectionName({
   );
 }
 
-/** Lightweight overlay shown while dragging a section */
 export function SectionOverlay({ section }: { section: StructureSection }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-2 border-accent bg-bg-card shadow-lg opacity-90">
@@ -212,9 +211,7 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
-      {/* Horizontal layout: actions | bars grid | comment */}
       <div className="flex gap-3 sm:gap-4">
-        {/* Left column: action buttons stacked vertically */}
         <div className="flex flex-col items-center gap-1.5 shrink-0">
           <span
             className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing select-none"
@@ -312,7 +309,6 @@ function DroppableSection({
           </div>
         </div>
 
-        {/* Middle column: bars grid */}
         <div
           className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
           style={
@@ -334,7 +330,6 @@ function DroppableSection({
           ))}
         </div>
 
-        {/* Right column: description and chart */}
         <div
           className={`flex-1 min-w-0 self-stretch grid items-start gap-2 ${
             !grooveOpen && section.groove
@@ -374,7 +369,6 @@ function DroppableSection({
         </div>
       </div>
 
-      {/* Groove editor: expands under the bars row */}
       {grooveOpen && (
         <div
           onPointerDown={(e) => e.stopPropagation()}

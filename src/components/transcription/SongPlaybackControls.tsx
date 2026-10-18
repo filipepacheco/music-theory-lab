@@ -24,7 +24,6 @@ export default function SongPlaybackControls({
 
   const [originalBpm, setOriginalBpm] = useState(bpm);
 
-  // Compute which steps to play based on loopSection
   const getPlaybackSteps = useCallback((): ProgressionStep[] => {
     if (loopSection) {
       const section = songSections[activeSectionIndex];
@@ -81,7 +80,6 @@ export default function SongPlaybackControls({
           {isPlaying ? 'Parar' : loopSection ? 'Tocar Seção' : 'Tocar Tudo'}
         </Button>
 
-        {/* Loop section toggle */}
         <Button
           size="sm"
           pressed={loopSection}

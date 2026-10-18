@@ -1,8 +1,8 @@
-import { motion, AnimatePresence } from "framer-motion";
-import QuizOptions from "./QuizOptions";
-import type { QuizQuestion } from "@/utils/quizGenerator";
-import Button from "@/components/shared/Button";
-import Callout from "@/components/shared/Callout";
+import { motion, AnimatePresence } from 'framer-motion';
+import QuizOptions from './QuizOptions';
+import type { QuizQuestion } from '@/utils/quizGenerator';
+import Button from '@/components/shared/Button';
+import Callout from '@/components/shared/Callout';
 
 interface QuizCardProps {
   question: QuizQuestion;
@@ -29,7 +29,6 @@ export default function QuizCard({
 }: QuizCardProps) {
   return (
     <div className="space-y-4">
-      {/* Prompt */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-sm text-text-secondary">{prompt}</p>
         <Button onClick={onReplay} className="shrink-0 self-start">
@@ -37,7 +36,6 @@ export default function QuizCard({
         </Button>
       </div>
 
-      {/* Options */}
       <QuizOptions
         options={question.options}
         selectedAnswer={selectedAnswer}
@@ -46,7 +44,6 @@ export default function QuizCard({
         onSelect={onAnswer}
       />
 
-      {/* Result feedback */}
       <AnimatePresence>
         {showingResult && (
           <motion.div
@@ -56,8 +53,8 @@ export default function QuizCard({
             className="space-y-3"
           >
             <Callout
-              tone={isCorrect ? "success" : "danger"}
-              title={isCorrect ? "Correto!" : "Incorreto."}
+              tone={isCorrect ? 'success' : 'danger'}
+              title={isCorrect ? 'Correto!' : 'Incorreto.'}
               className="my-0"
             >
               {!isCorrect && <p>Resposta: {question.correctAnswer}</p>}

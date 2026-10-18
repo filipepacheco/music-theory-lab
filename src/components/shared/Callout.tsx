@@ -10,12 +10,10 @@ const TONE_CLASS: Record<CalloutTone, string> = {
 };
 
 interface CalloutProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
-  /** Sets the glyph in the gutter: `i`, a check mark, `!`, or `x`. */
   tone?: CalloutTone;
   title?: ReactNode;
 }
 
-/** The Lighthouse callout: a frame with a glyph in its gutter. */
 export default function Callout({
   tone = 'info',
   title,

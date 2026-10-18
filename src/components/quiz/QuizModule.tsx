@@ -16,11 +16,7 @@ export default function QuizModule() {
 
   return (
     <section className="flex flex-col gap-4 sm:gap-6">
-      <Frame
-        title="Quiz Auditivo"
-        titleAs="h2"
-        className="flex flex-col gap-4"
-      >
+      <Frame title="Quiz Auditivo" titleAs="h2" className="flex flex-col gap-4">
         <div className="overflow-x-auto scrollbar-none">
           <Segmented
             label="Tipo de exercício"
@@ -34,7 +30,6 @@ export default function QuizModule() {
           />
         </div>
 
-        {/* Active quiz */}
         <QuizModeView quiz={quiz} config={activeConfig} />
       </Frame>
     </section>

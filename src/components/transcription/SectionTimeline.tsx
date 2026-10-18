@@ -63,13 +63,12 @@ export default function SectionTimeline() {
                   borderStyle: isUnsure ? 'dashed' : 'solid',
                 }}
               >
-                {/* Confidence indicator */}
                 <button
                   onClick={() =>
                     setSongStepConfidence(
                       activeSectionIndex,
                       idx,
-                      isUnsure ? 'sure' : 'unsure'
+                      isUnsure ? 'sure' : 'unsure',
                     )
                   }
                   className={`absolute top-1 left-1 w-5 h-5 cursor-pointer flex items-center justify-center ${
@@ -81,7 +80,6 @@ export default function SectionTimeline() {
                   aria-label="Alternar confianca"
                 />
 
-                {/* Remove button */}
                 <button
                   onClick={() => removeSongStep(activeSectionIndex, idx)}
                   aria-label="Remover acorde"
@@ -90,7 +88,6 @@ export default function SectionTimeline() {
                   X
                 </button>
 
-                {/* Chord info */}
                 <span
                   className="font-mono text-base font-medium"
                   style={{ color: borderColor }}
@@ -104,7 +101,6 @@ export default function SectionTimeline() {
                   {resolved.noteNames.join(' ')}
                 </span>
 
-                {/* Beat controls */}
                 <div className="flex items-center gap-1 mt-1 border-t border-border-default pt-1 w-full justify-center">
                   <button
                     onClick={() =>

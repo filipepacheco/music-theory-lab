@@ -1,18 +1,18 @@
-import { useMemo } from "react";
-import { useAppStore } from "@/store/useAppStore";
-import { useSynth } from "@/hooks/useSynth";
-import { useKeyboardPiano } from "@/hooks/useKeyboardPiano";
-import { getNoteName } from "@/utils/noteHelpers";
-import PianoKey from "./PianoKey";
+import { useMemo } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import { useSynth } from '@/hooks/useSynth';
+import { useKeyboardPiano } from '@/hooks/useKeyboardPiano';
+import { getNoteName } from '@/utils/noteHelpers';
+import PianoKey from './PianoKey';
 
 const BLACK_KEY_SEMITONES = new Set([1, 3, 6, 8, 10]);
 
 const BLACK_KEY_POSITIONS: Record<number, number> = {
-  1: 0, // C#: after C
-  3: 1, // D#: after D
-  6: 3, // F#: after F
-  8: 4, // G#: after G
-  10: 5, // A#: after A
+  1: 0,
+  3: 1,
+  6: 3,
+  8: 4,
+  10: 5,
 };
 
 const WHITE_KEY_WIDTH = 48;
@@ -87,8 +87,7 @@ function Octave({
           key={`b-${octave}-${i}`}
           className="absolute top-0"
           style={{
-            left:
-              key.position * WHITE_KEY_WIDTH + WHITE_KEY_WIDTH - 16,
+            left: key.position * WHITE_KEY_WIDTH + WHITE_KEY_WIDTH - 16,
           }}
         >
           <PianoKey
@@ -118,7 +117,6 @@ export default function Piano() {
 
   const rootNoteName = highlightRootName ?? getNoteName(rootNote);
 
-  // Build lookup maps for shortcuts and pressed state
   const { shortcutMap, pressedNotes } = useMemo(() => {
     const sMap = new Map<string, string>();
     const pSet = new Set<string>();

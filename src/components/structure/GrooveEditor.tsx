@@ -23,7 +23,6 @@ function hasAnyHit(groove: GroovePattern): boolean {
   return DRUM_PIECES.some((piece) => groove[piece.id].some(Boolean));
 }
 
-/** Songsterr-inspired chart preview shown on a section card. */
 export function GroovePreview({
   groove,
   color,
@@ -40,7 +39,6 @@ export function GroovePreview({
   );
 }
 
-/** Full editor: three toggleable rows with a selectable resolution. */
 export function GrooveEditor({
   section,
   color,

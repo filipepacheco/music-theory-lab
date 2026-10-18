@@ -1,8 +1,8 @@
-import { useRef, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import type { HarmonicFunction } from "@/constants/harmonicFields";
-import { functionColor, functionTint } from "@/constants/functionColors";
+import { useRef, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import type { HarmonicFunction } from '@/constants/harmonicFields';
+import { functionColor, functionTint } from '@/constants/functionColors';
 
 interface TimelineCell {
   stepIdx: number;
@@ -13,7 +13,7 @@ interface TimelineCell {
   harmonicFunction: HarmonicFunction | null;
 }
 
-const BEAT_LABELS = ["1", "e", "2", "e", "3", "e", "4", "e"];
+const BEAT_LABELS = ['1', 'e', '2', 'e', '3', 'e', '4', 'e'];
 
 export default function BeatTimeline() {
   const prog = useAppStore((s) => s.playingProgression);
@@ -38,7 +38,7 @@ export default function BeatTimeline() {
           cursor.offsetLeft -
           container.clientWidth / 2 +
           cursor.clientWidth / 2;
-        container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+        container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
       }
     }
   }, [currentEighth]);
@@ -78,7 +78,7 @@ export default function BeatTimeline() {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
+      animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.2 }}
       className="mt-3 mb-1"
@@ -86,17 +86,16 @@ export default function BeatTimeline() {
       <div
         ref={scrollRef}
         className="overflow-x-auto"
-        style={{ scrollbarWidth: "thin" }}
+        style={{ scrollbarWidth: 'thin' }}
       >
         <div
           style={{
-            display: "grid",
+            display: 'grid',
             gridTemplateColumns: `repeat(${n}, 1fr)`,
-            gridTemplateRows: "16px 20px 14px",
+            gridTemplateRows: '16px 20px 14px',
             minWidth: n * 20,
           }}
         >
-          {/* Row 1: Chord labels */}
           {cells.map((cell, idx) => (
             <div
               key={`l-${idx}`}
@@ -114,7 +113,6 @@ export default function BeatTimeline() {
             </div>
           ))}
 
-          {/* Row 2: Cell bars */}
           {cells.map((cell, idx) => {
             const isActive = currentEighth === idx;
 
@@ -126,22 +124,19 @@ export default function BeatTimeline() {
                 style={{
                   gridRow: 2,
                   gridColumn: idx + 1,
-                  // The cell that sounds now is the lamp; the others keep
-                  // the colour of their function.
                   backgroundColor: isActive
-                    ? "var(--color-live)"
+                    ? 'var(--color-live)'
                     : functionTint(cell.harmonicFunction, 15),
                   borderLeft: cell.isMeasureStart
-                    ? "2px solid var(--color-text-muted)"
+                    ? '2px solid var(--color-text-muted)'
                     : cell.isDownbeat
-                      ? "1px solid var(--color-border-default)"
-                      : "1px solid transparent",
+                      ? '1px solid var(--color-border-default)'
+                      : '1px solid transparent',
                 }}
               />
             );
           })}
 
-          {/* Row 3: Beat labels */}
           {cells.map((cell, idx) => (
             <div
               key={`b-${idx}`}
@@ -151,8 +146,8 @@ export default function BeatTimeline() {
               <span
                 className={`text-micro font-mono leading-none ${
                   cell.isDownbeat
-                    ? "text-text-secondary"
-                    : "text-text-muted opacity-50"
+                    ? 'text-text-secondary'
+                    : 'text-text-muted opacity-50'
                 }`}
               >
                 {BEAT_LABELS[idx % 8]}
