@@ -179,6 +179,15 @@ export function createTransport(
     draw: (cb, time) => clock.draw(cb, time),
 
     startMetronome() {
+      if (current?.owner.kind === 'groove') {
+        // The newest player gets the clock: the groove stops, the click starts.
+        const groove = current;
+        current = { owner: METRONOME, ownsClick: false };
+        restoreTempo();
+        setClick(true);
+        groove.onRelease?.();
+        return ensureRunning();
+      }
       setClick(true);
       if (!current) current = { owner: METRONOME, ownsClick: false };
       // A player that owns the clock keeps it; the click joins its beats.
