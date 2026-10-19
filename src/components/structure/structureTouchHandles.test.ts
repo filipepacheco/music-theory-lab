@@ -2,6 +2,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
+import { useAppStore } from '@/store/useAppStore';
+import StructureSections from '@/components/structure/StructureSections';
 
 vi.mock('tone', () => {
   class AudioNode {
@@ -32,10 +34,7 @@ beforeAll(() => {
 
 afterAll(() => vi.unstubAllGlobals());
 
-it('blocks pan only on bar and section handles, leaving section content scrollable', async () => {
-  const { useAppStore } = await import('@/store/useAppStore');
-  const { default: StructureSections } =
-    await import('@/components/structure/StructureSections');
+it('blocks pan only on bar and section handles, leaving section content scrollable', () => {
   Object.assign(useAppStore.getInitialState(), {
     structureBars: [{ id: 'bar', index: 0, timeSignature: '4/4' }],
     structureSections: [

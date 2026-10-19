@@ -29,7 +29,11 @@ it('links a manifest that the running app serves as JSON', async () => {
   const href = read('index.html').match(/rel="manifest" href="([^"]+)"/)?.[1];
   expect(href).toBe('/manifest.webmanifest');
   const server = await createServer({
-    server: { host: '127.0.0.1', port: 0 },
+    configFile: false,
+    publicDir: resolve('public'),
+    appType: 'custom',
+    server: { host: '127.0.0.1', port: 0, watch: null, ws: false },
+    optimizeDeps: { noDiscovery: true, include: [] },
   });
   try {
     await server.listen();

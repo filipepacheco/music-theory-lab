@@ -324,13 +324,11 @@ export default function SongDetailFrame<L>({
               />
               Acompanhar a reprodução
             </label>
-            <label
-              className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer"
-              title="Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição"
-            >
+            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={markRepeats}
+                aria-describedby="repeat-rule"
                 onChange={(e) => {
                   setMarkRepeats(e.target.checked);
                   writeMarkRepeats(e.target.checked);
@@ -339,6 +337,10 @@ export default function SongDetailFrame<L>({
               />
               Marcar repetições
             </label>
+            <p id="repeat-rule" className="text-meta text-text-muted">
+              Nas seções com “por linha”, o compasso igual ao de cima vira o
+              sinal de repetição
+            </p>
           </div>
         </div>
         {chartPanels}

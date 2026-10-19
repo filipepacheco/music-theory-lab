@@ -2,6 +2,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
+import { useAppStore } from '@/store/useAppStore';
+import StructureModule from '@/components/structure/StructureModule';
 
 vi.mock('tone', () => {
   class AudioNode {
@@ -32,10 +34,7 @@ beforeAll(() => {
 
 afterAll(() => vi.unstubAllGlobals());
 
-it('keeps drag handles inside the arrangement below adaptive recording controls', async () => {
-  const { useAppStore } = await import('@/store/useAppStore');
-  const { default: StructureModule } =
-    await import('@/components/structure/StructureModule');
+it('keeps drag handles inside the arrangement below adaptive recording controls', () => {
   Object.assign(useAppStore.getInitialState(), {
     structureBars: [{ id: 'bar', index: 0, timeSignature: '4/4' }],
     structureSections: [
