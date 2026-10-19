@@ -137,6 +137,77 @@ afterEach(() => {
 });
 
 describe('player playback sessions', () => {
+  it('keeps piano note keys and key-up behavior alongside the Space shortcut', async () => {
+    const { useKeyboardPiano } = await import('@/hooks/useKeyboardPiano');
+    const { usePlaybackShortcut } = await import('@/hooks/usePlaybackShortcut');
+    const { playbackEngine } = await import('@/services/playbackEngine');
+    const note = vi.spyOn(playbackEngine, 'playNote');
+    const toggle = vi.fn();
+    mount(useKeyboardPiano);
+    mount(() => usePlaybackShortcut(toggle));
+    try {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      expect(note).toHaveBeenCalledOnce();
+      expect(note).toHaveBeenCalledWith(0, 3, '8n', expect.any(String));
+      window.dispatchEvent(new KeyboardEvent('keyup', { key: 'a' }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      expect(note).toHaveBeenCalledTimes(2);
+      expect(toggle).not.toHaveBeenCalled();
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: ' ',
+          code: 'Space',
+          cancelable: true,
+        }),
+      );
+      expect(toggle).toHaveBeenCalledOnce();
+      expect(note).toHaveBeenCalledTimes(2);
+    } finally {
+      note.mockRestore();
+    }
+  });
+
+  it('starts and stops the open step player and screen lock on successive Space presses', async () => {
+    const { useStepPlayer } = await import('@/hooks/useStepPlayer');
+    const { usePlaybackShortcut } = await import('@/hooks/usePlaybackShortcut');
+    const { useAppStore } = await import('@/store/useAppStore');
+    const player = mount(() =>
+      useStepPlayer({
+        id: 'keyboard-song',
+        steps: [{ degree: 0, label: 'I' }],
+        mode: 'major',
+        presetId: 'piano',
+        bpm: 90,
+      }),
+    );
+    mount(() =>
+      usePlaybackShortcut(() => {
+        if (useAppStore.getState().playingProgression) player.stop();
+        else void player.play();
+      }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: ' ',
+        code: 'Space',
+        cancelable: true,
+      }),
+    );
+    await vi.waitFor(() => expect(request).toHaveBeenCalledWith('screen'));
+    expect(useAppStore.getState().playingProgression?.id).toBe('keyboard-song');
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: ' ',
+        code: 'Space',
+        cancelable: true,
+      }),
+    );
+    expect(useAppStore.getState().playingProgression).toBeNull();
+    expect(release).toHaveBeenCalledOnce();
+    expect(runtime.transport.stop).toHaveBeenCalled();
+  });
+
   it('plays, pauses, and cleans up Library audio without optional browser media APIs', async () => {
     vi.stubGlobal('navigator', {});
     vi.stubGlobal('MediaMetadata', undefined);
