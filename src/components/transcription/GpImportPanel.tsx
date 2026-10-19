@@ -29,8 +29,10 @@ import {
 } from '@/services/gpImport';
 
 export default function GpImportPanel() {
-  const rootNote = useAppStore((s) => s.rootNote);
-  const storeIsMinor = useAppStore((s) => s.isMinor);
+  // Seed the panel from the open song's key; the import then takes the key and
+  // mode chosen here, not the app-wide ones.
+  const rootNote = useAppStore((s) => s.songKey);
+  const storeIsMinor = useAppStore((s) => s.songMode === 'minor');
   const loadSong = useAppStore((s) => s.loadSong);
 
   const { save } = useSongs();

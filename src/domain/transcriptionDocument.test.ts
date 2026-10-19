@@ -318,4 +318,81 @@ describe('transcriptionDocument song record', () => {
       sections: [],
     });
   });
+
+  it('builds an import record with the mode chosen in the import panel', () => {
+    // The open song is major; the import panel chose minor.
+    const current = transcriptionDocument.create({ key: 0, mode: 'major' });
+    const record = transcriptionDocument.importRecord(current, {
+      title: 'Importada',
+      artist: 'GP',
+      key: 9,
+      mode: 'minor',
+      sections: [],
+    });
+    expect(record.key).toBe(9);
+    expect(record.mode).toBe('minor');
+
+    const loaded = transcriptionDocument.load({
+      id: 'gp-1',
+      ...record,
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+    expect(loaded.key).toBe(9);
+    expect(loaded.mode).toBe('minor');
+  });
+
+  it('sets the key and the mode of the song', () => {
+    const loaded = transcriptionDocument.load(savedSong);
+    const inD = transcriptionDocument.setKey(loaded, 2);
+    expect(inD.key).toBe(2);
+    expect(inD.mode).toBe('minor');
+    expect(transcriptionDocument.setKey(loaded, 14).key).toBe(2);
+    expect(transcriptionDocument.setKey(loaded, -1).key).toBe(11);
+
+    const major = transcriptionDocument.setMode(loaded, 'major');
+    expect(major.mode).toBe('major');
+    expect(major.key).toBe(5);
+
+    expect(transcriptionDocument.hasUnsavedChanges(inD)).toBe(true);
+    expect(transcriptionDocument.hasUnsavedChanges(major)).toBe(true);
+    expect(
+      transcriptionDocument.hasUnsavedChanges(
+        transcriptionDocument.setKey(loaded, 5),
+      ),
+    ).toBe(false);
+  });
+
+  it('restores the key, the mode, the base tempo, and the preset after a save and a load', () => {
+    let current = transcriptionDocument.addSection(
+      { ...transcriptionDocument.create(), title: 'Nova' },
+      'verso',
+      undefined,
+      { createId: () => 'a' },
+    );
+    current = transcriptionDocument.setKey(current, 7);
+    current = transcriptionDocument.setMode(current, 'minor');
+    current = transcriptionDocument.setBaseBpm(current, 132);
+    current = transcriptionDocument.setPreset(current, 'rhodes');
+    current = transcriptionDocument.setPracticeSpeed(current, 60);
+
+    const record = transcriptionDocument.toSongRecord(current);
+    expect(record.key).toBe(7);
+    expect(record.mode).toBe('minor');
+    expect(record.originalBpm).toBe(132);
+    expect(record.presetId).toBe('rhodes');
+
+    const loaded = transcriptionDocument.load({
+      id: 'id-1',
+      ...record,
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+    expect(loaded.key).toBe(7);
+    expect(loaded.mode).toBe('minor');
+    expect(loaded.baseBpm).toBe(132);
+    expect(loaded.presetId).toBe('rhodes');
+    expect(loaded.practiceSpeed).toBe(100);
+    expect(transcriptionDocument.hasUnsavedChanges(loaded)).toBe(false);
+  });
 });

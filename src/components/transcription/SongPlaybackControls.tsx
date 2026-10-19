@@ -25,7 +25,7 @@ export default function SongPlaybackControls({
   const setSongBaseBpm = useAppStore((s) => s.setSongBaseBpm);
   const songPresetId = useAppStore((s) => s.songPresetId);
   const setSongPresetId = useAppStore((s) => s.setSongPresetId);
-  const isMinor = useAppStore((s) => s.isMinor);
+  const songMode = useAppStore((s) => s.songMode);
   // The tempo that plays: base tempo x practice speed. The base never moves.
   const playbackBpm = useAppStore((s) =>
     transcriptionDocument.playbackBpm(selectTranscriptionDocument(s)),
@@ -52,7 +52,7 @@ export default function SongPlaybackControls({
   const { play, stop, isPlaying } = useStepPlayer({
     id: '__song__',
     steps: [],
-    mode: isMinor ? 'minor' : 'major',
+    mode: songMode,
     presetId: songPresetId,
     bpm: playbackBpm,
     segmentLengths,

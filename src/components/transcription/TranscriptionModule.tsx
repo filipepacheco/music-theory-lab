@@ -20,8 +20,10 @@ export default function TranscriptionModule() {
   const songArtist = useAppStore((state) => state.songArtist);
   const setSongTitle = useAppStore((state) => state.setSongTitle);
   const setSongArtist = useAppStore((state) => state.setSongArtist);
-  const rootNote = useAppStore((state) => state.rootNote);
-  const isMinor = useAppStore((state) => state.isMinor);
+  // The song's own key; the header key controls set it while this module is
+  // open, and the app-wide key follows it.
+  const songKey = useAppStore((state) => state.songKey);
+  const songMode = useAppStore((state) => state.songMode);
   const playingProgression = useAppStore((state) => state.playingProgression);
 
   const [playingSectionIndex, setPlayingSectionIndex] = useState<
@@ -42,7 +44,7 @@ export default function TranscriptionModule() {
   );
   const chordCountLabel =
     chordCount === 1 ? '1 acorde' : `${chordCount} acordes`;
-  const keyDisplay = `${getNoteName(rootNote)} ${isMinor ? 'menor' : 'maior'}`;
+  const keyDisplay = `${getNoteName(songKey)} ${songMode === 'minor' ? 'menor' : 'maior'}`;
 
   return (
     <section className="flex flex-col gap-6">

@@ -38,7 +38,10 @@ function highlightFromScaleNotes(notesA: number[], notesB: number[] | null) {
   return { highlightedNotes: notes, highlightColors: colors };
 }
 
-/** The open song as a transcription document (key and mode stay app-wide). */
+/**
+ * The open song as a transcription document. The key and mode are the song's
+ * own (`songKey`/`songMode`), not the app-wide `rootNote`/`isMinor`.
+ */
 export function selectTranscriptionDocument(
   state: AppState,
 ): TranscriptionDocument {
@@ -47,13 +50,39 @@ export function selectTranscriptionDocument(
     activeSectionIndex: state.activeSectionIndex,
     title: state.songTitle,
     artist: state.songArtist,
-    key: state.rootNote,
-    mode: state.isMinor ? 'minor' : 'major',
+    key: state.songKey,
+    mode: state.songMode,
     baseBpm: state.songBaseBpm,
     presetId: state.songPresetId,
     practiceSpeed: state.practiceSpeed,
     saved: state.savedSong,
   };
+}
+
+/** The app-wide key fields that follow a song key and mode. */
+function appKeyFromSong(key: number, mode: 'major' | 'minor') {
+  const isMinor = mode === 'minor';
+  return {
+    rootNote: key,
+    isMinor,
+    harmonicField: getHarmonicField(key, isMinor),
+    selectedChordIndex: null,
+    highlightedNotes: [],
+    highlightColors: {},
+    selectedScaleId: null,
+    comparisonScaleId: null,
+  };
+}
+
+/** True when no song is open and nothing has been typed into the new one. */
+function isUntouchedSong(state: AppState): boolean {
+  return (
+    state.activeSongId === null &&
+    state.savedSong === null &&
+    state.songSections.length === 0 &&
+    state.songTitle.trim() === '' &&
+    state.songArtist.trim() === ''
+  );
 }
 
 function applySongState(song: {
@@ -64,19 +93,15 @@ function applySongState(song: {
   sections: SongSection[];
   id: string | null;
 }) {
-  const isMinor = song.mode === 'minor';
   return {
     activeSongId: song.id,
     songTitle: song.title,
     songArtist: song.artist,
     songSections: song.sections,
     activeSectionIndex: 0,
-    rootNote: song.key,
-    isMinor,
-    harmonicField: getHarmonicField(song.key, isMinor),
-    selectedChordIndex: null,
-    highlightedNotes: [],
-    highlightColors: {},
+    songKey: song.key,
+    songMode: song.mode,
+    ...appKeyFromSong(song.key, song.mode),
   };
 }
 
@@ -110,6 +135,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   songArtist: '',
   songBaseBpm: DEFAULT_SONG_BPM,
   songPresetId: DEFAULT_SONG_PRESET_ID,
+  songKey: 0,
+  songMode: 'major',
   savedSong: null,
 
   // Practice
@@ -126,41 +153,77 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTimeSignature: '4/4' as TimeSignature,
   focusedSectionId: null,
 
+  // While the transcription module is open, the key and mode controls change
+  // the song; the app-wide key then follows it. In any other module they
+  // change only the app-wide key.
   setRootNote: (note) => {
-    const { isMinor } = get();
+    const state = get();
     set({
       rootNote: note,
-      harmonicField: getHarmonicField(note, isMinor),
+      harmonicField: getHarmonicField(note, state.isMinor),
       selectedChordIndex: null,
       highlightedNotes: [],
       highlightColors: {},
       selectedScaleId: null,
       comparisonScaleId: null,
+      ...(state.activeModule === 'transcription'
+        ? {
+            songKey: transcriptionDocument.setKey(
+              selectTranscriptionDocument(state),
+              note,
+            ).key,
+          }
+        : {}),
     });
   },
 
   setIsMinor: (isMinor) => {
-    const { rootNote } = get();
+    const state = get();
     set({
       isMinor,
-      harmonicField: getHarmonicField(rootNote, isMinor),
+      harmonicField: getHarmonicField(state.rootNote, isMinor),
       selectedChordIndex: null,
       highlightedNotes: [],
       highlightColors: {},
       selectedScaleId: null,
       comparisonScaleId: null,
+      ...(state.activeModule === 'transcription'
+        ? {
+            songMode: transcriptionDocument.setMode(
+              selectTranscriptionDocument(state),
+              isMinor ? 'minor' : 'major',
+            ).mode,
+          }
+        : {}),
     });
   },
 
-  setActiveModule: (module) =>
-    set({
+  setActiveModule: (module) => {
+    const state = get();
+    const clear = {
       activeModule: module,
       selectedChordIndex: null,
       highlightedNotes: [],
       highlightColors: {},
       selectedScaleId: null,
       comparisonScaleId: null,
-    }),
+    };
+    if (module !== 'transcription') {
+      set(clear);
+      return;
+    }
+    if (isUntouchedSong(state)) {
+      // A new, empty song starts in the key the learner already chose.
+      set({
+        ...clear,
+        songKey: state.rootNote,
+        songMode: state.isMinor ? 'minor' : 'major',
+      });
+      return;
+    }
+    // The app-wide key follows the open song.
+    set({ ...clear, ...appKeyFromSong(state.songKey, state.songMode) });
+  },
 
   selectChord: (index) => {
     if (index === null) {
@@ -281,13 +344,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  loadImportedSong: ({ title, artist, key, sections }) =>
+  loadImportedSong: ({ title, artist, key, mode, sections }) =>
     set({
       ...applySongState({
         title,
         artist,
         key,
-        mode: get().isMinor ? 'minor' : 'major',
+        mode,
         sections,
         id: null,
       }),
