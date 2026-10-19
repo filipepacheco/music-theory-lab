@@ -35,25 +35,16 @@ export interface PlaybackEngine {
 const limiter = new Tone.Limiter(-6).toDestination();
 const reverb = new Tone.Reverb({ decay: 1.8, wet: 0.2 }).connect(limiter);
 
-let audioStartPromise: Promise<boolean> | null = null;
-
-export function ensureAudio(): Promise<boolean> {
+export async function ensureAudio(): Promise<boolean> {
   Tone.getContext().lookAhead = 0.05;
-  if (Tone.getContext().state === 'running') return Promise.resolve(true);
-  if (audioStartPromise) return audioStartPromise;
+  if (Tone.getContext().state === 'running') return true;
 
-  audioStartPromise = (async () => {
-    try {
-      await Tone.start();
-      return Tone.getContext().state === 'running';
-    } catch {
-      return false;
-    }
-  })().finally(() => {
-    audioStartPromise = null;
-  });
-
-  return audioStartPromise;
+  try {
+    await Tone.start();
+    return Tone.getContext().state === 'running';
+  } catch {
+    return false;
+  }
 }
 
 if (typeof document !== 'undefined') {
