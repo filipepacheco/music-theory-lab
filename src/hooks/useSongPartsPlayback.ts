@@ -230,7 +230,6 @@ export function useSongPartsPlayback(
     const transport = createSongPartsTransport(
       {
         bass: bassSynthNotes(bass.notes, shift),
-        visualTimes: bass.bars.map((bar) => bar.startTime),
         drums: drumPlaybackHits(drums.hits),
         durationSeconds: Math.max(
           bass.songLengthSeconds,
@@ -267,13 +266,7 @@ export function useSongPartsPlayback(
     transportRef.current?.muteChanged(part);
   }, []);
 
-  const readPosition = useCallback(
-    () =>
-      transportRef.current?.readPosition() ?? stateRef.current.currentSeconds,
-    [],
-  );
   const audio: LibraryAudio = {
-    readPosition,
     ...state,
     play: async () => {
       await transportRef.current?.play().catch(() => {});

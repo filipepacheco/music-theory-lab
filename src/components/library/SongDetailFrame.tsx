@@ -1,4 +1,3 @@
-import { PlayheadAnimation } from '@/components/library/ChartPlayhead';
 import {
   Fragment,
   useEffect,
@@ -9,7 +8,6 @@ import {
   type ReactNode,
 } from 'react';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
-import PlaybackDiagnostics from '@/components/library/PlaybackDiagnostics';
 import PartMuteControls from '@/components/library/PartMuteControls';
 import PlaybackDock from '@/components/library/PlaybackDock';
 import type { PartMutes, PlaybackPart } from '@/domain/songPartsPlayback';
@@ -226,208 +224,199 @@ export default function SongDetailFrame<L>({
     );
     const bottom =
       dockRef.current?.getBoundingClientRect().top ?? window.innerHeight;
-    if (bar.top >= top && bar.top + bar.height <= bottom) return;
     window.scrollTo({
-      top: Math.max(
-        0,
-        window.scrollY + bar.top + bar.height / 2 - (top + bottom) / 2,
-      ),
+      top: window.scrollY + bar.top + bar.height / 2 - (top + bottom) / 2,
       behavior: 'smooth',
     });
   }, [activeBar, playing, follow]);
 
   return (
-    <PlayheadAnimation chart={chart} audio={audio}>
-      <section className="flex min-w-0 flex-col gap-4">
-        {new URLSearchParams(window.location.search).has('playback-debug') && (
-          <PlaybackDiagnostics chartRef={chartRef} playing={playing} />
-        )}
-        <header className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h3 className="font-heading text-base text-text-primary">
-              {chart.title}
-            </h3>
-            <p className="text-sm text-text-secondary">
-              {[chart.artist, chart.album, chart.year]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-            <p className="text-small text-text-muted">{sourceNote}</p>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              const confirmed = await confirmDialog({
-                title: `Remover "${chart.title}" deste navegador?`,
-                confirmLabel: 'Remover',
-                danger: true,
-              });
-              if (confirmed) onRemove();
-            }}
-            className="font-heading text-xs px-3 py-1.5 border border-border-strong text-text-secondary hover:bg-danger hover:text-on-accent hover:border-danger cursor-pointer"
-          >
-            Remover
-          </button>
-        </header>
-
-        <dl className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-          {stats.map((stat) => (
-            <Stat key={stat.label} label={stat.label} value={stat.value} />
-          ))}
-        </dl>
-
-        {panels}
-
-        {hasPlayer && <LibraryPlayer audio={audio} title={chart.title} />}
-        {playerPanels}
-
-        <LinkedRecording
-          state={recording.state}
-          saveError={recording.saveError}
-          onAttach={recording.onAttach}
-          missingNote={recording.missingNote}
-        />
-
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h4 className="font-heading text-sm text-text-secondary">
-              {chartHeading}
-            </h4>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-1 text-small text-text-muted">
-                todas as seções
-                <select
-                  value={songLength === 'auto' ? '' : songLength}
-                  onChange={async (e) => {
-                    const next: LineLength =
-                      e.target.value === '' ? 'auto' : Number(e.target.value);
-                    if (hasSectionLengths) {
-                      const confirmed = await confirmDialog({
-                        title: 'Aplicar a todas as seções?',
-                        message:
-                          'Os compassos por linha próprios de cada seção serão removidos.',
-                        confirmLabel: 'Aplicar',
-                      });
-                      if (!confirmed) return;
-                    }
-                    void setSongLength(next);
-                  }}
-                  aria-label="Compassos por linha de todas as seções"
-                  title="Define os compassos por linha de todas as seções e remove os valores próprios"
-                  className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
-                >
-                  <option value="">auto</option>
-                  {LINE_LENGTH_OPTIONS.map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {chartOptions}
-              <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={follow}
-                  onChange={(e) => setFollow(e.target.checked)}
-                  className="accent-text-primary"
-                />
-                Acompanhar a reprodução
-              </label>
-              <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={markRepeats}
-                  aria-describedby="repeat-rule"
-                  onChange={(e) => {
-                    setMarkRepeats(e.target.checked);
-                    writeMarkRepeats(e.target.checked);
-                  }}
-                  className="accent-text-primary"
-                />
-                Marcar repetições
-              </label>
-              <p id="repeat-rule" className="text-meta text-text-muted">
-                Nas seções com “por linha”, o compasso igual ao de cima vira o
-                sinal de repetição
-              </p>
-            </div>
-          </div>
-          {chartPanels}
-          <div ref={chartRef} className="flex flex-col gap-3">
-            {blocks.map((block) => {
-              const length = lengthOf(block.section.startBar);
-              return (
-                <FrameSection
-                  key={block.index}
-                  chart={chart}
-                  block={block}
-                  isActive={block.index === activeSection}
-                  panels={sectionPanels?.(block.index)}
-                  lineLength={length === 'auto' ? null : length}
-                  onLineLengthChange={(count) =>
-                    void setLength(block.section.startBar, count ?? 'auto')
-                  }
-                  ownLength={isOwn(block.section.startBar)}
-                  onClearOwnLength={() =>
-                    void clearLength(block.section.startBar)
-                  }
-                  markRepeats={markRepeats}
-                  baseBeatWidth={baseBeatWidth}
-                  barChrome={barChrome}
-                  labelGap={labelGap}
-                  barLanes={barLanes}
-                  barDrawing={barDrawing}
-                  sectionLayout={sectionLayout}
-                  renderBar={renderBar}
-                  lineStart={lineStart}
-                  onSeek={seek}
-                />
-              );
-            })}
-          </div>
-          <p className="text-small text-text-muted">
-            Um bloco = um compasso, na grade de tempos do próprio arquivo.{' '}
-            {legend}
-            {seek
-              ? ' Clique num compasso para saltar a reprodução até ele.'
-              : ''}{' '}
-            Com “Marcar repetições” e um número em “por linha”, o compasso igual
-            ao de cima fica vazio, com o sinal de repetição.
+    <section className="flex min-w-0 flex-col gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-heading text-base text-text-primary">
+            {chart.title}
+          </h3>
+          <p className="text-sm text-text-secondary">
+            {[chart.artist, chart.album, chart.year]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
+          <p className="text-small text-text-muted">{sourceNote}</p>
         </div>
+        <button
+          type="button"
+          onClick={async () => {
+            const confirmed = await confirmDialog({
+              title: `Remover "${chart.title}" deste navegador?`,
+              confirmLabel: 'Remover',
+              danger: true,
+            });
+            if (confirmed) onRemove();
+          }}
+          className="font-heading text-xs px-3 py-1.5 border border-border-strong text-text-secondary hover:bg-danger hover:text-on-accent hover:border-danger cursor-pointer"
+        >
+          Remover
+        </button>
+      </header>
 
-        <div aria-hidden style={{ height: dockHeight }} />
-        <PlaybackDock
-          dockRef={dockRef}
-          label={dock.label}
-          onHeightChange={setDockHeight}
-          title={dock.title}
-          status={dock.status}
-          playing={playing}
-          canPlay={cursor.canPlay}
-          onTogglePlay={cursor.togglePlay}
-          actions={
-            <>
-              {partMutes && (
-                <PartMuteControls
-                  mutes={partMutes.mutes}
-                  onToggle={partMutes.onToggle}
-                />
-              )}
-              {dock.actions}
-            </>
-          }
-          panel={dock.panel}
-          showLabel={dock.showLabel}
-          hideLabel={dock.hideLabel}
-        />
-        {floating?.({
-          anchorBottom: floatingAnchor,
-          viewportWidth: viewport.width,
-        })}
-      </section>
-    </PlayheadAnimation>
+      <dl className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+        {stats.map((stat) => (
+          <Stat key={stat.label} label={stat.label} value={stat.value} />
+        ))}
+      </dl>
+
+      {panels}
+
+      {hasPlayer && <LibraryPlayer audio={audio} title={chart.title} />}
+      {playerPanels}
+
+      <LinkedRecording
+        state={recording.state}
+        saveError={recording.saveError}
+        onAttach={recording.onAttach}
+        missingNote={recording.missingNote}
+      />
+
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 className="font-heading text-sm text-text-secondary">
+            {chartHeading}
+          </h4>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1 text-small text-text-muted">
+              todas as seções
+              <select
+                value={songLength === 'auto' ? '' : songLength}
+                onChange={async (e) => {
+                  const next: LineLength =
+                    e.target.value === '' ? 'auto' : Number(e.target.value);
+                  if (hasSectionLengths) {
+                    const confirmed = await confirmDialog({
+                      title: 'Aplicar a todas as seções?',
+                      message:
+                        'Os compassos por linha próprios de cada seção serão removidos.',
+                      confirmLabel: 'Aplicar',
+                    });
+                    if (!confirmed) return;
+                  }
+                  void setSongLength(next);
+                }}
+                aria-label="Compassos por linha de todas as seções"
+                title="Define os compassos por linha de todas as seções e remove os valores próprios"
+                className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
+              >
+                <option value="">auto</option>
+                {LINE_LENGTH_OPTIONS.map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {chartOptions}
+            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={follow}
+                onChange={(e) => setFollow(e.target.checked)}
+                className="accent-text-primary"
+              />
+              Acompanhar a reprodução
+            </label>
+            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={markRepeats}
+                aria-describedby="repeat-rule"
+                onChange={(e) => {
+                  setMarkRepeats(e.target.checked);
+                  writeMarkRepeats(e.target.checked);
+                }}
+                className="accent-text-primary"
+              />
+              Marcar repetições
+            </label>
+            <p id="repeat-rule" className="text-meta text-text-muted">
+              Nas seções com “por linha”, o compasso igual ao de cima vira o
+              sinal de repetição
+            </p>
+          </div>
+        </div>
+        {chartPanels}
+        <div ref={chartRef} className="flex flex-col gap-3">
+          {blocks.map((block) => {
+            const length = lengthOf(block.section.startBar);
+            return (
+              <FrameSection
+                key={block.index}
+                chart={chart}
+                block={block}
+                isActive={block.index === activeSection}
+                panels={sectionPanels?.(block.index)}
+                lineLength={length === 'auto' ? null : length}
+                onLineLengthChange={(count) =>
+                  void setLength(block.section.startBar, count ?? 'auto')
+                }
+                ownLength={isOwn(block.section.startBar)}
+                onClearOwnLength={() =>
+                  void clearLength(block.section.startBar)
+                }
+                markRepeats={markRepeats}
+                baseBeatWidth={baseBeatWidth}
+                barChrome={barChrome}
+                labelGap={labelGap}
+                barLanes={barLanes}
+                barDrawing={barDrawing}
+                sectionLayout={sectionLayout}
+                renderBar={renderBar}
+                lineStart={lineStart}
+                onSeek={seek}
+              />
+            );
+          })}
+        </div>
+        <p className="text-small text-text-muted">
+          Um bloco = um compasso, na grade de tempos do próprio arquivo.{' '}
+          {legend}
+          {seek
+            ? ' Clique num compasso para saltar a reprodução até ele.'
+            : ''}{' '}
+          Com “Marcar repetições” e um número em “por linha”, o compasso igual
+          ao de cima fica vazio, com o sinal de repetição.
+        </p>
+      </div>
+
+      <div aria-hidden style={{ height: dockHeight }} />
+      <PlaybackDock
+        dockRef={dockRef}
+        label={dock.label}
+        onHeightChange={setDockHeight}
+        title={dock.title}
+        status={dock.status}
+        playing={playing}
+        canPlay={cursor.canPlay}
+        onTogglePlay={cursor.togglePlay}
+        actions={
+          <>
+            {partMutes && (
+              <PartMuteControls
+                mutes={partMutes.mutes}
+                onToggle={partMutes.onToggle}
+              />
+            )}
+            {dock.actions}
+          </>
+        }
+        panel={dock.panel}
+        showLabel={dock.showLabel}
+        hideLabel={dock.hideLabel}
+      />
+      {floating?.({
+        anchorBottom: floatingAnchor,
+        viewportWidth: viewport.width,
+      })}
+    </section>
   );
 }
 

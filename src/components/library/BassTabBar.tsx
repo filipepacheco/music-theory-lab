@@ -1,4 +1,3 @@
-import ChartPlayhead from '@/components/library/ChartPlayhead';
 import { memo, useState } from 'react';
 import {
   barChordSymbol,
@@ -364,13 +363,16 @@ function BassTabBar({
           />
         ))}
         {repeat && <RepeatSign x={width / 2} y={HEIGHT / 2} />}
-        <ChartPlayhead
-          bar={bar}
-          progress={playhead}
-          start={PAD_X}
-          width={bar.beatCount * beatWidth}
-          height={svgHeight}
-        />
+        {playhead !== null && (
+          <line
+            x1={PAD_X + playhead * bar.beatCount * beatWidth}
+            x2={PAD_X + playhead * bar.beatCount * beatWidth}
+            y1={2}
+            y2={svgHeight - 2}
+            stroke="var(--color-accent)"
+            strokeWidth={1.5}
+          />
+        )}
         {kickBeats && (
           <g data-kick-row aria-hidden>
             {kickBeats.map((beat) => (

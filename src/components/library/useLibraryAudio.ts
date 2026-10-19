@@ -13,7 +13,6 @@ export interface LibraryAudio {
   playing: boolean;
   currentSeconds: number;
   duration: number;
-  readPosition?: () => number;
   play(): Promise<void>;
   pause(): void;
   seek(seconds: number): void;
