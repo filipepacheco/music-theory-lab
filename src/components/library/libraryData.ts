@@ -1,6 +1,6 @@
 import { getPreferredRootName } from '@/utils/noteHelpers';
 
-const LIBRARY_ROOT = '/library';
+export const LIBRARY_ROOT = '/library';
 
 export interface LibraryIndexEntry {
   source_sha256: string;
@@ -294,7 +294,8 @@ export function buildChordChartBars(
     if (end <= start) continue;
     const dominant = pickDominantSegment(chord.segments, start, end);
     bars.push({
-      index: i,
+      // Position in the list, so a skipped zero-length bar leaves no gap.
+      index: bars.length,
       startSeconds: start,
       endSeconds: end,
       chords: [
