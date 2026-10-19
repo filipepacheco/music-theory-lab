@@ -19,6 +19,13 @@ samples são baixados na instalação. Uma falha nesse download impede a
 instalação: o worker anterior continua ativo. É necessário terminar essa
 primeira instalação online antes de contar com o modo offline.
 
+Os arquivos públicos dessa lista são identificados pela URL e pelo hash do
+release. A consulta ao precache ignora `Vary`: módulos e CSS com
+`crossorigin` podem enviar `Origin` mesmo quando o download da instalação
+não envia. Isso evita uma tentativa de rede offline para um arquivo já
+presente, inclusive no `npm run preview`, que responde com `Vary: Origin`.
+Essa opção não se aplica ao cache sob demanda da Library.
+
 Cada arquivo da Library, inclusive o índice e as análises, entra no cache
 quando solicitado. Áudio solicitado com Range é baixado inteiro uma vez;
 HEAD e novos intervalos podem então ser respondidos offline. Apenas respostas
@@ -88,6 +95,29 @@ Automação: `npx vitest run src/offline/offline.test.ts`. Os testes executam os
 eventos do worker contra doubles de Cache Storage/rede, com IndexedDB que
 lança erro em qualquer acesso. Isso não comprova reprodução audível ou as
 políticas de armazenamento do Safari.
+
+Teste do build de produção em Chrome ou Edge local, sem dependência de
+Playwright. Gere `dist` com `npm run build` e execute no PowerShell:
+
+```powershell
+$env:OFFLINE_BROWSER = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+node --experimental-websocket scripts/check-offline-browser.mjs
+```
+
+O script usa um perfil temporário dentro do repositório, serve somente o
+`dist` local (sem proxy para APIs) e aguarda a instalação real do worker.
+Depois limpa e desativa o cache HTTP, desliga a rede da página e do worker,
+recarrega e verifica que o HTML veio do service worker. Um request não
+cacheado precisa falhar. Um clique pelo protocolo do navegador toca uma
+tecla; o teste exige samples decodificados, início de reprodução de um
+buffer e sinal não nulo na saída Web Audio. O resultado inclui a versão do
+navegador e o pico medido. O perfil temporário é removido ao terminar.
+
+Para confirmar que o teste detecta a ausência do worker, acrescente
+`--without-worker`: a recarga offline deve falhar com código de saída 1.
+Esse controle negativo não altera os arquivos do build. O teste mede o
+sinal digital; ouvir o som nos alto-falantes e validar Safari/iPad continuam
+sendo verificações por uma pessoa.
 
 Verificação por uma pessoa em um build de produção (`npm run build` e
 `npm run preview`, em localhost ou HTTPS):
