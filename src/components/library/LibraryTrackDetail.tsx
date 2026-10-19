@@ -69,7 +69,7 @@ export default function LibraryTrackDetail({ track }: Props) {
     return () => controller.abort();
   }, [track]);
 
-  const audio = useLibraryAudio(audioUrl ?? null);
+  const audio = useLibraryAudio(audioUrl ?? null, track.title);
 
   const bars = useMemo(() => {
     if (!data) return [];
@@ -97,7 +97,9 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const activeSectionIndex = useMemo(
     () =>
-      audio.playing ? sectionIndexAtSeconds(sections, audio.currentSeconds) : -1,
+      audio.playing
+        ? sectionIndexAtSeconds(sections, audio.currentSeconds)
+        : -1,
     [audio.playing, audio.currentSeconds, sections],
   );
 
@@ -106,7 +108,9 @@ export default function LibraryTrackDetail({ track }: Props) {
   return (
     <section className="flex flex-col gap-4">
       <header>
-        <h3 className="font-heading text-base text-text-primary">{track.title}</h3>
+        <h3 className="font-heading text-base text-text-primary">
+          {track.title}
+        </h3>
         <p className="text-sm text-text-secondary">{track.artist}</p>
       </header>
 
@@ -198,7 +202,9 @@ export default function LibraryTrackDetail({ track }: Props) {
             <p className="text-[11px] text-text-muted">
               Um bloco = um compasso, agrupado a partir do down-beat detectado.
               Compassos seguidos sem acorde detectado viram um bloco só.
-              {seek ? ' Clique num bloco para saltar a reprodução até ele.' : ''}
+              {seek
+                ? ' Clique num bloco para saltar a reprodução até ele.'
+                : ''}
             </p>
           </div>
         </div>
@@ -288,7 +294,9 @@ function ChordCells({
           isActive
             ? 'border-text-primary bg-bg-hover'
             : 'border-border-default bg-bg-card',
-          onSeek ? 'hover:border-text-primary cursor-pointer' : 'cursor-default',
+          onSeek
+            ? 'hover:border-text-primary cursor-pointer'
+            : 'cursor-default',
         ].join(' ');
         return (
           <button

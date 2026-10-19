@@ -13,6 +13,7 @@ import {
   playbackEngine,
 } from '@/services/playbackEngine';
 import { useAppStore } from '@/store/useAppStore';
+import { playbackSession } from '@/services/playbackSession';
 import type { GroovePattern } from '@/types';
 
 export interface GroovePlayer {
@@ -44,6 +45,7 @@ export function useGroovePlayer(): GroovePlayer {
   const [currentTick, setCurrentTick] = useState(-1);
 
   const loopRef = useRef<Tone.Loop | null>(null);
+  const sessionId = useRef(Symbol('groove'));
   const tickRef = useRef(0);
   const grooveRef = useRef<ScheduledGroove | null>(null);
   const tokenRef = useRef(0);
@@ -53,6 +55,7 @@ export function useGroovePlayer(): GroovePlayer {
   const previousTransportBpmRef = useRef<number | null>(null);
 
   const stop = useCallback(() => {
+    playbackSession.stop(sessionId.current);
     tokenRef.current += 1;
     playingRef.current = false;
     tickRef.current = 0;
@@ -150,6 +153,7 @@ export function useGroovePlayer(): GroovePlayer {
       loopRef.current = loop;
       loop.start(0);
       transport.start();
+      playbackSession.start(sessionId.current);
       setIsPlaying(true);
     },
     [stop],
