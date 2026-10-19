@@ -52,7 +52,10 @@ export interface TakeClockOptions {
   onRelease: () => void;
   /** Turn the metronome click on while this player owns the clock. */
   click?: boolean;
-  /** The tempo of this player; set after a groove gives its tempo back. */
+  /**
+   * The tempo of this player. The transport saves the tempo from before,
+   * and gives it back to the metronome when this player releases the clock.
+   */
   tempo?: number;
 }
 
@@ -62,12 +65,20 @@ export interface Transport {
   isRunning(): boolean;
   onBeat(listener: BeatListener): () => void;
   setTempo(bpm: number): void;
+  /**
+   * Set the tempo of the metronome (the app tempo). While a player with its
+   * own tempo owns the clock, the clock keeps that tempo, and the metronome
+   * gets this tempo back when the player releases the clock. A progression
+   * that plays at the app tempo follows the change.
+   */
+  setMetronomeTempo(bpm: number): void;
   /** Call `cb` every `seconds` while the clock runs; the clock stop cancels it. */
   repeat(seconds: number, cb: (time: number) => void): () => void;
   tempo(): number;
   eighthSeconds(): number;
   draw(cb: () => void, time: number): void;
-  startMetronome(): Promise<void>;
+  /** Turn the click on; `tempo` is the metronome tempo (see setMetronomeTempo). */
+  startMetronome(tempo?: number): Promise<void>;
   stopMetronome(): void;
   takeClock(owner: ClockOwner, options: TakeClockOptions): Promise<void>;
   releaseClock(id: string): void;
@@ -93,7 +104,10 @@ export function createTransport(
   let cancelTick: (() => void) | null = null;
   let beatCount = 0;
   let runId = 0;
-  /** The tempo from before a groove took the clock; null when none did. */
+  /**
+   * The metronome tempo from before a player with its own tempo (a groove,
+   * or a player that passes `tempo`) took the clock; null when none did.
+   */
   let savedTempo: number | null = null;
   const repeats = new Set<() => void>();
 
@@ -101,6 +115,19 @@ export function createTransport(
     if (savedTempo === null) return;
     clock.setBpm(savedTempo);
     savedTempo = null;
+  };
+
+  const setMetronomeTempo = (bpm: number) => {
+    if (savedTempo === null) {
+      clock.setBpm(bpm);
+      return;
+    }
+    // A player with its own tempo owns the clock: keep its tempo, unless
+    // it plays at the app tempo, and give the new tempo back on release.
+    const followsApp =
+      current?.owner.kind === 'progression' && clock.getBpm() === savedTempo;
+    savedTempo = bpm;
+    if (followsApp) clock.setBpm(bpm);
   };
 
   const setClick = (on: boolean) => {
@@ -167,6 +194,8 @@ export function createTransport(
 
     setTempo: (bpm) => clock.setBpm(bpm),
 
+    setMetronomeTempo,
+
     repeat(seconds, cb) {
       const cancelClock = clock.repeat(cb, seconds);
       const cancel = () => {
@@ -180,7 +209,8 @@ export function createTransport(
     eighthSeconds: () => clock.eighthSeconds(),
     draw: (cb, time) => clock.draw(cb, time),
 
-    startMetronome() {
+    startMetronome(tempo) {
+      if (tempo !== undefined) setMetronomeTempo(tempo);
       if (current?.owner.kind === 'groove') {
         // The newest player gets the clock: the groove stops, the click starts.
         const groove = current;
@@ -211,10 +241,12 @@ export function createTransport(
       const previous = current;
       const clickWasOn = clickOn;
       const isGroove = owner.kind === 'groove';
-      if (isGroove) {
-        // The groove saves the tempo once, and gives it back when it stops.
+      if (isGroove || options.tempo !== undefined) {
+        // A player with its own tempo saves the metronome tempo once; the
+        // tempo comes back when the player releases the clock.
         if (savedTempo === null) savedTempo = clock.getBpm();
-      } else if (previous?.owner.kind === 'groove') {
+      } else {
+        // A player without its own tempo plays at the metronome tempo.
         restoreTempo();
       }
       current = {
@@ -241,7 +273,14 @@ export function createTransport(
     releaseClock(id) {
       if (!current || current.owner.id !== id) return;
       if (current.ownsClick) setClick(false);
-      if (current.owner.kind === 'groove') restoreTempo();
+      if (current.owner.kind === 'groove' || clickOn) {
+        // The groove gives its tempo back; the metronome takes the clock
+        // back at its own tempo.
+        restoreTempo();
+      } else {
+        // The clock stops; the next player sets its tempo.
+        savedTempo = null;
+      }
       settle();
     },
 
