@@ -107,8 +107,8 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 
 ### Metronome & Progression Playback
 
-- `useMetronome` runs a Tone.Loop on audio thread for precise quarter-note timing
-- Fires `onBeat` callbacks that ProgressionExamples hooks into via `onBeat(callback)` registration
+- `useMetronome` turns the metronome on and off through the transport; the Tone clock gives precise quarter-note timing on the audio thread
+- The transport (`src/services/transport.ts`) owns the shared clock: it alone starts, stops, and sets the tempo of the clock, holds the one list of beat listeners (`transport.onBeat`), and plays the metronome click. A player takes the clock with `takeClock`; the newest player gets it and the old one is told to stop via `onRelease`. `toneClock.ts` is the Tone adapter
 - ProgressionExamples tracks beat position, maps to progression steps, and handles look-ahead scheduling for steps with negative `offsetEighths`
 - **Critical pattern**: Use `Tone.getDraw().schedule()` for UI updates triggered by audio events - never update React state directly in audio callbacks
 - Store fields `currentEighth` and `playingProgression` drive the BeatTimeline visualization
@@ -119,7 +119,7 @@ Changing root note or mode resets `selectedChordIndex`, `highlightedNotes`, `hig
 - Module-level singleton pattern: `initDB()` lazily initializes and seeds example progressions from `PROGRESSION_EXAMPLES`
 - `useSavedProgressions` hook wraps the saved-library façade with React state and provides CRUD operations
 - `useSongs` hook wraps the songs façade with React state for the transcription module
-- Structure persistence in the store uses the structures façade, keeping the database implementation behind one boundary
+- Structure persistence: the save button (`SaveStructureButton`) calls the structures façade through the structures hook (`useStructures`), keeping the database implementation behind one boundary
 - Example progressions are seeded once (flagged `is_example = 1`) and cannot be deleted by users
 - Songs table stores transcriptions with title, artist, key, mode, BPM, preset ID, and JSON sections
 - Structures table stores song arrangements with title, artist, bars (JSON), and sections (JSON)
