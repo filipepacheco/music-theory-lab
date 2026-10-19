@@ -58,7 +58,7 @@ describe('audio doc: transport', () => {
 
   it('no longer says ProgressionExamples tracks beats or does look-ahead', () => {
     expect(metronome).not.toMatch(/ProgressionExamples tracks beat position/);
-    expect(metronome).not.toMatch(/ProgressionExamples[^\n]*look-ahead/);
+    expect(metronome).not.toMatch(/^- ProgressionExamples /m);
   });
 
   it('names useStepPlayer as the beat subscriber and look-ahead owner', () => {
