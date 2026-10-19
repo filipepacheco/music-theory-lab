@@ -27,7 +27,8 @@ export function usePlaybackShortcut(toggle: () => void, enabled = true) {
       event.preventDefault();
       current.current();
     };
-    window.addEventListener('keydown', keydown);
-    return () => window.removeEventListener('keydown', keydown);
+    // Playback claims Space before the structure recorder's bubble listener.
+    window.addEventListener('keydown', keydown, true);
+    return () => window.removeEventListener('keydown', keydown, true);
   }, [enabled]);
 }
