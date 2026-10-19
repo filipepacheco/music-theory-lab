@@ -5,17 +5,16 @@ import {
   buildLibraryTrackView,
   sectionAtTime,
   type LibraryTrackAnalyses,
+  type LibraryTrackGroup,
   type LibraryTrackView,
 } from '@/domain/libraryTrackView';
 import { getPreferredRootName } from '@/utils/noteHelpers';
 import {
-  collapseChartCells,
   fetchTrackAnalyses,
   formatDuration,
   sectionColorVar,
-  type ChordChartBar,
+  type ChartCell,
   type LibraryIndexEntry,
-  type SectionGroup,
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
 import LibrarySectionTimeline from './LibrarySectionTimeline';
@@ -31,8 +30,8 @@ type DetailData = LibraryTrackAnalyses;
 type AudioProbe = string | null | undefined;
 
 const NO_SECTIONS: never[] = [];
-const NO_BARS: ChordChartBar[] = [];
-const NO_GROUPS: SectionGroup[] = [];
+const NO_CELLS: ChartCell[] = [];
+const NO_GROUPS: LibraryTrackGroup[] = [];
 
 /** Stats key label: the Library track view's key, else the index entry's. */
 function keyLabel(
@@ -85,7 +84,7 @@ export default function LibraryTrackDetail({ track }: Props) {
     () => (data ? buildLibraryTrackView(data, track.duration_seconds) : null),
     [data, track.duration_seconds],
   );
-  const bars = view?.bars ?? NO_BARS;
+  const cells = view?.cells ?? NO_CELLS;
   const sections = view?.sections ?? NO_SECTIONS;
   const sectionGroups = view?.groups ?? NO_GROUPS;
 
@@ -99,7 +98,9 @@ export default function LibraryTrackDetail({ track }: Props) {
   return (
     <section className="flex flex-col gap-4">
       <header>
-        <h3 className="font-heading text-base text-text-primary">{track.title}</h3>
+        <h3 className="font-heading text-base text-text-primary">
+          {track.title}
+        </h3>
         <p className="text-sm text-text-secondary">{track.artist}</p>
       </header>
 
@@ -180,7 +181,7 @@ export default function LibraryTrackDetail({ track }: Props) {
               </div>
             ) : (
               <ChordCells
-                bars={bars}
+                cells={cells}
                 activeBarIndex={activeBarIndex}
                 onSeek={seek}
               />
@@ -189,7 +190,9 @@ export default function LibraryTrackDetail({ track }: Props) {
             <p className="text-[11px] text-text-muted">
               Um bloco = um compasso, agrupado a partir do down-beat detectado.
               Compassos seguidos sem acorde detectado viram um bloco só.
-              {seek ? ' Clique num bloco para saltar a reprodução até ele.' : ''}
+              {seek
+                ? ' Clique num bloco para saltar a reprodução até ele.'
+                : ''}
             </p>
           </div>
         </div>
@@ -204,7 +207,7 @@ function SectionBlock({
   activeBarIndex,
   onSeek,
 }: {
-  group: SectionGroup;
+  group: LibraryTrackGroup;
   isActive: boolean;
   activeBarIndex: number;
   onSeek: ((seconds: number) => void) | null;
@@ -239,7 +242,7 @@ function SectionBlock({
       </div>
       {group.bars.length > 0 ? (
         <ChordCells
-          bars={group.bars}
+          cells={group.cells}
           activeBarIndex={activeBarIndex}
           onSeek={onSeek}
         />
@@ -258,16 +261,14 @@ const CELL_WIDTH_REM = 4;
 const MAX_COLLAPSED_SPAN = 3;
 
 function ChordCells({
-  bars,
+  cells,
   activeBarIndex,
   onSeek,
 }: {
-  bars: ChordChartBar[];
+  cells: ChartCell[];
   activeBarIndex: number;
   onSeek: ((seconds: number) => void) | null;
 }) {
-  const cells = useMemo(() => collapseChartCells(bars), [bars]);
-
   return (
     <div className="flex flex-wrap gap-1">
       {cells.map((cell) => {
@@ -279,7 +280,9 @@ function ChordCells({
           isActive
             ? 'border-text-primary bg-bg-hover'
             : 'border-border-default bg-bg-card',
-          onSeek ? 'hover:border-text-primary cursor-pointer' : 'cursor-default',
+          onSeek
+            ? 'hover:border-text-primary cursor-pointer'
+            : 'cursor-default',
         ].join(' ');
         return (
           <button

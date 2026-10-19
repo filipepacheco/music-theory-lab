@@ -1,8 +1,10 @@
 import {
   barIndexAtSeconds,
   buildChordChartBars,
+  collapseChartCells,
   groupBarsBySection,
   type BeatAnalysisJson,
+  type ChartCell,
   type ChordAnalysisJson,
   type ChordChartBar,
   type KeyAnalysisJson,
@@ -28,10 +30,17 @@ export interface LibraryTrackAnalyses {
   section: SectionAnalysisJson | null;
 }
 
+/** A section group with the chart cells that the view shows for its bars. */
+export interface LibraryTrackGroup extends SectionGroup {
+  cells: ChartCell[];
+}
+
 export interface LibraryTrackView {
   bars: ChordChartBar[];
+  /** The chart cells of all bars, for a track with no sections. */
+  cells: ChartCell[];
   sections: SectionSegment[];
-  groups: SectionGroup[];
+  groups: LibraryTrackGroup[];
   stats: { keyTonicPc: number; keyMode: 'major' | 'minor'; barCount: number };
 }
 
@@ -53,8 +62,12 @@ export function buildLibraryTrackView(
   const top = analyses.key.top_estimate;
   return {
     bars,
+    cells: collapseChartCells(bars),
     sections,
-    groups: groupBarsBySection(bars, sections),
+    groups: groupBarsBySection(bars, sections).map((group) => ({
+      ...group,
+      cells: collapseChartCells(group.bars),
+    })),
     stats: {
       keyTonicPc: top.tonic_pc,
       keyMode: top.mode,
@@ -91,10 +104,7 @@ export function barAtTime(view: LibraryTrackView, seconds: number): number {
  * or -1. Taken from the same bar list, so the section always contains the
  * highlighted bar.
  */
-export function sectionAtTime(
-  view: LibraryTrackView,
-  seconds: number,
-): number {
+export function sectionAtTime(view: LibraryTrackView, seconds: number): number {
   const bar = barAtTime(view, seconds);
   if (bar < 0) return -1;
   return view.groups.findIndex((g) => g.bars.some((b) => b.index === bar));

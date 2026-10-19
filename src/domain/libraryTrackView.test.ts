@@ -54,10 +54,13 @@ function track(
 }
 
 // Duplicate downbeat at 4: bars are 0-4, 4-8, 8-12 (zero-length one dropped).
-const DUP = track([0, 4, 4, 8], [
-  { s: 0, e: 4, l: 'A' },
-  { s: 4, e: 12, l: 'B' },
-]);
+const DUP = track(
+  [0, 4, 4, 8],
+  [
+    { s: 0, e: 4, l: 'A' },
+    { s: 4, e: 12, l: 'B' },
+  ],
+);
 
 describe('buildLibraryTrackView', () => {
   it('numbers bars by position with no gap after a zero-length bar', () => {
@@ -78,9 +81,23 @@ describe('buildLibraryTrackView', () => {
     expect(view.groups[sectionAtTime(view, 8.5)].section.label).toBe('B');
   });
 
+  it('gives the chart cells of each section and of the whole track', () => {
+    const view = buildLibraryTrackView(DUP, 12);
+    const indexes = (cells: { bars: { index: number }[] }[]) =>
+      cells.flatMap((c) => c.bars.map((b) => b.index));
+    expect(indexes(view.cells)).toEqual([0, 1, 2]);
+    for (const group of view.groups) {
+      expect(indexes(group.cells)).toEqual(group.bars.map((b) => b.index));
+    }
+  });
+
   it('gives stats from the same bar list and key', () => {
     const view = buildLibraryTrackView(DUP, 12);
-    expect(view.stats).toEqual({ keyTonicPc: 9, keyMode: 'minor', barCount: 3 });
+    expect(view.stats).toEqual({
+      keyTonicPc: 9,
+      keyMode: 'minor',
+      barCount: 3,
+    });
   });
 
   it('works with no section analysis', () => {

@@ -6,6 +6,8 @@ import {
   type ClockAdapter,
   type TransportEvents,
 } from '@/services/transport';
+import { transcriptionDocument } from '@/domain/transcriptionDocument';
+import type { Song } from '@/types';
 
 /** A fake clock: the test fires each quarter-note tick by hand. */
 function createFakeClock() {
@@ -295,6 +297,38 @@ describe('transport', () => {
     expect(fake.clock.getBpm()).toBe(90);
     expect(transport.eighthSeconds()).toBeCloseTo(30 / 90);
   });
+
+  it('plays a song at its base tempo multiplied by the practice speed', async () => {
+    const { fake, transport } = setup();
+    const song: Song = {
+      id: 'song-1',
+      title: 'Garota',
+      artist: 'Tom',
+      key: 5,
+      mode: 'minor',
+      originalBpm: 120,
+      presetId: 'rhodes',
+      sections: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    };
+    const slow = transcriptionDocument.setPracticeSpeed(
+      transcriptionDocument.load(song),
+      50,
+    );
+    transport.setTempo(100);
+
+    await transport.takeClock(
+      { kind: 'progression', id: '__song__' },
+      {
+        onRelease: () => {},
+        click: true,
+        tempo: transcriptionDocument.playbackBpm(slow),
+      },
+    );
+
+    expect(fake.clock.getBpm()).toBe(60);
+  });
 });
 
 describe('transport and a groove', () => {
@@ -390,6 +424,21 @@ describe('transport and a groove', () => {
       { onRelease: () => {} },
     );
     expect(fake.clock.getBpm()).toBe(80);
+  });
+
+  it('a progression that takes the clock from a groove plays at its own tempo', async () => {
+    const { fake, transport } = setup();
+    transport.setTempo(80);
+    await transport.takeClock(groove, { onRelease: () => {} });
+    transport.setTempo(130);
+    await transport.takeClock(
+      { kind: 'progression', id: 'p1' },
+      { onRelease: () => {}, tempo: 60 },
+    );
+    expect(fake.clock.getBpm()).toBe(60);
+
+    transport.releaseClock('p1');
+    expect(fake.clock.getBpm()).toBe(60);
   });
 
   it('restores the tempo when the metronome was on before the groove and the groove stops', async () => {

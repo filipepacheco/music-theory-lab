@@ -52,6 +52,8 @@ export interface TakeClockOptions {
   onRelease: () => void;
   /** Turn the metronome click on while this player owns the clock. */
   click?: boolean;
+  /** The tempo of this player; set after a groove gives its tempo back. */
+  tempo?: number;
 }
 
 export interface Transport {
@@ -232,6 +234,7 @@ export function createTransport(
       }
       if (isGroove) setClick(false);
       else if (options.click) setClick(true);
+      if (options.tempo !== undefined) clock.setBpm(options.tempo);
       return ensureRunning();
     },
 

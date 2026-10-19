@@ -4,7 +4,10 @@ import { transport } from '@/services/toneClock';
 import { useSynth } from '@/hooks/useSynth';
 import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
 import { resolveStep } from '@/domain/stepResolution';
-import type { ProgressionExample, ProgressionStep } from '@/constants/progressions';
+import type {
+  ProgressionExample,
+  ProgressionStep,
+} from '@/constants/progressions';
 
 export interface StepPlayerOptions {
   /** id stored on the playing descriptor; views match on it. */
@@ -92,10 +95,10 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
       };
 
       // Take the clock first: an old player stops cleanly before this one starts.
-      transport.setTempo(useAppStore.getState().bpm);
+      // The caller's tempo plays: a song passes base tempo x practice speed.
       void transport.takeClock(
         { kind: 'progression', id: opts.id },
-        { onRelease: stop, click: true },
+        { onRelease: stop, click: true, tempo: opts.bpm },
       );
 
       playingRef.current = true;
