@@ -88,7 +88,7 @@ export default function BottomNav() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-20 left-4 right-4 bg-bg-secondary border border-border-default rounded-card p-2 flex flex-col gap-1"
+              className="app-more-menu absolute bg-bg-secondary border border-border-default rounded-card p-2 flex flex-col gap-1"
               onClick={(e) => e.stopPropagation()}
             >
               {MORE_TABS.map((tab) => (
@@ -114,14 +114,11 @@ export default function BottomNav() {
 
       {/* Bottom navigation bar - matches Paper X5-0 */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 sm:hidden flex items-center justify-around"
+        className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 sm:hidden flex items-center justify-around"
         style={{
           backgroundColor: "var(--color-bg-secondary)",
           borderTop: "1px solid var(--color-border-default)",
           paddingTop: 8,
-          paddingBottom: 28,
-          paddingLeft: 8,
-          paddingRight: 8,
         }}
         role="navigation"
         aria-label="Navegação principal"

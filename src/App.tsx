@@ -13,6 +13,7 @@ import AnalyzeModule from "@/components/analyze/AnalyzeModule";
 import Piano from "@/components/instruments/Piano";
 import BassNeck from "@/components/instruments/BassNeck";
 import { useAppStore } from "@/store/useAppStore";
+import '@/components/layout/appShell.css';
 
 export default function App() {
   const activeModule = useAppStore((s) => s.activeModule);
@@ -23,7 +24,7 @@ export default function App() {
   const theme = useAppStore((s) => s.theme);
 
   return (
-    <div className={`min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-20 sm:pb-0 ${theme === 'light' ? 'light' : ''}`}>
+    <div className={`app-shell bg-bg-primary text-text-primary overflow-x-hidden ${theme === 'light' ? 'light' : ''}`}>
       <Header />
       <KeySelector />
 
