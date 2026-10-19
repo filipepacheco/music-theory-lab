@@ -7,7 +7,11 @@
 
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '@/store/useAppStore';
+import {
+  selectTranscriptionDocument,
+  useAppStore,
+} from '@/store/useAppStore';
+import { transcriptionDocument } from '@/domain/transcriptionDocument';
 import { useSongs } from '@/hooks/useSongs';
 import { NOTE_NAMES } from '@/constants/notes';
 import { getPreferredRootName } from '@/utils/noteHelpers';
@@ -27,15 +31,9 @@ import {
 export default function GpImportPanel() {
   const rootNote = useAppStore((s) => s.rootNote);
   const storeIsMinor = useAppStore((s) => s.isMinor);
-  const bpm = useAppStore((s) => s.bpm);
-  const activePresetId = useAppStore((s) => s.activePresetId);
-  const activeSongId = useAppStore((s) => s.activeSongId);
-  const songTitle = useAppStore((s) => s.songTitle);
-  const songArtist = useAppStore((s) => s.songArtist);
-  const songSections = useAppStore((s) => s.songSections);
   const loadSong = useAppStore((s) => s.loadSong);
 
-  const { songs, save } = useSongs();
+  const { save } = useSongs();
 
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -60,36 +58,12 @@ export default function GpImportPanel() {
     [bars],
   );
 
-  // Without a dirty flag in the store, compare against what was persisted.
-  // Cheap, exact, and it avoids nagging when nothing has actually changed.
-  // Every field the editor can change counts, including key/mode/BPM/preset —
-  // the import replaces the whole open song.
-  const dirty = useMemo(() => {
-    if (!activeSongId) {
-      return songSections.length > 0 || songTitle.trim() !== '';
-    }
-    const saved = songs.find((s) => s.id === activeSongId);
-    if (!saved) return songSections.length > 0;
-    return (
-      saved.title !== songTitle ||
-      saved.artist !== songArtist ||
-      saved.key !== rootNote ||
-      saved.mode !== (storeIsMinor ? 'minor' : 'major') ||
-      saved.originalBpm !== bpm ||
-      saved.presetId !== activePresetId ||
-      JSON.stringify(saved.sections) !== JSON.stringify(songSections)
-    );
-  }, [
-    activeSongId,
-    songs,
-    songTitle,
-    songArtist,
-    songSections,
-    rootNote,
-    storeIsMinor,
-    bpm,
-    activePresetId,
-  ]);
+  // The document compares the open song with its last saved state. Every
+  // field the editor can change counts, including key/mode/base tempo/preset —
+  // the import replaces the whole open song. The practice speed does not.
+  const dirty = useAppStore((s) =>
+    transcriptionDocument.hasUnsavedChanges(selectTranscriptionDocument(s)),
+  );
 
   const reset = () => {
     setFileName(null);
@@ -136,16 +110,17 @@ export default function GpImportPanel() {
     setImporting(true);
     setError(null);
     try {
-      const data = {
-        title:
-          gp.title || (fileName ?? '').replace(/\.gp$/i, '') || 'Sem título',
-        artist: gp.artist,
-        key: keyRoot,
-        mode: (isMinor ? 'minor' : 'major') as 'major' | 'minor',
-        originalBpm: bpm,
-        presetId: activePresetId,
-        sections: assembleSections(bars),
-      };
+      const data = transcriptionDocument.importRecord(
+        selectTranscriptionDocument(useAppStore.getState()),
+        {
+          title:
+            gp.title || (fileName ?? '').replace(/\.gp$/i, '') || 'Sem título',
+          artist: gp.artist,
+          key: keyRoot,
+          mode: isMinor ? 'minor' : 'major',
+          sections: assembleSections(bars),
+        },
+      );
       const id = await save(data);
       if (!id) throw new Error('no id');
       const now = new Date().toISOString();

@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '@/store/useAppStore';
+import {
+  selectTranscriptionDocument,
+  useAppStore,
+} from '@/store/useAppStore';
+import { transcriptionDocument } from '@/domain/transcriptionDocument';
 import { useSongs } from '@/hooks/useSongs';
 
 export default function SaveSongButton() {
   const activeSongId = useAppStore((s) => s.activeSongId);
   const songTitle = useAppStore((s) => s.songTitle);
-  const songArtist = useAppStore((s) => s.songArtist);
   const songSections = useAppStore((s) => s.songSections);
-  const rootNote = useAppStore((s) => s.rootNote);
-  const isMinor = useAppStore((s) => s.isMinor);
-  const bpm = useAppStore((s) => s.bpm);
-  const activePresetId = useAppStore((s) => s.activePresetId);
+  const markSongSaved = useAppStore((s) => s.markSongSaved);
 
   const { save, update } = useSongs();
   const [saving, setSaving] = useState(false);
@@ -22,22 +22,19 @@ export default function SaveSongButton() {
     if (!canSave) return;
     setSaving(true);
 
-    const data = {
-      title: songTitle.trim(),
-      artist: songArtist.trim(),
-      key: rootNote,
-      mode: (isMinor ? 'minor' : 'major') as 'major' | 'minor',
-      originalBpm: bpm,
-      presetId: activePresetId,
-      sections: songSections,
-    };
+    // The document builds the record: it stores the base tempo, never the
+    // tempo that plays at the current practice speed.
+    const data = transcriptionDocument.toSongRecord(
+      selectTranscriptionDocument(useAppStore.getState()),
+    );
 
     try {
       if (activeSongId) {
         await update(activeSongId, data);
+        markSongSaved(activeSongId, data);
       } else {
         const id = await save(data);
-        useAppStore.setState({ activeSongId: id });
+        if (id) markSongSaved(id, data);
       }
     } finally {
       setSaving(false);

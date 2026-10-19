@@ -145,6 +145,12 @@ export interface AppState {
   activeSectionIndex: number;
   songTitle: string;
   songArtist: string;
+  /** Base tempo of the open song (at a practice speed of 100%). */
+  songBaseBpm: number;
+  /** Sound preset of the open song. */
+  songPresetId: string;
+  /** Copy of the last saved state of the open song, or null if never saved. */
+  savedSong: Omit<Song, 'id' | 'createdAt' | 'updatedAt'> | null;
 
   // Practice
   practiceSpeed: number;
@@ -199,6 +205,12 @@ export interface AppState {
   clearSong: () => void;
   setSongTitle: (title: string) => void;
   setSongArtist: (artist: string) => void;
+  setSongBaseBpm: (bpm: number) => void;
+  setSongPresetId: (presetId: string) => void;
+  markSongSaved: (
+    id: string,
+    record: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>,
+  ) => void;
   addSection: (type: SectionType, customLabel?: string) => void;
   removeSection: (index: number) => void;
   setActiveSectionIndex: (index: number) => void;

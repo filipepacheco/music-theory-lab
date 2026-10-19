@@ -1,6 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '@/store/useAppStore';
+import {
+  selectTranscriptionDocument,
+  useAppStore,
+} from '@/store/useAppStore';
+import { transcriptionDocument } from '@/domain/transcriptionDocument';
+import { TONE_PRESETS } from '@/constants/tonePresets';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
 import SpeedControl from '@/components/shared/SpeedControl';
 import type { ProgressionStep } from '@/constants/progressions';
@@ -16,12 +21,15 @@ export default function SongPlaybackControls({
   const setLoopSection = useAppStore((s) => s.setLoopSection);
   const practiceSpeed = useAppStore((s) => s.practiceSpeed);
   const setPracticeSpeed = useAppStore((s) => s.setPracticeSpeed);
-  const bpm = useAppStore((s) => s.bpm);
-  const setBpm = useAppStore((s) => s.setBpm);
+  const baseBpm = useAppStore((s) => s.songBaseBpm);
+  const setSongBaseBpm = useAppStore((s) => s.setSongBaseBpm);
+  const songPresetId = useAppStore((s) => s.songPresetId);
+  const setSongPresetId = useAppStore((s) => s.setSongPresetId);
   const isMinor = useAppStore((s) => s.isMinor);
-  const activePresetId = useAppStore((s) => s.activePresetId);
-
-  const [originalBpm, setOriginalBpm] = useState(bpm);
+  // The tempo that plays: base tempo x practice speed. The base never moves.
+  const playbackBpm = useAppStore((s) =>
+    transcriptionDocument.playbackBpm(selectTranscriptionDocument(s)),
+  );
 
   // Compute which steps to play based on loopSection
   const getPlaybackSteps = useCallback((): ProgressionStep[] => {
@@ -45,22 +53,15 @@ export default function SongPlaybackControls({
     id: '__song__',
     steps: [],
     mode: isMinor ? 'minor' : 'major',
-    presetId: activePresetId,
-    bpm,
+    presetId: songPresetId,
+    bpm: playbackBpm,
     segmentLengths,
     onSegmentChange: onPlayingSectionChange,
   });
 
   const hasSteps = songSections.some((s) => s.steps.length > 0);
 
-  const handleSpeedChange = (percent: number) => {
-    setPracticeSpeed(percent);
-    const effectiveBpm = Math.round((originalBpm * percent) / 100);
-    setBpm(effectiveBpm);
-  };
-
   const handlePlay = () => {
-    setOriginalBpm(bpm);
     play({ steps: getPlaybackSteps() });
   };
 
@@ -105,10 +106,49 @@ export default function SongPlaybackControls({
         )}
       </div>
 
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-[10px] text-text-muted whitespace-nowrap">
+          Andamento base
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setSongBaseBpm(baseBpm - 5)}
+            aria-label="Diminuir andamento base"
+            className="w-7 h-7 flex items-center justify-center rounded-button bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
+          >
+            -
+          </button>
+          <span className="text-xs font-mono text-text-secondary w-14 text-center">
+            {baseBpm} bpm
+          </span>
+          <button
+            onClick={() => setSongBaseBpm(baseBpm + 5)}
+            aria-label="Aumentar andamento base"
+            className="w-7 h-7 flex items-center justify-center rounded-button bg-bg-tertiary text-text-secondary hover:text-text-primary text-sm cursor-pointer border border-border-default"
+          >
+            +
+          </button>
+        </div>
+        <label className="flex items-center gap-2 text-[10px] text-text-muted">
+          Timbre
+          <select
+            value={songPresetId}
+            onChange={(e) => setSongPresetId(e.target.value)}
+            className="bg-bg-tertiary text-text-primary border border-border-default rounded-control px-2 py-1 text-xs font-mono focus:outline-none focus:border-border-focus cursor-pointer"
+          >
+            {TONE_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <SpeedControl
         percent={practiceSpeed}
-        onChange={handleSpeedChange}
-        originalBpm={originalBpm}
+        onChange={setPracticeSpeed}
+        originalBpm={baseBpm}
       />
     </div>
   );

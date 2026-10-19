@@ -10,7 +10,12 @@ import type {
 import type { ProgressionStep } from '@/constants/progressions';
 import { getHarmonicField, getScaleNotes } from '@/utils/musicTheory';
 import { structureDocument } from '@/domain/structureDocument';
-import { transcriptionDocument } from '@/domain/transcriptionDocument';
+import {
+  transcriptionDocument,
+  DEFAULT_SONG_BPM,
+  DEFAULT_SONG_PRESET_ID,
+  type TranscriptionDocument,
+} from '@/domain/transcriptionDocument';
 import { appendStep, removeStep, setStepBeats } from '@/domain/stepList';
 import {
   classifyScaleNotes,
@@ -31,6 +36,24 @@ function highlightFromScaleNotes(notesA: number[], notesB: number[] | null) {
     colors[notes[index]] = SCALE_HIGHLIGHT_COLORS[kind];
   });
   return { highlightedNotes: notes, highlightColors: colors };
+}
+
+/** The open song as a transcription document (key and mode stay app-wide). */
+export function selectTranscriptionDocument(
+  state: AppState,
+): TranscriptionDocument {
+  return {
+    sections: state.songSections,
+    activeSectionIndex: state.activeSectionIndex,
+    title: state.songTitle,
+    artist: state.songArtist,
+    key: state.rootNote,
+    mode: state.isMinor ? 'minor' : 'major',
+    baseBpm: state.songBaseBpm,
+    presetId: state.songPresetId,
+    practiceSpeed: state.practiceSpeed,
+    saved: state.savedSong,
+  };
 }
 
 function applySongState(song: {
@@ -85,6 +108,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeSectionIndex: 0,
   songTitle: '',
   songArtist: '',
+  songBaseBpm: DEFAULT_SONG_BPM,
+  songPresetId: DEFAULT_SONG_PRESET_ID,
+  savedSong: null,
 
   // Practice
   practiceSpeed: 100,
@@ -235,21 +261,27 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // --- Transcription actions ---
 
-  loadSong: (song: Song) =>
-    set(
-      applySongState({
-        title: song.title,
-        artist: song.artist,
-        key: song.key,
-        mode: song.mode,
-        sections: song.sections,
+  loadSong: (song: Song) => {
+    const loaded = transcriptionDocument.load(song);
+    set({
+      ...applySongState({
+        title: loaded.title,
+        artist: loaded.artist,
+        key: loaded.key,
+        mode: loaded.mode,
+        sections: loaded.sections,
         id: song.id,
       }),
-    ),
+      songBaseBpm: loaded.baseBpm,
+      songPresetId: loaded.presetId,
+      practiceSpeed: loaded.practiceSpeed,
+      savedSong: loaded.saved,
+    });
+  },
 
   loadImportedSong: ({ title, artist, key, sections }) =>
-    set(
-      applySongState({
+    set({
+      ...applySongState({
         title,
         artist,
         key,
@@ -257,7 +289,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         sections,
         id: null,
       }),
-    ),
+      savedSong: null,
+    }),
 
   clearSong: () =>
     set({
@@ -266,10 +299,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       songArtist: '',
       songSections: [],
       activeSectionIndex: 0,
+      savedSong: null,
     }),
 
   setSongTitle: (title) => set({ songTitle: title }),
   setSongArtist: (artist) => set({ songArtist: artist }),
+
+  setSongBaseBpm: (bpm) =>
+    set({
+      songBaseBpm: transcriptionDocument.setBaseBpm(
+        selectTranscriptionDocument(get()),
+        bpm,
+      ).baseBpm,
+    }),
+
+  setSongPresetId: (presetId) =>
+    set({
+      songPresetId: transcriptionDocument.setPreset(
+        selectTranscriptionDocument(get()),
+        presetId,
+      ).presetId,
+    }),
+
+  markSongSaved: (id, record) =>
+    set({
+      activeSongId: id,
+      savedSong: transcriptionDocument.markSaved(
+        selectTranscriptionDocument(get()),
+        record,
+      ).saved,
+    }),
 
   addSection: (type: SectionType, customLabel?: string) => {
     const { songSections, activeSectionIndex } = get();
@@ -351,7 +410,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   // --- Practice actions ---
 
   setPracticeSpeed: (percent: number) =>
-    set({ practiceSpeed: Math.max(50, Math.min(150, percent)) }),
+    set({
+      practiceSpeed: transcriptionDocument.setPracticeSpeed(
+        selectTranscriptionDocument(get()),
+        percent,
+      ).practiceSpeed,
+    }),
 
   setLoopSection: (loop: boolean) => set({ loopSection: loop }),
 

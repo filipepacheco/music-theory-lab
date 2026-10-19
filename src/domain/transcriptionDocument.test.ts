@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { transcriptionDocument } from './transcriptionDocument';
 import type { TranscriptionDocument } from './transcriptionDocument';
 import type { ProgressionStep } from '@/constants/progressions';
+import type { Song } from '@/types';
 
 const step = (label: string): ProgressionStep => ({
   degree: null,
   label,
 });
 
-const doc: TranscriptionDocument = { sections: [], activeSectionIndex: 0 };
+const doc: TranscriptionDocument = transcriptionDocument.create();
 
 describe('transcriptionDocument', () => {
   it('adds a section and activates it', () => {
@@ -111,5 +112,210 @@ describe('transcriptionDocument', () => {
     );
 
     expect(updated.sections[0].steps[0].confidence).toBe('sure');
+  });
+});
+
+describe('transcriptionDocument song record', () => {
+  const savedSong: Song = {
+    id: 'song-1',
+    title: 'Garota',
+    artist: 'Tom',
+    key: 5,
+    mode: 'minor',
+    originalBpm: 120,
+    presetId: 'rhodes',
+    sections: [
+      { id: 's1', type: 'verso', customLabel: undefined, steps: [step('i')] },
+    ],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-02T00:00:00.000Z',
+  };
+
+  it('plays at the base tempo multiplied by the practice speed', () => {
+    const loaded = transcriptionDocument.load(savedSong);
+    const slow = transcriptionDocument.setPracticeSpeed(loaded, 50);
+
+    expect(transcriptionDocument.playbackBpm(loaded)).toBe(120);
+    expect(transcriptionDocument.playbackBpm(slow)).toBe(60);
+    expect(
+      transcriptionDocument.playbackBpm(
+        transcriptionDocument.setPracticeSpeed(loaded, 75),
+      ),
+    ).toBe(90);
+  });
+
+  it('keeps the base tempo when the practice speed changes', () => {
+    let current = transcriptionDocument.load(savedSong);
+    // Many plays and speed changes in a row never compound.
+    for (const percent of [80, 50, 50, 65, 50]) {
+      current = transcriptionDocument.setPracticeSpeed(current, percent);
+      expect(current.baseBpm).toBe(120);
+    }
+    expect(transcriptionDocument.playbackBpm(current)).toBe(60);
+  });
+
+  it('clamps the practice speed to 50-150', () => {
+    const loaded = transcriptionDocument.load(savedSong);
+    expect(
+      transcriptionDocument.setPracticeSpeed(loaded, 10).practiceSpeed,
+    ).toBe(50);
+    expect(
+      transcriptionDocument.setPracticeSpeed(loaded, 400).practiceSpeed,
+    ).toBe(150);
+  });
+
+  it('loads the base tempo, the preset, and every saved field', () => {
+    const loaded = transcriptionDocument.load(savedSong);
+
+    expect(loaded.baseBpm).toBe(120);
+    expect(loaded.presetId).toBe('rhodes');
+    expect(loaded.practiceSpeed).toBe(100);
+    expect(loaded.title).toBe('Garota');
+    expect(loaded.artist).toBe('Tom');
+    expect(loaded.key).toBe(5);
+    expect(loaded.mode).toBe('minor');
+    expect(loaded.sections).toEqual(savedSong.sections);
+    expect(loaded.activeSectionIndex).toBe(0);
+    expect(transcriptionDocument.hasUnsavedChanges(loaded)).toBe(false);
+  });
+
+  it('builds a song record with the same fields as before', () => {
+    const loaded = transcriptionDocument.load(savedSong);
+    const record = transcriptionDocument.toSongRecord(loaded);
+
+    expect(Object.keys(record).sort()).toEqual(
+      [
+        'title',
+        'artist',
+        'key',
+        'mode',
+        'originalBpm',
+        'presetId',
+        'sections',
+      ].sort(),
+    );
+    expect(record).toEqual({
+      title: 'Garota',
+      artist: 'Tom',
+      key: 5,
+      mode: 'minor',
+      originalBpm: 120,
+      presetId: 'rhodes',
+      sections: savedSong.sections,
+    });
+  });
+
+  it('trims the title and the artist of the record', () => {
+    const draft = {
+      ...transcriptionDocument.load(savedSong),
+      title: '  Garota  ',
+      artist: ' Tom ',
+    };
+    const record = transcriptionDocument.toSongRecord(draft);
+    expect(record.title).toBe('Garota');
+    expect(record.artist).toBe('Tom');
+  });
+
+  it('runs save, load, practice speed change, and save again', () => {
+    // A new song, edited and saved.
+    let current = transcriptionDocument.setBaseBpm(
+      transcriptionDocument.addSection(
+        { ...transcriptionDocument.create(), title: 'Nova' },
+        'verso',
+        undefined,
+        { createId: () => 'a' },
+      ),
+      100,
+    );
+    current = transcriptionDocument.setPreset(current, 'rhodes');
+    expect(transcriptionDocument.hasUnsavedChanges(current)).toBe(true);
+
+    const firstSave = transcriptionDocument.toSongRecord(current);
+    current = transcriptionDocument.markSaved(current, firstSave);
+    expect(firstSave.originalBpm).toBe(100);
+    expect(firstSave.presetId).toBe('rhodes');
+    expect(transcriptionDocument.hasUnsavedChanges(current)).toBe(false);
+
+    // Load it back.
+    current = transcriptionDocument.load({
+      id: 'id-1',
+      ...firstSave,
+      createdAt: 'x',
+      updatedAt: 'x',
+    });
+    expect(current.baseBpm).toBe(100);
+    expect(current.presetId).toBe('rhodes');
+    expect(transcriptionDocument.hasUnsavedChanges(current)).toBe(false);
+
+    // Practice slowly: not an unsaved change.
+    current = transcriptionDocument.setPracticeSpeed(current, 50);
+    expect(transcriptionDocument.playbackBpm(current)).toBe(50);
+    expect(transcriptionDocument.hasUnsavedChanges(current)).toBe(false);
+
+    // Save again: the base tempo is stored, not the tempo that plays.
+    const secondSave = transcriptionDocument.toSongRecord(current);
+    current = transcriptionDocument.markSaved(current, secondSave);
+    expect(secondSave.originalBpm).toBe(100);
+    expect(secondSave.presetId).toBe('rhodes');
+    expect(current.baseBpm).toBe(100);
+    expect(transcriptionDocument.hasUnsavedChanges(current)).toBe(false);
+
+    // A real change is an unsaved change.
+    const edited = transcriptionDocument.addStepToSection(current, 0, step('I'));
+    expect(transcriptionDocument.hasUnsavedChanges(edited)).toBe(true);
+    expect(
+      transcriptionDocument.hasUnsavedChanges(
+        transcriptionDocument.setBaseBpm(current, 110),
+      ),
+    ).toBe(true);
+    expect(
+      transcriptionDocument.hasUnsavedChanges(
+        transcriptionDocument.setPreset(current, 'piano'),
+      ),
+    ).toBe(true);
+  });
+
+  it('treats an empty new song as saved, and a started one as unsaved', () => {
+    const fresh = transcriptionDocument.create();
+    expect(transcriptionDocument.hasUnsavedChanges(fresh)).toBe(false);
+    expect(
+      transcriptionDocument.hasUnsavedChanges({ ...fresh, title: 'x' }),
+    ).toBe(true);
+    expect(
+      transcriptionDocument.hasUnsavedChanges(
+        transcriptionDocument.addSection(fresh, 'verso', undefined, {
+          createId: () => 'a',
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      transcriptionDocument.hasUnsavedChanges(
+        transcriptionDocument.setPracticeSpeed(fresh, 50),
+      ),
+    ).toBe(false);
+  });
+
+  it('builds an import record that keeps the base tempo and preset', () => {
+    const current = transcriptionDocument.setPracticeSpeed(
+      transcriptionDocument.load(savedSong),
+      50,
+    );
+    const record = transcriptionDocument.importRecord(current, {
+      title: 'Importada',
+      artist: 'GP',
+      key: 2,
+      mode: 'major',
+      sections: [],
+    });
+
+    expect(record).toEqual({
+      title: 'Importada',
+      artist: 'GP',
+      key: 2,
+      mode: 'major',
+      originalBpm: 120,
+      presetId: 'rhodes',
+      sections: [],
+    });
   });
 });
