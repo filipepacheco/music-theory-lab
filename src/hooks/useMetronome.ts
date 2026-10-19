@@ -1,136 +1,49 @@
-import { useEffect, useRef, useCallback } from 'react';
-import * as Tone from 'tone';
+import { useEffect, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import { transport } from '@/services/toneClock';
+import type { BeatListener } from '@/services/transport';
 
-// High click (beat 1) and low click (beats 2-4)
-const clickHigh = new Tone.MembraneSynth({
-  pitchDecay: 0.01,
-  octaves: 6,
-  envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
-  volume: -10,
-}).toDestination();
-
-const clickLow = new Tone.MembraneSynth({
-  pitchDecay: 0.01,
-  octaves: 4,
-  envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.04 },
-  volume: -14,
-}).toDestination();
-
-const scheduledMetronomes = new Set<Tone.Loop>();
-
-/** Stop every metronome loop before another player takes over the Transport. */
+/** Stop every player on the shared clock before another player takes it. */
 export function stopScheduledMetronomes() {
-  for (const loop of scheduledMetronomes) {
-    loop.dispose();
-  }
-  scheduledMetronomes.clear();
+  transport.stopAll();
 }
 
-type BeatCallback = (beat: number, time: number) => void;
-
+/**
+ * The metronome hook: a thin adapter over the transport. The transport
+ * owns the clock, the click, and the one list of beat listeners.
+ */
 export function useMetronome() {
   const bpm = useAppStore((s) => s.bpm);
   const isMetronomeOn = useAppStore((s) => s.isMetronomeOn);
   const setBpm = useAppStore((s) => s.setBpm);
-  const setIsMetronomeOn = useAppStore((s) => s.setIsMetronomeOn);
-  const setCurrentBeat = useAppStore((s) => s.setCurrentBeat);
 
-  const loopRef = useRef<Tone.Loop | null>(null);
-  const beatRef = useRef(0);
-  const listenersRef = useRef<Set<BeatCallback>>(new Set());
-
-  // Keep Transport BPM in sync
+  // Keep the clock tempo in sync with the app tempo.
   useEffect(() => {
-    Tone.getTransport().bpm.value = bpm;
+    transport.setTempo(bpm);
   }, [bpm]);
 
   const start = useCallback(async () => {
-    try {
-      await Tone.start();
-    } catch {
-      // ignore
-    }
-
-    const transport = Tone.getTransport();
-    transport.bpm.value = useAppStore.getState().bpm;
-
-    // Clean up any existing loop
-    if (loopRef.current) {
-      loopRef.current.dispose();
-    }
-
-    beatRef.current = 0;
-
-    loopRef.current = new Tone.Loop((time) => {
-      const beat = beatRef.current % 4;
-
-      // Play click at precise audio time
-      if (beat === 0) {
-        clickHigh.triggerAttackRelease('C5', '32n', time);
-      } else {
-        clickLow.triggerAttackRelease('C4', '32n', time);
-      }
-
-      // Fire audio callbacks directly in the loop for precise timing
-      listenersRef.current.forEach((cb) => cb(beat, time));
-
-      // Update UI on the main thread (visual only)
-      Tone.getDraw().schedule(() => {
-        setCurrentBeat(beat);
-      }, time);
-
-      beatRef.current++;
-    }, '4n');
-
-    scheduledMetronomes.add(loopRef.current);
-    loopRef.current.start(0);
-    transport.start();
-    setIsMetronomeOn(true);
-  }, [setIsMetronomeOn, setCurrentBeat]);
+    transport.setTempo(useAppStore.getState().bpm);
+    await transport.startMetronome();
+  }, []);
 
   const stop = useCallback(() => {
-    const transport = Tone.getTransport();
-    transport.stop();
-    transport.position = 0;
-
-    if (loopRef.current) {
-      scheduledMetronomes.delete(loopRef.current);
-      loopRef.current.dispose();
-      loopRef.current = null;
-    }
-
-    beatRef.current = 0;
-    setIsMetronomeOn(false);
-    setCurrentBeat(-1);
-  }, [setIsMetronomeOn, setCurrentBeat]);
+    transport.stopMetronome();
+  }, []);
 
   const toggle = useCallback(() => {
     if (isMetronomeOn) {
       stop();
     } else {
-      start();
+      void start();
     }
   }, [isMetronomeOn, start, stop]);
 
-  // Register a beat callback. Returns an unsubscribe function; the
-  // metronome supports any number of concurrent listeners.
-  const onBeat = useCallback((cb: BeatCallback) => {
-    listenersRef.current.add(cb);
-    return () => {
-      listenersRef.current.delete(cb);
-    };
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (loopRef.current) {
-        scheduledMetronomes.delete(loopRef.current);
-        loopRef.current.dispose();
-      }
-    };
-  }, []);
+  // Register a beat listener on the transport. Returns an unsubscribe function.
+  const onBeat = useCallback(
+    (cb: BeatListener) => transport.onBeat(cb),
+    [],
+  );
 
   return { start, stop, toggle, setBpm, bpm, isMetronomeOn, onBeat };
 }

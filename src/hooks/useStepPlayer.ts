@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import * as Tone from 'tone';
 import { useAppStore } from '@/store/useAppStore';
-import { useMetronome } from '@/hooks/useMetronome';
+import { transport } from '@/services/toneClock';
 import { useSynth } from '@/hooks/useSynth';
 import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
 import { resolveStep } from '@/domain/stepResolution';
@@ -18,28 +17,24 @@ export interface StepPlayerOptions {
   applyGlobals?: boolean;
   /** Eighths per segment (e.g. per song section); enables onSegmentChange. */
   segmentLengths?: number[];
-  /** Called inside Tone.getDraw when the active step changes; -1 on stop. */
+  /** Called on the draw scheduler when the active step changes; -1 on stop. */
   onStepChange?: (stepIndex: number) => void;
-  /** Called inside Tone.getDraw when the active segment changes; undefined on stop. */
+  /** Called on the draw scheduler when the active segment changes; undefined on stop. */
   onSegmentChange?: (segmentIndex: number | undefined) => void;
 }
 
 /**
- * The step player: one module owning everything a progression transport
- * needs — playing state, metronome subscription, eighth counting, event
- * scheduling, step resolution, voicing, and UI highlight side effects.
- * Callers pass steps and options; `play()` accepts per-play overrides.
+ * The step player: a thin adapter over the transport for one progression —
+ * playing state, eighth counting, event scheduling, step resolution,
+ * voicing, and UI highlight side effects. The transport owns the clock: a
+ * play takes the clock, and a stop gives it back. Callers pass steps and
+ * options; `play()` accepts per-play overrides.
  */
 export function useStepPlayer(defaults: StepPlayerOptions) {
   const defaultsRef = useRef(defaults);
   defaultsRef.current = defaults;
 
   const { playChord } = useSynth();
-  const {
-    start: startMetronome,
-    stop: stopMetronome,
-    onBeat,
-  } = useMetronome();
 
   const playingRef = useRef(false);
   const eighthCountRef = useRef(0);
@@ -54,6 +49,7 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
     unsubscribeRef.current = null;
     playingRef.current = false;
     eighthCountRef.current = 0;
+    const id = currentIdRef.current;
     currentIdRef.current = null;
 
     const state = useAppStore.getState();
@@ -62,8 +58,9 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
     state.setPlayingProgression(null);
     defaultsRef.current.onStepChange?.(-1);
     defaultsRef.current.onSegmentChange?.(undefined);
-    stopMetronome();
-  }, [stopMetronome]);
+    // Give the clock back; a no-op when another player took it already.
+    if (id !== null) transport.releaseClock(id);
+  }, []);
 
   const play = useCallback(
     (overrides?: Partial<StepPlayerOptions>) => {
@@ -94,6 +91,13 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         bpm: opts.bpm,
       };
 
+      // Take the clock first: an old player stops cleanly before this one starts.
+      transport.setTempo(useAppStore.getState().bpm);
+      void transport.takeClock(
+        { kind: 'progression', id: opts.id },
+        { onRelease: stop, click: true },
+      );
+
       playingRef.current = true;
       eighthCountRef.current = -2;
       currentIdRef.current = opts.id;
@@ -108,7 +112,7 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         if (resolved.notes.length > 0) {
           playChord(resolved.notes, 3, '2n', opts.presetId, scheduleTime);
         }
-        Tone.getDraw().schedule(() => {
+        transport.draw(() => {
           opts.onStepChange?.(stepIndex);
           const state = useAppStore.getState();
           if (resolved.degree !== null) {
@@ -131,10 +135,10 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         return undefined;
       };
 
-      unsubscribeRef.current = onBeat((_beat, time) => {
+      unsubscribeRef.current = transport.onBeat((_beat, time) => {
         if (!playingRef.current) return;
         eighthCountRef.current += 2;
-        const eighthDuration = Tone.Time('8n').toSeconds();
+        const eighthDuration = transport.eighthSeconds();
         const events = createEighthPlaybackEvents(
           prog.steps,
           eighthCountRef.current,
@@ -143,7 +147,7 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         );
         for (const event of events) {
           if (event.type === 'timeline') {
-            Tone.getDraw().schedule(() => {
+            transport.draw(() => {
               useAppStore.getState().setCurrentEighth(event.cycleEighth);
               opts.onSegmentChange?.(segmentIndexAt(event.cycleEighth));
             }, event.scheduleTime);
@@ -152,12 +156,8 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
           }
         }
       });
-
-      if (!useAppStore.getState().isMetronomeOn) {
-        startMetronome();
-      }
     },
-    [onBeat, playChord, startMetronome, stop],
+    [playChord, stop],
   );
 
   // Unmount mid-play: release the beat subscription and fully stop.
