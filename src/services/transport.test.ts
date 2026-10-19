@@ -337,11 +337,11 @@ describe('transport and a groove', () => {
     expect(transport.owner()?.kind).toBe('progression');
   });
 
-  it('the metronome turned on during a groove does not take the clock', async () => {
+  it('the metronome turned on during a groove takes the clock from it', async () => {
     const { transport } = setup();
     await transport.takeClock(groove, { onRelease: () => {} });
     await transport.startMetronome();
-    expect(transport.owner()?.kind).toBe('groove');
+    expect(transport.owner()?.kind).toBe('metronome');
   });
 
   it('stops the groove ticks when the clock stops', async () => {
@@ -392,7 +392,7 @@ describe('transport and a groove', () => {
     expect(fake.clock.getBpm()).toBe(80);
   });
 
-  it('restores the tempo when the metronome is on and the groove stops', async () => {
+  it('restores the tempo when the metronome was on before the groove and the groove stops', async () => {
     const { fake, transport } = setup();
     transport.setTempo(70);
     await transport.startMetronome();
@@ -400,6 +400,22 @@ describe('transport and a groove', () => {
     transport.setTempo(120);
     transport.releaseClock('g1');
     expect(fake.clock.getBpm()).toBe(70);
+  });
+
+  it('the metronome started during a groove takes the clock: groove stops, click on, tempo back', async () => {
+    const { fake, transport } = setup();
+    transport.setTempo(70);
+    const release = vi.fn();
+    await transport.takeClock(groove, { onRelease: release });
+    transport.setTempo(120);
+    await transport.startMetronome();
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(transport.owner()?.kind).toBe('metronome');
+    expect(transport.isClickOn()).toBe(true);
+    expect(fake.clock.getBpm()).toBe(70);
+    transport.releaseClock('g1');
+    expect(transport.owner()?.kind).toBe('metronome');
+    expect(fake.isTicking()).toBe(true);
   });
 });
 

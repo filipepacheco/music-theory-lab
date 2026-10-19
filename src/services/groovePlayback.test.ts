@@ -156,5 +156,12 @@ describe('the groove hook', () => {
     expect(source).not.toMatch(/from 'tone'/);
     expect(source).not.toMatch(/Tone\./);
     expect(source).not.toMatch(/getTransport|getDraw/);
+    expect(source).not.toMatch(
+      /transport\.(takeClock|releaseClock|setTempo|repeat|draw|onBeat|startMetronome|stopMetronome|stopAll)/,
+    );
+  });
+
+  it('feeds each section change into the playing-section state', () => {
+    expect(source).toMatch(/onSectionChange:\s*setPlayingSectionId/);
   });
 });
