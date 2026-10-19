@@ -2,8 +2,9 @@
 
 `src/services/playbackEngine.ts` consulta o estado atual do contexto em cada
 chamada de `ensureAudio()`. Se ele não estiver `running`, tenta `Tone.start()`.
-Tentativas simultâneas compartilham a mesma promessa; uma falha permite tentar
-novamente. O retorno indica se o contexto está executando após a tentativa.
+Cada chamada inicia sua própria tentativa, mesmo se uma anterior ainda estiver
+pendente. Assim, uma retomada automática bloqueada não impede a tentativa no
+próximo gesto. O retorno indica se o contexto está executando após a tentativa.
 
 Quando a página volta a ficar visível, o serviço tenta retomar o contexto.
 Se o navegador exigir um gesto, o próximo toque no instrumento ou player
