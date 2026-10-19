@@ -309,6 +309,84 @@ describe('transport', () => {
   });
 });
 
+describe('the metronome tempo and a player with its own tempo', () => {
+  const song = { kind: 'progression', id: '__song__' } as const;
+
+  it('starting the metronome during a song keeps the song tempo', async () => {
+    const { fake, transport } = setup();
+    transport.setMetronomeTempo(120);
+    await transport.takeClock(song, {
+      onRelease: () => {},
+      click: true,
+      tempo: 60,
+    });
+    await transport.startMetronome(120);
+    expect(fake.clock.getBpm()).toBe(60);
+    expect(transport.isClickOn()).toBe(true);
+  });
+
+  it('the metronome gets its tempo back when the song releases the clock', async () => {
+    const { fake, transport } = setup();
+    await transport.startMetronome(120);
+    await transport.takeClock(song, {
+      onRelease: () => {},
+      click: true,
+      tempo: 60,
+    });
+    expect(fake.clock.getBpm()).toBe(60);
+    transport.releaseClock('__song__');
+    expect(transport.owner()?.kind).toBe('metronome');
+    expect(fake.clock.getBpm()).toBe(120);
+  });
+
+  it('a change of the app tempo during a song waits for the release', async () => {
+    const { fake, transport } = setup();
+    await transport.startMetronome(120);
+    await transport.takeClock(song, {
+      onRelease: () => {},
+      click: true,
+      tempo: 60,
+    });
+    transport.setMetronomeTempo(100);
+    expect(fake.clock.getBpm()).toBe(60);
+    transport.releaseClock('__song__');
+    expect(fake.clock.getBpm()).toBe(100);
+  });
+
+  it('a progression at the app tempo follows a change of the app tempo', async () => {
+    const { fake, transport } = setup();
+    transport.setMetronomeTempo(90);
+    await transport.takeClock(
+      { kind: 'progression', id: '__custom__' },
+      { onRelease: () => {}, click: true, tempo: 90 },
+    );
+    transport.setMetronomeTempo(110);
+    expect(fake.clock.getBpm()).toBe(110);
+  });
+
+  it('the metronome tempo sets the clock when no player owns it', async () => {
+    const { fake, transport } = setup();
+    transport.setMetronomeTempo(75);
+    expect(fake.clock.getBpm()).toBe(75);
+    await transport.startMetronome(85);
+    expect(fake.clock.getBpm()).toBe(85);
+  });
+
+  it('a change of the app tempo during a groove waits for the groove to stop', async () => {
+    const { fake, transport } = setup();
+    transport.setMetronomeTempo(100);
+    await transport.takeClock(
+      { kind: 'groove', id: 'g1' },
+      { onRelease: () => {} },
+    );
+    transport.setTempo(140);
+    transport.setMetronomeTempo(90);
+    expect(fake.clock.getBpm()).toBe(140);
+    transport.releaseClock('g1');
+    expect(fake.clock.getBpm()).toBe(90);
+  });
+});
+
 describe('transport and a groove', () => {
   const groove = { kind: 'groove', id: 'g1' } as const;
 
