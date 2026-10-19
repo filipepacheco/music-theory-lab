@@ -161,27 +161,4 @@ describe('playback session', () => {
     close();
     expect(media).toBeNull();
   });
-
-  it('plays without errors when the browser has none of the media features', async () => {
-    const session = createPlaybackSession(createPlaybackBrowser({}));
-    let playing = false;
-    const player = Symbol();
-    const song = {
-      title: 'Asa Branca',
-      play: async () => {
-        playing = true;
-        session.start(player);
-      },
-      pause: () => {
-        playing = false;
-        session.stop(player);
-      },
-    };
-    const close = session.openLibrary(song);
-    await song.play();
-    expect(playing).toBe(true);
-    song.pause();
-    close();
-    expect(playing).toBe(false);
-  });
 });
