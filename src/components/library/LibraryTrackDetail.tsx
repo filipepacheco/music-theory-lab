@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { probeAudioUrl } from './audioSource';
 import {
-  barIndexAtSeconds,
-  buildChordChartBars,
+  barAtTime,
+  buildLibraryTrackView,
+  sectionAtTime,
+  type LibraryTrackAnalyses,
+  type LibraryTrackView,
+} from '@/domain/libraryTrackView';
+import { getPreferredRootName } from '@/utils/noteHelpers';
+import {
   collapseChartCells,
   fetchTrackAnalyses,
   formatDuration,
-  groupBarsBySection,
   sectionColorVar,
-  sectionIndexAtSeconds,
-  type BeatAnalysisJson,
-  type ChordAnalysisJson,
   type ChordChartBar,
-  type KeyAnalysisJson,
   type LibraryIndexEntry,
-  type SectionAnalysisJson,
   type SectionGroup,
 } from './libraryData';
 import LibraryPlayer from './LibraryPlayer';
@@ -25,17 +25,27 @@ interface Props {
   track: LibraryIndexEntry;
 }
 
-interface DetailData {
-  chord: ChordAnalysisJson;
-  beat: BeatAnalysisJson;
-  key: KeyAnalysisJson;
-  section: SectionAnalysisJson | null;
-}
+type DetailData = LibraryTrackAnalyses;
 
 /** `undefined` while the probe is still running, `null` once it found nothing. */
 type AudioProbe = string | null | undefined;
 
 const NO_SECTIONS: never[] = [];
+const NO_BARS: ChordChartBar[] = [];
+const NO_GROUPS: SectionGroup[] = [];
+
+/** Stats key label: the Library track view's key, else the index entry's. */
+function keyLabel(
+  track: LibraryIndexEntry,
+  view: LibraryTrackView | null,
+): string {
+  const fallback = track.detected_key;
+  const mode = view?.stats.keyMode ?? fallback.mode;
+  const name = view
+    ? getPreferredRootName(view.stats.keyTonicPc)
+    : fallback.tonic_name;
+  return `${name} ${mode === 'minor' ? 'menor' : 'maior'}`;
+}
 
 export default function LibraryTrackDetail({ track }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
@@ -71,35 +81,18 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const audio = useLibraryAudio(audioUrl ?? null);
 
-  const bars = useMemo(() => {
-    if (!data) return [];
-    return buildChordChartBars(
-      data.chord,
-      data.beat,
-      track.duration_seconds,
-      data.key,
-    );
-  }, [data, track.duration_seconds]);
-
-  // Stable identity while loading, so the memos below do not re-run on every
-  // render just because `?? []` built a fresh array.
-  const sections = data?.section?.sections ?? NO_SECTIONS;
-
-  const sectionGroups = useMemo(
-    () => groupBarsBySection(bars, sections),
-    [bars, sections],
+  const view = useMemo(
+    () => (data ? buildLibraryTrackView(data, track.duration_seconds) : null),
+    [data, track.duration_seconds],
   );
+  const bars = view?.bars ?? NO_BARS;
+  const sections = view?.sections ?? NO_SECTIONS;
+  const sectionGroups = view?.groups ?? NO_GROUPS;
 
-  const activeBarIndex = useMemo(
-    () => (audio.playing ? barIndexAtSeconds(bars, audio.currentSeconds) : -1),
-    [audio.playing, audio.currentSeconds, bars],
-  );
-
-  const activeSectionIndex = useMemo(
-    () =>
-      audio.playing ? sectionIndexAtSeconds(sections, audio.currentSeconds) : -1,
-    [audio.playing, audio.currentSeconds, sections],
-  );
+  const activeBarIndex =
+    view && audio.playing ? barAtTime(view, audio.currentSeconds) : -1;
+  const activeSectionIndex =
+    view && audio.playing ? sectionAtTime(view, audio.currentSeconds) : -1;
 
   const seek = audioUrl && audio.ready ? audio.seek : null;
 
@@ -111,18 +104,16 @@ export default function LibraryTrackDetail({ track }: Props) {
       </header>
 
       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat
-          label="Tom"
-          value={`${track.detected_key.tonic_name} ${
-            track.detected_key.mode === 'minor' ? 'menor' : 'maior'
-          }`}
-        />
+        <Stat label="Tom" value={keyLabel(track, view)} />
         <Stat
           label="Andamento"
           value={`${Math.round(track.detected_tempo_bpm)} bpm`}
         />
         <Stat label="Duração" value={formatDuration(track.duration_seconds)} />
-        <Stat label="Compassos" value={String(track.downbeat_count)} />
+        <Stat
+          label="Compassos"
+          value={String(view?.stats.barCount ?? track.downbeat_count)}
+        />
       </dl>
 
       {audioUrl && <LibraryPlayer audio={audio} />}

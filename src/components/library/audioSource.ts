@@ -1,6 +1,7 @@
-import type { LibraryIndexEntry } from './libraryData';
-
-const LIBRARY_ROOT = '/library';
+import {
+  LIBRARY_ROOT,
+  type LibraryIndexEntry,
+} from '@/components/library/libraryData';
 
 /**
  * File extensions the sync script's --copy-audio flag may write, in order
