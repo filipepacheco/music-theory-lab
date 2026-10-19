@@ -365,6 +365,7 @@ function BassTabBar({
         {repeat && <RepeatSign x={width / 2} y={HEIGHT / 2} />}
         {playhead !== null && (
           <line
+            data-playhead
             x1={PAD_X + playhead * bar.beatCount * beatWidth}
             x2={PAD_X + playhead * bar.beatCount * beatWidth}
             y1={2}

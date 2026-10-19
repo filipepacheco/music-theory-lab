@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
+import PlaybackDiagnostics from '@/components/library/PlaybackDiagnostics';
 import PartMuteControls from '@/components/library/PartMuteControls';
 import PlaybackDock from '@/components/library/PlaybackDock';
 import type { PartMutes, PlaybackPart } from '@/domain/songPartsPlayback';
@@ -232,6 +233,9 @@ export default function SongDetailFrame<L>({
 
   return (
     <section className="flex min-w-0 flex-col gap-4">
+      {new URLSearchParams(window.location.search).has('playback-debug') && (
+        <PlaybackDiagnostics chartRef={chartRef} playing={playing} />
+      )}
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="font-heading text-base text-text-primary">
