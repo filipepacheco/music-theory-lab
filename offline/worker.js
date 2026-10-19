@@ -117,13 +117,12 @@ self.addEventListener('fetch', (event) => {
     request.mode === 'navigate' && url.origin === self.location.origin;
   if (navigation || precachedUrls.has(url.href)) {
     event.respondWith(
-      caches
-        .open(cacheName)
-        .then(
-          async (cache) =>
-            (await cache.match(navigation ? '/index.html' : request)) ||
-            fetch(request),
-        ),
+      caches.open(cacheName).then(
+        async (cache) =>
+          (await cache.match(navigation ? '/index.html' : request, {
+            ignoreVary: true,
+          })) || fetch(request),
+      ),
     );
   }
 });

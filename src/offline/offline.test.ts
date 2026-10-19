@@ -9,7 +9,10 @@ const key = (request: Request | string) =>
   absolute(typeof request === 'string' ? request : request.url);
 
 function browser(source: string) {
-  const stores = new Map<string, Map<string, Response>>();
+  type CachedFile = { response: Response; headers: Headers };
+  const stores = new Map<string, Map<string, CachedFile>>();
+  const headers = (request: Request | string) =>
+    typeof request === 'string' ? new Headers() : request.headers;
   const network = vi.fn(
     async (request: Request | string) =>
       new Response(key(request), {
@@ -26,15 +29,35 @@ function browser(source: string) {
           if (responses.some((response) => response.status !== 200))
             throw new Error('Install failed');
           requests.forEach((request, i) =>
-            entries.set(key(request), responses[i].clone()),
+            entries.set(key(request), {
+              response: responses[i].clone(),
+              headers: headers(request),
+            }),
           );
         },
-        async match(request: Request | string) {
-          return entries.get(key(request))?.clone();
+        async match(request: Request | string, options?: CacheQueryOptions) {
+          const cached = entries.get(key(request));
+          if (!cached) return undefined;
+          const vary = cached.response.headers.get('vary');
+          if (
+            !options?.ignoreVary &&
+            vary?.split(',').some((name) => {
+              const field = name.trim();
+              return (
+                field === '*' ||
+                cached.headers.get(field) !== headers(request).get(field)
+              );
+            })
+          )
+            return undefined;
+          return cached.response.clone();
         },
         async put(request: Request | string, response: Response) {
           if (response.status !== 200) throw new Error('Not a complete file');
-          entries.set(key(request), response.clone());
+          entries.set(key(request), {
+            response: response.clone(),
+            headers: headers(request),
+          });
         },
       };
     },
@@ -120,12 +143,15 @@ it('installs the shell, lazy chunks, WASM, fonts, all samplers and drums', async
       absolute('/manifest.webmanifest'),
       'https://tonejs.github.io/audio/salamander/C4.mp3',
       'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/electric_piano_1-mp3/C4.mp3',
-      'https://tonejs.github.io/audio/drum-samples/acoustic-kit/kick.mp3',
-      'https://tonejs.github.io/audio/drum-samples/acoustic-kit/snare.mp3',
-      'https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3',
+      absolute('/drum-samples/kick.flac'),
+      absolute('/drum-samples/snare.flac'),
+      absolute('/drum-samples/hihat-closed.flac'),
+      absolute('/audio/growlybass/c3_f_rr1.mp3'),
     ]),
   );
-  expect(downloads.filter((url) => url.endsWith('.mp3'))).toHaveLength(199);
+  expect(downloads.filter((url) => url.endsWith('.mp3'))).toHaveLength(196);
+  expect(downloads.filter((url) => url.endsWith('.flac'))).toHaveLength(12);
+  expect(downloads.some((url) => url.includes('/acoustic-kit/'))).toBe(false);
   expect(downloads.some((url) => url.includes('/fonts/'))).toBe(true);
 });
 
@@ -293,6 +319,22 @@ it('serves a reload, lazy modules, WASM and note samples with the network off af
   const apiNavigation = new Request(absolute('/api/songs'));
   Object.defineProperty(apiNavigation, 'mode', { value: 'navigate' });
   expect(await app.dispatch('fetch', apiNavigation)).toBeUndefined();
+});
+
+it('serves precached scripts and styles offline when CORS adds an Origin header', async () => {
+  const app = browser(worker());
+  app.network.mockImplementation(
+    async () => new Response('static asset', { headers: { Vary: 'Origin' } }),
+  );
+  await app.dispatch('install');
+  app.network.mockRejectedValue(new Error('Offline'));
+  for (const file of ['/assets/app.js', '/assets/app.css']) {
+    const response = await app.dispatch(
+      'fetch',
+      new Request(absolute(file), { headers: { Origin: origin } }),
+    );
+    expect(await response?.text()).toBe('static asset');
+  }
 });
 
 it('kill switch takes over, deletes only app caches, unregisters and leaves requests and IndexedDB alone', async () => {

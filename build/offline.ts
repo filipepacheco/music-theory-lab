@@ -38,10 +38,6 @@ export function createOfflineWorker(
       ? Object.values(preset.urls).map((file) => preset.baseUrl + file)
       : [],
   );
-  const drums = ['kick.mp3', 'snare.mp3', 'hihat.mp3'].map(
-    (file) =>
-      `https://tonejs.github.io/audio/drum-samples/acoustic-kit/${file}`,
-  );
   const urls = [
     ...Object.keys(files)
       .filter(
@@ -51,7 +47,6 @@ export function createOfflineWorker(
       .sort()
       .map((name) => `/${name}`),
     ...samples,
-    ...drums,
   ];
   hash.update(JSON.stringify(urls));
   return template.replace(
