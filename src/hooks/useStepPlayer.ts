@@ -5,7 +5,10 @@ import { useMetronome } from '@/hooks/useMetronome';
 import { useSynth } from '@/hooks/useSynth';
 import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
 import { resolveStep } from '@/domain/stepResolution';
-import type { ProgressionExample, ProgressionStep } from '@/constants/progressions';
+import type {
+  ProgressionExample,
+  ProgressionStep,
+} from '@/constants/progressions';
 
 export interface StepPlayerOptions {
   /** id stored on the playing descriptor; views match on it. */
@@ -35,11 +38,7 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
   defaultsRef.current = defaults;
 
   const { playChord } = useSynth();
-  const {
-    start: startMetronome,
-    stop: stopMetronome,
-    onBeat,
-  } = useMetronome();
+  const { start: startMetronome, stop: stopMetronome, onBeat } = useMetronome();
 
   const playingRef = useRef(false);
   const eighthCountRef = useRef(0);
@@ -66,7 +65,7 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
   }, [stopMetronome]);
 
   const play = useCallback(
-    (overrides?: Partial<StepPlayerOptions>) => {
+    async (overrides?: Partial<StepPlayerOptions>) => {
       const opts = { ...defaultsRef.current, ...overrides };
       if (opts.steps.length === 0) return;
 
@@ -109,6 +108,11 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
           playChord(resolved.notes, 3, '2n', opts.presetId, scheduleTime);
         }
         Tone.getDraw().schedule(() => {
+          if (
+            !playingRef.current ||
+            useAppStore.getState().playingProgression !== prog
+          )
+            return;
           opts.onStepChange?.(stepIndex);
           const state = useAppStore.getState();
           if (resolved.degree !== null) {
@@ -144,6 +148,11 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         for (const event of events) {
           if (event.type === 'timeline') {
             Tone.getDraw().schedule(() => {
+              if (
+                !playingRef.current ||
+                useAppStore.getState().playingProgression !== prog
+              )
+                return;
               useAppStore.getState().setCurrentEighth(event.cycleEighth);
               opts.onSegmentChange?.(segmentIndexAt(event.cycleEighth));
             }, event.scheduleTime);
@@ -153,9 +162,12 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         }
       });
 
-      if (!useAppStore.getState().isMetronomeOn) {
-        startMetronome();
-      }
+      if (
+        !(await startMetronome()) &&
+        playingRef.current &&
+        useAppStore.getState().playingProgression === prog
+      )
+        stop();
     },
     [onBeat, playChord, startMetronome, stop],
   );
