@@ -21,6 +21,8 @@ export interface ClockAdapter {
   getBpm(): number;
   /** Call `cb` on each quarter note at audio time; returns a cancel function. */
   repeatQuarter(cb: (time: number) => void): () => void;
+  /** Call `cb` every `seconds` from the start of the clock; returns a cancel function. */
+  repeat(cb: (time: number) => void, seconds: number): () => void;
   /** Length of one eighth note at the current tempo, in seconds. */
   eighthSeconds(): number;
   /** Run a UI update on the draw scheduler, in step with the audio time. */
@@ -58,6 +60,8 @@ export interface Transport {
   isRunning(): boolean;
   onBeat(listener: BeatListener): () => void;
   setTempo(bpm: number): void;
+  /** Call `cb` every `seconds` while the clock runs; the clock stop cancels it. */
+  repeat(seconds: number, cb: (time: number) => void): () => void;
   tempo(): number;
   eighthSeconds(): number;
   draw(cb: () => void, time: number): void;
@@ -87,6 +91,15 @@ export function createTransport(
   let cancelTick: (() => void) | null = null;
   let beatCount = 0;
   let runId = 0;
+  /** The tempo from before a groove took the clock; null when none did. */
+  let savedTempo: number | null = null;
+  const repeats = new Set<() => void>();
+
+  const restoreTempo = () => {
+    if (savedTempo === null) return;
+    clock.setBpm(savedTempo);
+    savedTempo = null;
+  };
 
   const setClick = (on: boolean) => {
     if (clickOn === on) return;
@@ -118,6 +131,7 @@ export function createTransport(
 
   const stopClock = () => {
     runId++;
+    for (const cancel of [...repeats]) cancel();
     if (cancelTick) {
       cancelTick();
       cancelTick = null;
@@ -150,6 +164,16 @@ export function createTransport(
     },
 
     setTempo: (bpm) => clock.setBpm(bpm),
+
+    repeat(seconds, cb) {
+      const cancelClock = clock.repeat(cb, seconds);
+      const cancel = () => {
+        repeats.delete(cancel);
+        cancelClock();
+      };
+      repeats.add(cancel);
+      return cancel;
+    },
     tempo: () => clock.getBpm(),
     eighthSeconds: () => clock.eighthSeconds(),
     draw: (cb, time) => clock.draw(cb, time),
@@ -175,6 +199,13 @@ export function createTransport(
     takeClock(owner, options) {
       const previous = current;
       const clickWasOn = clickOn;
+      const isGroove = owner.kind === 'groove';
+      if (isGroove) {
+        // The groove saves the tempo once, and gives it back when it stops.
+        if (savedTempo === null) savedTempo = clock.getBpm();
+      } else if (previous?.owner.kind === 'groove') {
+        restoreTempo();
+      }
       current = {
         owner: { ...owner },
         onRelease: options.onRelease,
@@ -185,13 +216,15 @@ export function createTransport(
         if (previous.ownsClick) current.ownsClick = Boolean(options.click);
         previous.onRelease?.();
       }
-      if (options.click) setClick(true);
+      if (isGroove) setClick(false);
+      else if (options.click) setClick(true);
       return ensureRunning();
     },
 
     releaseClock(id) {
       if (!current || current.owner.id !== id) return;
       if (current.ownsClick) setClick(false);
+      if (current.owner.kind === 'groove') restoreTempo();
       settle();
     },
 
@@ -200,6 +233,7 @@ export function createTransport(
       current = null;
       setClick(false);
       stopClock();
+      restoreTempo();
       if (previous && previous.owner.kind !== 'metronome') {
         previous.onRelease?.();
       }
