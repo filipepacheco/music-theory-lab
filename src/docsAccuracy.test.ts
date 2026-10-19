@@ -31,6 +31,12 @@ describe('glossary: unclear bar', () => {
     expect(unclear).toMatch(/unsure/);
   });
 
+  it('says a bar with no chord before it gets the ? placeholder, marked unsure', () => {
+    expect(unclear).toMatch(/no chord comes before it/);
+    expect(unclear).toMatch(/\?/);
+    expect(unclear).toMatch(/placeholder/);
+  });
+
   it('no longer says an unclear bar carries no chord label', () => {
     expect(unclear).not.toMatch(/carries \*\*no\*\* chord label/i);
   });
@@ -48,6 +54,17 @@ describe('audio doc: transport', () => {
   it('no longer says progression examples register the beat callback', () => {
     expect(metronome).not.toMatch(/ProgressionExamples hooks into/);
     expect(metronome).not.toMatch(/`onBeat\(callback\)` registration/);
+  });
+
+  it('no longer says ProgressionExamples tracks beats or does look-ahead', () => {
+    expect(metronome).not.toMatch(/ProgressionExamples tracks beat position/);
+    expect(metronome).not.toMatch(/ProgressionExamples[^\n]*look-ahead/);
+  });
+
+  it('names useStepPlayer as the beat subscriber and look-ahead owner', () => {
+    expect(metronome).toMatch(/useStepPlayer/);
+    expect(metronome).toMatch(/transport\.onBeat/);
+    expect(metronome).toMatch(/offsetEighths/);
   });
 
   it('describes the transport as owner of the shared clock and beat listeners', () => {

@@ -24,7 +24,7 @@ The explicit output label for a bar where **both** the harmony track and root tr
 
 ## Unclear bar
 
-A bar whose pitch-class set matches no chord template exactly, or matches several with no root-track note to break the tie. The import gives it no chord name: it carries the chord before it, marked unsure (a silent bar does the same). The no-fuzzy-fallback decision on [Decide chord-matching algorithm approach for ambiguous voicings](https://github.com/filipepacheco/music-theory-lab/issues/6) ruled out best-effort guessing as overfitting. Distinct from [[no-chord-data]]: an unclear bar has notes but no name for them.
+A bar whose pitch-class set matches no chord template exactly, or matches several with no root-track note to break the tie. The import gives it no chord name: it carries the chord before it, marked unsure (a silent bar does the same). When no chord comes before it (for example, the first bar), it gets the `?` placeholder, marked unsure. The no-fuzzy-fallback decision on [Decide chord-matching algorithm approach for ambiguous voicings](https://github.com/filipepacheco/music-theory-lab/issues/6) ruled out best-effort guessing as overfitting. Distinct from [[no-chord-data]]: an unclear bar has notes but no name for them.
 
 ## GP import
 
