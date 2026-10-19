@@ -147,6 +147,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedChordIndex: null,
       highlightedNotes: [],
       highlightColors: {},
+      selectedScaleId: null,
+      comparisonScaleId: null,
     });
   },
 
