@@ -14,7 +14,8 @@ export type RocksmithImportStatus =
 
 async function loadImporter(file: File) {
   const format = importFormat(file.name);
-  if (!format) throw new Error('Selecione um arquivo .gp, .psarc, .mid ou .midi.');
+  if (!format)
+    throw new Error('Selecione um arquivo .gp, .psarc, .mid ou .midi.');
   if (format === 'gp') {
     const { importGpChart, gpChartImportErrorMessage } =
       await import('@/services/gp/importGpChart');
@@ -157,7 +158,7 @@ export function useRocksmithCharts() {
       setImportStatus({ state: 'importing', fileName: file.name });
       await new Promise((resolve) => setTimeout(resolve, 30));
       let importErrorMessage: (error: unknown) => string = () =>
-        'Selecione um arquivo .gp, .psarc, .mid ou .midi válido.';
+        'Não foi possível importar este arquivo.';
       try {
         const loaded = await loadImporter(file);
         importErrorMessage = loaded.importErrorMessage;
@@ -189,7 +190,7 @@ export function useRocksmithCharts() {
           message:
             error instanceof DOMException
               ? 'Não foi possível salvar a importação neste navegador.'
-              : importErrorMessage(error),
+              : `${importErrorMessage(error)} Tipos aceitos: .gp, .psarc, .mid ou .midi.`,
         });
         return null;
       }
