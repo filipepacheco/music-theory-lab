@@ -35,6 +35,7 @@ export function DraggableBar({
         animate={{ scale: 1, opacity: isDragging ? 0.3 : 1 }}
         className="group relative w-10 h-7 sm:w-14 sm:h-10 flex flex-col items-center justify-center rounded-button text-xs font-mono cursor-grab select-none transition-shadow active:cursor-grabbing"
         style={{
+          touchAction: 'none',
           backgroundColor: effectiveColor
             ? effectiveColor + '20'
             : 'var(--color-bg-tertiary)',

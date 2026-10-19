@@ -217,6 +217,7 @@ function DroppableSection({
         <div className="flex flex-col items-center gap-1.5 shrink-0">
           <span
             className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing transition-colors select-none"
+            style={{ touchAction: 'none' }}
             {...attributes}
             {...listeners}
           >
