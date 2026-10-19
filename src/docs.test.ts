@@ -25,7 +25,7 @@ describe('agent doc: audio and persistence', () => {
 
   it('describes the transport, not a beat callback registered by the examples', () => {
     expect(claude).not.toMatch(/register[s]? the beat callback/i);
-    expect(claude).toMatch(/transport owns the shared clock/);
+    expect(claude).toMatch(/transport \(`src\/services\/transport\.ts`\) owns the shared clock/);
     expect(claude).toMatch(/`useStepPlayer`[^\n]*subscribes with `transport\.onBeat`/);
   });
 
