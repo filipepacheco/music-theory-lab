@@ -136,6 +136,67 @@ afterEach(() => {
 });
 
 describe('player playback sessions', () => {
+  it('plays, pauses, and cleans up Library audio without optional browser media APIs', async () => {
+    vi.stubGlobal('navigator', {});
+    vi.stubGlobal('MediaMetadata', undefined);
+    let element!: FakeAudio;
+    class FakeAudio extends EventTarget {
+      preload = '';
+      paused = true;
+      constructor(public src: string) {
+        super();
+        element = this;
+      }
+      play = vi.fn(async () => {
+        this.paused = false;
+        this.dispatchEvent(new Event('play'));
+        this.dispatchEvent(new Event('playing'));
+      });
+      pause = vi.fn(() => {
+        this.paused = true;
+        this.dispatchEvent(new Event('pause'));
+      });
+    }
+    vi.stubGlobal('Audio', FakeAudio);
+    const { useLibraryAudio } =
+      await import('@/components/library/useLibraryAudio');
+    const player = mount(() => useLibraryAudio('/song.mp3', 'Asa Branca'));
+
+    expect(element.src).toBe('/song.mp3');
+    await expect(player.play()).resolves.toBeUndefined();
+    expect(element.play).toHaveBeenCalledOnce();
+    expect(element.paused).toBe(false);
+    expect(() => player.pause()).not.toThrow();
+    expect(element.pause).toHaveBeenCalledOnce();
+    expect(element.paused).toBe(true);
+
+    await player.play();
+    expect(element.play).toHaveBeenCalledTimes(2);
+    expect(element.paused).toBe(false);
+    for (const cleanup of runtime.cleanups.splice(0)) cleanup();
+    expect(element.pause).toHaveBeenCalledTimes(2);
+    expect(element.paused).toBe(true);
+    expect(element.src).toBe('');
+    const writes = runtime.stateWrites;
+    for (const event of [
+      'loadedmetadata',
+      'timeupdate',
+      'play',
+      'playing',
+      'pause',
+      'ended',
+      'error',
+    ]) {
+      element.dispatchEvent(new Event(event));
+    }
+    expect(runtime.stateWrites).toBe(writes);
+    await player.play();
+    player.pause();
+    expect(element.play).toHaveBeenCalledTimes(2);
+    expect(element.pause).toHaveBeenCalledTimes(2);
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it.each(['stop', 'unmount'] as const)(
     'does not start or take a lock when %s cancels an audio unlock',
     async (cancel) => {
