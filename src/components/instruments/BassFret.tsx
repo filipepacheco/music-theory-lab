@@ -47,7 +47,7 @@ const BassFret = memo(function BassFret({
       onPointerDown={() => onClick(noteIndex, octave)}
       aria-label={`${noteName}${isOpenString ? " (corda solta)" : ""}`}
       className={`
-        h-14 flex items-center justify-center relative cursor-pointer transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:z-20
+        instrument-touch h-14 flex items-center justify-center relative cursor-pointer transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:z-20
         ${isOpenString ? "bg-bg-tertiary border-r-2 border-r-text-muted" : "border-r border-r-fret-border bg-fret-bg hover:bg-bg-hover"}
         ${isOctaveStart ? "border-l-[3px] border-l-accent/60 bg-white/[0.03]" : ""}
       `}
