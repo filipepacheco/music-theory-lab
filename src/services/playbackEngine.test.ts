@@ -124,14 +124,32 @@ describe('audio unlock', () => {
     }
   });
 
-  it('shares an in-flight resume and allows another attempt after failure', async () => {
+  it('allows a fresh resume while an earlier attempt fails', async () => {
     const { ensureAudio } = await import('@/services/playbackEngine');
     audio.start.mockRejectedValueOnce(new Error('Blocked'));
     const first = ensureAudio();
-    expect(ensureAudio()).toBe(first);
+    const second = ensureAudio();
     expect(await first).toBe(false);
+    expect(await second).toBe(true);
     expect(await ensureAudio()).toBe(true);
     expect(audio.start).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers on the next tap while the page-return resume stays pending', async () => {
+    const { ensureAudio, playbackEngine } =
+      await import('@/services/playbackEngine');
+    await ensureAudio();
+    audio.context.state = 'suspended';
+    audio.start.mockImplementationOnce(() => new Promise<void>(() => {}));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(audio.start).toHaveBeenCalledTimes(2);
+    expect(audio.context.state).toBe('suspended');
+
+    playbackEngine.playNote(0, 4, '8n');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(audio.context.state).toBe('running');
+    expect(audio.start).toHaveBeenCalledTimes(3);
   });
 
   it('tries on return to the page and retries a blocked resume on the next tap', async () => {
