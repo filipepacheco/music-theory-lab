@@ -6,8 +6,6 @@ import {
   type ClockAdapter,
   type TransportEvents,
 } from '@/services/transport';
-import { transcriptionDocument } from '@/domain/transcriptionDocument';
-import type { Song } from '@/types';
 
 /** A fake clock: the test fires each quarter-note tick by hand. */
 function createFakeClock() {
@@ -298,33 +296,13 @@ describe('transport', () => {
     expect(transport.eighthSeconds()).toBeCloseTo(30 / 90);
   });
 
-  it('plays a song at its base tempo multiplied by the practice speed', async () => {
+  it('plays a progression at the tempo that it takes the clock with', async () => {
     const { fake, transport } = setup();
-    const song: Song = {
-      id: 'song-1',
-      title: 'Garota',
-      artist: 'Tom',
-      key: 5,
-      mode: 'minor',
-      originalBpm: 120,
-      presetId: 'rhodes',
-      sections: [],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-02T00:00:00.000Z',
-    };
-    const slow = transcriptionDocument.setPracticeSpeed(
-      transcriptionDocument.load(song),
-      50,
-    );
     transport.setTempo(100);
 
     await transport.takeClock(
-      { kind: 'progression', id: '__song__' },
-      {
-        onRelease: () => {},
-        click: true,
-        tempo: transcriptionDocument.playbackBpm(slow),
-      },
+      { kind: 'progression', id: 'p1' },
+      { onRelease: () => {}, click: true, tempo: 60 },
     );
 
     expect(fake.clock.getBpm()).toBe(60);
