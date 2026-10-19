@@ -11,6 +11,7 @@ import {
   type StageProgress,
 } from './intakeClient';
 import Frame from '@/components/shared/Frame';
+import '@/components/analyze/analyzeLayout.css';
 import Button from '@/components/shared/Button';
 import Callout from '@/components/shared/Callout';
 
@@ -93,7 +94,7 @@ export default function AnalyzeModule() {
       as="section"
       title="Analisar faixa"
       titleAs="h2"
-      className="flex flex-col gap-4"
+      className="analyze-module min-w-0 flex flex-col gap-4"
     >
       <p className="text-xs text-text-muted">
         Envia um arquivo de áudio para o pipeline local (compassos, acordes, tom
@@ -110,7 +111,7 @@ export default function AnalyzeModule() {
         </Callout>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_1fr] gap-4">
+      <div className="analyze-columns">
         <form
           className="flex flex-col gap-3"
           onSubmit={(event) => {
@@ -126,7 +127,7 @@ export default function AnalyzeModule() {
               accept=".mp3,.m4a,.wav,.flac,.ogg,audio/*"
               disabled={blocked || busy}
               onChange={(event) => pickFile(event.target.files?.[0] ?? null)}
-              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-tertiary file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-accent hover:file:text-on-accent file:cursor-pointer disabled:opacity-50"
+              className="min-w-0 w-full text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-tertiary file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-accent hover:file:text-on-accent file:cursor-pointer disabled:opacity-50"
             />
           </label>
 

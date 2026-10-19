@@ -24,6 +24,7 @@ import Frame from '@/components/shared/Frame';
 import Button from '@/components/shared/Button';
 import Field from '@/components/shared/Field';
 import Select from '@/components/shared/Select';
+import '@/components/structure/structureLayout.css';
 
 type DragItem =
   | { type: 'bar'; bar: StructureBar; displayIndex?: number }
@@ -113,11 +114,11 @@ export default function StructureModule() {
   }
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="structure-module min-w-0 flex flex-col gap-6">
       <Frame title="Estrutura" titleAs="h2" className="flex flex-col gap-5">
         <StructureMetadataBar />
 
-        <div className="flex flex-col gap-4">
+        <div className="structure-controls">
           <StructureRecorder />
 
           <div className="flex flex-col gap-2">
@@ -197,7 +198,7 @@ export default function StructureModule() {
           </DragOverlay>
         </DndContext>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border-default">
           <SaveStructureButton />
           {structureBars.length > 0 && (
             <div className="flex items-center gap-[1ch]">

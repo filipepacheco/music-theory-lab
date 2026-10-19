@@ -1,0 +1,27 @@
+.structure-module {
+  container-type: inline-size;
+  overflow-wrap: anywhere;
+}
+
+.structure-controls,
+.structure-metadata {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.structure-controls > * {
+  min-width: 0;
+}
+
+@container (min-width: 38rem) {
+  .structure-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .structure-metadata {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
