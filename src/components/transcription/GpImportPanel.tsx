@@ -178,7 +178,7 @@ export default function GpImportPanel() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.15 }}
         >
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-4 p-4 pt-0">
+          <div className="transcription-import-columns p-4 pt-0">
             <div className="flex flex-col gap-4">
               <Field label="Arquivo">
                 <label className="block cursor-pointer">
@@ -281,7 +281,7 @@ export default function GpImportPanel() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Button
                       onClick={handleImport}
                       disabled={importing}

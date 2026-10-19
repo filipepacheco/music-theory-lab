@@ -1,0 +1,21 @@
+.analyze-module {
+  container-type: inline-size;
+  overflow-wrap: anywhere;
+}
+
+.analyze-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.analyze-columns > * {
+  min-width: 0;
+}
+
+@container (min-width: 38rem) {
+  .analyze-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+}

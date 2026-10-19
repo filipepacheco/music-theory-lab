@@ -1,0 +1,51 @@
+.structure-module {
+  container-type: inline-size;
+  overflow-wrap: anywhere;
+}
+
+.structure-controls,
+.structure-metadata,
+.structure-section-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.structure-section-tools {
+  flex-wrap: wrap;
+}
+
+.structure-section-tools select {
+  width: auto;
+  max-width: 100%;
+}
+
+.structure-section-notes {
+  grid-column: 1 / -1;
+}
+
+@container (min-width: 32rem) {
+  .structure-section-content {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .structure-section-tools {
+    flex-direction: column;
+  }
+}
+
+.structure-controls > * {
+  min-width: 0;
+}
+
+@container (min-width: 38rem) {
+  .structure-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .structure-metadata {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}

@@ -22,6 +22,7 @@ import {
 } from '@/domain/chartSummary';
 import { isDrumChart } from '@/domain/drumChart';
 import Frame from '@/components/shared/Frame';
+import '@/components/library/libraryLayout.css';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
 import {
   choiceOfTarget,
@@ -239,7 +240,7 @@ export default function LibraryModule() {
       as="section"
       title="Biblioteca"
       titleAs="h2"
-      className="flex flex-col gap-4"
+      className="library-module min-w-0 flex flex-col gap-4"
     >
       <p className="text-xs text-text-muted">
         Análise automática de cifra, tom e andamento das faixas processadas pelo

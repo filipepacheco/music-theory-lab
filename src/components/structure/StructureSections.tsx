@@ -212,8 +212,8 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
-      <div className="flex gap-3 sm:gap-4">
-        <div className="flex flex-col items-center gap-1.5 shrink-0">
+      <div className="structure-section-content">
+        <div className="structure-section-tools flex items-center gap-1.5">
           <span
             style={{ touchAction: 'none' }}
             className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing select-none"
@@ -312,7 +312,7 @@ function DroppableSection({
         </div>
 
         <div
-          className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
+          className="min-w-0 flex flex-wrap gap-1 sm:gap-1.5 content-start"
           style={
             section.barsPerRow
               ? {
@@ -333,7 +333,7 @@ function DroppableSection({
         </div>
 
         <div
-          className={`flex-1 min-w-0 self-stretch grid items-start gap-2 ${
+          className={`structure-section-notes min-w-0 self-stretch grid items-start gap-2 ${
             !grooveOpen && section.groove
               ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]'
               : 'grid-cols-1'

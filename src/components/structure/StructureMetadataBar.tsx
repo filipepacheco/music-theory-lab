@@ -10,14 +10,14 @@ export default function StructureMetadataBar() {
   const setStructureBpm = useAppStore((s) => s.setStructureBpm);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+    <div className="structure-metadata">
       <Field
         type="text"
         value={structureTitle}
         onChange={(e) => setStructureTitle(e.target.value)}
         placeholder="Título da música"
         aria-label="Título da música"
-        className="w-full sm:min-w-[180px]"
+        className="min-w-0 w-full"
       />
       <Field
         type="text"
@@ -25,7 +25,7 @@ export default function StructureMetadataBar() {
         onChange={(e) => setStructureArtist(e.target.value)}
         placeholder="Artista"
         aria-label="Artista"
-        className="w-full sm:min-w-[140px]"
+        className="min-w-0 w-full"
       />
       <div className="lh-field flex-none">
         <Field
