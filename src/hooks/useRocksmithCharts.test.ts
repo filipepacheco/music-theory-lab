@@ -77,6 +77,39 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Biblioteca import and refresh', () => {
+  it('keeps supported types in the guidance when an importer rejects the content', async () => {
+    state.importGp.mockRejectedValue(new Error('invalid score'));
+    const { result } = renderHook(useRocksmithCharts);
+    await act(async () => {
+      expect(
+        await result.current.importFile(new File(['bad'], 'wrong.gp')),
+      ).toBeNull();
+    });
+    expect(result.current.importStatus).toEqual({
+      state: 'error',
+      message: 'Erro Guitar Pro Tipos aceitos: .gp, .psarc, .mid ou .midi.',
+    });
+    expect(state.saves).toEqual([]);
+    expect(result.current.summaries).toEqual([]);
+  });
+
+  it('rejects an unsupported filename without reading or saving it', async () => {
+    const file = new File(['bad'], 'wrong.mp3');
+    const read = vi.fn();
+    Object.defineProperty(file, 'arrayBuffer', { value: read });
+    const { result } = renderHook(useRocksmithCharts);
+    await act(async () => {
+      expect(await result.current.importFile(file)).toBeNull();
+    });
+    expect(result.current.importStatus).toMatchObject({ state: 'error' });
+    expect(JSON.stringify(result.current.importStatus)).toContain(
+      '.gp, .psarc, .mid ou .midi',
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(state.saves).toEqual([]);
+    expect(state.importGp).not.toHaveBeenCalled();
+  });
+
   it('routes .gp files through the GP importer and saves the shared chart', async () => {
     const { result } = renderHook(useRocksmithCharts);
     const file = new File(['score'], 'Example.GP');

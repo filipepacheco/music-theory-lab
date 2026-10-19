@@ -109,11 +109,11 @@ export default function GpImportPanel() {
       const parsed = parseGpFile(new Uint8Array(await file.arrayBuffer()));
       setGp(parsed);
     } catch (e) {
-      setError(
+      const message =
         e instanceof GpParseError
           ? gpParseErrorMessage(e)
-          : 'Não foi possível ler o arquivo.',
-      );
+          : 'Não foi possível ler o arquivo.';
+      setError(`${message} Selecione um arquivo Guitar Pro 7/8 (.gp).`);
     }
   };
 
