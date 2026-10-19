@@ -3,9 +3,6 @@ import { motion } from 'framer-motion';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
@@ -23,6 +20,7 @@ import SaveStructureButton from './SaveStructureButton';
 import StructureList from './StructureList';
 import { exportStructurePdf, type PdfFormat } from '@/utils/exportStructurePdf';
 import type { StructureBar, StructureSection } from '@/types';
+import { useStructureDragSensors } from '@/components/structure/structureDragSensors';
 
 type DragItem =
   | { type: 'bar'; bar: StructureBar; displayIndex?: number }
@@ -45,11 +43,7 @@ export default function StructureModule() {
   const [newSectionColor, setNewSectionColor] = useState(STRUCTURE_PALETTE[0]);
   const [pdfFormat, setPdfFormat] = useState<PdfFormat>('ipad-air');
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
-  );
+  const sensors = useStructureDragSensors();
 
   useStructureRecorder();
 
