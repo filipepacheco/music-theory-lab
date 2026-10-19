@@ -31,3 +31,51 @@ html body,
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+.app-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.module-workspace,
+.instrument-workspace {
+  min-width: 0;
+  max-width: 100%;
+}
+.module-workspace > * {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (min-width: 768px) {
+  .module-workspace {
+    padding-inline: 0.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .app-workspace {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .instrument-workspace {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+.module-workspace {
+  container-type: inline-size;
+}
+@media (min-width: 768px) {
+  .chord-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    overflow: visible;
+  }
+  .chord-grid > button {
+    min-width: 0;
+  }
+}
+@container (max-width: 40rem) {
+  .progression-examples {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

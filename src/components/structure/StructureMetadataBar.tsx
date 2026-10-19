@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/useAppStore';
+import Field from '@/components/shared/Field';
 
 export default function StructureMetadataBar() {
   const structureTitle = useAppStore((s) => s.structureTitle);
@@ -10,23 +11,26 @@ export default function StructureMetadataBar() {
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-      <input
+      <Field
         type="text"
         value={structureTitle}
         onChange={(e) => setStructureTitle(e.target.value)}
         placeholder="Título da música"
-        className="w-full sm:flex-1 sm:min-w-[180px] px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+        aria-label="Título da música"
+        className="w-full sm:min-w-[180px]"
       />
-      <input
+      <Field
         type="text"
         value={structureArtist}
         onChange={(e) => setStructureArtist(e.target.value)}
         placeholder="Artista"
-        className="w-full sm:flex-1 sm:min-w-[140px] px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+        aria-label="Artista"
+        className="w-full sm:min-w-[140px]"
       />
-      <div className="flex items-center gap-1.5">
-        <input
+      <div className="lh-field flex-none">
+        <Field
           type="number"
+          aria-label="BPM"
           value={structureBpm}
           onChange={(e) => {
             const v = parseInt(e.target.value, 10);
@@ -34,9 +38,9 @@ export default function StructureMetadataBar() {
           }}
           min={20}
           max={300}
-          className="w-20 px-3 py-2.5 rounded-button bg-bg-tertiary border border-border-default text-sm text-text-primary text-center focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+          className="w-20 flex-none text-center"
         />
-        <span className="text-xs text-text-muted">BPM</span>
+        <span className="lh-label">BPM</span>
       </div>
     </div>
   );

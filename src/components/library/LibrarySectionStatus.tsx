@@ -1,0 +1,30 @@
+import type { SectionAnalysisJson } from '@/components/library/libraryData';
+
+interface Props {
+  analysis: SectionAnalysisJson | null;
+}
+
+export default function LibrarySectionStatus({ analysis }: Props) {
+  if (!analysis?.review_required) return null;
+  const unstableStructure = analysis.fallback_reason_codes.some((code) =>
+    code.startsWith('section.'),
+  );
+
+  return (
+    <div
+      role="status"
+      className="border border-warning/35 bg-warning/10 px-3 py-2"
+    >
+      <p className="text-xs font-medium text-text-primary">
+        Seções automáticas não publicadas
+      </p>
+      <p className="mt-1 text-small text-text-secondary">
+        {unstableStructure
+          ? 'A análise estrutural não permaneceu estável nas variações de teste.'
+          : 'A grade de pulsos não passou pela validação calibrada.'}{' '}
+        A faixa foi mantida como uma única seção neutra e editável para sua
+        revisão.
+      </p>
+    </div>
+  );
+}

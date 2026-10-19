@@ -1,0 +1,37 @@
+name: Bass assets
+
+# The Growlybass check reads only these files, so it runs only when one of
+# them changes; installing ffmpeg for it took half of every CI run.
+on:
+  push:
+    branches: [main]
+    paths:
+      - public/audio/growlybass/**
+      - src/constants/growlybass.generated.ts
+      - scripts/generate_growlybass_assets.py
+      - .github/workflows/bass-assets.yml
+  pull_request:
+    paths:
+      - public/audio/growlybass/**
+      - src/constants/growlybass.generated.ts
+      - scripts/generate_growlybass_assets.py
+      - .github/workflows/bass-assets.yml
+  workflow_dispatch:
+
+concurrency:
+  group: bass-assets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Growlybass assets (ffprobe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffprobe
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+
+      # Fails on any drift from the manifest, hashes, encoding or budget.
+      - name: Check assets
+        run: python3 scripts/generate_growlybass_assets.py --check

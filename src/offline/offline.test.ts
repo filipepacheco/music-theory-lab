@@ -125,7 +125,7 @@ it('installs the shell, lazy chunks, WASM, fonts, all samplers and drums', async
       'https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3',
     ]),
   );
-  expect(downloads.filter((url) => url.endsWith('.mp3'))).toHaveLength(159);
+  expect(downloads.filter((url) => url.endsWith('.mp3'))).toHaveLength(199);
   expect(downloads.some((url) => url.includes('/fonts/'))).toBe(true);
 });
 

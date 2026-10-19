@@ -1,18 +1,17 @@
-import { useAppStore } from "@/store/useAppStore";
-import type { ActiveModule } from "@/types";
+import { useRef } from 'react';
+import { useOverflowHint } from '@/hooks/useOverflowHint';
+import { useAppStore } from '@/store/useAppStore';
+import type { ActiveModule } from '@/types';
 
 const MODULES: { id: ActiveModule; label: string; devOnly?: boolean }[] = [
-  { id: "harmonicField", label: "Campo Harmônico" },
-  { id: "progressions", label: "Progressões" },
-  { id: "scales", label: "Escalas" },
-  { id: "quiz", label: "Quiz" },
-  { id: "transcription", label: "Transcrição" },
-  { id: "structure", label: "Estrutura" },
-  { id: "library", label: "Biblioteca" },
-  // Drives a service that only ever runs on the developer's machine, and the
-  // deployed site is public: a working upload box there would let anyone push
-  // audio into a public static export. Never shipped.
-  { id: "analyze", label: "Analisar", devOnly: true },
+  { id: 'harmonicField', label: 'Campo Harmônico' },
+  { id: 'progressions', label: 'Progressões' },
+  { id: 'scales', label: 'Escalas' },
+  { id: 'quiz', label: 'Quiz' },
+  { id: 'transcription', label: 'Transcrição' },
+  { id: 'structure', label: 'Estrutura' },
+  { id: 'library', label: 'Biblioteca' },
+  { id: 'analyze', label: 'Analisar', devOnly: true },
 ];
 
 const VISIBLE_MODULES = MODULES.filter(
@@ -23,30 +22,36 @@ export default function ModuleNav() {
   const activeModule = useAppStore((s) => s.activeModule);
   const setActiveModule = useAppStore((s) => s.setActiveModule);
 
+  const ref = useRef<HTMLElement>(null);
+  const edges = useOverflowHint(ref);
+
   return (
-    <nav
-      className="flex gap-0.5 rounded-button p-0.5 overflow-x-auto scrollbar-none min-w-0 max-w-full bg-bg-tertiary/50"
-      role="navigation"
-      aria-label="Modulos"
-    >
-      {VISIBLE_MODULES.map((mod) => {
-        const isActive = activeModule === mod.id;
-        return (
-          <button
-            key={mod.id}
-            onClick={() => setActiveModule(mod.id)}
-            aria-current={isActive ? "page" : undefined}
-            className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-button text-[11px] sm:text-[13px] font-medium transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              isActive
-                ? "text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-            style={isActive ? { backgroundColor: "var(--color-bg-card)", boxShadow: "var(--shadow-card)" } : undefined}
-          >
-            {mod.label}
-          </button>
-        );
-      })}
-    </nav>
+    <div className="min-w-0 max-w-full">
+      <nav
+        ref={ref}
+        className="lh-tabs overflow-x-auto scrollbar-none max-w-full"
+        aria-label="Módulos"
+      >
+        {VISIBLE_MODULES.map((mod) => {
+          const isActive = activeModule === mod.id;
+          return (
+            <button
+              key={mod.id}
+              onClick={() => setActiveModule(mod.id)}
+              aria-current={isActive ? 'page' : undefined}
+              className="lh-tab shrink-0"
+            >
+              {mod.label}
+            </button>
+          );
+        })}
+      </nav>
+      {(edges.before || edges.after) && (
+        <p className="text-meta text-text-muted" role="status">
+          {edges.before ? '← ' : ''}Deslize para ver mais módulos
+          {edges.after ? ' →' : ''}
+        </p>
+      )}
+    </div>
   );
 }

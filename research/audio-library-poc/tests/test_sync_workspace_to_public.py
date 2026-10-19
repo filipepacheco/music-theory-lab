@@ -1,7 +1,6 @@
-"""Tests for scripts/sync_workspace_to_public.py."""
-
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -17,6 +16,12 @@ from audio_library_poc.beat_analysis import (
     BeatEstimate,
     BeatSourceFacts,
     EffectiveBeatAnalyzerSettings,
+)
+from audio_library_poc.beat_input_quality import (
+    BeatInputQualityMeasurements,
+    BeatInputQualityPolicyConfig,
+    CalibrationEvidence,
+    decide_beat_input_quality,
 )
 from audio_library_poc.chord_analysis import (
     ChordAnalysisResult,
@@ -43,6 +48,7 @@ from audio_library_poc.section_analysis import (
     SectionSourceFacts,
 )
 from audio_library_poc.separation import SeparatorPrecision
+from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
 
 PACKAGE_ROOT = Path(__file__).parents[1]
 SCRIPT_PATH = PACKAGE_ROOT / "scripts" / "sync_workspace_to_public.py"
@@ -118,7 +124,6 @@ def _chord_result(source_sha: str, duration: float = 8.0) -> ChordAnalysisResult
 
 
 def _beat_result(source_sha: str, duration: float = 8.0) -> BeatAnalysisResult:
-    # Eight quarter-note beats: 0.5s .. 4.0s at 120 bpm-ish spacing.
     times = [0.5 * (i + 1) for i in range(8)]
     beats = tuple(
         BeatEstimate(time_seconds=t, is_downbeat=(i % 4 == 0))
@@ -197,12 +202,14 @@ def _write_stage_result(
     cache_key: str,
     artifact_name: str,
     artifact_payload: str,
+    implementation_version: str = "1.0.0",
 ) -> None:
     stage_root = workspace / "runs" / run_id / "stages" / stage_kind
     envelope = {
         "status": "succeeded",
         "cache_key": cache_key,
         "attempts": 1,
+        "identity": {"implementation_version": implementation_version},
     }
     results_dir = stage_root / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -253,10 +260,16 @@ def _write_corpus(workspace: Path, entries: list[dict]) -> None:
     )
 
 
+def _write_intake_manifest(workspace: Path, entries: list[dict]) -> None:
+    payload = {"schema_version": "1.0.0", "tracks": entries}
+    (workspace / INTAKE_TRACKS_MANIFEST).write_text(
+        yaml.safe_dump(payload, sort_keys=False), encoding="utf-8"
+    )
+
+
 def test_collect_analyses_returns_only_complete_triples(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    # Track A has all three; track B is missing key.
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
     _write_stage_result(
         workspace,
@@ -303,7 +316,7 @@ def test_collect_analyses_handles_missing_runs_dir(tmp_path: Path) -> None:
     assert sync_module.collect_analyses(workspace) == {}
 
 
-def test_load_corpus_titles_maps_by_sha(tmp_path: Path) -> None:
+def test_load_track_metadata_maps_by_sha(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     _write_corpus(
@@ -315,13 +328,12 @@ def test_load_corpus_titles_maps_by_sha(tmp_path: Path) -> None:
                 "annotation": {"title": "Come Together", "artist": "The Beatles"},
             },
             {
-                # No annotation → still indexed with track_id, missing title/artist.
                 "track_id": "unknown-song",
                 "expected_sha256": SOURCE_SHA_B,
             },
         ],
     )
-    meta = sync_module.load_corpus_titles(workspace)
+    meta = sync_module.load_track_metadata(workspace)
     assert meta[SOURCE_SHA_A]["title"] == "Come Together"
     assert meta[SOURCE_SHA_A]["artist"] == "The Beatles"
     assert meta[SOURCE_SHA_B]["title"] is None
@@ -343,7 +355,7 @@ def test_build_index_projects_expected_fields(tmp_path: Path) -> None:
         ],
     )
     analyses = sync_module.collect_analyses(workspace)
-    meta = sync_module.load_corpus_titles(workspace)
+    meta = sync_module.load_track_metadata(workspace)
     fixed = datetime(2026, 9, 3, 12, 0, 0, tzinfo=UTC)
     index = sync_module.build_index(analyses, meta, generated_at=fixed)
 
@@ -406,9 +418,9 @@ def test_sync_writes_index_and_per_track_details(tmp_path: Path) -> None:
     assert (track_dir / "chord-analysis-result.json").is_file()
     assert (track_dir / "beat-analysis-result.json").is_file()
     assert (track_dir / "key-analysis-result.json").is_file()
-    assert len(detail_files) == 3
+    assert (track_dir / "section-analysis-result.json").is_file()
+    assert len(detail_files) == 4
 
-    # Per-track JSONs must round-trip through the frozen Pydantic contracts.
     ChordAnalysisResult.model_validate_json(
         (track_dir / "chord-analysis-result.json").read_text(encoding="utf-8")
     )
@@ -430,10 +442,8 @@ def test_sync_is_idempotent(tmp_path: Path) -> None:
     first_bytes = index_path.read_bytes()
     first_mtime = index_path.stat().st_mtime_ns
 
-    # A second run with unchanged inputs produces byte-identical output.
     sync_module.sync(workspace, public)
     assert index_path.read_bytes() == first_bytes
-    # mtime may change (atomic rename), but content must not.
     assert index_path.stat().st_mtime_ns >= first_mtime
 
 
@@ -441,7 +451,6 @@ def test_sync_skips_incomplete_tracks(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
-    # Only chord — no beat, no key.
     _write_stage_result(
         workspace,
         "run-lonely",
@@ -464,9 +473,7 @@ def test_sync_copy_audio_copies_source_when_present(tmp_path: Path) -> None:
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
-    # source_path is resolved relative to workspace.parent, matching the way
-    # the corpus manifest is written from the repo root.
-    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"ID3 fake mp3 bytes")
 
@@ -496,7 +503,7 @@ def test_sync_copy_audio_skipped_when_flag_off(tmp_path: Path) -> None:
     workspace.mkdir()
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
-    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"ID3 fake mp3 bytes")
     _write_corpus(
@@ -544,14 +551,12 @@ def test_sync_copy_audio_removes_stale_extension(tmp_path: Path) -> None:
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
-    # A previous run left a .wav in the destination; the fresh corpus points
-    # at an .mp3 and we expect the .wav to be swept.
     prefix = SOURCE_SHA_A[:12]
     stale = public / "library" / "tracks" / prefix / "source.wav"
     stale.parent.mkdir(parents=True, exist_ok=True)
     stale.write_bytes(b"old wav")
 
-    audio_source = tmp_path / "originals" / "come-together.mp3"
+    audio_source = workspace / "originals" / "come-together.mp3"
     audio_source.parent.mkdir(parents=True, exist_ok=True)
     audio_source.write_bytes(b"new mp3")
     _write_corpus(
@@ -612,14 +617,88 @@ def _section_result(source_sha: str, duration: float = 8.0) -> SectionAnalysisRe
     )
 
 
-def _seed_section(workspace: Path, source_sha: str) -> None:
+def _seed_section(
+    workspace: Path,
+    source_sha: str,
+    *,
+    beat_result_sha256: str | None = None,
+    quality_sha256: str | None = None,
+) -> None:
+    result = _section_result(source_sha).model_copy(
+        update={
+            "beat_result_sha256": beat_result_sha256,
+            "beat_quality_decision_sha256": quality_sha256,
+        }
+    )
     _write_stage_result(
         workspace,
         f"run-{source_sha[:6]}-sec",
         "section.librosa_segment",
         f"section-{source_sha[:6]}",
         "section-analysis-result.json",
-        _section_result(source_sha).model_dump_json(),
+        result.model_dump_json(),
+    )
+
+
+def _seed_quality(
+    workspace: Path, source_sha: str, *, calibrated: bool = False
+) -> tuple[str, str]:
+    policy = (
+        BeatInputQualityPolicyConfig(
+            gate_version="2.0.0",
+            minimum_beats=1,
+            minimum_supported_active_seconds=0,
+        )
+        if calibrated
+        else BeatInputQualityPolicyConfig.provisional_v1()
+    )
+    result = _beat_result(source_sha)
+    decision = decide_beat_input_quality(
+        result=result,
+        result_sha256=hashlib.sha256(result.model_dump_json().encode()).hexdigest(),
+        measurements=BeatInputQualityMeasurements(
+            beat_count=8,
+            downbeat_count=2,
+            median_inter_beat_seconds=0.5,
+            inter_beat_mad_seconds=0,
+            inter_beat_p05_seconds=0.5,
+            inter_beat_p95_seconds=0.5,
+            max_to_median_inter_beat_ratio=1,
+            active_duration_seconds=8,
+            beat_supported_active_seconds=8,
+            active_coverage_ratio=1,
+            longest_unsupported_active_run_seconds=0,
+            longest_unsupported_active_run_beats=0,
+            first_beat_seconds=0.5,
+            last_beat_seconds=4,
+            detected_span_ratio=0.4375,
+        ),
+        policy_config=policy,
+        calibration=(
+            CalibrationEvidence(
+                calibration_id="held-out-v2",
+                config_sha256=policy.sha256(),
+                held_out=True,
+                confidence_level=0.95,
+                invalid_accepted_upper_bound=0.05,
+                valid_retained_lower_bound=0.85,
+            )
+            if calibrated
+            else None
+        ),
+    )
+    payload = decision.model_dump_json()
+    _write_stage_result(
+        workspace,
+        f"run-{source_sha[:6]}-quality",
+        "quality.beat_input",
+        f"quality-{source_sha[:6]}",
+        "beat-input-quality-decision.json",
+        payload,
+    )
+    return (
+        hashlib.sha256(result.model_dump_json().encode()).hexdigest(),
+        hashlib.sha256(payload.encode()).hexdigest(),
     )
 
 
@@ -628,7 +707,13 @@ def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
     workspace.mkdir()
     public = tmp_path / "public"
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
-    _seed_section(workspace, SOURCE_SHA_A)
+    beat_sha, quality_sha = _seed_quality(workspace, SOURCE_SHA_A, calibrated=True)
+    _seed_section(
+        workspace,
+        SOURCE_SHA_A,
+        beat_result_sha256=beat_sha,
+        quality_sha256=quality_sha,
+    )
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
 
@@ -637,23 +722,26 @@ def test_sync_writes_section_json_when_present(tmp_path: Path) -> None:
         public / "library" / "tracks" / prefix / "section-analysis-result.json"
     )
     assert section_path.is_file()
-    # Round-trip through the frozen Pydantic contract.
-    SectionAnalysisResult.model_validate_json(section_path.read_text(encoding="utf-8"))
-    # The section file joins the existing three detail files.
+    section = json.loads(section_path.read_text(encoding="utf-8"))
+    assert section["origin"] == "automatic"
+    assert section["review_required"] is False
     assert section_path in detail_files
-    assert len(detail_files) == 4
+    assert len(detail_files) == 5
 
     index = json.loads(index_path.read_text(encoding="utf-8"))
     (track,) = index["tracks"]
     assert track["has_sections"] is True
     assert track["section_count"] == 3
+    assert track["section_origin"] == "automatic"
+    assert track["review_required"] is False
 
 
-def test_sync_omits_section_json_when_absent(tmp_path: Path) -> None:
+def test_sync_exports_one_reviewable_fallback_when_quality_is_missing(
+    tmp_path: Path,
+) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
-    # Full chord/beat/key triple but no section stage — track still ships.
     _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
@@ -662,21 +750,47 @@ def test_sync_omits_section_json_when_absent(tmp_path: Path) -> None:
     section_path = (
         public / "library" / "tracks" / prefix / "section-analysis-result.json"
     )
-    assert not section_path.exists()
-    assert len(detail_files) == 3
+    section = json.loads(section_path.read_text(encoding="utf-8"))
+    assert section["origin"] == "fallback"
+    assert section["review_required"] is True
+    assert section["sections"] == [
+        {"start_seconds": 0.0, "end_seconds": 8.0, "label": "Parte 1"}
+    ]
+    assert len(detail_files) == 4
 
     index = json.loads(index_path.read_text(encoding="utf-8"))
     (track,) = index["tracks"]
-    assert track["has_sections"] is False
-    assert "section_count" not in track
+    assert track["has_sections"] is True
+    assert track["section_count"] == 1
+    assert track["section_origin"] == "fallback"
+    assert track["review_required"] is True
+
+
+def test_uncalibrated_quality_suppresses_a_stale_automatic_section(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _seed_section(workspace, SOURCE_SHA_A)
+    _seed_quality(workspace, SOURCE_SHA_A)
+
+    _, detail_files, _ = sync_module.sync(workspace, public)
+
+    track_dir = public / "library" / "tracks" / SOURCE_SHA_A[:12]
+    section = json.loads(
+        (track_dir / "section-analysis-result.json").read_text(encoding="utf-8")
+    )
+    assert section["origin"] == "fallback"
+    assert len(section["sections"]) == 1
+    assert (track_dir / "beat-input-quality-decision.json") in detail_files
 
 
 def test_sync_skips_orphan_section_without_required_triple(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     public = tmp_path / "public"
-    # A lone section result with no chord/beat/key — the triple guard
-    # excludes the track entirely; no section JSON should be written.
     _seed_section(workspace, SOURCE_SHA_A)
 
     index_path, detail_files, _ = sync_module.sync(workspace, public)
@@ -713,13 +827,6 @@ def teardown_module(_module) -> None:
 
 
 class TestAtomicWritePublish:
-    """Publishing while the dev server watches public/ used to lose the run.
-
-    On Windows a process holding the destination open without
-    FILE_SHARE_DELETE makes os.replace raise PermissionError. Every stage
-    would succeed and the results would be discarded at the final rename.
-    """
-
     def test_retries_a_transient_permission_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -763,8 +870,6 @@ class TestAtomicWritePublish:
     def test_raises_the_original_denial_when_nothing_works(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # A directory in the destination's place fails the in-place write too,
-        # standing in for a handle that denies writes as well.
         target = tmp_path / "out.json"
         target.mkdir()
 
@@ -777,5 +882,183 @@ class TestAtomicWritePublish:
         with pytest.raises(OSError):
             sync_module._atomic_write_json(target, {"ok": True})
 
-        # No .part left behind for the next run to trip over.
         assert [p.name for p in tmp_path.iterdir()] == ["out.json"]
+
+
+def test_load_track_metadata_reads_uploaded_tracks(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_intake_manifest(
+        workspace,
+        [
+            {
+                "track_id": "here-comes-your-man",
+                "source_path": "originals/here-comes-your-man.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Here Comes Your Man", "artist": "Pixies"},
+            }
+        ],
+    )
+    meta = sync_module.load_track_metadata(workspace)
+    assert meta[SOURCE_SHA_A]["title"] == "Here Comes Your Man"
+    assert meta[SOURCE_SHA_A]["artist"] == "Pixies"
+    assert (
+        meta[SOURCE_SHA_A]["source_path"]
+        == (workspace / "originals" / "here-comes-your-man.mp3").resolve()
+    )
+
+
+def test_load_track_metadata_prefers_the_intake_row(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {
+                    "title": "Come Together - Remastered 2009",
+                    "artist": "The Beatles",
+                },
+            }
+        ],
+    )
+    _write_intake_manifest(
+        workspace,
+        [
+            {
+                "track_id": "come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "Beatles"},
+            }
+        ],
+    )
+    meta = sync_module.load_track_metadata(workspace)
+    assert meta[SOURCE_SHA_A]["title"] == "Come Together"
+
+
+def test_sync_copies_audio_for_an_uploaded_track(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = workspace / "originals" / "here-comes-your-man.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 uploaded bytes")
+    _write_intake_manifest(
+        workspace,
+        [
+            {
+                "track_id": "here-comes-your-man",
+                "source_path": "originals/here-comes-your-man.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Here Comes Your Man", "artist": "Pixies"},
+            }
+        ],
+    )
+
+    index_path, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
+    assert audio_files == [dest]
+    assert dest.read_bytes() == b"ID3 uploaded bytes"
+    (track,) = json.loads(index_path.read_text(encoding="utf-8"))["tracks"]
+    assert track["title"] == "Here Comes Your Man"
+    assert track["artist"] == "Pixies"
+
+
+def test_sync_copy_audio_leaves_an_unchanged_file_alone(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = workspace / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 fake mp3 bytes")
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "The Beatles"},
+            }
+        ],
+    )
+
+    sync_module.sync(workspace, public, copy_audio=True)
+    dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
+    untouched = dest.stat().st_mtime_ns
+
+    _, _, audio_files = sync_module.sync(workspace, public, copy_audio=True)
+
+    assert audio_files == [dest]
+    assert dest.stat().st_mtime_ns == untouched
+
+
+def test_sync_copy_audio_rewrites_a_changed_file(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    public = tmp_path / "public"
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    audio_source = workspace / "originals" / "come-together.mp3"
+    audio_source.parent.mkdir(parents=True, exist_ok=True)
+    audio_source.write_bytes(b"ID3 fake mp3 bytes")
+    _write_corpus(
+        workspace,
+        [
+            {
+                "track_id": "beatles-come-together",
+                "source_path": "originals/come-together.mp3",
+                "expected_sha256": SOURCE_SHA_A,
+                "annotation": {"title": "Come Together", "artist": "The Beatles"},
+            }
+        ],
+    )
+    sync_module.sync(workspace, public, copy_audio=True)
+
+    audio_source.write_bytes(b"ID3 a different master entirely")
+    sync_module.sync(workspace, public, copy_audio=True)
+
+    dest = public / "library" / "tracks" / SOURCE_SHA_A[:12] / "source.mp3"
+    assert dest.read_bytes() == b"ID3 a different master entirely"
+
+
+def test_collect_analyses_prefers_the_newest_implementation_version(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _seed_full_triple(workspace, SOURCE_SHA_A, tonic_pc=0, mode=TonalMode.MAJOR)
+    _write_stage_result(
+        workspace,
+        "aaa-newer-run",
+        "chord.chordmini_btc",
+        "aaa-newer-chord",
+        "chord-analysis-result.json",
+        _chord_result(SOURCE_SHA_A, duration=12.0).model_dump_json(),
+        implementation_version="1.1.0",
+    )
+    _write_stage_result(
+        workspace,
+        "zzz-older-run",
+        "chord.chordmini_btc",
+        "zzz-older-chord",
+        "chord-analysis-result.json",
+        _chord_result(SOURCE_SHA_A, duration=4.0).model_dump_json(),
+        implementation_version="1.0.0",
+    )
+
+    analyses = sync_module.collect_analyses(workspace)
+
+    assert analyses[SOURCE_SHA_A].chord.source.duration_seconds == 12.0
+
+
+def test_version_key_sorts_an_unparseable_version_lowest() -> None:
+    assert sync_module._version_key("1.1.0") > sync_module._version_key("1.0.0")
+    assert sync_module._version_key("1.10.0") > sync_module._version_key("1.9.0")
+    assert sync_module._version_key(None) < sync_module._version_key("0.0.1")
+    assert sync_module._version_key("not-a-version") < sync_module._version_key("0.0.1")

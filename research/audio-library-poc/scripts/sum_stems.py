@@ -1,22 +1,3 @@
-"""Sum N stem WAV files into a single WAV, peak-normalized to prevent clipping.
-
-Used to derive a "harmonic mix" (e.g. guitar + other) from a separator run
-before feeding it to a chord or key stage. Requires soundfile + numpy from
-the [inference] extras.
-
-Invocation:
-
-    .venv\\Scripts\\python.exe scripts/sum_stems.py \\
-        --output workspace/derived/come-together-harmonic.wav \\
-        --peak 0.95 \\
-        workspace/runs/come-together-bs-roformer-real/stages/.../guitar.wav \\
-        workspace/runs/come-together-bs-roformer-real/stages/.../other.wav
-
-All input files must share the same sample rate and channel count. The
-summed samples are clipped-then-scaled so the peak of the output is
-exactly ``--peak`` (default 0.95). Output is 16-bit PCM WAV.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -34,13 +15,6 @@ def sum_stems(
     *,
     peak: float = 0.95,
 ) -> tuple[np.ndarray, int, int]:
-    """Load, sum, and peak-normalize a list of stem WAVs.
-
-    Returns ``(waveform_int16, sample_rate, source_peak)`` where
-    ``waveform_int16`` has shape ``(frames, channels)`` and ``source_peak``
-    is the max absolute float value of the summed waveform BEFORE
-    normalization (useful for reporting).
-    """
 
     if not input_paths:
         raise ValueError("at least one input path is required")
@@ -69,7 +43,6 @@ def sum_stems(
                     f"channels, expected {reference_channels}"
                 )
             if audio.shape[0] != accumulated.shape[0]:
-                # Trim or zero-pad to the shortest length.
                 min_frames = min(audio.shape[0], accumulated.shape[0])
                 accumulated = accumulated[:min_frames]
                 audio = audio[:min_frames]
@@ -91,7 +64,6 @@ def sum_stems(
 
 
 def write_wav(path: Path, waveform: np.ndarray, sample_rate: int) -> str:
-    """Write a WAV atomically and return its SHA-256."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     staging = path.with_suffix(path.suffix + ".part")

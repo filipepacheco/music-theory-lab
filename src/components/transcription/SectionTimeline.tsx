@@ -17,7 +17,7 @@ export default function SectionTimeline() {
 
   if (!section || steps.length === 0) {
     return (
-      <div className="border border-dashed border-border-default rounded-button p-8 text-center">
+      <div className="border border-dashed border-border-strong p-8 text-center">
         <div className="text-2xl text-text-muted/40 mb-2">+</div>
         <p className="text-sm text-text-secondary">
           Adicione acordes acima para esta seção
@@ -53,58 +53,54 @@ export default function SectionTimeline() {
               <motion.div
                 key={`${idx}-${step.label}`}
                 layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="relative flex flex-col items-center gap-0.5 px-3 py-3 rounded-button bg-bg-card border min-w-[80px] group"
+                className="relative flex flex-col items-center gap-0.5 px-3 py-3 bg-bg-card border min-w-[80px] group"
                 style={{
                   borderColor,
                   borderStyle: isUnsure ? 'dashed' : 'solid',
                 }}
               >
-                {/* Confidence indicator */}
                 <button
                   onClick={() =>
                     setSongStepConfidence(
                       activeSectionIndex,
                       idx,
-                      isUnsure ? 'sure' : 'unsure'
+                      isUnsure ? 'sure' : 'unsure',
                     )
                   }
-                  className={`absolute top-1 left-1 w-5 h-5 rounded-full transition-all cursor-pointer flex items-center justify-center ${
+                  className={`absolute top-1 left-1 w-5 h-5 cursor-pointer flex items-center justify-center ${
                     isUnsure
-                      ? 'bg-amber-400/80 shadow-[0_0_4px_rgba(251,191,36,0.4)]'
+                      ? 'bg-warning'
                       : 'bg-transparent border border-border-default opacity-40 hover:opacity-100'
                   }`}
                   title={isUnsure ? 'Marcar como certo' : 'Marcar como incerto'}
                   aria-label="Alternar confianca"
                 />
 
-                {/* Remove button */}
                 <button
                   onClick={() => removeSongStep(activeSectionIndex, idx)}
                   aria-label="Remover acorde"
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>
 
-                {/* Chord info */}
                 <span
                   className="font-mono text-base font-medium"
                   style={{ color: borderColor }}
                 >
                   {step.label}
                 </span>
-                <span className="font-mono text-[10px] text-text-secondary">
+                <span className="font-mono text-micro text-text-secondary">
                   {resolved.chordName}
                 </span>
-                <span className="font-mono text-[10px] text-text-muted">
+                <span className="font-mono text-micro text-text-muted">
                   {resolved.noteNames.join(' ')}
                 </span>
 
-                {/* Beat controls */}
                 <div className="flex items-center gap-1 mt-1 border-t border-border-default pt-1 w-full justify-center">
                   <button
                     onClick={() =>
@@ -112,7 +108,7 @@ export default function SectionTimeline() {
                     }
                     disabled={beats <= 0.5}
                     aria-label="Diminuir tempos"
-                    className="w-8 h-8 flex items-center justify-center rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     -
                   </button>
@@ -128,7 +124,7 @@ export default function SectionTimeline() {
                     }
                     disabled={beats >= 8}
                     aria-label="Aumentar tempos"
-                    className="w-8 h-8 flex items-center justify-center rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>

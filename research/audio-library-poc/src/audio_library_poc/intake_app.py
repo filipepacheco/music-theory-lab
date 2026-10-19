@@ -1,22 +1,3 @@
-"""HTTP surface for the local intake service.
-
-Split from ``intake_server.py`` for two reasons, one structural and one that
-is a real trap.
-
-Structural: everything in ``intake_server`` works without the ``server``
-extra installed, which is what lets the tests and CI import it. FastAPI is
-imported here, at module scope, so importing this module is the thing that
-requires the extra.
-
-The trap: FastAPI resolves a route's annotations against its module globals.
-Under ``from __future__ import annotations`` every annotation is a string, so
-a route whose ``UploadFile`` came from a function-local import leaves FastAPI
-holding a ForwardRef it cannot resolve, and every request dies with a
-PydanticUserError about a type that is "not fully defined". This module
-therefore has no ``__future__`` import and does its FastAPI imports at the
-top. Do not add one.
-"""
-
 from pathlib import Path
 from typing import Any
 
@@ -35,11 +16,8 @@ from audio_library_poc.intake_server import (
 
 
 def create_app(workspace: Path, public: Path, *, device: str = "cuda") -> FastAPI:
-    """Build the intake app for one workspace and one publish target."""
 
     app = FastAPI(title="Audio library intake", docs_url=None, redoc_url=None)
-    # The Vite dev server proxies /intake, but a direct browser call from
-    # localhost:5173 should work too. Loopback origins only.
     app.add_middleware(
         CORSMiddleware,
         allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
@@ -83,7 +61,6 @@ def create_app(workspace: Path, public: Path, *, device: str = "cuda") -> FastAP
         file: UploadFile = File(...),
         title: str = Form(""),
         artist: str = Form(""),
-        segment_count: int = Form(7),
     ) -> dict[str, Any]:
         payload = await file.read()
         try:
@@ -93,7 +70,6 @@ def create_app(workspace: Path, public: Path, *, device: str = "cuda") -> FastAP
                 payload=payload,
                 title=title.strip(),
                 artist=artist.strip(),
-                segment_count=segment_count,
                 device=device,
             )
         except (IntakeError, ValueError) as exc:

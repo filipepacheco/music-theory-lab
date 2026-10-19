@@ -17,6 +17,7 @@ import {
   type ScaleHighlightKind,
 } from '@/domain/scaleHighlights';
 import { FUNCTION_COLORS } from '@/constants/functionColors';
+import { isLibraryHash } from '@/domain/libraryRoute';
 
 const SCALE_HIGHLIGHT_COLORS: Record<ScaleHighlightKind, string> = {
   a: 'var(--color-scale-a)',
@@ -58,9 +59,11 @@ function applySongState(song: {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  rootNote: 0, // C
+  rootNote: 0,
   isMinor: false,
-  activeModule: 'harmonicField',
+  activeModule: isLibraryHash(window.location.hash)
+    ? 'library'
+    : 'harmonicField',
   harmonicField: getHarmonicField(0, false),
   selectedChordIndex: null,
   highlightedNotes: [],
@@ -79,18 +82,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   instrumentsPanelOpen: true,
   theme: (localStorage.getItem('theme') as 'dark' | 'light') || 'dark',
 
-  // Transcription
   activeSongId: null,
   songSections: [],
   activeSectionIndex: 0,
   songTitle: '',
   songArtist: '',
 
-  // Practice
   practiceSpeed: 100,
   loopSection: true,
 
-  // Structure
   structureBars: [],
   structureSections: [],
   activeStructureId: null,
@@ -124,7 +124,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  setActiveModule: (module) =>
+  setActiveModule: (module) => {
+    if (module !== 'library' && isLibraryHash(window.location.hash)) {
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search,
+      );
+    }
     set({
       activeModule: module,
       selectedChordIndex: null,
@@ -132,7 +139,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       highlightColors: {},
       selectedScaleId: null,
       comparisonScaleId: null,
-    }),
+    });
+  },
 
   selectChord: (index) => {
     if (index === null) {
@@ -232,8 +240,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem('theme', next);
     set({ theme: next });
   },
-
-  // --- Transcription actions ---
 
   loadSong: (song: Song) =>
     set(
@@ -348,14 +354,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ songSections: next.sections });
   },
 
-  // --- Practice actions ---
-
   setPracticeSpeed: (percent: number) =>
     set({ practiceSpeed: Math.max(50, Math.min(150, percent)) }),
 
   setLoopSection: (loop: boolean) => set({ loopSection: loop }),
-
-  // --- Structure actions ---
 
   setStructureTitle: (title) => set({ structureTitle: title }),
   setStructureArtist: (artist) => set({ structureArtist: artist }),
@@ -586,8 +588,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       focusedSectionId: null,
     }),
 
-  // --- Saved structures actions ---
-
   setActiveStructureId: (id) => set({ activeStructureId: id }),
 
   setComparisonScale: (scaleId) => {
@@ -621,3 +621,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 }));
+
+function followLibraryAddress() {
+  const { activeModule, setActiveModule } = useAppStore.getState();
+  if (activeModule !== 'library' && isLibraryHash(window.location.hash)) {
+    setActiveModule('library');
+  }
+}
+window.addEventListener('hashchange', followLibraryAddress);
+window.addEventListener('popstate', followLibraryAddress);

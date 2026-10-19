@@ -1,6 +1,13 @@
 import type { Song, SongStructure } from '@/types';
 import {
+  parseCloudLibraryAnnotation,
+  serializeCloudLibraryAnnotation,
+  type CloudLibraryAnnotation,
+  type LibraryAnnotationDocument,
+} from '@/domain/libraryAnnotation';
+import {
   mergeLastWriteWins,
+  mergeLibraryAnnotations,
   mergeProgressions,
   type CloudProgression,
   type CloudSong,
@@ -16,11 +23,8 @@ function deviceQuery(): string {
   return `device_id=${encodeURIComponent(getDeviceId())}`;
 }
 
-async function postRecords(
-  path: string,
-  records: Record<string, unknown>[],
-): Promise<void> {
-  await fetch(`${API_BASE}/${path}`, {
+async function postRecords(path: string, records: object[]): Promise<void> {
+  const response = await fetch(`${API_BASE}/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -28,6 +32,7 @@ async function postRecords(
       records,
     }),
   });
+  if (!response.ok) throw new Error(`Cloud push failed: ${path}`);
 }
 
 async function deleteRecord(path: string, id: string): Promise<void> {
@@ -43,10 +48,6 @@ async function pullRows<T>(path: string, withDevice = true): Promise<T[]> {
   if (!res.ok) return [];
   return res.json();
 }
-
-// ---------------------------------------------------------------------------
-// Push (fire-and-forget from callers)
-// ---------------------------------------------------------------------------
 
 export async function pushProgression(prog: SavedProgression): Promise<void> {
   await postRecords('progressions', [
@@ -96,6 +97,14 @@ export async function pushStructure(structure: SongStructure): Promise<void> {
   ]);
 }
 
+export async function pushLibraryAnnotation(
+  document: LibraryAnnotationDocument,
+): Promise<void> {
+  await postRecords('library-annotations', [
+    serializeCloudLibraryAnnotation(document),
+  ]);
+}
+
 export async function pushDeleteProgression(id: string): Promise<void> {
   await deleteRecord('progressions', id);
 }
@@ -108,29 +117,31 @@ export async function pushDeleteStructure(id: string): Promise<void> {
   await deleteRecord('structures', id);
 }
 
-// ---------------------------------------------------------------------------
-// Pull
-// ---------------------------------------------------------------------------
-
 export function pullProgressions(): Promise<CloudProgression[]> {
   return pullRows<CloudProgression>('progressions');
 }
 
 export function pullSongs(): Promise<CloudSong[]> {
-  // Transcriptions are shared globally across devices — no device filter.
   return pullRows<CloudSong>('songs', false);
 }
 
 export function pullStructures(): Promise<CloudStructure[]> {
-  // Structures are shared globally across devices — no device filter.
   return pullRows<CloudStructure>('structures', false);
 }
 
-// ---------------------------------------------------------------------------
-// Full sync
-// ---------------------------------------------------------------------------
+export async function pullLibraryAnnotations(): Promise<
+  LibraryAnnotationDocument[]
+> {
+  const rows = await pullRows<CloudLibraryAnnotation>(
+    'library-annotations',
+    false,
+  );
+  return rows.flatMap((row) => {
+    const document = parseCloudLibraryAnnotation(row);
+    return document ? [document] : [];
+  });
+}
 
-/** What sync needs from one persisted collection. */
 export interface SyncCollection<Local, Cloud> {
   listLocal: () => Local[];
   applyCloud: (record: Cloud) => void;
@@ -141,7 +152,10 @@ export interface SyncDeps {
   progressions: SyncCollection<SavedProgression, CloudProgression>;
   songs: SyncCollection<Song, CloudSong>;
   structures: SyncCollection<SongStructure, CloudStructure>;
-  /** Single flush after all cloud upserts. */
+  annotations: SyncCollection<
+    LibraryAnnotationDocument,
+    LibraryAnnotationDocument
+  >;
   persist: () => void;
 }
 
@@ -160,13 +174,14 @@ function applyLastWriteWins<
   }
 }
 
-/** Bidirectional merge: union for progressions, last-write-wins elsewhere. */
 export async function syncAll(deps: SyncDeps): Promise<void> {
-  const [cloudProgs, cloudSongs, cloudStructures] = await Promise.all([
-    pullProgressions(),
-    pullSongs(),
-    pullStructures(),
-  ]);
+  const [cloudProgs, cloudSongs, cloudStructures, cloudAnnotations] =
+    await Promise.all([
+      pullProgressions(),
+      pullSongs(),
+      pullStructures(),
+      pullLibraryAnnotations(),
+    ]);
 
   const progressionMerge = mergeProgressions(
     deps.progressions.listLocal(),
@@ -183,11 +198,21 @@ export async function syncAll(deps: SyncDeps): Promise<void> {
     deps.songs,
     mergeLastWriteWins(deps.songs.listLocal(), cloudSongs),
   );
+
+  const annotationMerge = mergeLibraryAnnotations(
+    deps.annotations.listLocal(),
+    cloudAnnotations,
+  );
+  for (const document of annotationMerge.cloudToApply) {
+    deps.annotations.applyCloud(document);
+  }
+  for (const document of annotationMerge.localToPush) {
+    deps.annotations.push(document).catch(() => {});
+  }
   applyLastWriteWins(
     deps.structures,
     mergeLastWriteWins(deps.structures.listLocal(), cloudStructures),
   );
 
-  // Single persist after all upserts (instead of per-upsert)
   deps.persist();
 }

@@ -1,8 +1,8 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { SCALE_PATTERNS } from "@/constants/scales";
-import { getScaleNotes } from "@/utils/musicTheory";
-import { getNoteName } from "@/utils/noteHelpers";
+import { AnimatePresence, motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { SCALE_PATTERNS } from '@/constants/scales';
+import { getScaleNotes } from '@/utils/musicTheory';
+import { getNoteName } from '@/utils/noteHelpers';
 
 const ALL_CHROMATIC = Array.from({ length: 12 }, (_, i) => i);
 
@@ -24,12 +24,8 @@ export default function ScaleComparison() {
   const patternA = SCALE_PATTERNS[selectedScaleId];
   const patternB = SCALE_PATTERNS[comparisonScaleId];
 
-  // Find which scale degrees differ
   const diffDegrees: string[] = [];
-  const maxLen = Math.max(
-    patternA.intervals.length,
-    patternB.intervals.length,
-  );
+  const maxLen = Math.max(patternA.intervals.length, patternB.intervals.length);
   for (let i = 1; i < maxLen; i++) {
     const a = patternA.intervals[i];
     const b = patternB.intervals[i];
@@ -47,38 +43,36 @@ export default function ScaleComparison() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
+        className="bg-bg-card border border-border-default p-4 space-y-4"
       >
         <h4 className="font-heading text-sm text-text-primary">Comparação</h4>
 
-        {/* Chromatic strip comparison */}
         <div className="space-y-2">
           <div className="flex items-center gap-1">
             <span className="text-xs text-text-muted w-20 shrink-0">
-              {patternA.label.split(" ")[0]}:
+              {patternA.label.split(' ')[0]}:
             </span>
             <div className="flex gap-0.5 flex-1">
               {ALL_CHROMATIC.map((n) => {
                 const noteIdx = (rootNote + n) % 12;
                 const inA = notesA.has(noteIdx);
                 return (
-                  <motion.div
+                  <div
                     key={n}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: n * 0.03 }}
-                    className="flex-1 h-7 rounded-sm flex items-center justify-center text-[10px] font-mono font-medium"
+                    className="flex-1 h-7 flex items-center justify-center text-micro font-mono font-medium"
                     style={{
                       background: inA
                         ? notesB.has(noteIdx)
-                          ? "var(--color-scale-shared)"
-                          : "var(--color-scale-a)"
-                        : "var(--color-bg-tertiary)",
-                      color: inA ? "#0f1219" : "var(--color-text-muted)",
+                          ? 'var(--color-scale-shared)'
+                          : 'var(--color-scale-a)'
+                        : 'var(--color-bg-tertiary)',
+                      color: inA
+                        ? 'var(--color-on-accent)'
+                        : 'var(--color-text-muted)',
                     }}
                   >
-                    {inA ? getNoteName(noteIdx, rootName) : ""}
-                  </motion.div>
+                    {inA ? getNoteName(noteIdx, rootName) : ''}
+                  </div>
                 );
               })}
             </div>
@@ -86,69 +80,66 @@ export default function ScaleComparison() {
 
           <div className="flex items-center gap-1">
             <span className="text-xs text-text-muted w-20 shrink-0">
-              {patternB.label.split(" ")[0]}:
+              {patternB.label.split(' ')[0]}:
             </span>
             <div className="flex gap-0.5 flex-1">
               {ALL_CHROMATIC.map((n) => {
                 const noteIdx = (rootNote + n) % 12;
                 const inB = notesB.has(noteIdx);
                 return (
-                  <motion.div
+                  <div
                     key={n}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: n * 0.03 }}
-                    className="flex-1 h-7 rounded-sm flex items-center justify-center text-[10px] font-mono font-medium"
+                    className="flex-1 h-7 flex items-center justify-center text-micro font-mono font-medium"
                     style={{
                       background: inB
                         ? notesA.has(noteIdx)
-                          ? "var(--color-scale-shared)"
-                          : "var(--color-scale-b)"
-                        : "var(--color-bg-tertiary)",
-                      color: inB ? "#0f1219" : "var(--color-text-muted)",
+                          ? 'var(--color-scale-shared)'
+                          : 'var(--color-scale-b)'
+                        : 'var(--color-bg-tertiary)',
+                      color: inB
+                        ? 'var(--color-on-accent)'
+                        : 'var(--color-text-muted)',
                     }}
                   >
-                    {inB ? getNoteName(noteIdx, rootName) : ""}
-                  </motion.div>
+                    {inB ? getNoteName(noteIdx, rootName) : ''}
+                  </div>
                 );
               })}
             </div>
           </div>
         </div>
 
-        {/* Legend */}
         <div className="flex gap-4 text-xs text-text-secondary">
           <span className="flex items-center gap-1.5">
             <span
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ background: "var(--color-scale-shared)" }}
+              className="w-2.5 h-2.5"
+              style={{ background: 'var(--color-scale-shared)' }}
             />
             Em comum ({shared.length})
           </span>
           <span className="flex items-center gap-1.5">
             <span
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ background: "var(--color-scale-a)" }}
+              className="w-2.5 h-2.5"
+              style={{ background: 'var(--color-scale-a)' }}
             />
-            Apenas {patternA.label.split(" ")[0]} ({onlyA.length})
+            Apenas {patternA.label.split(' ')[0]} ({onlyA.length})
           </span>
           <span className="flex items-center gap-1.5">
             <span
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ background: "var(--color-scale-b)" }}
+              className="w-2.5 h-2.5"
+              style={{ background: 'var(--color-scale-b)' }}
             />
-            Apenas {patternB.label.split(" ")[0]} ({onlyB.length})
+            Apenas {patternB.label.split(' ')[0]} ({onlyB.length})
           </span>
         </div>
 
-        {/* Summary text */}
         <p className="text-sm text-text-secondary">
-          {shared.length} nota{shared.length !== 1 ? "s" : ""} em comum.
+          {shared.length} nota{shared.length !== 1 ? 's' : ''} em comum.
           {diffDegrees.length > 0 && (
             <>
-              {" "}
-              A diferenca esta no{diffDegrees.length > 1 ? "s" : ""} grau
-              {diffDegrees.length > 1 ? "s" : ""} {diffDegrees.join(", ")}.
+              {' '}
+              A diferenca esta no{diffDegrees.length > 1 ? 's' : ''} grau
+              {diffDegrees.length > 1 ? 's' : ''} {diffDegrees.join(', ')}.
             </>
           )}
         </p>

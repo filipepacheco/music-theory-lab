@@ -1,15 +1,3 @@
-"""Real Demucs htdemucs_6s inference runtime.
-
-Kept out of ``demucs.py`` so importing the adapter in the offline harness
-never drags in ``torch`` or ``demucs``. Mirrors the split used by
-``_bs_roformer_runtime.py``.
-
-Contract with the bridge is identical: the bridge has already validated the
-config, resolved and hashed the source audio, and committed the stage
-identity — this module only resolves the pinned checkpoint and returns a
-strict ``SeparatorResponse``.
-"""
-
 from __future__ import annotations
 
 import contextlib
@@ -67,7 +55,6 @@ def run_demucs_inference(
     candidate_id: str,
     implementation_version: str,
 ) -> SeparatorResponse:
-    """Run the pinned htdemucs_6s model on ``request.source_path``."""
 
     config = request.config
     identity = request.stage_identity
@@ -113,7 +100,6 @@ def run_demucs_inference(
             device=device,
         )
     elapsed = time.time() - started
-    # Shape is (batch=1, sources, channels, frames); drop batch, cast to float32.
     stems_np = stems_tensor[0].to(dtype=torch.float32, device="cpu").numpy()
 
     raw_stems = _split_stems(stems_np, bag.sources)
@@ -211,13 +197,11 @@ def run_demucs_inference(
 
 
 def _resolve_workspace(source_path: Path, source_relative_path: str) -> Path:
-    """Delegate to the inference-free helper the adapter also uses."""
 
     return resolve_workspace(source_path, source_relative_path)
 
 
 def _resolve_asset(workspace: Path, relative_path: str, *, label: str) -> Path:
-    """Delegate to the inference-free helper the adapter also uses."""
 
     return resolve_workspace_asset(
         workspace,

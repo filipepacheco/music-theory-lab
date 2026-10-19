@@ -1,0 +1,283 @@
+{
+  "$defs": {
+    "ChordFrameEvidence": {
+      "additionalProperties": false,
+      "description": "Private, replayable frame evidence before product abstention.",
+      "properties": {
+        "categorical_votes": {
+          "minimum": 1,
+          "title": "Categorical Votes",
+          "type": "integer"
+        },
+        "frame_index": {
+          "minimum": 0,
+          "title": "Frame Index",
+          "type": "integer"
+        },
+        "overlap_votes": {
+          "minimum": 1,
+          "title": "Overlap Votes",
+          "type": "integer"
+        },
+        "post_categorical_index": {
+          "minimum": 0,
+          "title": "Post Categorical Index",
+          "type": "integer"
+        },
+        "post_logit_smoothing_argmax_index": {
+          "minimum": 0,
+          "title": "Post Logit Smoothing Argmax Index",
+          "type": "integer"
+        },
+        "raw_argmax_index": {
+          "minimum": 0,
+          "title": "Raw Argmax Index",
+          "type": "integer"
+        },
+        "raw_runner_up_index": {
+          "minimum": 0,
+          "title": "Raw Runner Up Index",
+          "type": "integer"
+        },
+        "raw_runner_up_logit": {
+          "title": "Raw Runner Up Logit",
+          "type": "number"
+        },
+        "raw_top_logit": {
+          "title": "Raw Top Logit",
+          "type": "number"
+        }
+      },
+      "required": [
+        "frame_index",
+        "overlap_votes",
+        "raw_argmax_index",
+        "raw_top_logit",
+        "raw_runner_up_index",
+        "raw_runner_up_logit",
+        "post_logit_smoothing_argmax_index",
+        "post_categorical_index",
+        "categorical_votes"
+      ],
+      "title": "ChordFrameEvidence",
+      "type": "object"
+    },
+    "ChordFrameEvidenceSettings": {
+      "additionalProperties": false,
+      "description": "Effective frame-decision settings, recorded without free-form fields.",
+      "properties": {
+        "categorical_smoothing_window": {
+          "maximum": 101,
+          "minimum": 1,
+          "title": "Categorical Smoothing Window",
+          "type": "integer"
+        },
+        "checkpoint_source": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Source"
+        },
+        "checkpoint_terms_reference": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Terms Reference"
+        },
+        "device": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Device",
+          "type": "string"
+        },
+        "effective_precision": {
+          "$ref": "#/$defs/SeparatorPrecision"
+        },
+        "feature_transform": {
+          "const": "log(abs(cqt)+1e-6).T",
+          "title": "Feature Transform",
+          "type": "string"
+        },
+        "frame_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Frame Duration Seconds",
+          "type": "number"
+        },
+        "frame_timing": {
+          "enum": [
+            "legacy_rounded_config",
+            "exact_hop_length_divided_by_sample_rate"
+          ],
+          "title": "Frame Timing",
+          "type": "string"
+        },
+        "hop_length": {
+          "exclusiveMinimum": 0,
+          "title": "Hop Length",
+          "type": "integer"
+        },
+        "logit_smoothing_gaussian": {
+          "title": "Logit Smoothing Gaussian",
+          "type": "boolean"
+        },
+        "logit_smoothing_kernel": {
+          "maximum": 101,
+          "minimum": 1,
+          "title": "Logit Smoothing Kernel",
+          "type": "integer"
+        },
+        "normalization_strategy": {
+          "enum": [
+            "normalize_full_cqt_then_zero_pad",
+            "raw_pad_then_normalize"
+          ],
+          "title": "Normalization Strategy",
+          "type": "string"
+        },
+        "overlap": {
+          "exclusiveMaximum": 0.95,
+          "minimum": 0,
+          "title": "Overlap",
+          "type": "number"
+        },
+        "overlap_aggregation": {
+          "const": "mean_logits",
+          "title": "Overlap Aggregation",
+          "type": "string"
+        },
+        "sample_rate": {
+          "exclusiveMinimum": 0,
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "seq_len": {
+          "exclusiveMinimum": 0,
+          "title": "Seq Len",
+          "type": "integer"
+        },
+        "window_hop_frames": {
+          "exclusiveMinimum": 0,
+          "title": "Window Hop Frames",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "device",
+        "effective_precision",
+        "sample_rate",
+        "hop_length",
+        "seq_len",
+        "frame_duration_seconds",
+        "frame_timing",
+        "feature_transform",
+        "normalization_strategy",
+        "overlap",
+        "window_hop_frames",
+        "overlap_aggregation",
+        "logit_smoothing_kernel",
+        "logit_smoothing_gaussian",
+        "categorical_smoothing_window"
+      ],
+      "title": "ChordFrameEvidenceSettings",
+      "type": "object"
+    },
+    "SeparatorPrecision": {
+      "enum": [
+        "float32",
+        "float16",
+        "bfloat16"
+      ],
+      "title": "SeparatorPrecision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Versioned artifact bound to the exact producing stage identity.",
+  "properties": {
+    "candidate": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "title": "Candidate",
+      "type": "string"
+    },
+    "code_revision": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Code Revision",
+      "type": "string"
+    },
+    "config_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Config Sha256",
+      "type": "string"
+    },
+    "effective_settings": {
+      "$ref": "#/$defs/ChordFrameEvidenceSettings"
+    },
+    "frame_duration_seconds": {
+      "exclusiveMinimum": 0,
+      "title": "Frame Duration Seconds",
+      "type": "number"
+    },
+    "frames": {
+      "items": {
+        "$ref": "#/$defs/ChordFrameEvidence"
+      },
+      "minItems": 1,
+      "title": "Frames",
+      "type": "array"
+    },
+    "implementation_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Implementation Version",
+      "type": "string"
+    },
+    "model_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Model Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "candidate",
+    "implementation_version",
+    "config_sha256",
+    "source_sha256",
+    "model_sha256",
+    "code_revision",
+    "frame_duration_seconds",
+    "effective_settings",
+    "frames"
+  ],
+  "title": "ChordFrameEvidenceArtifact",
+  "type": "object"
+}

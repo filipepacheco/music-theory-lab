@@ -1,27 +1,3 @@
-"""Chord-root-weighted key stage.
-
-Motivation: HPCP + Krumhansl-Kessler on the raw CQT chromagram (see
-``hpcp_key_stage.py``) reads Karma Police as D major because it just
-weights pitch-class abundance, and Karma Police dwells much longer on
-G / D chord tones than on A minor tones. A better prior for key is
-"which chord ROOTS the song visits, weighted by chord duration". This
-stage builds that profile from an existing ChordAnalysisResult on disk
-and correlates it against the same 24 Krumhansl-Kessler templates
-``key.hpcp`` uses — so the two stages share their result contract
-(``KeyAnalysisResult``) and can be compared directly.
-
-No new dep: numpy is already in the [inference] extras. No audio
-loading — the input is a JSON file, not a WAV.
-
-Cache identity note: ``input_sha256`` is the audio's SHA-256 (same as
-every other key stage). The chord analysis path lives in config, so
-``config_sha256`` invalidates the cache when the caller points at a
-different chord run. The bridge verifies that
-``ChordAnalysisResult.source_sha256 == input_sha256`` so a
-cross-wired pipeline (chord for one track + key stage claiming
-another) fails immediately.
-"""
-
 from __future__ import annotations
 
 import json
@@ -65,8 +41,6 @@ CHORD_ROOT_KEY_CANDIDATE_ID = "chord_root_profile"
 CHORD_ROOT_KEY_IMPLEMENTATION_VERSION = "1.0.0"
 _RESULT_ARTIFACT_FILENAME = "key-analysis-result.json"
 
-# Reuse Krumhansl-Kessler profiles — same reference values ``key.hpcp``
-# uses, kept local so this module has no dep on librosa.
 _KRUMHANSL_KESSLER_MAJOR = np.array(
     [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
     dtype=np.float64,
@@ -78,22 +52,6 @@ _KRUMHANSL_KESSLER_MINOR = np.array(
 
 
 class ChordRootKeyStageConfig(ContractModel):
-    """Config surface for the key.chord_root_profile stage.
-
-    ``chord_analysis_relative_path`` points at a chord-analysis-result.json
-    the caller has already produced. The stage does no audio decoding —
-    it only reads that JSON and derives a pitch-class profile from its
-    segments. Every workspace-relative path is validated.
-
-    ``third_weight`` / ``fifth_weight`` control whether the chord's
-    other diatonic tones contribute to the profile too. Root-only
-    weighting (both zero) mirrors the pure "chord root evidence" idea;
-    adding a small third/fifth weight makes the profile closer to how
-    ears infer key from chord voicings. Both default to 0.0 so the
-    first-pass behavior is fully explainable by chord-root evidence
-    alone.
-    """
-
     chord_analysis_relative_path: str = Field(min_length=1)
     third_weight: float = Field(default=0.0, ge=0, le=3.0)
     fifth_weight: float = Field(default=0.0, ge=0, le=3.0)
@@ -105,8 +63,6 @@ class ChordRootKeyStageConfig(ContractModel):
 
 
 class ChordRootKeyStageExecutor:
-    """StageExecutor for the key.chord_root_profile stage kind."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
 
@@ -195,12 +151,6 @@ def build_pitch_class_profile(
     third_weight: float = 0.0,
     fifth_weight: float = 0.0,
 ) -> np.ndarray:
-    """Sum each major/minor chord's duration into a 12-bin pitch-class profile.
-
-    Root gets full weight (1.0 × duration). Third and fifth (relative to
-    chord quality) get their configured weights × duration. Non-pitched
-    labels (``unknown``, ``no_chord``) contribute nothing.
-    """
 
     profile = np.zeros(12, dtype=np.float64)
     for segment in segments:
@@ -220,9 +170,8 @@ def build_pitch_class_profile(
 
 
 def score_all_keys_from_profile(profile: np.ndarray) -> list[KeyEstimate]:
-    """Correlate a 12-bin profile with all 24 Krumhansl-Kessler templates."""
 
-    from audio_library_poc.models import TonalMode  # local to keep top scope small
+    from audio_library_poc.models import TonalMode
 
     scores: list[KeyEstimate] = []
     for tonic_pc in range(12):
@@ -370,7 +319,6 @@ def _validate_result(result: KeyAnalysisResult, *, identity: StageIdentity) -> N
         )
 
 
-# Silence unused-import lint noise: hash_file is re-exported for tests.
 _ = hash_file
 _ = Any
 

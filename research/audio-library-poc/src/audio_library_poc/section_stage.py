@@ -1,26 +1,10 @@
-"""Bridge that runs the librosa-based section-boundary detector.
-
-Mirrors ``HpcpKeyStageExecutor``: validate config, resolve the source
-audio inside the workspace, hash-verify it against ``input_sha256``, then
-call the runtime. The runtime returns a strict ``SectionAnalysisResult``
-plus a Metrics payload.
-
-Detector choice: **librosa** — the ``librosa.segment`` module is already a
-transitive dep of the POC's chord and key runtimes, so no new install
-burden. MSAF's ``foote`` detector was considered but its dep tree
-(scikit-learn pinned to <0.22, madmom) does not resolve on modern Python
-3.12 environments the way the rest of the POC installs. Letter labels
-follow the same "opaque cluster id" convention MSAF uses for its
-unsupervised detectors — see ``section_analysis.SectionSegment`` for the
-downstream contract.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
 
 from pydantic import Field, ValidationError, field_validator
 
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
 from audio_library_poc.execution import (
     ExpectedStageFailure,
     StagedArtifact,
@@ -45,30 +29,23 @@ _RESULT_ARTIFACT_FILENAME = "section-analysis-result.json"
 
 
 class SectionLibrosaStageConfig(ContractModel):
-    """Config surface for the section.librosa_segment stage.
-
-    No model checkpoint — the librosa detector is a pure algorithm. The
-    knobs mirror librosa's own defaults for the segmentation tutorial:
-    22050 Hz mono, 2048-sample hop, chroma_cqt features, 7 segments.
-    ``n_segments`` bounds the agglomerative clustering; downstream can
-    still get ``n_segments`` back on the result under ``settings`` so a
-    later run with a different value produces a distinct cache identity.
-    """
-
     source_relative_path: str = Field(min_length=1)
     sample_rate: int = Field(default=22050, ge=8000, le=96000)
     hop_length: int = Field(default=2048, ge=64, le=8192)
     n_segments: int = Field(default=7, ge=2, le=64)
+    beat_result_sha256: str | None = None
+    beat_quality_decision_relative_path: str | None = None
+    beat_quality_decision_sha256: str | None = None
 
-    @field_validator("source_relative_path")
+    @field_validator("source_relative_path", "beat_quality_decision_relative_path")
     @classmethod
-    def validate_source_path(cls, value: str) -> str:
+    def validate_source_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return validate_workspace_relative_path(value)
 
 
 class SectionLibrosaStageExecutor:
-    """StageExecutor for the section.librosa_segment stage kind."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
 
@@ -87,6 +64,7 @@ class SectionLibrosaStageExecutor:
         config = _validate_config(specification)
         source_path = _resolve_source(self.workspace, config.source_relative_path)
         _verify_source_hash(source_path, identity.input_sha256)
+        _verify_quality_decision(self.workspace, config, identity.input_sha256)
 
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
@@ -97,6 +75,12 @@ class SectionLibrosaStageExecutor:
             source_path=source_path,
             config=config,
             identity=identity,
+        )
+        result = result.model_copy(
+            update={
+                "beat_result_sha256": config.beat_result_sha256,
+                "beat_quality_decision_sha256": config.beat_quality_decision_sha256,
+            }
         )
         _validate_result(result, identity=identity)
         atomic_write_json(staging / _RESULT_ARTIFACT_FILENAME, result)
@@ -120,7 +104,6 @@ def build_section_metrics(
     section_count: int,
     unique_label_count: int,
 ) -> Metrics:
-    """Shared metrics shape the runtime returns and tests assert against."""
 
     return Metrics(
         duration_seconds=wall_seconds,
@@ -182,6 +165,69 @@ def _verify_source_hash(source_path: Path, declared_sha256: str) -> None:
                 message="section source audio hash does not match input_sha256",
                 retryable=False,
                 details={"declared": declared_sha256, "actual": actual},
+            )
+        )
+
+
+def _verify_quality_decision(
+    workspace: Path,
+    config: SectionLibrosaStageConfig,
+    source_sha256: str,
+) -> None:
+    path_text = config.beat_quality_decision_relative_path
+    digest = config.beat_quality_decision_sha256
+    if path_text is None or digest is None or config.beat_result_sha256 is None:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_quality_identity_incomplete",
+                message=(
+                    "section quality decision path and hash must be supplied together"
+                ),
+                retryable=False,
+            )
+        )
+    path = (workspace / path_text).resolve()
+    if (
+        not path.is_relative_to(workspace)
+        or not path.is_file()
+        or hash_file(path) != digest
+    ):
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_quality_identity_mismatch",
+                message=(
+                    "section quality decision must match its committed artifact hash"
+                ),
+                retryable=False,
+            )
+        )
+    try:
+        decision = BeatInputQualityDecision.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, ValidationError) as exc:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_quality_invalid",
+                message="section quality decision is not a valid committed artifact",
+                retryable=False,
+                details={"exception_type": type(exc).__name__},
+            )
+        ) from exc
+    if decision.source_sha256 != source_sha256 or not decision.publication_allowed:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_input_ineligible",
+                message="section inference requires a calibrated valid beat input",
+                retryable=False,
+            )
+        )
+    if decision.beat_result_identity.result_sha256 != config.beat_result_sha256:
+        raise ExpectedStageFailure(
+            TypedError(
+                code="section.beat_result_identity_mismatch",
+                message="section beat result hash must match the quality decision",
+                retryable=False,
             )
         )
 

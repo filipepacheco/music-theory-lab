@@ -1,10 +1,12 @@
-"""Stage-kind → executor registry used by the orchestrator and CLI."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
 
+from audio_library_poc.beat_quality_stage import (
+    BEAT_INPUT_QUALITY_STAGE_KIND,
+    BeatInputQualityStageExecutor,
+)
 from audio_library_poc.beat_this_stage import (
     BEAT_THIS_STAGE_KIND,
     BeatThisStageExecutor,
@@ -14,8 +16,16 @@ from audio_library_poc.chord_root_key_stage import (
     ChordRootKeyStageExecutor,
 )
 from audio_library_poc.chordmini_btc_stage import (
+    CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND,
     CHORDMINI_BTC_STAGE_KIND,
+    CHORDMINI_BTC_VERIFIED_STAGE_KIND,
+    BaselineEvidenceChordMiniBtcStageExecutor,
     ChordMiniBtcStageExecutor,
+    VerifiedChordMiniBtcStageExecutor,
+)
+from audio_library_poc.chordnet_stage import (
+    CHORDMINI_CHORDNET_STAGE_KIND,
+    ChordNetStageExecutor,
 )
 from audio_library_poc.execution import ExpectedStageFailure, StageExecutor
 from audio_library_poc.fake_stage import FakeStage
@@ -37,6 +47,10 @@ from audio_library_poc.separators.demucs import (
     DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     DemucsSeparator,
 )
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageExecutor,
+)
 
 FAKE_STAGE_KIND = "fake.deterministic"
 
@@ -53,17 +67,29 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
         workspace,
     ),
     BEAT_THIS_STAGE_KIND: lambda workspace: BeatThisStageExecutor(workspace),
+    BEAT_INPUT_QUALITY_STAGE_KIND: lambda workspace: BeatInputQualityStageExecutor(
+        workspace
+    ),
     CHORDMINI_BTC_STAGE_KIND: lambda workspace: ChordMiniBtcStageExecutor(workspace),
+    CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND: lambda workspace: (
+        BaselineEvidenceChordMiniBtcStageExecutor(workspace)
+    ),
+    CHORDMINI_BTC_VERIFIED_STAGE_KIND: lambda workspace: (
+        VerifiedChordMiniBtcStageExecutor(workspace)
+    ),
+    CHORDMINI_CHORDNET_STAGE_KIND: lambda workspace: ChordNetStageExecutor(workspace),
     HPCP_KEY_STAGE_KIND: lambda workspace: HpcpKeyStageExecutor(workspace),
     CHORD_ROOT_KEY_STAGE_KIND: lambda workspace: ChordRootKeyStageExecutor(workspace),
     SECTION_LIBROSA_STAGE_KIND: lambda workspace: SectionLibrosaStageExecutor(
         workspace
     ),
+    STRUCTURAL_SEGMENTATION_STAGE_KIND: lambda workspace: (
+        StructuralSegmentationStageExecutor(workspace)
+    ),
 }
 
 
 def known_stage_kinds() -> tuple[str, ...]:
-    """Return the stable, sorted set of registered stage kinds."""
 
     return tuple(sorted(_STAGE_KIND_REGISTRY))
 
@@ -71,12 +97,6 @@ def known_stage_kinds() -> tuple[str, ...]:
 def build_stage_dispatcher(
     workspace: Path,
 ) -> Callable[[StageSpecification], StageExecutor]:
-    """Return a dispatcher that resolves per-stage executors from the registry.
-
-    Unknown stage kinds raise ``ExpectedStageFailure`` with a typed error so
-    the orchestrator publishes a clean ``FAILED_TERMINAL`` result instead of
-    a Python traceback.
-    """
 
     workspace_root = Path(workspace)
 

@@ -1,5 +1,3 @@
-"""Tests for the stage-kind dispatcher registry and its orchestrator seam."""
-
 from __future__ import annotations
 
 import json
@@ -7,6 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from audio_library_poc.beat_quality_stage import (
+    BEAT_INPUT_QUALITY_STAGE_KIND,
+    BeatInputQualityStageExecutor,
+)
 from audio_library_poc.beat_this_stage import (
     BEAT_THIS_STAGE_KIND,
     BeatThisStageExecutor,
@@ -16,8 +18,15 @@ from audio_library_poc.chord_root_key_stage import (
     ChordRootKeyStageExecutor,
 )
 from audio_library_poc.chordmini_btc_stage import (
+    CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND,
     CHORDMINI_BTC_STAGE_KIND,
+    CHORDMINI_BTC_VERIFIED_STAGE_KIND,
     ChordMiniBtcStageExecutor,
+    VerifiedChordMiniBtcStageExecutor,
+)
+from audio_library_poc.chordnet_stage import (
+    CHORDMINI_CHORDNET_STAGE_KIND,
+    ChordNetStageExecutor,
 )
 from audio_library_poc.execution import ExpectedStageFailure
 from audio_library_poc.fake_stage import FakeStage
@@ -45,6 +54,10 @@ from audio_library_poc.stage_dispatch import (
     build_stage_dispatcher,
     known_stage_kinds,
 )
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+    StructuralSegmentationStageExecutor,
+)
 
 INPUT_SHA256 = "a" * 64
 CODE_REVISION = "test-revision"
@@ -54,13 +67,29 @@ def test_known_stage_kinds_are_stable_and_sorted() -> None:
     assert known_stage_kinds() == (
         BEAT_THIS_STAGE_KIND,
         CHORDMINI_BTC_STAGE_KIND,
+        CHORDMINI_BTC_BASELINE_EVIDENCE_STAGE_KIND,
+        CHORDMINI_BTC_VERIFIED_STAGE_KIND,
+        CHORDMINI_CHORDNET_STAGE_KIND,
         FAKE_STAGE_KIND,
         CHORD_ROOT_KEY_STAGE_KIND,
         HPCP_KEY_STAGE_KIND,
+        BEAT_INPUT_QUALITY_STAGE_KIND,
         SECTION_LIBROSA_STAGE_KIND,
+        STRUCTURAL_SEGMENTATION_STAGE_KIND,
         BS_ROFORMER_STAGE_KIND,
         DEMUCS_HTDEMUCS_6S_STAGE_KIND,
     )
+
+
+def test_dispatcher_returns_beat_quality_stage(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=BEAT_INPUT_QUALITY_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, BeatInputQualityStageExecutor)
 
 
 def test_dispatcher_returns_section_stage_for_section_kind(tmp_path: Path) -> None:
@@ -72,6 +101,17 @@ def test_dispatcher_returns_section_stage_for_section_kind(tmp_path: Path) -> No
         )
     )
     assert isinstance(executor, SectionLibrosaStageExecutor)
+
+
+def test_dispatcher_returns_structural_segmentation_stage(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    executor = dispatcher(
+        StageSpecification(
+            stage_kind=STRUCTURAL_SEGMENTATION_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(executor, StructuralSegmentationStageExecutor)
 
 
 def test_dispatcher_returns_hpcp_key_stage_for_key_kind(tmp_path: Path) -> None:
@@ -116,6 +156,24 @@ def test_dispatcher_returns_chordmini_btc_stage_for_chord_kind(tmp_path: Path) -
         )
     )
     assert isinstance(executor, ChordMiniBtcStageExecutor)
+
+
+def test_dispatcher_returns_fixed_btc_and_chordnet_stages(tmp_path: Path) -> None:
+    dispatcher = build_stage_dispatcher(tmp_path)
+    verified = dispatcher(
+        StageSpecification(
+            stage_kind=CHORDMINI_BTC_VERIFIED_STAGE_KIND,
+            implementation_version="2.0.0",
+        )
+    )
+    chordnet = dispatcher(
+        StageSpecification(
+            stage_kind=CHORDMINI_CHORDNET_STAGE_KIND,
+            implementation_version="1.0.0",
+        )
+    )
+    assert isinstance(verified, VerifiedChordMiniBtcStageExecutor)
+    assert isinstance(chordnet, ChordNetStageExecutor)
 
 
 def test_dispatcher_returns_fake_stage_for_fake_kind(tmp_path: Path) -> None:

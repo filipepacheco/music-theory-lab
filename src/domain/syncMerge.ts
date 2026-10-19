@@ -1,4 +1,5 @@
 import type { ProgressionStep } from '@/constants/progressions';
+import type { LibraryAnnotationDocument } from '@/domain/libraryAnnotation';
 import type { Song, SongStructure } from '@/types';
 
 export interface SavedProgression {
@@ -75,14 +76,59 @@ export function mergeLastWriteWins<
   Local extends { id: string; updatedAt: string },
   Cloud extends { id: string; updated_at: string },
 >(local: Local[], cloud: Cloud[]): LastWriteWinsMerge<Local, Cloud> {
-  const localById = new Map(local.map((record) => [record.id, record]));
-  const cloudIds = new Set(cloud.map((record) => record.id));
+  return mergeTimestamped(
+    local,
+    cloud,
+    (record) => record.id,
+    (record) => record.id,
+    (record) => record.updatedAt,
+    (record) => record.updated_at,
+    false,
+  );
+}
+
+export function mergeLibraryAnnotations(
+  local: LibraryAnnotationDocument[],
+  cloud: LibraryAnnotationDocument[],
+): LastWriteWinsMerge<LibraryAnnotationDocument, LibraryAnnotationDocument> {
+  return mergeTimestamped(
+    local,
+    cloud,
+    (document) => document.sourceSha256,
+    (document) => document.sourceSha256,
+    (document) => document.updatedAt,
+    (document) => document.updatedAt,
+    true,
+  );
+}
+
+function mergeTimestamped<Local, Cloud>(
+  local: Local[],
+  cloud: Cloud[],
+  localKey: (record: Local) => string,
+  cloudKey: (record: Cloud) => string,
+  localUpdatedAt: (record: Local) => string,
+  cloudUpdatedAt: (record: Cloud) => string,
+  pushNewerLocal: boolean,
+): LastWriteWinsMerge<Local, Cloud> {
+  const localByKey = new Map(local.map((record) => [localKey(record), record]));
+  const cloudByKey = new Map(cloud.map((record) => [cloudKey(record), record]));
   return {
-    cloudToApply: cloud.filter((record) => {
-      const localRecord = localById.get(record.id);
-      return !localRecord || record.updated_at > localRecord.updatedAt;
+    cloudToApply: cloud.filter((cloudRecord) => {
+      const localRecord = localByKey.get(cloudKey(cloudRecord));
+      return (
+        !localRecord ||
+        cloudUpdatedAt(cloudRecord) > localUpdatedAt(localRecord)
+      );
     }),
-    localToPush: local.filter((record) => !cloudIds.has(record.id)),
+    localToPush: local.filter((localRecord) => {
+      const cloudRecord = cloudByKey.get(localKey(localRecord));
+      return (
+        !cloudRecord ||
+        (pushNewerLocal &&
+          localUpdatedAt(localRecord) > cloudUpdatedAt(cloudRecord))
+      );
+    }),
   };
 }
 

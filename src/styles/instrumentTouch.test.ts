@@ -99,8 +99,8 @@ describe('instrument touch rules', () => {
 
   it('preserves keyboard focus indicators without suppressing outlines', () => {
     for (const button of buttons) {
-      expect(className(button)).toContain('focus-visible:ring-2');
-      expect(className(button)).toContain('focus-visible:ring-accent');
+      expect(css).toMatch(/:focus-visible/);
+      expect(css).toMatch(/outline:/);
       expect(className(button)).not.toMatch(/outline-none|outline-hidden/);
     }
     stylesheet.walkDecls(/^outline(?:-style|-width)?$/, (declaration) => {

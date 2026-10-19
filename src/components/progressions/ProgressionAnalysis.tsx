@@ -1,12 +1,12 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { FUNCTION_COLORS } from "@/constants/functionColors";
-import type { HarmonicFunction } from "@/constants/harmonicFields";
+import { AnimatePresence, motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { FUNCTION_COLORS } from '@/constants/functionColors';
+import type { HarmonicFunction } from '@/constants/harmonicFields';
 
 const FUNCTION_LABELS: Record<string, string> = {
-  T: "Tônica",
-  SD: "Subdominante",
-  D: "Dominante",
+  T: 'Tônica',
+  SD: 'Subdominante',
+  D: 'Dominante',
 };
 
 function analyzeProgression(
@@ -16,43 +16,40 @@ function analyzeProgression(
 
   const parts: string[] = [];
 
-  // Check for ii-V-I
   for (let i = 0; i < functions.length - 2; i++) {
     if (
-      functions[i] === "SD" &&
-      functions[i + 1] === "D" &&
-      functions[i + 2] === "T"
+      functions[i] === 'SD' &&
+      functions[i + 1] === 'D' &&
+      functions[i + 2] === 'T'
     ) {
       parts.push(
-        "Contém um movimento SD - D - T (preparação - tensão - resolução), o padrão mais forte da harmonia tonal.",
+        'Contém um movimento SD - D - T (preparação - tensão - resolução), o padrão mais forte da harmonia tonal.',
       );
       break;
     }
   }
 
-  // Check if starts and ends on tonic
-  if (functions[0] === "T" && functions[functions.length - 1] === "T") {
+  if (functions[0] === 'T' && functions[functions.length - 1] === 'T') {
     parts.push(
-      "Começa e termina na tônica, criando uma sensação circular e estável.",
+      'Começa e termina na tônica, criando uma sensação circular e estável.',
     );
-  } else if (functions[0] === "T" && functions[functions.length - 1] === "D") {
+  } else if (functions[0] === 'T' && functions[functions.length - 1] === 'D') {
     parts.push(
-      "Começa na tônica e termina na dominante, deixando uma sensação de suspensão.",
+      'Começa na tônica e termina na dominante, deixando uma sensação de suspensão.',
     );
-  } else if (functions[0] !== "T") {
+  } else if (functions[0] !== 'T') {
     parts.push(
-      "Não começa na tônica, o que cria uma sensação de movimento desde o início.",
+      'Não começa na tônica, o que cria uma sensação de movimento desde o início.',
     );
   }
 
-  // Check for chromatic chords
   if (functions.includes(null)) {
     parts.push(
-      "Usa acordes fora do campo harmônico, adicionando cor e surpresa.",
+      'Usa acordes fora do campo harmônico, adicionando cor e surpresa.',
     );
   }
 
-  return parts.length > 0 ? parts.join(" ") : null;
+  return parts.length > 0 ? parts.join(' ') : null;
 }
 
 export default function ProgressionAnalysis() {
@@ -71,9 +68,8 @@ export default function ProgressionAnalysis() {
   );
 
   const analysis = analyzeProgression(functions);
-  const label = customProgression.map((s) => s.label).join(" - ");
+  const label = customProgression.map((s) => s.label).join(' - ');
 
-  // Count function usage
   const counts: Record<string, number> = { T: 0, SD: 0, D: 0 };
   for (const f of functions) {
     if (f) counts[f]++;
@@ -88,45 +84,43 @@ export default function ProgressionAnalysis() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.2 }}
-        className="bg-bg-card border border-border-default rounded-button p-3 sm:p-4 space-y-3"
+        className="bg-bg-card border border-border-default p-3 sm:p-4 space-y-3"
       >
         <div className="flex items-center gap-2">
           <h4 className="font-heading text-sm text-text-primary">Análise</h4>
           <span className="font-mono text-xs text-text-secondary">{label}</span>
         </div>
 
-        {/* Function flow */}
         <div className="flex gap-1 flex-wrap">
           {functions.map((fn, i) => (
             <span
               key={i}
-              className="px-2 py-0.5 rounded text-xs font-mono font-medium"
+              className="px-2 py-0.5 text-xs font-mono font-medium"
               style={{
-                background: fn ? FUNCTION_COLORS[fn] : "var(--color-accent)",
-                color: "#0f1219",
+                background: fn ? FUNCTION_COLORS[fn] : 'var(--color-accent)',
+                color: 'var(--color-on-accent)',
               }}
             >
-              {fn ? FUNCTION_LABELS[fn] : "Cromatico"}
+              {fn ? FUNCTION_LABELS[fn] : 'Cromatico'}
             </span>
           ))}
         </div>
 
-        {/* Function distribution - horizontal bars */}
         <div className="space-y-1.5">
-          {(["T", "SD", "D"] as const).map((fn) => (
+          {(['T', 'SD', 'D'] as const).map((fn) => (
             <div key={fn} className="flex items-center gap-2">
               <span className="text-xs text-text-secondary w-20 sm:w-24 shrink-0">
                 {FUNCTION_LABELS[fn]}
               </span>
-              <div className="flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-bg-tertiary overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full"
+                  className="h-full"
                   style={{ background: FUNCTION_COLORS[fn] }}
                   initial={{ width: 0 }}
                   animate={{
                     width: `${(counts[fn] / maxCount) * 100}%`,
                   }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
                 />
               </div>
               <span className="text-xs font-mono text-text-muted w-4 text-right">
@@ -137,7 +131,7 @@ export default function ProgressionAnalysis() {
         </div>
 
         {analysis && (
-          <p className="text-sm text-text-secondary leading-relaxed border-l-2 border-accent/40 pl-3">
+          <p className="text-sm text-text-secondary leading-relaxed border-l border-border-strong pl-[2ch]">
             {analysis}
           </p>
         )}

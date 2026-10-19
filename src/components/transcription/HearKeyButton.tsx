@@ -1,6 +1,7 @@
 import { useAppStore } from '@/store/useAppStore';
 import { useSynth } from '@/hooks/useSynth';
 import { getScaleNotes } from '@/utils/musicTheory';
+import Button from '@/components/shared/Button';
 
 export default function HearKeyButton() {
   const rootNote = useAppStore((s) => s.rootNote);
@@ -14,12 +15,8 @@ export default function HearKeyButton() {
   };
 
   return (
-    <button
-      onClick={handleClick}
-      className="px-2.5 py-2 rounded-button text-xs text-text-secondary bg-bg-tertiary border border-border-default hover:border-accent/40 hover:text-accent transition-all cursor-pointer"
-      title="Ouvir escala da tonalidade"
-    >
+    <Button size="sm" onClick={handleClick} title="Ouvir escala da tonalidade">
       Ouvir tom
-    </button>
+    </Button>
   );
 }

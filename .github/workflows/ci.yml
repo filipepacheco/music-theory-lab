@@ -13,6 +13,8 @@ concurrency:
 jobs:
   web:
     name: Web app (vitest + build)
+    # No ffmpeg: the Growlybass asset test skips without ffprobe and runs in
+    # bass-assets.yml whenever those files change.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

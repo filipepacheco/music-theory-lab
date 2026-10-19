@@ -1,6 +1,5 @@
 import type { StructureBar, StructureSection, TimeSignature } from '@/types';
 
-/** Eighth-note subdivisions per time signature — the one copy of this map. */
 const DOTS_BY_TIME_SIGNATURE: Record<TimeSignature, number> = {
   '4/4': 8,
   '3/4': 6,
@@ -8,7 +7,6 @@ const DOTS_BY_TIME_SIGNATURE: Record<TimeSignature, number> = {
   '6/8': 6,
 };
 
-/** Resolves a section's bars, in order, dropping any bar id that no longer exists. */
 export function getSectionBars(
   section: StructureSection,
   barMap: Map<string, StructureBar>,
@@ -18,12 +16,10 @@ export function getSectionBars(
     .filter((bar): bar is StructureBar => bar !== undefined);
 }
 
-/** Number of beat dots a bar renders, from its time signature. */
 export function dotsForTimeSignature(ts: TimeSignature): number {
   return DOTS_BY_TIME_SIGNATURE[ts];
 }
 
-/** A bar shows its own color when set, otherwise the section's. */
 export function effectiveBarColor(
   color: string | undefined,
   sectionColor: string | undefined,
@@ -40,7 +36,6 @@ export function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
-/** Mixes a hex color toward white — the print-side lightening rule. */
 export function lightenRgb(
   hex: string,
   amount: number,

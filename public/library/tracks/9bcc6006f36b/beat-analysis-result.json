@@ -1,0 +1,1648 @@
+{
+  "beats": [
+    {
+      "is_downbeat": true,
+      "time_seconds": 0.44
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 0.94
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 1.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 1.92
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 2.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 2.86
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 3.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 3.84
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 4.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 4.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 5.3
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 5.78
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 6.24
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 6.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 7.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 7.68
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 8.16
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 8.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 9.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 9.6
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 10.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 10.58
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 11.06
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 11.54
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 12.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 12.5
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 12.98
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 13.46
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 13.96
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 14.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 14.94
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 15.42
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 15.9
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 16.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 16.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 17.34
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 17.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 18.3
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 18.78
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 19.26
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 19.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 20.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 20.7
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 21.18
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 21.66
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 22.16
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 22.62
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 23.12
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 23.6
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 24.08
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 24.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 25.04
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 25.52
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 26.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 26.48
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 26.96
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 27.44
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 27.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 28.4
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 28.88
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 29.36
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 29.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 30.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 30.8
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 31.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 31.78
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 32.26
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 32.74
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 33.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 33.7
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 34.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 34.66
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 35.14
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 35.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 36.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 36.58
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 37.06
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 37.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 38.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 38.52
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 39.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 39.48
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 39.96
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 40.44
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 40.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 41.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 41.88
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 42.38
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 42.86
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 43.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 43.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 44.32
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 44.8
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 45.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 45.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 46.24
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 46.72
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 47.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 47.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 48.16
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 48.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 49.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 49.6
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 50.1
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 50.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 51.06
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 51.54
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 52.02
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 52.5
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 52.98
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 53.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 53.94
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 54.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 54.9
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 55.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 55.88
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 56.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 56.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 57.3
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 57.78
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 58.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 58.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 59.24
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 59.72
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 60.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 60.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 61.16
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 61.64
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 62.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 62.6
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 63.08
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 63.58
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 64.04
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 64.54
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 65.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 65.5
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 65.98
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 66.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 66.94
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 67.42
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 67.9
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 68.4
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 68.86
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 69.36
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 69.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 70.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 70.78
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 71.28
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 71.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 72.24
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 72.72
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 73.2
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 73.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 74.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 74.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 75.14
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 75.62
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 76.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 76.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 77.06
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 77.54
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 78.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 78.48
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 78.98
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 79.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 79.94
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 80.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 80.9
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 81.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 81.88
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 82.36
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 82.84
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 83.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 83.8
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 84.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 84.76
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 85.26
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 85.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 86.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 86.72
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 87.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 87.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 88.14
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 88.64
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 89.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 89.6
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 90.08
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 90.56
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 91.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 91.52
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 92.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 92.48
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 92.96
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 93.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 93.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 94.4
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 94.88
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 95.36
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 95.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 96.34
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 96.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 97.3
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 97.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 98.26
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 98.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 99.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 99.7
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 100.18
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 100.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 101.16
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 101.62
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 102.1
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 102.58
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 103.08
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 103.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 104.04
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 104.52
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 105.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 105.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 105.96
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 106.44
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 106.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 107.4
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 107.9
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 108.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 108.86
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 109.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 109.82
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 110.3
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 110.78
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 111.26
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 111.74
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 112.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 112.7
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 113.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 113.66
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 114.14
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 114.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 115.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 115.6
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 116.08
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 116.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 117.04
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 117.52
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 118.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 118.48
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 118.96
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 119.44
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 119.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 120.4
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 120.88
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 121.36
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 121.86
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 122.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 122.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 123.32
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 123.8
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 124.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 124.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 125.24
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 125.72
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 126.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 126.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 127.16
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 127.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 128.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 128.62
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 129.1
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 129.58
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 130.06
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 130.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 131.04
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 131.52
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 132.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 132.48
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 132.96
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 133.44
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 133.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 134.4
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 134.88
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 135.36
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 135.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 136.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 136.8
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 137.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 137.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 138.24
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 138.72
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 139.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 139.69
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 140.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 140.66
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 141.14
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 141.62
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 142.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 142.58
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 143.06
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 143.54
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 144.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 144.52
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 145.0
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 145.48
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 145.96
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 146.44
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 146.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 147.4
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 147.88
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 148.36
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 148.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 149.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 149.8
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 150.28
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 150.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 151.24
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 151.72
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 152.2
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 152.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 153.16
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 153.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 154.12
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 154.6
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 155.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 155.56
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 156.04
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 156.52
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 157.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 157.5
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 157.98
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 158.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 158.94
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 159.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 159.9
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 160.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 160.86
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 161.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 161.84
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 162.3
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 162.8
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 163.26
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 163.76
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 164.22
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 164.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 165.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 165.7
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 166.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 166.66
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 167.12
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 167.62
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 168.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 168.58
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 169.06
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 169.54
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 170.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 170.5
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 170.96
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 171.44
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 171.92
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 172.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 172.9
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 173.38
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 173.84
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 174.34
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 174.82
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 175.3
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 175.78
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 176.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 176.76
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 177.22
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 177.7
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 178.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 178.68
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 179.18
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 179.66
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 180.16
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 180.64
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 181.12
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 181.6
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 182.1
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 182.58
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 183.06
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 183.54
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 184.02
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 184.5
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 184.98
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 185.46
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 185.94
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 186.42
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 186.9
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 187.38
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 187.88
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 188.36
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 188.84
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 189.32
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 189.8
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 190.28
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 190.76
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 191.24
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 191.74
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 192.2
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 192.7
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 193.18
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 193.66
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 194.14
+    },
+    {
+      "is_downbeat": false,
+      "time_seconds": 194.64
+    },
+    {
+      "is_downbeat": true,
+      "time_seconds": 195.16
+    }
+  ],
+  "downbeat_count": 102,
+  "provenance": {
+    "candidate": "beat_this",
+    "code_revision": "workspace-local",
+    "implementation_version": "1.0.0",
+    "model_identifier": "beat_this-final0.ckpt",
+    "model_sha256": "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"
+  },
+  "schema_version": "1.0.0",
+  "settings": {
+    "device": "cuda",
+    "precision": "float16",
+    "use_dbn": false
+  },
+  "source": {
+    "channels": 2,
+    "duration_seconds": 201.18784580498865,
+    "frame_count": 8872384,
+    "peak_absolute_sample": 0.974314272403717,
+    "sample_rate": 44100
+  },
+  "source_sha256": "9bcc6006f36b7ed45ee8b11184624e76154c1a49c2b87f986cf2f5f3c98ef390",
+  "tempo_median_bpm": 124.99999999999989,
+  "warnings": []
+}

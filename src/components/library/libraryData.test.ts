@@ -12,6 +12,7 @@ import {
   sectionColorIndexes,
   sectionColorVar,
   sectionIndexAtSeconds,
+  sectionBoundaryBars,
   segmentRomanNumeral,
   type BeatAnalysisJson,
   type ChordAnalysisJson,
@@ -38,10 +39,7 @@ function seg(
   };
 }
 
-function keyOf(
-  tonic_pc: number,
-  mode: 'major' | 'minor',
-): KeyAnalysisJson {
+function keyOf(tonic_pc: number, mode: 'major' | 'minor'): KeyAnalysisJson {
   const top = { tonic_pc, mode, score: 1 };
   return {
     schema_version: '1.0.0',
@@ -92,7 +90,6 @@ describe('relativeRootOf', () => {
 
 describe('romanNumeral', () => {
   it('returns diatonic degrees in C major with upper/lower case by quality', () => {
-    // I, ii, iii, IV, V, vi, vii is the classic pattern; vii° isn't tracked here.
     expect(romanNumeral(0, 'major', 'major')).toBe('I');
     expect(romanNumeral(2, 'minor', 'major')).toBe('ii');
     expect(romanNumeral(4, 'minor', 'major')).toBe('iii');
@@ -127,28 +124,28 @@ describe('romanNumeral', () => {
 
 describe('segmentRomanNumeral', () => {
   it('computes the roman numeral relative to the top key estimate', () => {
-    // Am as vi of C major.
     const segment = seg(0, 1, 'minor', 9);
     expect(segmentRomanNumeral(segment, keyOf(0, 'major'))).toBe('vi');
   });
 
   it('returns null when the segment has no root_pc', () => {
-    expect(segmentRomanNumeral(seg(0, 1, 'unknown'), keyOf(0, 'major'))).toBeNull();
+    expect(
+      segmentRomanNumeral(seg(0, 1, 'unknown'), keyOf(0, 'major')),
+    ).toBeNull();
   });
 });
 
 describe('buildChordChartBars', () => {
   it('splits the track into one bar per downbeat span', () => {
-    // Downbeats at 0, 2, 4, 6; total duration 8.
     const beat = beats([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6], 4);
     const chord: ChordAnalysisJson = {
       schema_version: '1.0.0',
       source_sha256: 'x'.repeat(64),
       segments: [
-        seg(0, 2, 'major', 0), // C for bar 0
-        seg(2, 4, 'minor', 9), // Am for bar 1
-        seg(4, 6, 'major', 5), // F for bar 2
-        seg(6, 8, 'major', 7), // G for last (partial-covered) bar
+        seg(0, 2, 'major', 0),
+        seg(2, 4, 'minor', 9),
+        seg(4, 6, 'major', 5),
+        seg(6, 8, 'major', 7),
       ],
     };
     const bars = buildChordChartBars(chord, beat, 8);
@@ -158,7 +155,6 @@ describe('buildChordChartBars', () => {
   });
 
   it('picks the chord with the largest overlap when a bar spans two chords', () => {
-    // Bar 0-4 seconds; two chord segments: F for 0-1s, C for 1-4s. C wins.
     const beat = beats([0, 1, 2, 3, 4], 4);
     const chord: ChordAnalysisJson = {
       schema_version: '1.0.0',
@@ -229,10 +225,7 @@ describe('barIndexAtSeconds', () => {
   const chord: ChordAnalysisJson = {
     schema_version: '1.0.0',
     source_sha256: 'x'.repeat(64),
-    segments: [
-      seg(0, 4, 'major', 0),
-      seg(4, 8, 'major', 5),
-    ],
+    segments: [seg(0, 4, 'major', 0), seg(4, 8, 'major', 5)],
   };
   const bars = buildChordChartBars(chord, beat, 8);
 
@@ -265,7 +258,6 @@ describe('formatDuration', () => {
     expect(formatDuration(Number.POSITIVE_INFINITY)).toBe('0:00');
   });
 });
-
 
 function section(start: number, end: number, label: string): SectionSegment {
   return { start_seconds: start, end_seconds: end, label };
@@ -367,7 +359,6 @@ describe('groupBarsBySection', () => {
 
   it('assigns a straddling bar to the side it spends longer in', () => {
     const sections = [section(0, 10, 'A'), section(10, 20, 'B')];
-    // 8-12 sits 2s in A and 2s in B; 9-14 sits 1s in A and 4s in B.
     const groups = groupBarsBySection([bar(0, 9, 14)], sections);
     expect(groups[0].bars).toHaveLength(0);
     expect(groups[1].bars.map((b) => b.index)).toEqual([0]);
@@ -411,6 +402,29 @@ describe('groupBarsBySection', () => {
     expect(groups).toHaveLength(2);
     expect(groups[1].bars).toEqual([]);
     expect(groups[1].section.label).toBe('B');
+  });
+});
+
+describe('sectionBoundaryBars', () => {
+  it('snaps accepted analysis boundaries to the nearest bar start', () => {
+    const bars = [bar(0, 0, 4), bar(1, 4, 8), bar(2, 8, 12)];
+    const sections = [
+      section(0, 3.8, 'A'),
+      section(3.8, 8.2, 'B'),
+      section(8.2, 12, 'A'),
+    ];
+
+    expect(sectionBoundaryBars(bars, sections)).toEqual([1, 2]);
+  });
+
+  it('derives editable boundaries without rewriting the analysis artifact', () => {
+    const bars = [bar(0, 0, 4), bar(1, 4, 8)];
+    const sections = [section(0, 3.8, 'A'), section(3.8, 8, 'B')];
+    const bytesBefore = JSON.stringify(sections);
+
+    sectionBoundaryBars(bars, sections);
+
+    expect(JSON.stringify(sections)).toBe(bytesBefore);
   });
 });
 

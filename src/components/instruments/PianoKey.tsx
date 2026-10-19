@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo } from 'react';
 
 interface PianoKeyProps {
   noteIndex: number;
@@ -22,29 +22,32 @@ const PianoKey = memo(function PianoKey({
   onClick,
 }: PianoKeyProps) {
   const handleClick = () => onClick(noteIndex);
+  const filled = isPressed || isHighlighted;
+  const backgroundColor = isPressed
+    ? 'var(--color-live)'
+    : isHighlighted
+      ? (highlightColor ?? 'var(--color-accent)')
+      : 'var(--color-bg-primary)';
 
   if (isBlack) {
-    const pressed = isPressed;
     return (
       <button
         onPointerDown={handleClick}
         aria-label={`${noteName} (tecla preta)`}
-        className="instrument-touch absolute z-10 w-8 h-24 rounded-b-md border border-key-black-border transition-colors duration-75 flex flex-col items-center justify-end pb-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent shadow-key"
-        style={{
-          backgroundColor: pressed
-            ? "var(--color-accent)"
-            : isHighlighted
-              ? highlightColor
-              : "var(--color-key-black)",
-        }}
+        className="instrument-touch ink-night absolute z-10 w-8 h-24 border border-border-strong flex flex-col items-center justify-end pb-1 cursor-pointer"
+        style={{ backgroundColor }}
       >
         {isHighlighted && (
-          <span className="text-[9px] font-mono font-bold text-bg-primary">
+          <span className="text-micro font-bold text-bg-primary">
             {noteName}
           </span>
         )}
         {keyboardShortcut && !isHighlighted && (
-          <span className="text-[8px] font-mono text-text-muted opacity-50 mb-0.5">
+          <span
+            className={`text-micro mb-0.5 ${
+              isPressed ? 'text-bg-primary' : 'text-text-muted'
+            }`}
+          >
             {keyboardShortcut}
           </span>
         )}
@@ -52,33 +55,26 @@ const PianoKey = memo(function PianoKey({
     );
   }
 
-  const pressed = isPressed;
   return (
     <button
       onPointerDown={handleClick}
       aria-label={`${noteName} (tecla branca)`}
-      className="instrument-touch relative w-12 h-36 rounded-b-md border border-border-default transition-colors duration-75 flex flex-col items-center justify-end pb-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
-      style={{
-        backgroundColor: pressed
-          ? "var(--color-accent-hover)"
-          : isHighlighted
-            ? highlightColor
-            : "var(--color-key-white)",
-      }}
+      className="instrument-touch ink-day relative w-12 h-36 border border-border-strong flex flex-col items-center justify-end pb-2 cursor-pointer"
+      style={{ backgroundColor }}
     >
       <span
-        className="text-xs font-mono"
-        style={{
-          color:
-            pressed || isHighlighted
-              ? "var(--color-bg-primary)"
-              : "var(--color-text-muted)",
-        }}
+        className={`text-xs ${
+          filled ? 'font-bold text-bg-primary' : 'text-text-muted'
+        }`}
       >
         {noteName}
       </span>
       {keyboardShortcut && (
-        <span className="text-[9px] font-mono text-text-muted opacity-40 mt-0.5">
+        <span
+          className={`text-micro mt-0.5 ${
+            filled ? 'text-bg-primary' : 'text-text-muted'
+          }`}
+        >
           {keyboardShortcut}
         </span>
       )}

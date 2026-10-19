@@ -18,14 +18,13 @@ import type {
 } from '@/domain/syncMerge';
 export type { SavedProgression } from '@/domain/syncMerge';
 import { migrateStructureData, type LegacySection } from '@/domain/migrations';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// IndexedDB helpers (raw Uint8Array storage)
-// ---------------------------------------------------------------------------
+import type { LibraryAnnotationDocument } from '@/domain/libraryAnnotation';
+import {
+  initializeLibraryAnnotationStorage,
+  listLibraryAnnotations,
+  loadLibraryAnnotation,
+  storeLibraryAnnotation,
+} from '@/services/libraryAnnotationStorage';
 
 const IDB_NAME = 'music-theory-lab';
 const IDB_STORE = 'db';
@@ -66,27 +65,18 @@ function saveToIDB(data: Uint8Array): Promise<void> {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Module-level singleton
-// ---------------------------------------------------------------------------
-
 let db: Database | null = null;
 let initPromise: Promise<void> | null = null;
 
-/** Export the database to IndexedDB (exposed for the sync merge's single flush). */
-export function persistDB() {
-  if (!db) return;
+export function persistDB(): Promise<void> {
+  if (!db) return Promise.resolve();
   const data = db.export();
-  saveToIDB(data);
+  return saveToIDB(data);
 }
 
 function persist() {
-  persistDB();
+  void persistDB();
 }
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 export async function initDB(): Promise<void> {
   if (db) return;
@@ -142,16 +132,14 @@ export async function initDB(): Promise<void> {
       )
     `);
 
-    // Migration: add bpm column to existing structures table
+    initializeLibraryAnnotationStorage(db);
+
     try {
       db.run(
         `ALTER TABLE structures ADD COLUMN bpm INTEGER NOT NULL DEFAULT 120`,
       );
-    } catch {
-      // Column already exists
-    }
+    } catch {}
 
-    // Seed examples on first run
     const [{ values }] = db.exec(
       'SELECT COUNT(*) FROM saved_progressions WHERE is_example = 1',
     );
@@ -257,10 +245,6 @@ export function deleteProgression(id: string): void {
   }
   persist();
 }
-
-// ---------------------------------------------------------------------------
-// Songs CRUD
-// ---------------------------------------------------------------------------
 
 export function getAllSongs(): Song[] {
   if (!db) return [];
@@ -395,10 +379,6 @@ export function deleteSong(id: string): void {
   persist();
 }
 
-// ---------------------------------------------------------------------------
-// Structures CRUD
-// ---------------------------------------------------------------------------
-
 export function getAllStructures(): SongStructure[] {
   if (!db) return [];
 
@@ -521,9 +501,27 @@ export function deleteStructure(id: string): void {
   persist();
 }
 
-// ---------------------------------------------------------------------------
-// Single-record helpers (used by sync)
-// ---------------------------------------------------------------------------
+export function getLibraryAnnotation(
+  sourceSha256: string,
+  barCount: number,
+): LibraryAnnotationDocument | null {
+  if (!db) return null;
+  const loaded = loadLibraryAnnotation(db, sourceSha256, barCount);
+  if (loaded?.migrated) void persistDB();
+  return loaded?.document ?? null;
+}
+
+export function saveLibraryAnnotation(
+  document: LibraryAnnotationDocument,
+): Promise<void> {
+  if (!db) return Promise.resolve();
+  storeLibraryAnnotation(db, document);
+  return persistDB();
+}
+
+export function getAllLibraryAnnotations(): LibraryAnnotationDocument[] {
+  return db ? listLibraryAnnotations(db) : [];
+}
 
 function getProgressionById(id: string): SavedProgression | null {
   if (!db) return null;
@@ -597,10 +595,6 @@ function getStructureById(id: string): SongStructure | null {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Upsert helpers (used by syncAll merge)
-// ---------------------------------------------------------------------------
-
 export function upsertProgressionLocal(r: CloudProgression): void {
   if (!db) return;
   const stmt = db.prepare(
@@ -662,4 +656,11 @@ export function upsertStructureLocal(r: CloudStructure): void {
     r.updated_at,
   ]);
   stmt.free();
+}
+
+export function upsertLibraryAnnotationLocal(
+  document: LibraryAnnotationDocument,
+): void {
+  if (!db) return;
+  storeLibraryAnnotation(db, document);
 }

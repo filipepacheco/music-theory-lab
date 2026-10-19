@@ -11,28 +11,17 @@ import type {
 } from '@/constants/progressions';
 
 export interface StepPlayerOptions {
-  /** id stored on the playing descriptor; views match on it. */
   id: string;
   steps: ProgressionStep[];
   mode: 'major' | 'minor';
   presetId: string;
   bpm: number;
-  /** Apply the example's mode/preset/bpm globally before playing (example cards do this). */
   applyGlobals?: boolean;
-  /** Eighths per segment (e.g. per song section); enables onSegmentChange. */
   segmentLengths?: number[];
-  /** Called inside Tone.getDraw when the active step changes; -1 on stop. */
   onStepChange?: (stepIndex: number) => void;
-  /** Called inside Tone.getDraw when the active segment changes; undefined on stop. */
   onSegmentChange?: (segmentIndex: number | undefined) => void;
 }
 
-/**
- * The step player: one module owning everything a progression transport
- * needs — playing state, metronome subscription, eighth counting, event
- * scheduling, step resolution, voicing, and UI highlight side effects.
- * Callers pass steps and options; `play()` accepts per-play overrides.
- */
 export function useStepPlayer(defaults: StepPlayerOptions) {
   const defaultsRef = useRef(defaults);
   defaultsRef.current = defaults;
@@ -172,7 +161,6 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
     [onBeat, playChord, startMetronome, stop],
   );
 
-  // Unmount mid-play: release the beat subscription and fully stop.
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) {

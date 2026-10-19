@@ -1,5 +1,3 @@
-"""Public command-line interface for the standalone audio-library POC."""
-
 from __future__ import annotations
 
 import argparse
@@ -42,12 +40,10 @@ INPUT_SHA256_ADAPTER = TypeAdapter(Sha256)
 
 
 class CliUsageError(ValueError):
-    """Invalid command-line input that should be rendered as JSON."""
+    pass
 
 
 class CliInputValidationError(Exception):
-    """Expected user-input validation failure with safe issue details."""
-
     def __init__(self, issues: list[dict[str, Any]]) -> None:
         self.issues = issues
         super().__init__("input failed schema validation")
@@ -80,8 +76,6 @@ class CliInputValidationError(Exception):
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
-    """Argument parser whose expected errors are handled by ``main``."""
-
     def error(self, message: str) -> None:
         raise CliUsageError(message)
 
@@ -163,7 +157,6 @@ def _add_run_control_flags(subparser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the CLI and return a process-compatible exit status."""
 
     try:
         arguments = build_parser().parse_args(argv)

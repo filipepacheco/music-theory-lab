@@ -4,7 +4,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { ensureAudio } from '@/services/playbackEngine';
 import { playbackSession } from '@/services/playbackSession';
 
-// High click (beat 1) and low click (beats 2-4)
 const clickHigh = new Tone.MembraneSynth({
   pitchDecay: 0.01,
   octaves: 6,
@@ -22,7 +21,6 @@ const clickLow = new Tone.MembraneSynth({
 const scheduledMetronomes = new Map<Tone.Loop, symbol>();
 let metronomeGeneration = 0;
 
-/** Stop every metronome loop before another player takes over the Transport. */
 export function stopScheduledMetronomes() {
   metronomeGeneration++;
   for (const [loop, player] of scheduledMetronomes) {
@@ -47,7 +45,6 @@ export function useMetronome() {
   const beatRef = useRef(0);
   const listenersRef = useRef<Set<BeatCallback>>(new Set());
 
-  // Keep Transport BPM in sync
   useEffect(() => {
     Tone.getTransport().bpm.value = bpm;
   }, [bpm]);
@@ -66,7 +63,6 @@ export function useMetronome() {
     const transport = Tone.getTransport();
     transport.bpm.value = useAppStore.getState().bpm;
 
-    // Clean up any existing loop
     if (loopRef.current) {
       scheduledMetronomes.delete(loopRef.current);
       loopRef.current.dispose();
@@ -78,17 +74,14 @@ export function useMetronome() {
       if (!scheduledMetronomes.has(loop)) return;
       const beat = beatRef.current % 4;
 
-      // Play click at precise audio time
       if (beat === 0) {
         clickHigh.triggerAttackRelease('C5', '32n', time);
       } else {
         clickLow.triggerAttackRelease('C4', '32n', time);
       }
 
-      // Fire audio callbacks directly in the loop for precise timing
       listenersRef.current.forEach((cb) => cb(beat, time));
 
-      // Update UI on the main thread (visual only)
       Tone.getDraw().schedule(() => {
         if (scheduledMetronomes.has(loop)) setCurrentBeat(beat);
       }, time);
@@ -130,8 +123,6 @@ export function useMetronome() {
     }
   }, [isMetronomeOn, start, stop]);
 
-  // Register a beat callback. Returns an unsubscribe function; the
-  // metronome supports any number of concurrent listeners.
   const onBeat = useCallback((cb: BeatCallback) => {
     listenersRef.current.add(cb);
     return () => {
@@ -139,7 +130,6 @@ export function useMetronome() {
     };
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       startToken.current++;

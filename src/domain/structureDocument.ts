@@ -140,7 +140,6 @@ function withReindexedBars(
   return { bars: reindexBars(bars, sections), sections };
 }
 
-/** A groove with every step off — the starting shape for a new pattern. */
 function emptyGroove(
   subdivision: GrooveSubdivision = DEFAULT_GROOVE_SUBDIVISION,
   measureCount: GrooveMeasureCount = DEFAULT_GROOVE_MEASURE_COUNT,
@@ -155,7 +154,6 @@ function emptyGroove(
   };
 }
 
-/** Defensively normalize a persisted groove to its subdivision's row length. */
 function normalizedGroove(groove: GroovePattern): GroovePattern {
   const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
   const measureCount = grooveMeasureCount(groove.measureCount);
@@ -172,7 +170,6 @@ function normalizedGroove(groove: GroovePattern): GroovePattern {
   return normalized;
 }
 
-/** Preserve hits that land exactly on the new grid when changing resolution. */
 function resampleGroove(
   groove: GroovePattern,
   subdivision: GrooveSubdivision,

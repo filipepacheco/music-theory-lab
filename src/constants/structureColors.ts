@@ -2,23 +2,21 @@ import type { TimeSignature } from '@/types';
 
 export const TIME_SIGNATURES: TimeSignature[] = ['2/4', '3/4', '4/4', '6/8'];
 
-/** Predefined color palette for structure sections and bars */
 export const STRUCTURE_PALETTE: string[] = [
-  '#3b82f6', // blue
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#f59e0b', // amber
-  '#10b981', // emerald
-  '#ec4899', // pink
-  '#6366f1', // indigo
-  '#f97316', // orange
-  '#14b8a6', // teal
-  '#e11d48', // rose
-  '#84cc16', // lime
-  '#9ca3af', // gray
+  '#3b82f6',
+  '#8b5cf6',
+  '#06b6d4',
+  '#f59e0b',
+  '#10b981',
+  '#ec4899',
+  '#6366f1',
+  '#f97316',
+  '#14b8a6',
+  '#e11d48',
+  '#84cc16',
+  '#9ca3af',
 ];
 
-/** Common section name suggestions with default palette index */
 export const SECTION_SUGGESTIONS: { name: string; colorIndex: number }[] = [
   { name: 'Intro', colorIndex: 1 },
   { name: 'Verso', colorIndex: 0 },

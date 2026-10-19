@@ -20,10 +20,22 @@ EXPECTED_SCHEMA_NAMES = (
     "checkpoint-manifest.serialization.schema.json",
     "beat-analysis-result.validation.schema.json",
     "beat-analysis-result.serialization.schema.json",
+    "beat-input-quality-decision.validation.schema.json",
+    "beat-input-quality-decision.serialization.schema.json",
     "chord-analysis-result.validation.schema.json",
     "chord-analysis-result.serialization.schema.json",
+    "chord-frame-evidence.validation.schema.json",
+    "chord-frame-evidence.serialization.schema.json",
     "key-analysis-result.validation.schema.json",
     "key-analysis-result.serialization.schema.json",
+    "section-analysis-result.validation.schema.json",
+    "section-analysis-result.serialization.schema.json",
+    "structural-segmentation-result.validation.schema.json",
+    "structural-segmentation-result.serialization.schema.json",
+    "evaluation-manifest.validation.schema.json",
+    "evaluation-manifest.serialization.schema.json",
+    "product-evaluation-report.validation.schema.json",
+    "product-evaluation-report.serialization.schema.json",
 )
 PACKAGE_ROOT = Path(__file__).parents[1]
 COMMITTED_SCHEMA_DIRECTORY = PACKAGE_ROOT / "schemas"
@@ -46,8 +58,14 @@ def test_export_json_schemas_writes_both_modes_for_each_contract(
             "SeparationResult",
             "CheckpointManifest",
             "BeatAnalysisResult",
+            "BeatInputQualityDecision",
             "ChordAnalysisResult",
+            "ChordFrameEvidenceArtifact",
             "KeyAnalysisResult",
+            "SectionAnalysisResult",
+            "StructuralSegmentationResult",
+            "EvaluationManifest",
+            "ProductEvaluationReport",
         }
         assert schema["type"] == "object"
 
@@ -67,5 +85,5 @@ def test_committed_schemas_are_byte_reproducible_on_rerun(
 
     assert second_bytes == first_bytes
     assert committed_bytes == first_bytes
-    assert len(committed_bytes) == 20
+    assert len(committed_bytes) == 32
     assert list(tmp_path.glob(".*.tmp")) == []

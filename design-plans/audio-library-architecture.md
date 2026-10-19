@@ -3,6 +3,15 @@
 Written against: `dc9784e`. Status: proposed architecture; implementation is
 blocked intentionally on the offline POC quality gates.
 
+> **Reconciled 2026-09-07.** This document remains the long-term architecture,
+> not a current implementation inventory. The offline POC now has concrete
+> separation, beat, key, BTC chord, and experimental section stages. Quality
+> acceptance remains unfinished. The current quality/evaluation work and its
+> preconditions are tracked in `design-plans/audio-library-quality-handoff.md`
+> and `research/audio-library-harmony-dependencies.md`; neither a static
+> `public/library` export nor a completed local stage establishes private
+> storage, a quality gate, or a production-ready catalogue.
+
 This plan turns the completed product interview into an implementation path.
 The exact evaluation tracks are deliberately left open; selecting them is the
 first human input required when POC execution begins.

@@ -1,12 +1,3 @@
-"""BS-RoFormer six-stem separator adapter stub.
-
-Phase 2 will replace the ``separate`` body with the pinned inference pattern
-from ``research/audio-analysis-pipeline-options.md``. Everything else here —
-the stage-kind constant, the config surface, the stable candidate/version
-identifiers — is meant to be stable across that work so the pipeline manifest
-and cache identities stay valid.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -29,20 +20,6 @@ BS_ROFORMER_CANDIDATE_ID = "bs_roformer"
 
 
 class BsRoformerStageConfig(BaseSeparatorStageConfig):
-    """BS-RoFormer knobs on top of the shared separator surface.
-
-    ``checkpoint_relative_path`` and ``config_relative_path`` locate the
-    pinned model assets inside the workspace. The bridge validates the config
-    but only ``BsRoformerSeparator`` resolves and reads the checkpoint/config
-    files, so their paths become part of cache identity (through
-    ``config_sha256``) without the bridge doing any file I/O for them.
-
-    ``segment``, ``overlap``, ``shifts``, ``batch_size`` and
-    ``use_test_time_augmentation`` are recorded in provenance but the current
-    inference path defers all chunking to the ``chunk_size`` / ``num_overlap``
-    baked into the model's own YAML config. Overrides land in a later slice.
-    """
-
     checkpoint_relative_path: str = Field(min_length=1)
     config_relative_path: str = Field(min_length=1)
     batch_size: int = Field(default=1, ge=1, le=32)
@@ -55,15 +32,6 @@ class BsRoformerStageConfig(BaseSeparatorStageConfig):
 
 
 class BsRoformerSeparator:
-    """Real BS-RoFormer inference adapter.
-
-    Loads the pinned six-stem checkpoint (``bass``, ``drums``, ``other``,
-    ``vocals``, ``guitar``, ``piano``) and emits the five app stems, folding
-    the candidate-native ``piano`` output into the ``other`` app stem per the
-    ``SeparationResult`` contract. Uses ``torch.cuda.amp.autocast`` (fp16)
-    inside the vendored ``demix_track`` inference loop.
-    """
-
     candidate_id: ClassVar[str] = BS_ROFORMER_CANDIDATE_ID
     implementation_version: ClassVar[str] = "1.0.0"
     ConfigModel: ClassVar[type[BsRoformerStageConfig]] = BsRoformerStageConfig
@@ -73,14 +41,8 @@ class BsRoformerSeparator:
             raise TypeError(
                 "BsRoformerSeparator requires a validated BsRoformerStageConfig"
             )
-        # Resolve the model assets BEFORE the lazy import below: a missing
-        # checkpoint must surface as a typed failure, not as the
-        # ModuleNotFoundError the torch import would raise first on a
-        # machine without the inference extras.
         _resolve_bs_roformer_assets(request)
 
-        # Lazy imports so the module import stays free of torch — Phase 1
-        # tests still pass without the inference extras installed.
         from audio_library_poc.separators._bs_roformer_runtime import (
             run_bs_roformer_inference,
         )
@@ -93,11 +55,6 @@ class BsRoformerSeparator:
 
 
 def _resolve_bs_roformer_assets(request: SeparatorRequest) -> None:
-    """Validate the checkpoint and model config exist inside the workspace.
-
-    Mirrors the resolution the runtime performs, in the same order, so the
-    typed failure is identical whether or not torch is importable.
-    """
 
     config = request.config
     workspace = resolve_workspace(request.source_path, config.source_relative_path)

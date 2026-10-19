@@ -1,22 +1,22 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { resolveStep } from "@/domain/stepResolution";
-import { FUNCTION_COLORS } from "@/constants/functionColors";
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { resolveStep } from '@/domain/stepResolution';
+import { functionColor } from '@/constants/functionColors';
+import { confirmDialog } from '@/services/confirm';
+import Button from '@/components/shared/Button';
 
 export default function ProgressionTimeline() {
   const customProgression = useAppStore((s) => s.customProgression);
   const removeProgressionStep = useAppStore((s) => s.removeProgressionStep);
-  const setProgressionStepBeats = useAppStore(
-    (s) => s.setProgressionStepBeats,
-  );
+  const setProgressionStepBeats = useAppStore((s) => s.setProgressionStepBeats);
   const clearProgression = useAppStore((s) => s.clearProgression);
   const harmonicField = useAppStore((s) => s.harmonicField);
   const rootNote = useAppStore((s) => s.rootNote);
 
   if (customProgression.length === 0) {
     return (
-      <div className="border border-dashed border-border-default rounded-button p-4 sm:p-8 text-center">
-        <div className="text-2xl text-text-muted/40 mb-2">+</div>
+      <div className="border border-dashed border-border-strong p-4 sm:p-8 text-center">
+        <div className="text-2xl text-text-muted mb-2">+</div>
         <p className="text-sm text-text-secondary">
           Clique nos acordes acima para montar sua progressão
         </p>
@@ -36,72 +36,72 @@ export default function ProgressionTimeline() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="font-heading text-sm text-text-secondary">
-          Sua progressão ({customProgression.length} acordes, {totalBeats}{" "}
+          Sua progressão ({customProgression.length} acordes, {totalBeats}{' '}
           tempos)
         </h3>
-        <button
-          onClick={() => {
-            if (window.confirm("Limpar toda a progressão?")) clearProgression();
+        <Button
+          size="sm"
+          onClick={async () => {
+            const confirmed = await confirmDialog({
+              title: 'Limpar toda a progressão?',
+              confirmLabel: 'Limpar',
+              danger: true,
+            });
+            if (confirmed) clearProgression();
           }}
-          className="text-xs text-text-muted hover:text-text-primary transition-colors cursor-pointer"
         >
           Limpar
-        </button>
+        </Button>
       </div>
 
       <div
         className="flex gap-2 overflow-x-auto pb-1"
-        style={{ scrollbarWidth: "thin" }}
+        style={{ scrollbarWidth: 'thin' }}
       >
         <AnimatePresence mode="popLayout">
           {customProgression.map((step, idx) => {
             const resolved = resolveStep(step, harmonicField, rootNote);
-            const borderColor = resolved.harmonicFunction
-              ? FUNCTION_COLORS[resolved.harmonicFunction]
-              : "var(--color-accent)";
+            const borderColor = functionColor(resolved.harmonicFunction);
             const beats = step.beats ?? 4;
 
             return (
               <motion.div
                 key={`${idx}-${step.label}`}
                 layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="relative flex flex-col items-center gap-0.5 px-3 py-3 rounded-button bg-bg-card border min-w-[80px] group"
+                className="relative flex flex-col items-center gap-0.5 px-3 py-3 bg-bg-card border min-w-[80px] group"
                 style={{ borderColor }}
               >
-                {/* Remove button */}
                 <button
                   onClick={() => removeProgressionStep(idx)}
                   aria-label="Remover acorde"
-                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full text-[10px] bg-bg-tertiary border border-border-default text-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer opacity-60 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
+                  className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-micro bg-bg-tertiary border border-border-default text-text-muted hover:bg-danger hover:text-on-accent cursor-pointer opacity-60 hover:opacity-100"
                 >
                   X
                 </button>
 
-                {/* Chord info */}
                 <span
                   className="font-mono text-base font-medium"
                   style={{ color: borderColor }}
                 >
                   {step.label}
                 </span>
-                <span className="font-mono text-[10px] text-text-secondary">
+                <span className="font-mono text-micro text-text-secondary">
                   {resolved.chordName}
                 </span>
-                <span className="font-mono text-[10px] text-text-muted">
-                  {resolved.noteNames.join(" ")}
+                <span className="font-mono text-micro text-text-muted">
+                  {resolved.noteNames.join(' ')}
                 </span>
 
-                {/* Beat controls */}
                 <div className="flex items-center gap-1 mt-1 border-t border-border-default pt-1 w-full justify-center">
                   <button
                     onClick={() => setProgressionStepBeats(idx, beats - 0.5)}
                     disabled={beats <= 0.5}
                     aria-label="Diminuir tempos"
-                    className="w-8 h-8 flex items-center justify-center rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     -
                   </button>
@@ -115,7 +115,7 @@ export default function ProgressionTimeline() {
                     onClick={() => setProgressionStepBeats(idx, beats + 0.5)}
                     disabled={beats >= 8}
                     aria-label="Aumentar tempos"
-                    className="w-8 h-8 flex items-center justify-center rounded text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 flex items-center justify-center text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>

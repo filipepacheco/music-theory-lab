@@ -38,7 +38,6 @@ export default function BarEditorPopover({
         onClose();
       }
     }
-    // Delay to avoid the double-click that opened this from closing it
     const timer = setTimeout(() => {
       document.addEventListener('pointerdown', handleClick);
     }, 100);
@@ -51,28 +50,25 @@ export default function BarEditorPopover({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.12 }}
-      className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-bg-card border border-border-default rounded-card p-3 shadow-xl min-w-[200px]"
+      className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-bg-card border border-border-default p-3 shadow-xl min-w-[200px]"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {/* Time signature */}
       <div className="mb-3">
-        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">
-          Compasso
-        </div>
+        <div className="lh-label mb-1.5">Compasso</div>
         <div className="flex gap-1">
           {TIME_SIGNATURES.map((ts) => (
             <button
               key={ts}
               type="button"
               onClick={() => setBarTimeSignature(bar.id, ts)}
-              className={`px-2.5 py-1 text-xs rounded-control transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs cursor-pointer ${
                 bar.timeSignature === ts
-                  ? 'bg-accent/20 text-accent font-bold border border-accent/40'
-                  : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary/80 border border-transparent'
+                  ? 'bg-accent text-on-accent border border-accent'
+                  : 'bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent border border-transparent'
               }`}
             >
               {ts}
@@ -81,11 +77,8 @@ export default function BarEditorPopover({
         </div>
       </div>
 
-      {/* Accent dots */}
       <div className="mb-3">
-        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">
-          Acentos
-        </div>
+        <div className="lh-label mb-1.5">Acentos</div>
         <div className="flex flex-col items-start gap-1.5">
           {[0, 1].map((row) => (
             <div key={row} className="flex gap-1.5">
@@ -98,7 +91,7 @@ export default function BarEditorPopover({
                     key={idx}
                     type="button"
                     onClick={() => toggleBarAccent(bar.id, idx)}
-                    className={`w-5 h-5 rounded-full transition-all cursor-pointer flex items-center justify-center ${
+                    className={`w-5 h-5 cursor-pointer flex items-center justify-center ${
                       isDownbeat ? 'ring-1 ring-border-default/30' : ''
                     }`}
                     style={{
@@ -116,8 +109,8 @@ export default function BarEditorPopover({
                   >
                     {isAccent && (
                       <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: 'white' }}
+                        className="w-2 h-2"
+                        style={{ backgroundColor: 'var(--color-on-accent)' }}
                       />
                     )}
                   </button>
@@ -128,11 +121,8 @@ export default function BarEditorPopover({
         </div>
       </div>
 
-      {/* Color picker */}
       <div>
-        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">
-          Cor
-        </div>
+        <div className="lh-label mb-1.5">Cor</div>
         <div className="flex flex-wrap gap-1.5 items-center">
           {STRUCTURE_PALETTE.map((color) => (
             <button
@@ -141,19 +131,18 @@ export default function BarEditorPopover({
               onClick={() => {
                 setBarColor(bar.id, color);
               }}
-              className={`w-5 h-5 rounded-full transition-transform hover:scale-110 cursor-pointer ${
+              className={`w-5 h-5 cursor-pointer ${
                 bar.color === color
-                  ? 'ring-2 ring-white ring-offset-1 ring-offset-bg-card'
+                  ? 'ring-2 ring-accent ring-offset-1 ring-offset-bg-card'
                   : ''
               }`}
               style={{ backgroundColor: color }}
             />
           ))}
-          {/* Clear color */}
           <button
             type="button"
             onClick={() => setBarColor(bar.id, undefined)}
-            className="w-5 h-5 rounded-full border border-border-default bg-bg-tertiary flex items-center justify-center text-[9px] text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            className="w-5 h-5 border border-border-default bg-bg-tertiary flex items-center justify-center text-micro text-text-muted hover:text-text-primary cursor-pointer"
             title="Remover cor"
           >
             X

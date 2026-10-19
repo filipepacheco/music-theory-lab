@@ -1,9 +1,11 @@
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useCallback, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
 import SpeedControl from '@/components/shared/SpeedControl';
 import type { ProgressionStep } from '@/constants/progressions';
+import Button from '@/components/shared/Button';
+import Tag from '@/components/shared/Tag';
 
 export default function SongPlaybackControls({
   onPlayingSectionChange,
@@ -23,7 +25,6 @@ export default function SongPlaybackControls({
 
   const [originalBpm, setOriginalBpm] = useState(bpm);
 
-  // Compute which steps to play based on loopSection
   const getPlaybackSteps = useCallback((): ProgressionStep[] => {
     if (loopSection) {
       const section = songSections[activeSectionIndex];
@@ -64,45 +65,36 @@ export default function SongPlaybackControls({
     play({ steps: getPlaybackSteps() });
   };
 
+  usePlaybackShortcut(() => {
+    if (isPlaying) stop();
+    else handlePlay();
+  }, hasSteps);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
-        <motion.button
+        <Button
+          variant={isPlaying ? 'default' : 'primary'}
+          pressed={isPlaying}
+          live={isPlaying}
           onClick={() => (isPlaying ? stop() : handlePlay())}
           disabled={!hasSteps}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className={`px-6 py-2.5 rounded-button text-sm font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-            isPlaying
-              ? 'bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.3)]'
-              : 'bg-accent text-white shadow-[0_0_16px_rgba(79,110,247,0.3)]'
-          }`}
         >
-          <span className="flex items-center gap-2">
-            <span>{isPlaying ? '\u25A0' : '\u25B6'}</span>
-            <span>
-              {isPlaying ? 'Parar' : loopSection ? 'Tocar Seção' : 'Tocar Tudo'}
-            </span>
+          <span aria-hidden className="mr-[1ch]">
+            {isPlaying ? '\u25A0' : '\u25B6'}
           </span>
-        </motion.button>
+          {isPlaying ? 'Parar' : loopSection ? 'Tocar Seção' : 'Tocar Tudo'}
+        </Button>
 
-        {/* Loop section toggle */}
-        <button
+        <Button
+          size="sm"
+          pressed={loopSection}
           onClick={() => setLoopSection(!loopSection)}
-          className={`px-3 py-1.5 rounded-button text-xs font-medium transition-all cursor-pointer border ${
-            loopSection
-              ? 'border-accent/40 text-accent bg-accent/10'
-              : 'border-border-default text-text-secondary hover:border-accent/40'
-          }`}
         >
           {loopSection ? 'Repetir seção' : 'Tocar tudo'}
-        </button>
+        </Button>
 
-        {isPlaying && (
-          <span className="text-xs text-text-muted animate-pulse">
-            Tocando...
-          </span>
-        )}
+        {isPlaying && <Tag tone="live">tocando</Tag>}
       </div>
 
       <SpeedControl

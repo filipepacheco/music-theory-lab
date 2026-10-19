@@ -1,14 +1,3 @@
-"""Bridge that runs a candidate ``Separator`` inside the shared stage seam.
-
-The orchestrator only knows about ``StageExecutor``. This bridge validates a
-separator's config, verifies the source audio hash, calls the separator, and
-translates its ``SeparatorResponse`` into the ``StagedArtifact`` bundle the
-orchestrator expects. When the underlying separator raises
-``SeparatorNotImplementedError`` (the current stubs), the failure flows
-through as a clean ``FAILED_TERMINAL`` result — no traceback and no partial
-publication.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,8 +23,6 @@ _STEM_MEDIA_TYPE = "audio/wav"
 
 
 class SeparatorStageExecutor:
-    """One stage executor per ``Separator`` instance."""
-
     def __init__(self, separator: Separator, workspace: Path) -> None:
         self.separator = separator
         self.workspace = Path(workspace).resolve()

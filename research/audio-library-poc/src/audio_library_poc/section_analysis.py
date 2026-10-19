@@ -1,16 +1,3 @@
-"""Versioned contracts for Phase 3 section-boundary output.
-
-Kept separate from ``chord_analysis.py`` and ``beat_analysis.py`` for the
-same reason those two are separate: section segmentation has its own
-vocabulary (letter labels for repeating parts) that never mixes with chord
-recognition or beat tracking.
-
-The librosa-based baseline is a pure algorithm (chroma + Laplacian /
-agglomerative clustering), so ``model_identifier`` and ``model_sha256`` are
-absent from provenance by design — the HPCP key stage follows the same
-pattern.
-"""
-
 from __future__ import annotations
 
 from typing import Literal, Self
@@ -32,8 +19,6 @@ from audio_library_poc.models import (
 
 
 class FrozenSectionModel(ContractModel):
-    """Immutable base for the committed section contracts."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 
@@ -101,8 +86,10 @@ class SectionAnalysisResult(FrozenSectionModel):
     ``"A"`` spanning the whole track.
     """
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    schema_version: Literal["2.0.0"] = "2.0.0"
     source_sha256: Sha256
+    beat_result_sha256: Sha256 | None = None
+    beat_quality_decision_sha256: Sha256 | None = None
     provenance: SectionAnalyzerProvenance
     settings: EffectiveSectionAnalyzerSettings
     source: SectionSourceFacts
@@ -118,6 +105,10 @@ class SectionAnalysisResult(FrozenSectionModel):
 
     @model_validator(mode="after")
     def validate_result(self) -> Self:
+        if (self.beat_result_sha256 is None) != (
+            self.beat_quality_decision_sha256 is None
+        ):
+            raise ValueError("section dependency hashes must be recorded together")
         tolerance = 1e-3
         for index in range(1, len(self.sections)):
             prev = self.sections[index - 1]
@@ -141,7 +132,6 @@ class SectionAnalysisResult(FrozenSectionModel):
 def coverage_seconds(
     sections: tuple[SectionSegment, ...] | list[SectionSegment],
 ) -> float:
-    """Sum the durations of every section. Used by the coverage-to-duration test."""
 
     total = 0.0
     for section in sections:

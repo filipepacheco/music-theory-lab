@@ -5,6 +5,9 @@ import type { ProgressionStep } from '@/constants/progressions';
 import { useAppStore } from '@/store/useAppStore';
 import { resolveStep } from '@/domain/stepResolution';
 import { FUNCTION_COLORS } from '@/constants/functionColors';
+import Button from '@/components/shared/Button';
+import Select from '@/components/shared/Select';
+import Tag from '@/components/shared/Tag';
 
 interface SelectedStep {
   sectionIndex: number;
@@ -61,36 +64,36 @@ function ReviewChordCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`min-w-0 rounded-card border p-3 text-left transition-all ${
+      className={`min-w-0 border p-3 text-left ${
         selected
           ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-primary'
           : ''
       } ${
         isUnsure
-          ? 'border-amber-300/70 bg-amber-300/10'
-          : 'border-border-default bg-bg-card hover:border-accent/50'
+          ? 'border-warning/70 bg-warning/10'
+          : 'border-border-default bg-bg-card hover:border-accent'
       }`}
       style={{ borderLeftColor: isUnsure ? undefined : borderColor }}
       aria-pressed={selected}
     >
       <div className="flex items-center justify-between gap-2">
         <span
-          className={`text-[9px] uppercase tracking-[0.12em] ${
-            isUnsure ? 'text-amber-200' : 'text-text-muted'
+          className={`lh-label ${
+            isUnsure ? 'text-warning' : 'text-text-muted'
           }`}
         >
           {isUnsure ? 'Revisar' : 'Confirmado'}
         </span>
-        <span className="text-[10px] text-text-muted">{step.beats ?? 4}t</span>
+        <span className="text-micro text-text-muted">{step.beats ?? 4}t</span>
       </div>
       <p
         className={`mt-2 truncate font-heading text-base ${
-          isUnsure ? 'text-amber-200' : 'text-text-primary'
+          isUnsure ? 'text-warning' : 'text-text-primary'
         }`}
       >
         {step.label}
       </p>
-      <p className="mt-1 truncate text-[10px] text-text-secondary">
+      <p className="mt-1 truncate text-micro text-text-secondary">
         {details.chordName}
       </p>
     </button>
@@ -99,7 +102,7 @@ function ReviewChordCard({
 
 function EmptyReviewState() {
   return (
-    <div className="rounded-section border border-dashed border-border-default p-10 text-center">
+    <div className="border border-dashed border-border-default p-10 text-center">
       <p className="font-heading text-lg text-text-primary">
         A transcrição aparecerá aqui
       </p>
@@ -117,15 +120,14 @@ function AddSectionControl({ className = '' }: { className?: string }) {
 
   return (
     <label className={`inline-flex items-center gap-2 ${className}`}>
-      <span className="text-xs text-text-muted">Adicionar seção</span>
-      <select
+      <span className="lh-label">Adicionar seção</span>
+      <Select
         value=""
         onChange={(event) => {
           if (event.target.value) {
             addSection(event.target.value as (typeof SECTION_TYPES)[number]);
           }
         }}
-        className="rounded-button border border-border-default bg-bg-tertiary px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
         aria-label="Adicionar seção"
       >
         <option value="">Escolher</option>
@@ -134,7 +136,7 @@ function AddSectionControl({ className = '' }: { className?: string }) {
             {SECTION_LABELS[type]}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }
@@ -242,10 +244,10 @@ export default function TranscriptionReviewWorkspace() {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-      <main className="min-w-0 rounded-section border border-border-default bg-bg-tertiary/20 p-4 sm:p-5">
+      <main className="min-w-0 border border-border-default bg-bg-tertiary/20 p-4 sm:p-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-accent">
+            <p className="lh-label">
               Revisão focada
             </p>
             <h3 className="mt-2 font-heading text-2xl text-text-primary">
@@ -263,16 +265,16 @@ export default function TranscriptionReviewWorkspace() {
           </div>
         </header>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-300/20 bg-amber-300/5 px-3 py-3">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border border-warning/20 bg-warning/5 px-3 py-3">
           <div>
-            <p className="text-xs font-medium text-amber-100">
+            <p className="text-xs font-medium text-warning">
               Selecione um acorde para conferir os detalhes
             </p>
-            <p className="mt-1 text-[10px] text-amber-100/60">
+            <p className="mt-1 text-micro text-warning/60">
               Os acordes em amarelo ainda precisam de revisão.
             </p>
           </div>
-          <span className="text-xs text-amber-200">
+          <span className="text-xs text-warning">
             {reviewCount > 0 ? `${reviewCount} para revisar` : 'Tudo revisado'}
           </span>
         </div>
@@ -292,11 +294,11 @@ export default function TranscriptionReviewWorkspace() {
                   }`}
                 >
                   <span
-                    className="h-2 w-2 rounded-full"
+                    className="h-2 w-2"
                     style={{ backgroundColor: SECTION_COLORS[section.type] }}
                   />
                   <span className="text-xs font-medium">{label}</span>
-                  <span className="text-[10px] text-text-muted">
+                  <span className="text-micro text-text-muted">
                     {section.steps.length} acordes
                   </span>
                 </button>
@@ -320,18 +322,18 @@ export default function TranscriptionReviewWorkspace() {
         </div>
       </main>
 
-      <aside className="flex h-fit flex-col rounded-section border border-border-default bg-bg-card p-5 xl:sticky xl:top-4">
+      <aside className="flex h-fit flex-col border border-border-default bg-bg-card p-5 xl:sticky xl:top-4">
         {selectedItem && selectedDetails ? (
           <>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-amber-200">
+                <p className="lh-label text-warning">
                   Acorde selecionado
                 </p>
                 <h3
                   className={`mt-2 font-heading text-4xl ${
                     selectedItem.step.confidence === 'unsure'
-                      ? 'text-amber-200'
+                      ? 'text-warning'
                       : 'text-accent'
                   }`}
                 >
@@ -344,22 +346,22 @@ export default function TranscriptionReviewWorkspace() {
                   ] ?? 'Seção'}
                 </p>
               </div>
-              <span
-                className={`rounded-full px-2 py-1 text-[10px] ${
+              <Tag
+                tone={
                   selectedItem.step.confidence === 'unsure'
-                    ? 'bg-amber-300/10 text-amber-200'
-                    : 'bg-emerald-400/10 text-emerald-300'
-                }`}
+                    ? 'warning'
+                    : 'success'
+                }
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Incerto'
                   : 'Confirmado'}
-              </span>
+              </Tag>
             </div>
 
             <div className="mt-6 space-y-4 border-y border-border-default py-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-text-muted">
+                <p className="lh-label">
                   Notas detectadas
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -367,7 +369,7 @@ export default function TranscriptionReviewWorkspace() {
                     selectedDetails.noteNames.map((note) => (
                       <span
                         key={note}
-                        className="rounded-control bg-bg-tertiary px-2.5 py-1.5 font-mono text-xs text-text-primary"
+                        className="bg-bg-tertiary px-2.5 py-1.5 font-mono text-xs text-text-primary"
                       >
                         {note}
                       </span>
@@ -382,8 +384,7 @@ export default function TranscriptionReviewWorkspace() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-secondary">Duração</span>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <Button
                     onClick={() =>
                       setSongStepBeats(
                         selectedItem.sectionIndex,
@@ -391,16 +392,15 @@ export default function TranscriptionReviewWorkspace() {
                         (selectedItem.step.beats ?? 4) - 0.5,
                       )
                     }
-                    className="h-7 w-7 rounded bg-bg-tertiary text-text-secondary"
+                    size="sm"
                     aria-label="Diminuir duração"
                   >
                     −
-                  </button>
+                  </Button>
                   <span className="min-w-[48px] text-center font-mono text-text-primary">
                     {selectedItem.step.beats ?? 4}t
                   </span>
-                  <button
-                    type="button"
+                  <Button
                     onClick={() =>
                       setSongStepBeats(
                         selectedItem.sectionIndex,
@@ -408,11 +408,11 @@ export default function TranscriptionReviewWorkspace() {
                         (selectedItem.step.beats ?? 4) + 0.5,
                       )
                     }
-                    className="h-7 w-7 rounded bg-bg-tertiary text-text-secondary"
+                    size="sm"
                     aria-label="Aumentar duração"
                   >
                     +
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -422,54 +422,51 @@ export default function TranscriptionReviewWorkspace() {
               estiver satisfeito.
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button
-                type="button"
+              <Button
                 onClick={toggleConfidence}
-                className="rounded-button border border-border-default px-3 py-2.5 text-xs text-text-secondary"
+                className="justify-center"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Manter incerto'
                   : 'Marcar incerto'}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={toggleConfidence}
-                className="rounded-button bg-accent px-3 py-2.5 text-xs font-semibold text-white"
+                variant="primary"
+                className="justify-center"
               >
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Confirmar'
                   : 'Confirmado'}
-              </button>
+              </Button>
             </div>
-            <button
-              type="button"
+            <Button
               onClick={() =>
                 removeSongStep(
                   selectedItem.sectionIndex,
                   selectedItem.stepIndex,
                 )
               }
-              className="mt-3 text-xs text-red-300/80 hover:text-red-300"
+              size="sm"
+              className="mt-3 self-start text-danger"
             >
               Remover acorde
-            </button>
+            </Button>
             <div className="mt-5 flex gap-2">
-              <button
-                type="button"
+              <Button
                 onClick={() => moveSelection(-1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) - 1]}
-                className="flex-1 rounded-button border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
+                className="flex-1 justify-center"
               >
                 ← Anterior
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={() => moveSelection(1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) + 1]}
-                className="flex-1 rounded-button border border-border-default px-3 py-2 text-xs text-text-muted disabled:opacity-30"
+                className="flex-1 justify-center"
               >
                 Próximo →
-              </button>
+              </Button>
             </div>
           </>
         ) : (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { useStructures } from '@/hooks/useStructures';
+import Button from '@/components/shared/Button';
 
 export default function SaveStructureButton() {
   const activeStructureId = useAppStore((s) => s.activeStructureId);
@@ -45,21 +45,12 @@ export default function SaveStructureButton() {
   };
 
   return (
-    <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={handleSave}
-      disabled={!canSave}
-      className="flex items-center justify-center gap-1.5 text-sm font-medium px-6 py-3 sm:py-2.5 rounded-button border border-accent/40 text-accent hover:bg-accent/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto"
-    >
-      <span>
-        {saving
-          ? 'Salvando...'
-          : activeStructureId
-            ? 'Atualizar'
-            : 'Salvar'}
-      </span>
-      {!saving && <span>Estrutura</span>}
-    </motion.button>
+    <Button onClick={handleSave} disabled={!canSave}>
+      {saving
+        ? 'Salvando...'
+        : activeStructureId
+          ? 'Atualizar estrutura'
+          : 'Salvar estrutura'}
+    </Button>
   );
 }

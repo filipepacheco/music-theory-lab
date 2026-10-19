@@ -1,5 +1,3 @@
-"""Tests for the HPCP key-detection stage bridge + result contract."""
-
 from __future__ import annotations
 
 import hashlib
@@ -87,7 +85,6 @@ def _execute(
 
 
 def _twenty_four_estimates(peak_tonic: int, peak_mode: TonalMode) -> list[KeyEstimate]:
-    """Build a full 24-estimate spread ordered best-first with the given peak."""
 
     estimates: list[KeyEstimate] = []
     for tonic in range(12):
@@ -169,7 +166,6 @@ def test_key_analysis_result_requires_all_24_candidates() -> None:
         duration_seconds=1.0,
         peak_absolute_sample=0.5,
     )
-    # Only 23 estimates — min_length violation on the field itself.
     incomplete = _twenty_four_estimates(peak_tonic=0, peak_mode=TonalMode.MAJOR)[:23]
     with pytest.raises(ValidationError):
         KeyAnalysisResult(
@@ -202,7 +198,6 @@ def test_key_analysis_result_rejects_duplicate_candidates() -> None:
         peak_absolute_sample=0.5,
     )
     estimates = _twenty_four_estimates(peak_tonic=0, peak_mode=TonalMode.MAJOR)
-    # Duplicate one entry — trigger the model validator's coverage check.
     dup = list(estimates)
     dup[-1] = KeyEstimate(
         tonic_pc=dup[0].tonic_pc,
@@ -273,7 +268,7 @@ def test_key_analysis_result_rejects_top_estimate_mismatch() -> None:
         peak_absolute_sample=0.5,
     )
     estimates = _twenty_four_estimates(peak_tonic=0, peak_mode=TonalMode.MAJOR)
-    wrong_top = estimates[5]  # not the highest-scored one
+    wrong_top = estimates[5]
     with pytest.raises(ValidationError):
         KeyAnalysisResult(
             source_sha256="a" * 64,
@@ -297,7 +292,7 @@ def test_invalid_config_yields_typed_failure(tmp_path: Path) -> None:
     executor = HpcpKeyStageExecutor(workspace)
     specification = _specification(
         source_relative_path=source_relative,
-        extra_config={"sample_rate": 100},  # below min
+        extra_config={"sample_rate": 100},
     )
 
     with pytest.raises(ExpectedStageFailure) as captured:

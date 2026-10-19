@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 - Agent docs
+
+- **Changed**: `CLAUDE.md` is now a map (3,396 to 966 words). The detail on
+  audio, persistence and sync, song documents, bass charts, the design
+  system, and highlights and theme moved to `docs/architecture/`, behind a
+  pointer table. The empty `CLAUDE.md` stubs of a removed plugin are gone.
+
 ## 2026-08-18 — Sync hardening
 
 - **Fixed**: failed sync pushes are now retried — sync re-runs whenever the

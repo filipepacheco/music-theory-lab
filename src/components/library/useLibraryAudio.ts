@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
 import { playbackSession } from '@/services/playbackSession';
+import { useEffect, useRef, useState } from 'react';
+import type { BassMixMode } from '@/domain/bassMix';
+import { createBassMixGraph, type BassMixGraph } from '@/services/bassMixGraph';
+import {
+  createLibraryAudioSession,
+  type LibraryAudioSession,
+  type LibraryAudioState,
+} from '@/services/libraryAudioSession';
 
 export interface LibraryAudio {
   ready: boolean;
@@ -11,100 +18,97 @@ export interface LibraryAudio {
   seek(seconds: number): void;
 }
 
-/**
- * Wrap an <audio> element for the Biblioteca player. `url` may be null while
- * the source is being probed (no player rendered upstream); a fresh URL
- * swaps the source and rewinds to zero. Cleans up on unmount so we never
- * leak the underlying media element or its ticker.
- */
+export interface BassMixSetting {
+  mode: BassMixMode;
+  crossoverHz: number;
+}
+
 export function useLibraryAudio(
   url: string | null,
-  title: string,
+  bassMix?: BassMixSetting | string,
+  mediaTitle = 'Biblioteca',
 ): LibraryAudio {
-  const [ready, setReady] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentSeconds, setCurrentSeconds] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [state, setState] = useState<LibraryAudioState>({
+    ready: false,
+    playing: false,
+    duration: 0,
+    currentSeconds: 0,
+  });
+  const sessionRef = useRef<LibraryAudioSession | null>(null);
+  const mediaRef = useRef<HTMLAudioElement | null>(null);
+  const graphRef = useRef<BassMixGraph | null>(null);
+  const mixMode = typeof bassMix === 'object' ? bassMix.mode : 'full';
+  const title = typeof bassMix === 'string' ? bassMix : mediaTitle;
+  const crossoverHz = typeof bassMix === 'object' ? bassMix.crossoverHz : 0;
 
   useEffect(() => {
+    setState({
+      ready: false,
+      playing: false,
+      duration: 0,
+      currentSeconds: 0,
+    });
     if (!url) {
-      audioRef.current = null;
-      setReady(false);
-      setPlaying(false);
-      setDuration(0);
-      setCurrentSeconds(0);
+      sessionRef.current = null;
       return;
     }
-    const audio = new Audio(url);
-    const sessionId = Symbol('library');
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    const session = createLibraryAudioSession(audio, setState);
+    sessionRef.current = session;
+    mediaRef.current = audio;
+    audio.src = url;
+    const id = Symbol('library');
     const closeMedia = playbackSession.openLibrary({
       title,
       play: async () => {
-        await audio.play().catch(() => {});
+        void graphRef.current?.resume();
+        await session.play().catch(() => {});
       },
-      pause: () => audio.pause(),
+      pause: () => session.pause(),
     });
-    audio.preload = 'metadata';
-    audioRef.current = audio;
-    setReady(false);
-    setPlaying(false);
-    setDuration(0);
-    setCurrentSeconds(0);
-
-    const onLoaded = () => {
-      setReady(true);
-      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
-    };
-    const onTime = () => setCurrentSeconds(audio.currentTime);
-    const onPlay = () => setPlaying(true);
-    const onPlaying = () => playbackSession.start(sessionId);
-    const onPause = () => {
-      playbackSession.stop(sessionId);
-      setPlaying(false);
-    };
-
-    audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('play', onPlay);
+    const onPlaying = () => playbackSession.start(id);
+    const onStop = () => playbackSession.stop(id);
     audio.addEventListener('playing', onPlaying);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('ended', onPause);
-    audio.addEventListener('error', onPause);
+    audio.addEventListener('pause', onStop);
+    audio.addEventListener('ended', onStop);
+    audio.addEventListener('error', onStop);
 
     return () => {
-      audio.pause();
-      playbackSession.stop(sessionId);
+      session.dispose();
+      onStop();
       closeMedia();
-      audio.removeEventListener('loadedmetadata', onLoaded);
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('play', onPlay);
       audio.removeEventListener('playing', onPlaying);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('ended', onPause);
-      audio.removeEventListener('error', onPause);
-      audio.src = '';
-      audioRef.current = null;
+      audio.removeEventListener('pause', onStop);
+      audio.removeEventListener('ended', onStop);
+      audio.removeEventListener('error', onStop);
+      graphRef.current?.dispose();
+      graphRef.current = null;
+      if (sessionRef.current === session) sessionRef.current = null;
+      if (mediaRef.current === audio) mediaRef.current = null;
     };
   }, [url, title]);
 
+  useEffect(() => {
+    const media = mediaRef.current;
+    if (!media) return;
+    if (!graphRef.current) {
+      if (mixMode === 'full') return;
+      graphRef.current = createBassMixGraph(media);
+    }
+    graphRef.current.apply(mixMode, crossoverHz);
+    // Once routed through the graph the element is silent while the context
+    // is suspended, so a mix switched on mid-song must wake it.
+    if (!media.paused) void graphRef.current.resume();
+  }, [url, mixMode, crossoverHz]);
+
   return {
-    ready,
-    playing,
-    currentSeconds,
-    duration,
+    ...state,
     play: async () => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      await audio.play().catch(() => {});
+      void graphRef.current?.resume();
+      await sessionRef.current?.play().catch(() => {});
     },
-    pause: () => audioRef.current?.pause(),
-    seek: (seconds) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      const clamped = Math.max(0, Math.min(seconds, audio.duration || seconds));
-      audio.currentTime = clamped;
-      setCurrentSeconds(clamped);
-    },
+    pause: () => sessionRef.current?.pause(),
+    seek: (seconds) => sessionRef.current?.seek(seconds),
   };
 }

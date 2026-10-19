@@ -1,25 +1,3 @@
-"""Hash-verified fetch of pinned separator checkpoints into the workspace.
-
-This module is separate from the CLI on purpose: the ``audio-library-poc``
-command remains fully offline. Downloading a checkpoint is an explicit,
-opt-in action driven by the ``scripts/fetch_checkpoints.py`` wrapper.
-
-Design:
-
-- A ``CheckpointManifest`` lists the pinned checkpoints one deployment
-  depends on. Each entry carries the source URL, a portable target
-  filename, and an ``expected_sha256`` — either the exact hex digest to
-  enforce, or ``null`` on the very first pin (trust-on-first-use).
-- ``fetch_checkpoint`` skips when the target already exists with the
-  correct hash, downloads to a temporary file otherwise, verifies the
-  digest, and only then atomically renames the file into place. A
-  mismatch removes the temporary file and raises without touching any
-  existing file at the target path.
-- No third-party dependency: the fetcher uses ``urllib`` from the
-  standard library, honours HTTPS by default (see ``allow_insecure``),
-  and streams the response in bounded chunks.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -92,8 +70,6 @@ class FetchOutcome(StrEnum):
 
 @dataclass(frozen=True)
 class FetchReport:
-    """Outcome of one fetch attempt."""
-
     candidate_id: str
     target_path: Path
     outcome: FetchOutcome
@@ -102,7 +78,6 @@ class FetchReport:
 
 
 def load_checkpoint_manifest(path: Path) -> CheckpointManifest:
-    """Load and validate a checkpoint manifest from disk."""
 
     raw = Path(path).read_bytes().decode("utf-8")
     document = yaml.safe_load(raw)
@@ -117,11 +92,6 @@ def fetch_checkpoint(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
 ) -> FetchReport:
-    """Materialize one checkpoint at ``target_directory / target_filename``.
-
-    Idempotent when ``expected_sha256`` is set: an existing file that
-    already hashes to the expected digest is returned as ``SKIPPED``.
-    """
 
     if chunk_size < 1:
         raise ValueError("chunk_size must be positive")
@@ -203,7 +173,6 @@ def fetch_all(
     *,
     opener: UrlOpener | None = None,
 ) -> list[FetchReport]:
-    """Fetch every checkpoint in the manifest in listed order."""
 
     return [
         fetch_checkpoint(entry, target_directory, opener=opener)
@@ -236,8 +205,6 @@ def _cleanup(path: Path) -> None:
 
 
 class CheckpointHashMismatchError(RuntimeError):
-    """Actual checkpoint hash did not match ``expected_sha256``."""
-
     def __init__(
         self,
         *,
@@ -257,8 +224,6 @@ class CheckpointHashMismatchError(RuntimeError):
 
 
 class CheckpointFetchError(RuntimeError):
-    """Wrapper for network or filesystem errors surfaced by the script."""
-
     def __init__(self, *, candidate_id: str, cause: BaseException) -> None:
         super().__init__(f"failed to fetch checkpoint {candidate_id!r}: {cause}")
         self.candidate_id = candidate_id

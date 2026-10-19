@@ -1,12 +1,3 @@
-"""Versioned contracts for Phase 3 beat analysis output.
-
-Kept separate from ``separation.py`` on purpose: beat analysis has its own
-contract vocabulary (``beats``, ``downbeats``, ``tempo``) that never mixes
-with stem-separation output. The two contracts share ``SeparatorPrecision``
-from ``separation.py`` because the precision-selection surface is identical
-across GPU-inference stages.
-"""
-
 from __future__ import annotations
 
 from typing import Literal, Self
@@ -14,6 +5,7 @@ from typing import Literal, Self
 from pydantic import (
     ConfigDict,
     Field,
+    JsonValue,
     StrictBool,
     field_validator,
     model_validator,
@@ -30,8 +22,6 @@ from audio_library_poc.separation import SeparatorPrecision
 
 
 class FrozenBeatModel(ContractModel):
-    """Immutable base for the committed beat contracts."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 
@@ -89,32 +79,31 @@ class EffectiveBeatAnalyzerSettings(FrozenBeatModel):
         return value
 
 
+class BeatWarning(FrozenBeatModel):
+    code: Identifier
+    severity: Literal["info", "warning", "fatal"]
+    details: dict[str, JsonValue] = Field(default_factory=dict)
+
+
 class BeatAnalysisResult(FrozenBeatModel):
     """Portable, versioned description of one accepted beat analysis.
 
-    ``beats`` must be non-empty and sorted strictly increasing by
-    ``time_seconds``. ``downbeat_count`` is a redundant convenience derived
+    ``beats`` is sorted strictly increasing by ``time_seconds`` and may be
+    empty when the analyzer found no grid. ``downbeat_count`` is derived
     from the flag on each beat; the model validator enforces the invariant.
     ``tempo_median_bpm`` is the median of 60/interbeat_seconds across all
     adjacent beat pairs; 0.0 when fewer than two beats are present.
     """
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    schema_version: Literal["2.0.0"] = "2.0.0"
     source_sha256: Sha256
     provenance: BeatAnalyzerProvenance
     settings: EffectiveBeatAnalyzerSettings
     source: BeatSourceFacts
-    beats: tuple[BeatEstimate, ...] = Field(min_length=1)
+    beats: tuple[BeatEstimate, ...] = ()
     downbeat_count: int = Field(ge=0)
     tempo_median_bpm: float = Field(ge=0)
-    warnings: tuple[str, ...] = ()
-
-    @field_validator("warnings")
-    @classmethod
-    def validate_warnings(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not warning.strip() for warning in value):
-            raise ValueError("warnings must not contain blank values")
-        return value
+    warnings: tuple[BeatWarning, ...] = ()
 
     @model_validator(mode="after")
     def validate_result(self) -> Self:
@@ -128,7 +117,7 @@ class BeatAnalysisResult(FrozenBeatModel):
             raise ValueError(
                 "downbeat_count must equal the number of beats flagged as downbeats"
             )
-        if self.source.duration_seconds > 0:
+        if self.source.duration_seconds > 0 and self.beats:
             last_beat = self.beats[-1].time_seconds
             if last_beat > self.source.duration_seconds + 1e-3:
                 raise ValueError("beats must fall within the source duration")

@@ -1,23 +1,3 @@
-"""Local-only HTTP service that turns an uploaded audio file into library data.
-
-This is the one part of the POC that listens on a socket, and it is a
-development convenience, not a product surface. It binds loopback by default,
-has no authentication, and runs arbitrary decode + inference work for anyone
-who can reach it, so it must never be exposed off the machine. The offline
-``audio-library-poc`` CLI is untouched and still reaches the network only
-through ``fetch_checkpoints.py``; this ships as its own console script so
-that promise keeps holding.
-
-What it automates is the manual part: hash the upload, write the manifest,
-run beat/chord/key/section, then publish into ``public/library`` with
-``--copy-audio`` so the viewer gets a player. Uploaded audio lands in the
-ignored workspace and the copied source is covered by
-``public/library/tracks/*/source.*`` in .gitignore, so originals stay local.
-
-One job runs at a time. There is a single GPU behind this and a queue is
-easier to reason about than a semaphore.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -32,27 +12,34 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from pydantic import ValidationError
 
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
+from audio_library_poc.beat_quality_stage import BEAT_INPUT_QUALITY_STAGE_KIND
 from audio_library_poc.metadata import hash_file
 from audio_library_poc.models import PipelineManifest, StageStatus
 from audio_library_poc.orchestrator import StageOrchestrator
 from audio_library_poc.stage_dispatch import build_stage_dispatcher
+from audio_library_poc.structural_segmentation_stage import (
+    STRUCTURAL_SEGMENTATION_STAGE_KIND,
+)
 from audio_library_poc.track_intake import (
+    INTAKE_CALIBRATION_MANIFEST,
     INTAKE_STAGE_KINDS,
+    INTAKE_TRACKS_MANIFEST,
     CheckpointRef,
+    IntakeQualityGates,
     build_intake_manifest,
     intake_source_relative_path,
     slugify,
+    upsert_intake_track,
 )
 
 BEAT_CHECKPOINT_PATH = "models/beat_this-final0.ckpt"
 CHORD_CHECKPOINT_PATH = "models/chordmini-btc-model-best.pth"
 
-#: Extensions the intake accepts. The decoders downstream dispatch on suffix.
 ALLOWED_SUFFIXES = frozenset({".mp3", ".m4a", ".wav", ".flac", ".ogg"})
 
-#: Refuse anything larger than this rather than filling the disk. A 10-minute
-#: lossless stereo file lands well under it.
 MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 
 JobStatus = Literal["queued", "running", "succeeded", "failed"]
@@ -68,10 +55,14 @@ class StageProgress:
         return {"kind": self.kind, "status": self.status, "detail": self.detail}
 
 
+@dataclass(frozen=True)
+class ArtifactPointer:
+    relative_path: str
+    sha256: str
+
+
 @dataclass
 class Job:
-    """One uploaded file working its way through the four stages."""
-
     id: str
     slug: str
     title: str
@@ -104,18 +95,10 @@ class Job:
         }
 
 
-class IntakeError(Exception):
-    """A request the caller can fix: bad suffix, oversized file, no checkpoint."""
+class IntakeError(Exception): ...
 
 
 class JobRegistry:
-    """Jobs plus the worker thread that drains them, oldest first.
-
-    Deliberately in-memory: a restart loses the list, but never the work —
-    completed stages are committed in the workspace cache, so re-uploading the
-    same file replays as cache hits.
-    """
-
     def __init__(self) -> None:
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
@@ -153,21 +136,13 @@ class JobRegistry:
                 continue
             try:
                 runner.execute(job)
-            except Exception as exc:  # noqa: BLE001 - the worker must not die
+            except Exception as exc:
                 job.status = "failed"
                 job.error = f"{type(exc).__name__}: {exc}"
                 job.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class JobRunner:
-    """Runs a job's stages, then publishes the workspace into public/library.
-
-    ``public`` is the app's ``public/`` directory, not ``public/library``:
-    ``sync_workspace_to_public.py`` appends ``library`` itself. Passing the
-    deeper path publishes into ``public/library/library`` and the viewer sees
-    nothing, so `main` refuses it outright.
-    """
-
     def __init__(self, workspace: Path, public: Path, *, copy_audio: bool = True):
         self.workspace = workspace
         self.public = public
@@ -183,9 +158,46 @@ class JobRunner:
             self.workspace, dispatcher=build_stage_dispatcher(self.workspace)
         )
         by_kind = {stage.kind: stage for stage in job.stages}
+        beat_artifact: ArtifactPointer | None = None
+        quality_allows_publication: bool | None = None
+        quality_artifact: ArtifactPointer | None = None
 
         for specification in manifest.stages:
+            if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
+                if beat_artifact is None:
+                    raise RuntimeError("beat quality stage requires a beat artifact")
+                specification = specification.model_copy(
+                    update={
+                        "config": {
+                            **specification.config,
+                            "beat_result_relative_path": beat_artifact.relative_path,
+                        }
+                    }
+                )
             progress = by_kind[specification.stage_kind]
+            if (
+                specification.stage_kind == STRUCTURAL_SEGMENTATION_STAGE_KIND
+                and quality_allows_publication is False
+            ):
+                progress.status = "succeeded"
+                progress.detail = "fallback: beat input inválido ou não calibrado"
+                continue
+            if specification.stage_kind == STRUCTURAL_SEGMENTATION_STAGE_KIND:
+                if beat_artifact is None or quality_artifact is None:
+                    raise RuntimeError("section stage requires a quality decision")
+                specification = specification.model_copy(
+                    update={
+                        "config": {
+                            **specification.config,
+                            "beat_result_relative_path": beat_artifact.relative_path,
+                            "beat_result_sha256": beat_artifact.sha256,
+                            "beat_quality_decision_relative_path": (
+                                quality_artifact.relative_path
+                            ),
+                            "beat_quality_decision_sha256": quality_artifact.sha256,
+                        }
+                    }
+                )
             progress.status = "running"
             result = orchestrator.run_stage(
                 run_id=job.slug,
@@ -195,12 +207,34 @@ class JobRunner:
             )
             if result.status is StageStatus.SUCCEEDED:
                 progress.status = "succeeded"
+                if specification.stage_kind == "beat.beat_this":
+                    beat_path = next(
+                        artifact.path
+                        for artifact in result.artifacts
+                        if artifact.artifact_kind == "beat.analysis_result"
+                    )
+                    beat_artifact = ArtifactPointer(
+                        relative_path=beat_path,
+                        sha256=hash_file(self.workspace / beat_path),
+                    )
+                if specification.stage_kind == BEAT_INPUT_QUALITY_STAGE_KIND:
+                    quality_path = next(
+                        artifact.path
+                        for artifact in result.artifacts
+                        if artifact.artifact_kind == "beat.input_quality_decision"
+                    )
+                    quality = BeatInputQualityDecision.model_validate_json(
+                        (self.workspace / quality_path).read_text(encoding="utf-8")
+                    )
+                    quality_allows_publication = quality.publication_allowed
+                    quality_artifact = ArtifactPointer(
+                        relative_path=quality_path,
+                        sha256=hash_file(self.workspace / quality_path),
+                    )
                 continue
             progress.status = "failed"
             progress.detail = _describe_failure(result)
-            # section is optional to the public export; the other three are
-            # not, so only a section failure is worth continuing past.
-            if specification.stage_kind != "section.librosa_segment":
+            if specification.stage_kind != STRUCTURAL_SEGMENTATION_STAGE_KIND:
                 job.status = "failed"
                 job.error = f"{specification.stage_kind}: {progress.detail}"
                 job.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
@@ -211,7 +245,6 @@ class JobRunner:
         job.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
 
     def publish(self) -> None:
-        """Run the sync script the same way a human would, in its own process."""
 
         script = (
             Path(__file__).resolve().parents[2]
@@ -248,7 +281,6 @@ def _describe_failure(result: Any) -> str:
 
 
 def checkpoint_ref(workspace: Path, relative_path: str) -> CheckpointRef:
-    """Pin a checkpoint by hashing what is actually on disk."""
 
     path = workspace / relative_path
     if not path.is_file():
@@ -266,14 +298,8 @@ def prepare_job(
     payload: bytes,
     title: str,
     artist: str,
-    segment_count: int,
     device: str,
 ) -> Job:
-    """Validate an upload, land it in the workspace, and write its manifest.
-
-    Raises `IntakeError` for anything the caller can correct. Nothing here
-    starts work; the returned job still has to be queued.
-    """
 
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
@@ -299,23 +325,74 @@ def prepare_job(
         beat_checkpoint=checkpoint_ref(workspace, BEAT_CHECKPOINT_PATH),
         chord_checkpoint=checkpoint_ref(workspace, CHORD_CHECKPOINT_PATH),
         device=device,
-        segment_count=segment_count,
+        quality_gates=_load_quality_gates(workspace),
     )
-    # Validate before writing: a manifest that cannot load is a bug here, not
-    # something the operator should discover mid-run.
     PipelineManifest.model_validate(manifest)
     (workspace / f"intake-{slug}.local.yaml").write_text(
         yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True),
         encoding="utf-8",
     )
 
+    display_title = title or Path(filename).stem
+    source_sha256 = hash_file(destination)
+    _register_track(
+        workspace,
+        track_id=slug,
+        source_relative_path=relative,
+        sha256=source_sha256,
+        title=display_title,
+        artist=artist,
+    )
+
     return Job(
         id=uuid.uuid4().hex,
         slug=slug,
-        title=title or Path(filename).stem,
+        title=display_title,
         artist=artist,
         filename=filename,
-        source_sha256=hash_file(destination),
+        source_sha256=source_sha256,
+    )
+
+
+def _load_quality_gates(workspace: Path) -> IntakeQualityGates:
+
+    path = workspace / INTAKE_CALIBRATION_MANIFEST
+    if not path.is_file():
+        return IntakeQualityGates.provisional()
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return IntakeQualityGates.model_validate(payload)
+    except (OSError, UnicodeError, ValidationError, yaml.YAMLError) as exc:
+        raise IntakeError(
+            f"calibração de entrada inválida em {INTAKE_CALIBRATION_MANIFEST}"
+        ) from exc
+
+
+def _register_track(
+    workspace: Path,
+    *,
+    track_id: str,
+    source_relative_path: str,
+    sha256: str,
+    title: str,
+    artist: str,
+) -> None:
+
+    path = workspace / INTAKE_TRACKS_MANIFEST
+    existing = (
+        yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else None
+    )
+    updated = upsert_intake_track(
+        existing,
+        track_id=track_id,
+        source_relative_path=source_relative_path,
+        sha256=sha256,
+        title=title,
+        artist=artist,
+    )
+    path.write_text(
+        yaml.safe_dump(updated, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
     )
 
 
@@ -359,8 +436,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     public = arguments.public.resolve()
     if public.name == "library":
-        # Publishing would land in public/library/library and the viewer would
-        # never look there. Easier to refuse than to leave someone hunting.
         print(
             f"--public should be the app's public/ directory, not {public}. "
             f"Results already go into <public>/library/. Try {public.parent}.",

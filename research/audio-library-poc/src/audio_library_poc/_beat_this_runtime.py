@@ -1,18 +1,3 @@
-"""Real Beat This! inference runtime, kept out of the stage module.
-
-Splitting the torch/beat_this imports off here means importing
-``beat_this_stage`` in the offline harness never drags in torch or
-beat_this. The Phase 1 test suite still runs without the ``inference``
-extras installed.
-
-Contract with the bridge:
-- The bridge has already validated ``BeatThisStageConfig``, resolved and
-  hashed the source audio, and committed the stage identity.
-- The runtime owns loading the pinned checkpoint, running inference, and
-  building the ``BeatAnalysisResult``. Provenance echoes the identity so
-  the bridge's provenance_mismatch guard passes.
-"""
-
 from __future__ import annotations
 
 import time
@@ -124,7 +109,6 @@ def run_beat_this_inference(
 
 
 def _resolve_checkpoint(workspace: Path, checkpoint_relative_path: str) -> Path:
-    """Delegate to the inference-free helper the stage also uses."""
 
     return resolve_workspace_asset(
         workspace,
@@ -156,12 +140,6 @@ def _load_source_audio(path: Path) -> tuple[np.ndarray, int]:
 
 
 def _merge_beats(beat_times, downbeat_times) -> list[BeatEstimate]:
-    """Merge the (beats, downbeats) arrays Beat This! returns into a sorted list.
-
-    Beat This! returns downbeats as a strict subset of beats, but the two
-    arrays are independent floats — align them with a small tolerance so
-    off-by-microseconds doesn't cost us a downbeat flag.
-    """
 
     beat_list = [float(t) for t in beat_times]
     downbeat_set = {round(float(t), 6) for t in downbeat_times}

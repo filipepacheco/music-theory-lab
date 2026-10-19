@@ -81,7 +81,8 @@ it('uses dynamic viewport height for the body and app shell', () => {
 it('keeps theme aliases and shared section wrappers in the app shell', () => {
   const app = read('src/App.tsx');
   expect(app).toContain('app-shell bg-bg-primary text-text-primary');
-  expect(app).toContain('className="section-panel"');
+  expect(app).toContain("import Frame from '@/components/shared/Frame'");
+  expect(app).toContain('<Frame');
   expect(app).toContain("import '@/components/layout/appShell.css'");
   const css = read('src/components/layout/appShell.css');
   expect(css).not.toMatch(/#[0-9a-f]{3,8}\b/i);

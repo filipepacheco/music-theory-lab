@@ -1,13 +1,3 @@
-"""Generate a synthetic chord progression as a WAV file.
-
-Produces a known-ground-truth audio sample so we can sanity-check chord
-recognition output before bringing in real music. Each chord is a stack of
-sine waves at the chord's note frequencies, with a light attack envelope.
-
-The generated progression is C - Am - F - G - C (I - vi - IV - V - I in C major),
-2 seconds per chord.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -33,7 +23,6 @@ def chord_tone(midi_notes: list[int], seconds: float) -> np.ndarray:
         signal += np.sin(2 * np.pi * midi_to_hz(midi) * t).astype(np.float32)
     signal /= max(len(midi_notes), 1)
 
-    # Simple attack/release envelope (10ms attack, 50ms release)
     env = np.ones(n_samples, dtype=np.float32)
     attack = int(0.01 * SAMPLE_RATE)
     release = int(0.05 * SAMPLE_RATE)
@@ -42,13 +31,12 @@ def chord_tone(midi_notes: list[int], seconds: float) -> np.ndarray:
     return signal * env
 
 
-# MIDI note numbers (C4 = 60)
 PROGRESSION = [
-    ("C",  [60, 64, 67]),  # C major: C E G
-    ("Am", [57, 60, 64]),  # A minor: A C E
-    ("F",  [53, 57, 60]),  # F major: F A C
-    ("G",  [55, 59, 62]),  # G major: G B D
-    ("C",  [60, 64, 67]),  # C major
+    ("C",  [60, 64, 67]),
+    ("Am", [57, 60, 64]),
+    ("F",  [53, 57, 60]),
+    ("G",  [55, 59, 62]),
+    ("C",  [60, 64, 67]),
 ]
 
 

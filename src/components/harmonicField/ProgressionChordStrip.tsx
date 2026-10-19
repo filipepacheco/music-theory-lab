@@ -1,26 +1,14 @@
-import { useMemo } from "react";
-import { motion } from "framer-motion";
-import { useAppStore } from "@/store/useAppStore";
-import { resolveStep } from "@/domain/stepResolution";
-import { FUNCTION_COLORS } from "@/constants/functionColors";
-import type { HarmonicFunction } from "@/constants/harmonicFields";
-
-const FUNCTION_BG: Record<string, string> = {
-  T: "rgba(59, 130, 246, 0.12)",
-  SD: "rgba(34, 197, 94, 0.12)",
-  D: "rgba(249, 115, 22, 0.12)",
-};
-
-const FUNCTION_BG_ACTIVE: Record<string, string> = {
-  T: "rgba(59, 130, 246, 0.35)",
-  SD: "rgba(34, 197, 94, 0.35)",
-  D: "rgba(249, 115, 22, 0.35)",
-};
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from '@/store/useAppStore';
+import { resolveStep } from '@/domain/stepResolution';
+import { functionColor, functionTint } from '@/constants/functionColors';
+import type { HarmonicFunction } from '@/constants/harmonicFields';
 
 const FUNCTION_LABELS: Record<string, string> = {
-  T: "Tônica",
-  SD: "Subdominante",
-  D: "Dominante",
+  T: 'Tônica',
+  SD: 'Subdominante',
+  D: 'Dominante',
 };
 
 interface StepInfo {
@@ -54,7 +42,6 @@ export default function ProgressionChordStrip() {
 
   if (!prog || steps.length === 0) return null;
 
-  // Compute current step index from currentEighth
   let activeStepIdx = -1;
   if (currentEighth >= 0) {
     let accumulated = 0;
@@ -71,52 +58,50 @@ export default function ProgressionChordStrip() {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
+      animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.3 }}
       className="mt-2"
     >
-      <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+      <div
+        className="flex gap-1.5 overflow-x-auto"
+        style={{ scrollbarWidth: 'thin' }}
+      >
         {steps.map((step, idx) => {
           const isActive = idx === activeStepIdx;
           const fn = step.harmonicFunction;
-          const borderColor = fn ? FUNCTION_COLORS[fn] : "var(--color-accent)";
-          const bg = isActive
-            ? fn
-              ? FUNCTION_BG_ACTIVE[fn]
-              : "rgba(79, 110, 247, 0.35)"
-            : fn
-              ? FUNCTION_BG[fn]
-              : "rgba(79, 110, 247, 0.08)";
+          const color = functionColor(fn);
 
           return (
             <div
               key={idx}
-              className="flex-1 min-w-0 rounded-control px-2 py-1.5 transition-colors duration-100"
+              className="flex-1 min-w-0 px-2 py-1.5"
               style={{
-                backgroundColor: bg,
-                borderLeft: isActive ? `3px solid ${borderColor}` : "3px solid transparent",
+                backgroundColor: functionTint(fn, isActive ? 35 : 12),
+                borderLeft: isActive
+                  ? '3px solid var(--color-live)'
+                  : '3px solid transparent',
                 flex: step.beats / 4,
               }}
             >
               <div className="flex items-baseline gap-1.5 mb-0.5">
                 <span
                   className="font-mono text-xs font-medium"
-                  style={{ color: borderColor }}
+                  style={{ color }}
                 >
                   {step.label}
                 </span>
-                <span className="font-mono text-[10px] text-text-secondary truncate">
+                <span className="font-mono text-micro text-text-secondary truncate">
                   {step.chordName}
                 </span>
               </div>
-              <div className="font-mono text-[10px] text-text-muted truncate">
-                {step.noteNames.join(" ")}
+              <div className="font-mono text-micro text-text-muted truncate">
+                {step.noteNames.join(' ')}
               </div>
               {fn && (
                 <div
-                  className="text-[9px] mt-0.5 opacity-60"
-                  style={{ color: borderColor }}
+                  className="text-micro mt-0.5 opacity-60 truncate"
+                  style={{ color }}
                 >
                   {FUNCTION_LABELS[fn]}
                 </div>

@@ -1,5 +1,3 @@
-"""Tests for the section.librosa_segment stage bridge, contract, and labeling."""
-
 from __future__ import annotations
 
 import hashlib
@@ -53,6 +51,7 @@ def _specification(
     return StageSpecification(
         stage_kind=SECTION_LIBROSA_STAGE_KIND,
         implementation_version="1.0.0",
+        output_schema_version="2.0.0",
         config=config,
     )
 
@@ -172,7 +171,6 @@ def test_result_boundary_monotonicity() -> None:
         ),
     )
     assert len(result.sections) == 3
-    # coverage-to-duration invariant
     assert coverage_seconds(result.sections) == pytest.approx(
         result.source.duration_seconds
     )
@@ -310,6 +308,23 @@ def test_source_hash_mismatch_yields_typed_failure(tmp_path: Path) -> None:
         )
 
     assert captured.value.error.code == "section.source_hash_mismatch"
+
+
+def test_section_inference_requires_a_quality_decision(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source_relative, source_sha256 = _build_source(workspace)
+    executor = SectionLibrosaStageExecutor(workspace)
+
+    with pytest.raises(ExpectedStageFailure) as captured:
+        _execute(
+            executor,
+            specification=_specification(source_relative_path=source_relative),
+            input_sha256=source_sha256,
+            tmp_path=tmp_path,
+        )
+
+    assert captured.value.error.code == "section.beat_quality_identity_incomplete"
 
 
 def test_build_metrics_shape() -> None:

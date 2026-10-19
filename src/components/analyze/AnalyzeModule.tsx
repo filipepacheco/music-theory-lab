@@ -10,9 +10,11 @@ import {
   type IntakeJob,
   type StageProgress,
 } from './intakeClient';
+import Frame from '@/components/shared/Frame';
+import Button from '@/components/shared/Button';
+import Callout from '@/components/shared/Callout';
 
 const POLL_INTERVAL_MS = 2000;
-const DEFAULT_SEGMENT_COUNT = 7;
 
 export default function AnalyzeModule() {
   const [health, setHealth] = useState<IntakeHealth | null>(null);
@@ -23,7 +25,6 @@ export default function AnalyzeModule() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
-  const [segmentCount, setSegmentCount] = useState(DEFAULT_SEGMENT_COUNT);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
@@ -48,8 +49,6 @@ export default function AnalyzeModule() {
     return () => controller.abort();
   }, [refresh]);
 
-  // Poll only while something is actually moving. A finished list is static,
-  // and this hits a local process that is busy doing inference.
   const hasPending = jobs.some((job) => !isTerminal(job.status));
   useEffect(() => {
     if (!hasPending && !offline) return;
@@ -74,7 +73,7 @@ export default function AnalyzeModule() {
     setBusy(true);
     setError(null);
     try {
-      const job = await uploadTrack({ file, title, artist, segmentCount });
+      const job = await uploadTrack({ file, title, artist });
       setJobs((current) => [job, ...current]);
       setFile(null);
       setTitle('');
@@ -90,24 +89,25 @@ export default function AnalyzeModule() {
   const blocked = offline || health?.ok === false;
 
   return (
-    <section className="section-panel flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-lg text-text-primary">Analisar faixa</h2>
-        <p className="text-xs text-text-muted">
-          Envia um arquivo de áudio para o pipeline local (compassos, acordes,
-          tom e trechos) e publica o resultado na Biblioteca. Roda na sua
-          máquina — nada é enviado para a internet.
-        </p>
-      </div>
+    <Frame
+      as="section"
+      title="Analisar faixa"
+      titleAs="h2"
+      className="flex flex-col gap-4"
+    >
+      <p className="text-xs text-text-muted">
+        Envia um arquivo de áudio para o pipeline local (compassos, acordes, tom
+        e trechos) e publica o resultado na Biblioteca. Roda na sua máquina —
+        nada é enviado para a internet.
+      </p>
 
       {offline && <OfflineNotice />}
 
       {!offline && health && !health.ok && (
-        <p className="text-sm text-amber-400 rounded-button border border-amber-400/30 bg-amber-400/10 px-3 py-2">
+        <Callout tone="warning" className="my-0">
           Checkpoints ausentes: {health.missing_checkpoints.join(', ')}. Rode{' '}
-          <code className="font-mono text-xs">scripts/fetch_checkpoints.py</code>{' '}
-          antes de analisar.
-        </p>
+          <code>scripts/fetch_checkpoints.py</code> antes de analisar.
+        </Callout>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_1fr] gap-4">
@@ -119,53 +119,45 @@ export default function AnalyzeModule() {
           }}
         >
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-text-muted">
-              Arquivo
-            </span>
+            <span className="lh-label">Arquivo</span>
             <input
               ref={fileInput}
               type="file"
               accept=".mp3,.m4a,.wav,.flac,.ogg,audio/*"
               disabled={blocked || busy}
               onChange={(event) => pickFile(event.target.files?.[0] ?? null)}
-              className="text-xs text-text-secondary file:mr-2 file:rounded-button file:border-0 file:bg-bg-elevated file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-bg-hover file:cursor-pointer disabled:opacity-50"
+              className="text-xs text-text-secondary file:mr-2 file:border-0 file:bg-bg-tertiary file:px-3 file:py-1.5 file:font-heading file:text-xs file:text-text-primary hover:file:bg-accent hover:file:text-on-accent file:cursor-pointer disabled:opacity-50"
             />
           </label>
 
-          <Field label="Título" value={title} onChange={setTitle} disabled={blocked || busy} />
-          <Field label="Artista" value={artist} onChange={setArtist} disabled={blocked || busy} />
+          <Field
+            label="Título"
+            value={title}
+            onChange={setTitle}
+            disabled={blocked || busy}
+          />
+          <Field
+            label="Artista"
+            value={artist}
+            onChange={setArtist}
+            disabled={blocked || busy}
+          />
 
-          <label className="flex flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-text-muted">
-              Trechos a detectar
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={64}
-              value={segmentCount}
-              disabled={blocked || busy}
-              onChange={(event) =>
-                setSegmentCount(Number(event.target.value) || DEFAULT_SEGMENT_COUNT)
-              }
-              className="rounded-button border border-border-default bg-bg-card px-2 py-1.5 text-sm text-text-primary disabled:opacity-50"
-            />
-          </label>
-
-          <button
+          <Button
             type="submit"
             disabled={!file || blocked || busy}
-            className="font-heading text-sm rounded-button bg-accent px-3 py-2 text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            variant="primary"
+            className="self-start"
           >
             {busy ? 'Enviando…' : 'Analisar'}
-          </button>
+          </Button>
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
 
           {health?.ok && (
-            <p className="text-[11px] text-text-muted">
-              Dispositivo: <span className="font-mono">{health.device}</span>. Uma
-              faixa por vez — há só uma GPU.
+            <p className="text-small text-text-muted">
+              Dispositivo: <span className="font-mono">{health.device}</span>.
+              Uma faixa por vez — há só uma GPU.
             </p>
           )}
         </form>
@@ -185,26 +177,26 @@ export default function AnalyzeModule() {
           )}
         </div>
       </div>
-    </section>
+    </Frame>
   );
 }
 
 function OfflineNotice() {
   return (
-    <div className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
+    <div className="border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
       <p className="text-sm text-text-secondary">
         O serviço de análise não está rodando.
       </p>
-      <p className="text-[11px] text-text-muted">
+      <p className="text-small text-text-muted">
         Ele é separado do <code className="font-mono">npm run dev</code> porque
         precisa da GPU e dos checkpoints. Em outro terminal, dentro de{' '}
         <code className="font-mono">research/audio-library-poc</code>:
       </p>
-      <pre className="text-[11px] font-mono text-text-secondary bg-bg-elevated rounded-button px-2 py-1.5 overflow-x-auto">
+      <pre className="text-small font-mono text-text-secondary bg-bg-tertiary px-2 py-1.5 overflow-x-auto">
         .venv\Scripts\audio-library-intake.exe --workspace workspace --public
         ..\..\public
       </pre>
-      <p className="text-[11px] text-text-muted">
+      <p className="text-small text-text-muted">
         Precisa das extras <code className="font-mono">inference</code> e{' '}
         <code className="font-mono">server</code> instaladas.
       </p>
@@ -225,15 +217,13 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wide text-text-muted">
-        {label}
-      </span>
+      <span className="lh-label">{label}</span>
       <input
         type="text"
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-button border border-border-default bg-bg-card px-2 py-1.5 text-sm text-text-primary disabled:opacity-50"
+        className="lh-input disabled:opacity-50"
       />
     </label>
   );
@@ -248,15 +238,15 @@ const JOB_STATUS_LABEL: Record<IntakeJob['status'], string> = {
 
 function JobCard({ job }: { job: IntakeJob }) {
   return (
-    <li className="rounded-button border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
+    <li className="border border-border-default bg-bg-card px-3 py-2 flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <span className="font-medium text-text-primary truncate">
           {job.title || job.filename}
         </span>
         <span
-          className={`text-[11px] shrink-0 ${
+          className={`text-small shrink-0 ${
             job.status === 'failed'
-              ? 'text-red-400'
+              ? 'text-danger'
               : job.status === 'succeeded'
                 ? 'text-text-secondary'
                 : 'text-text-muted'
@@ -273,9 +263,9 @@ function JobCard({ job }: { job: IntakeJob }) {
           <StageChip key={stage.kind} stage={stage} />
         ))}
       </ul>
-      {job.error && <p className="text-[11px] text-red-400">{job.error}</p>}
+      {job.error && <p className="text-small text-danger">{job.error}</p>}
       {job.status === 'succeeded' && (
-        <p className="text-[11px] text-text-muted">
+        <p className="text-small text-text-muted">
           Publicada na Biblioteca — abra o módulo para ver a cifra.
         </p>
       )}
@@ -287,18 +277,18 @@ const STAGE_TONE: Record<StageProgress['status'], string> = {
   pending: 'border-border-default text-text-muted',
   running: 'border-accent text-text-primary',
   succeeded: 'border-border-default text-text-secondary',
-  failed: 'border-red-400/50 text-red-400',
+  failed: 'border-danger/50 text-danger',
 };
 
 function StageChip({ stage }: { stage: StageProgress }) {
   return (
     <li
-      title={stage.detail ?? undefined}
-      className={`rounded-button border px-2 py-0.5 text-[10px] font-heading ${
+      className={`border px-2 py-0.5 text-micro font-heading ${
         STAGE_TONE[stage.status]
       }`}
     >
       {stageLabel(stage.kind)}
+      {stage.detail && <span className="block text-meta">{stage.detail}</span>}
       {stage.status === 'running' && '…'}
       {stage.status === 'succeeded' && ' ✓'}
       {stage.status === 'failed' && ' ✕'}

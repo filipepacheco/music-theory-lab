@@ -5,6 +5,7 @@ import { SCALE_DESCRIPTIONS } from "@/constants/scaleDescriptions";
 import { getScaleNotes } from "@/utils/musicTheory";
 import { getNoteName } from "@/utils/noteHelpers";
 import { useSynth } from "@/hooks/useSynth";
+import Button from "@/components/shared/Button";
 
 const INTERVAL_LABELS: Record<number, string> = {
   0: "U",
@@ -62,17 +63,14 @@ function ScaleDetail({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <div className="w-3 h-3 rounded-full" style={{ background: color }} />
+        <div className="w-3 h-3" style={{ background: color }} />
         <h3 className="font-heading text-sm text-text-primary">
           {pattern.label}
         </h3>
         {showPlayButton && (
-          <button
-            onClick={handlePlay}
-            className="ml-auto px-3 py-2 text-xs font-medium bg-bg-tertiary border border-border-default rounded-control hover:bg-bg-hover transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-accent"
-          >
+          <Button onClick={handlePlay} className="ml-auto">
             Ouvir escala
-          </button>
+          </Button>
         )}
       </div>
 
@@ -80,8 +78,8 @@ function ScaleDetail({
         {noteNames.map((name, i) => (
           <span
             key={i}
-            className="px-2 py-0.5 rounded text-xs font-mono font-medium"
-            style={{ background: color, color: "#0f1219" }}
+            className="px-2 py-0.5 text-xs font-mono font-medium"
+            style={{ background: color, color: "var(--color-on-accent)" }}
           >
             {name}
           </span>
@@ -93,7 +91,7 @@ function ScaleDetail({
         {pattern.intervals.map((interval, i) => (
           <span
             key={i}
-            className="px-1.5 py-0.5 bg-bg-tertiary rounded text-xs font-mono text-text-secondary"
+            className="px-1.5 py-0.5 bg-bg-tertiary text-xs font-mono text-text-secondary"
           >
             {INTERVAL_LABELS[interval] ?? interval}
           </span>
@@ -105,7 +103,7 @@ function ScaleDetail({
         {steps.map((step, i) => (
           <span
             key={i}
-            className="px-1.5 py-0.5 bg-bg-tertiary rounded text-xs font-mono text-text-secondary"
+            className="px-1.5 py-0.5 bg-bg-tertiary text-xs font-mono text-text-secondary"
           >
             {step}
           </span>
@@ -139,7 +137,7 @@ export default function ScaleInfo() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="bg-bg-card border border-border-default rounded-button p-4 space-y-4"
+          className="bg-bg-card border border-border-default p-4 space-y-4"
         >
           <ScaleDetail
             scaleId={selectedScaleId}

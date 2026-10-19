@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "BeatInputFatalReason": {
+      "enum": [
+        "beat.contract_invalid",
+        "beat.no_beats_detected",
+        "beat.analyzer_failed",
+        "beat.insufficient_grid",
+        "beat.insufficient_supported_duration",
+        "beat.insufficient_active_coverage",
+        "beat.long_active_gap"
+      ],
+      "title": "BeatInputFatalReason",
+      "type": "string"
+    },
+    "BeatInputQualityMeasurements": {
+      "additionalProperties": false,
+      "properties": {
+        "active_coverage_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Active Coverage Ratio",
+          "type": "number"
+        },
+        "active_duration_seconds": {
+          "minimum": 0,
+          "title": "Active Duration Seconds",
+          "type": "number"
+        },
+        "beat_count": {
+          "minimum": 0,
+          "title": "Beat Count",
+          "type": "integer"
+        },
+        "beat_supported_active_seconds": {
+          "minimum": 0,
+          "title": "Beat Supported Active Seconds",
+          "type": "number"
+        },
+        "detected_span_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Detected Span Ratio",
+          "type": "number"
+        },
+        "downbeat_count": {
+          "minimum": 0,
+          "title": "Downbeat Count",
+          "type": "integer"
+        },
+        "first_beat_seconds": {
+          "minimum": 0,
+          "title": "First Beat Seconds",
+          "type": "number"
+        },
+        "inter_beat_mad_seconds": {
+          "minimum": 0,
+          "title": "Inter Beat Mad Seconds",
+          "type": "number"
+        },
+        "inter_beat_p05_seconds": {
+          "minimum": 0,
+          "title": "Inter Beat P05 Seconds",
+          "type": "number"
+        },
+        "inter_beat_p95_seconds": {
+          "minimum": 0,
+          "title": "Inter Beat P95 Seconds",
+          "type": "number"
+        },
+        "last_beat_seconds": {
+          "minimum": 0,
+          "title": "Last Beat Seconds",
+          "type": "number"
+        },
+        "longest_unsupported_active_run_beats": {
+          "minimum": 0,
+          "title": "Longest Unsupported Active Run Beats",
+          "type": "number"
+        },
+        "longest_unsupported_active_run_seconds": {
+          "minimum": 0,
+          "title": "Longest Unsupported Active Run Seconds",
+          "type": "number"
+        },
+        "max_to_median_inter_beat_ratio": {
+          "minimum": 0,
+          "title": "Max To Median Inter Beat Ratio",
+          "type": "number"
+        },
+        "median_inter_beat_seconds": {
+          "minimum": 0,
+          "title": "Median Inter Beat Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "beat_count",
+        "downbeat_count",
+        "median_inter_beat_seconds",
+        "inter_beat_mad_seconds",
+        "inter_beat_p05_seconds",
+        "inter_beat_p95_seconds",
+        "max_to_median_inter_beat_ratio",
+        "active_duration_seconds",
+        "beat_supported_active_seconds",
+        "active_coverage_ratio",
+        "longest_unsupported_active_run_seconds",
+        "longest_unsupported_active_run_beats",
+        "first_beat_seconds",
+        "last_beat_seconds",
+        "detected_span_ratio"
+      ],
+      "title": "BeatInputQualityMeasurements",
+      "type": "object"
+    },
+    "BeatInputQualityPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "calibration_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Calibration Id"
+        },
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Sha256",
+          "type": "string"
+        },
+        "gate_id": {
+          "const": "beat-input-validity",
+          "title": "Gate Id",
+          "type": "string"
+        },
+        "gate_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Gate Version",
+          "type": "string"
+        },
+        "implementation_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Implementation Revision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_id",
+        "gate_version",
+        "calibration_id",
+        "config_sha256",
+        "implementation_revision"
+      ],
+      "title": "BeatInputQualityPolicy",
+      "type": "object"
+    },
+    "BeatResultIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "analyzer_candidate": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "title": "Analyzer Candidate",
+          "type": "string"
+        },
+        "analyzer_implementation_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Analyzer Implementation Version",
+          "type": "string"
+        },
+        "code_revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Code Revision",
+          "type": "string"
+        },
+        "model_identifier": {
+          "minLength": 1,
+          "title": "Model Identifier",
+          "type": "string"
+        },
+        "model_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Model Sha256",
+          "type": "string"
+        },
+        "result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Result Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result_sha256",
+        "analyzer_candidate",
+        "analyzer_implementation_version",
+        "model_identifier",
+        "model_sha256",
+        "code_revision"
+      ],
+      "title": "BeatResultIdentity",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "beat_input_valid": {
+      "title": "Beat Input Valid",
+      "type": "boolean"
+    },
+    "beat_result_identity": {
+      "$ref": "#/$defs/BeatResultIdentity"
+    },
+    "diagnostic_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Diagnostic Codes",
+      "type": "array"
+    },
+    "fatal_reason_codes": {
+      "items": {
+        "$ref": "#/$defs/BeatInputFatalReason"
+      },
+      "title": "Fatal Reason Codes",
+      "type": "array"
+    },
+    "measurements": {
+      "$ref": "#/$defs/BeatInputQualityMeasurements"
+    },
+    "policy": {
+      "$ref": "#/$defs/BeatInputQualityPolicy"
+    },
+    "publication_allowed": {
+      "title": "Publication Allowed",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "beat_result_identity",
+    "policy",
+    "beat_input_valid",
+    "publication_allowed",
+    "fatal_reason_codes",
+    "diagnostic_codes",
+    "measurements"
+  ],
+  "title": "BeatInputQualityDecision",
+  "type": "object"
+}

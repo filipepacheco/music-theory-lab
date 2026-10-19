@@ -1,8 +1,8 @@
-# Vendored ChordMini BTC subset
+# Vendored ChordMini inference subset
 
-Minimal subset of the BTC (Bi-directional Transformer for Chord recognition)
-model from [ChordMini](https://github.com/ptnghia-j/ChordMini), pinned to
-commit **`aa6e3a8d7b017f082fd2aaff9329d5c26af49c03`** (2026-08 snapshot of
+Minimal BTC and ChordNet inference subset from
+[ChordMini](https://github.com/ptnghia-j/ChordMini), pinned to
+commit **`aa6e3a8d7b017f082fd2aaff9329d5c26af49c03`** (2026-06-11 snapshot of
 `main`).
 
 ## What's vendored, what's not
@@ -15,6 +15,8 @@ Kept (in `model/`):
 - `config.py` — the shared `ModelConfig` dataclass with BTC defaults.
 - `temporal_smoothing.py` — small helper `BTC_model` re-exports.
 - `chords.py` — the 170-token chord vocabulary and `idx2voca_chord()`.
+- `chord_net.py` and `base_transformer.py` — the reviewed ChordNet inference
+  architecture from the same source revision.
 - `chordmini_config.yaml` — the pipeline YAML, kept for reference only;
   the runtime constructs `ModelConfig()` from Python defaults.
 
@@ -26,8 +28,9 @@ Not vendored:
   `src/utils/audio_io.py`, and the other `src/utils/*` helpers). Our runtime
   loads the state dict directly and drives inference in
   `_chordmini_btc_runtime.py`.
-- The ChordNet checkpoint and its model class — this vendor bundle covers
-  BTC only.
+- The ChordNet checkpoint — no checkpoint URL, bytes, SHA-256, or terms are
+  committed. The stage refuses to deserialize one until its identity and
+  supplied provenance gates have passed.
 - The BTC checkpoint (`btc_model_best.pth`) — fetched via
   `scripts/fetch_checkpoints.py` (pinned in `workspace/checkpoints.local.yaml`
   by SHA-256) into `workspace/models/`. Not committed with this vendor.
@@ -52,7 +55,8 @@ the upstream source. No functional edits.
 To re-vendor from a newer upstream commit:
 
 1. Update the pinned SHA above.
-2. Re-download the same 5 Python files + `chordmini_config.yaml` +
+2. Re-download the BTC files plus `chord_net.py` and `base_transformer.py`,
+   `chordmini_config.yaml`, and
    `LICENSE` at the new SHA.
 3. Re-apply the flatten (move `common/*` up into `model/`).
 4. Re-apply the three `from src.models.common.X` → `from .X` rewrites

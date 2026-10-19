@@ -19,10 +19,10 @@ export interface LibraryIndexEntry {
   downbeat_count: number;
   chord_segment_count: number;
   detail_directory: string;
-  /** Present since the section stage shipped; absent on older indexes. */
   has_sections?: boolean;
-  /** Only written when `has_sections` is true. */
   section_count?: number;
+  section_origin?: 'automatic' | 'fallback';
+  review_required?: boolean;
 }
 
 export interface LibraryIndex {
@@ -73,30 +73,67 @@ export interface KeyAnalysisJson {
   top_estimate: KeyEstimate;
 }
 
-/**
- * One contiguous stretch of the track. `label` is a letter tag the detector
- * uses to group parts it considers similar (two segments labelled "A" are
- * its guess at the same repeated part). The labels carry no semantic
- * meaning — they are never "verse" or "chorus", only opaque cluster ids.
- */
-export interface SectionSegment {
+interface SectionInterval {
   start_seconds: number;
   end_seconds: number;
+}
+
+export interface StructuralSectionSegment extends SectionInterval {
+  label: `Parte ${number}`;
+  cluster_id: number | null;
+  origin: 'automatic' | 'fallback';
+  review_required: boolean;
+}
+
+export interface LegacySectionSegment extends SectionInterval {
   label: string;
 }
 
-export interface SectionAnalysisJson {
+export type SectionSegment = StructuralSectionSegment | LegacySectionSegment;
+
+interface SectionAnalysisBase<TSection extends SectionSegment> {
   schema_version: string;
   source_sha256: string;
-  sections: SectionSegment[];
+  origin: 'automatic' | 'fallback';
+  review_required: boolean;
+  fallback_reason_codes: string[];
+  sections: TSection[];
+  warnings: string[];
+}
+
+export interface StructuralSectionAnalysisJson extends SectionAnalysisBase<StructuralSectionSegment> {
+  stage_kind: 'section.mcfee_ellis_laplacian';
+  decision: 'accepted' | 'fallback';
+  reason_codes: string[];
+  baseline_selected_m: number | null;
+  baseline_candidate_levels: Array<{
+    m: number;
+    boundaries_seconds: number[];
+  }>;
+  measurements: {
+    boundary_support: number[];
+  };
+  settings: {
+    sample_rate: number;
+    hop_length: number;
+    candidate_m_min: number;
+    candidate_m_max: number;
+  };
+}
+
+export interface LegacySectionAnalysisJson extends SectionAnalysisBase<LegacySectionSegment> {
+  stage_kind?: never;
   settings: {
     sample_rate: number;
     hop_length: number;
     feature: string;
     n_segments: number;
-  };
-  warnings: string[];
+  } | null;
 }
+
+export type SectionAnalysisJson =
+  | StructuralSectionAnalysisJson
+  | LegacySectionAnalysisJson;
 
 export async function fetchLibraryIndex(
   signal?: AbortSignal,
@@ -127,11 +164,6 @@ export async function fetchTrackAnalyses(
   return { chord, beat, key, section };
 }
 
-/**
- * Sections are optional: older tracks predate the stage, and an index can
- * outrun the files on disk. Either way a missing section file degrades to
- * the flat chord chart rather than failing the whole detail view.
- */
 async function fetchSection(
   entry: LibraryIndexEntry,
   base: string,
@@ -156,11 +188,6 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T;
 }
 
-/**
- * Display name for one chord segment. Returns 'N.C.' for no_chord and '?'
- * for unknown; a root_pc + label mapping otherwise (e.g. root_pc=9,
- * label=minor → "Am"; root_pc=1, label=major → "C#").
- */
 export function chordDisplayName(segment: ChordSegment): string {
   if (segment.label === 'no_chord') return 'N.C.';
   if (segment.label === 'unknown' || segment.root_pc === null) return '?';
@@ -202,12 +229,6 @@ const MINOR_DEGREE_MAP: readonly DegreeEntry[] = [
 
 const DEGREE_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'] as const;
 
-/**
- * Roman-numeral degree for a chord relative to a key. Case is upper for
- * major chord quality, lower for minor. `relativeRootPc` is the chromatic
- * offset (0-11) from the key's tonic — use `relativeRootOf` to compute it.
- * Returns null for non-pitched or non-triadic chord labels.
- */
 export function romanNumeral(
   relativeRootPc: number,
   chordLabel: ChordSegment['label'],
@@ -222,9 +243,6 @@ export function romanNumeral(
   return `${accidental}${numeral}`;
 }
 
-/**
- * Chromatic offset (0-11) of a chord root from the key's tonic.
- */
 export function relativeRootOf(
   chordRootPc: number,
   keyTonicPc: number,
@@ -232,10 +250,6 @@ export function relativeRootOf(
   return (((chordRootPc - keyTonicPc) % 12) + 12) % 12;
 }
 
-/**
- * Roman numeral for a chord segment given a key, or null if the segment is
- * non-pitched or lacks a root_pc.
- */
 export function segmentRomanNumeral(
   segment: ChordSegment,
   key: KeyAnalysisJson,
@@ -258,23 +272,15 @@ export interface ChordChartBar {
   chords: BarChord[];
 }
 
-/**
- * Break the track into bars using detected downbeats and pick one chord per
- * bar based on longest-overlap with the segment list.
- *
- * A "bar" is one downbeat-to-next-downbeat span. If the track has fewer than
- * two downbeats we fall back to a single bar covering the full duration.
- * When more than one chord is present in a bar we pick the one with the
- * largest overlap — accurate enough for a first-slice display of major/minor
- * chords that already lasts multiple beats each.
- */
 export function buildChordChartBars(
   chord: ChordAnalysisJson,
   beat: BeatAnalysisJson,
   totalDurationSeconds: number,
   key?: KeyAnalysisJson,
 ): ChordChartBar[] {
-  const downbeats = beat.beats.filter((b) => b.is_downbeat).map((b) => b.time_seconds);
+  const downbeats = beat.beats
+    .filter((b) => b.is_downbeat)
+    .map((b) => b.time_seconds);
   if (downbeats.length < 2) {
     return [
       {
@@ -330,11 +336,6 @@ function pickDominantSegment(
   return best;
 }
 
-/**
- * Return the index of the bar whose [startSeconds, endSeconds) contains
- * `seconds`, or -1 if none (before the first bar or after the last).
- * Bars are assumed sorted by startSeconds and non-overlapping.
- */
 export function barIndexAtSeconds(
   bars: ChordChartBar[],
   seconds: number,
@@ -347,31 +348,17 @@ export function barIndexAtSeconds(
   return -1;
 }
 
-/**
- * Chord names that carry no harmony: a run of them says "nothing was
- * detected here", which is worth one cell however long it lasts.
- */
 const EMPTY_CHORD_NAMES = new Set(['N.C.', '?', '—']);
 
 export interface ChartCell {
-  /** Bars this cell stands for, in order. Never empty. */
   bars: ChordChartBar[];
   chord: string;
   romanNumeral: string | null;
   startSeconds: number;
   endSeconds: number;
-  /** `bars.length`. Greater than 1 only for a collapsed run. */
   span: number;
 }
 
-/**
- * Collapse consecutive bars that carry no chord into a single cell.
- *
- * Fourteen "N.C." squares in a row tell the reader nothing that one square
- * reading "N.C. x14" does not, and they push the actual harmony off the
- * screen. Real chords are never merged: how many bars a chord lasts is the
- * whole point of a chord chart, so a repeated D stays one square per bar.
- */
 export function collapseChartCells(bars: ChordChartBar[]): ChartCell[] {
   const cells: ChartCell[] = [];
   for (const bar of bars) {
@@ -399,15 +386,6 @@ export function collapseChartCells(bars: ChordChartBar[]): ChartCell[] {
   return cells;
 }
 
-/**
- * Accent colours for song-form labels, defined in globals.css.
- *
- * Spelled out one literal at a time on purpose: Tailwind v4 drops `@theme`
- * variables whose names it cannot find in the scanned source, so a
- * `var(--color-form-${n})` built at runtime would leave every slot but the
- * one that happens to appear literally somewhere undefined — the colour
- * silently falls back to transparent.
- */
 const SECTION_COLOR_VARS = [
   'var(--color-form-1)',
   'var(--color-form-2)',
@@ -419,11 +397,6 @@ const SECTION_COLOR_VARS = [
 
 export const SECTION_COLOR_COUNT = SECTION_COLOR_VARS.length;
 
-/**
- * CSS variable for a section's accent colour. `colorIndex` comes from
- * `sectionColorIndexes` and cycles once a track has more distinct labels
- * than we have tokens.
- */
 export function sectionColorVar(colorIndex: number): string {
   const slot =
     ((colorIndex % SECTION_COLOR_COUNT) + SECTION_COLOR_COUNT) %
@@ -431,12 +404,6 @@ export function sectionColorVar(colorIndex: number): string {
   return SECTION_COLOR_VARS[slot];
 }
 
-/**
- * Map each distinct section label to a colour slot by order of first
- * appearance. Keyed off appearance rather than the letter itself so the
- * first labels of a track always get distinct colours, whatever the
- * detector happened to name them.
- */
 export function sectionColorIndexes(
   sections: SectionSegment[],
 ): Map<string, number> {
@@ -447,12 +414,6 @@ export function sectionColorIndexes(
   return byLabel;
 }
 
-/**
- * Index of the section whose [start_seconds, end_seconds) contains
- * `seconds`, or -1 if none. Sections are contiguous and ordered, so the
- * last section's end is treated as inclusive to avoid a dead frame at the
- * very end of the track.
- */
 export function sectionIndexAtSeconds(
   sections: SectionSegment[],
   seconds: number,
@@ -469,32 +430,37 @@ export function sectionIndexAtSeconds(
   return -1;
 }
 
+export function sectionBoundaryBars(
+  bars: ChordChartBar[],
+  sections: SectionSegment[],
+): number[] {
+  if (bars.length < 2 || sections.length < 2) return [];
+  const boundaries = sections.slice(1).map((section) => {
+    let nearest = 1;
+    let distance = Math.abs(bars[1].startSeconds - section.start_seconds);
+    for (let index = 2; index < bars.length; index += 1) {
+      const candidateDistance = Math.abs(
+        bars[index].startSeconds - section.start_seconds,
+      );
+      if (candidateDistance < distance) {
+        nearest = index;
+        distance = candidateDistance;
+      }
+    }
+    return nearest;
+  });
+  return [...new Set(boundaries)].sort((left, right) => left - right);
+}
+
 export interface SectionGroup {
   section: SectionSegment;
-  /** Position in the track, 0-based. */
   index: number;
-  /** Colour slot for this group's label — see `sectionColorVar`. */
   colorIndex: number;
-  /** Which appearance of this label this is, 1-based. */
   occurrence: number;
-  /** How many times this label appears across the track. */
   occurrenceTotal: number;
   bars: ChordChartBar[];
 }
 
-/**
- * Distribute chord-chart bars across the detected sections.
- *
- * Section boundaries come from a spectral segmentation that knows nothing
- * about the beat grid, so a bar can straddle one. Each bar goes to the
- * section it overlaps most — the same rule `buildChordChartBars` already
- * uses to pick one chord per bar. Every bar lands in exactly one group even
- * when nothing overlaps it, so the grouped chart can never drop content the
- * flat chart would have shown.
- *
- * Returns [] when there are no sections, which callers read as "render the
- * flat chart instead".
- */
 export function groupBarsBySection(
   bars: ChordChartBar[],
   sections: SectionSegment[],
@@ -545,8 +511,6 @@ function pickSectionForBar(
     }
   }
   if (best !== -1) return best;
-  // No overlap at all (a zero-length bar, or one past the last boundary):
-  // fall back to the last section that starts at or before the bar.
   let fallback = 0;
   for (let i = 0; i < sections.length; i += 1) {
     if (sections[i].start_seconds <= bar.startSeconds) fallback = i;

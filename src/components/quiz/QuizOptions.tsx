@@ -1,5 +1,3 @@
-import { motion } from "framer-motion";
-
 interface QuizOptionsProps {
   options: string[];
   selectedAnswer: string | null;
@@ -16,40 +14,44 @@ export default function QuizOptions({
   onSelect,
 }: QuizOptionsProps) {
   return (
-    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Opções de resposta">
+    <div
+      className="grid grid-cols-2 gap-2"
+      role="group"
+      aria-label="Opções de resposta"
+    >
       {options.map((option) => {
-        let style = "border-border-default bg-bg-card hover:border-accent/50";
+        const isRight = showingResult && option === correctAnswer;
+        const isWrong = showingResult && option === selectedAnswer && !isRight;
 
-        if (showingResult) {
-          if (option === correctAnswer) {
-            style =
-              "border-green-500 bg-green-500/15 text-green-400";
-          } else if (option === selectedAnswer && option !== correctAnswer) {
-            style =
-              "border-red-500 bg-red-500/15 text-red-400";
-          } else {
-            style = "border-border-default bg-bg-card opacity-50";
-          }
+        let style =
+          'border-border-default bg-bg-card hover:border-border-strong hover:bg-bg-tertiary';
+        let mark = '( )';
+        if (isRight) {
+          style = 'border-success text-success';
+          mark = '(\u2713)';
+        } else if (isWrong) {
+          style = 'border-danger text-danger';
+          mark = '(x)';
+        } else if (showingResult) {
+          style = 'border-border-default bg-bg-card opacity-50';
         }
 
         return (
-          <motion.button
+          <button
             key={option}
-            whileHover={showingResult ? {} : { scale: 1.02 }}
-            whileTap={showingResult ? {} : { scale: 0.97 }}
             onClick={() => onSelect(option)}
             disabled={showingResult}
             aria-label={option}
-            className={`px-4 py-3 rounded-button border text-sm font-medium transition-all cursor-pointer disabled:cursor-default ${style}`}
+            className={`flex items-center gap-[1ch] px-[1.5ch] py-3 border text-left text-ui cursor-pointer disabled:cursor-default ${style}`}
           >
-            {showingResult && option === correctAnswer && (
-              <span className="mr-1.5" aria-hidden="true">&#10003;</span>
-            )}
-            {showingResult && option === selectedAnswer && option !== correctAnswer && (
-              <span className="mr-1.5" aria-hidden="true">&#10007;</span>
-            )}
+            <span
+              aria-hidden="true"
+              className={isRight || isWrong ? '' : 'text-text-muted'}
+            >
+              {mark}
+            </span>
             {option}
-          </motion.button>
+          </button>
         );
       })}
     </div>

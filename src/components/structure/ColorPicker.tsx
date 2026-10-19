@@ -38,18 +38,18 @@ export default function ColorPicker({
           setOpen(!open);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className={`${triggerSize} rounded-full border-2 border-white/20 hover:border-white/40 transition-colors cursor-pointer shrink-0`}
+        className={`${triggerSize} border-2 border-border-strong hover:border-accent cursor-pointer shrink-0`}
         style={{ backgroundColor: value }}
         aria-label="Escolher cor"
       />
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
-            className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2 bg-bg-card border border-border-default rounded-button p-2.5 shadow-lg"
+            className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2 bg-bg-card border border-border-default p-2.5 shadow-lg"
           >
             <div className="grid grid-cols-6 gap-1.5">
               {STRUCTURE_PALETTE.map((color) => (
@@ -62,9 +62,9 @@ export default function ColorPicker({
                     setOpen(false);
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className={`w-6 h-6 rounded-full transition-transform hover:scale-110 cursor-pointer ${
+                  className={`w-6 h-6 cursor-pointer ${
                     value === color
-                      ? 'ring-2 ring-white ring-offset-1 ring-offset-bg-card'
+                      ? 'ring-2 ring-accent ring-offset-1 ring-offset-bg-card'
                       : ''
                   }`}
                   style={{ backgroundColor: color }}

@@ -1,5 +1,3 @@
-"""Deterministic structured events for local POC runs."""
-
 from __future__ import annotations
 
 import json
@@ -19,8 +17,6 @@ from audio_library_poc.models import (
 
 
 class RunEvent(ContractModel):
-    """One stable JSON Lines record emitted at a stage boundary."""
-
     schema_version: Literal["1.0.0"] = "1.0.0"
     event_name: Identifier
     stage_kind: Identifier
@@ -32,8 +28,6 @@ class RunEvent(ContractModel):
 
 
 class JsonlEventLog:
-    """Append validated run events without wall-clock-dependent fields."""
-
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
 
@@ -85,7 +79,6 @@ class JsonlEventLog:
 
 
 def read_events(path: Path) -> list[RunEvent]:
-    """Read complete event records, ignoring a torn final append."""
 
     source = Path(path)
     if not source.exists():

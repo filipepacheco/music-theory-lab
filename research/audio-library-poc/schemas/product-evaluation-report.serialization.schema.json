@@ -1,0 +1,69 @@
+{
+  "additionalProperties": false,
+  "description": "Portable report contract; source audio remains only in private inputs.",
+  "properties": {
+    "aggregates": {
+      "additionalProperties": true,
+      "title": "Aggregates",
+      "type": "object"
+    },
+    "chord_scores": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Chord Scores",
+      "type": "array"
+    },
+    "definitions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Definitions",
+      "type": "object"
+    },
+    "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+    },
+    "key_scores": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Key Scores",
+      "type": "array"
+    },
+    "manifest": {
+      "additionalProperties": true,
+      "title": "Manifest",
+      "type": "object"
+    },
+    "samples": {
+      "additionalProperties": true,
+      "title": "Samples",
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "generated_at",
+    "manifest",
+    "definitions",
+    "samples"
+  ],
+  "title": "ProductEvaluationReport",
+  "type": "object"
+}

@@ -1,0 +1,49 @@
+# Fictional contract example. Copy to workspace/evaluation.local.yaml and
+# replace every placeholder with hashes and identities from one private run.
+schema_version: "1.0.0"
+manifest_id: example-harmony-pilot
+split_policy: recording
+pilot_disclosure: >-
+  This is an inspected pilot split by recording. It is not a blind holdout or
+  an acceptance gate.
+tracks:
+  - recording_id: example-recording
+    original:
+      corpus_manifest_path: corpus.local.yaml
+      corpus_track_id: example-recording
+      sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    split: development
+    excerpts:
+      - excerpt_id: full-recording
+        start_seconds: 0.0
+        end_seconds: 60.0
+    annotations:
+      - annotation_id: example-chords
+        kind: chord
+        path: annotations/example-chords.lab
+        sha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        source: user-created-example
+        version: "1.0.0"
+        duration_alignment_evidence: >-
+          The reference and selected source were independently compared; the
+          report clips the declared shared span if their masters differ.
+    selections:
+      - candidate_id: chordmini_btc
+        config_id: baseline
+        run_id: example-run
+        cache_key: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        envelope_path: runs/example-run/stages/chord.chordmini_btc/results/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.json
+        identity:
+          stage_kind: chord.chordmini_btc
+          input_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          implementation_version: "1.0.0"
+          config_sha256: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          output_schema_version: "1.0.0"
+          model_identifier: example-checkpoint
+          model_sha256: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          code_revision: example-working-tree
+        artifact_kind: chord.analysis_result
+        artifact_path: runs/example-run/stages/chord.chordmini_btc/artifacts/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/chord-analysis-result.json
+        artifact_sha256: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        artifact_size_bytes: 1
+        artifact_schema_version: "1.0.0"

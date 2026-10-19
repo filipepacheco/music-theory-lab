@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ProgressionStep } from '@/constants/progressions';
+import Button from '@/components/shared/Button';
+import Field from '@/components/shared/Field';
+import Frame from '@/components/shared/Frame';
 
 interface SaveProgressionDialogProps {
   open: boolean;
@@ -75,49 +78,42 @@ export default function SaveProgressionDialog({
           exit={{ opacity: 0, height: 0 }}
           className="overflow-hidden"
         >
-          <div role="dialog" aria-label="Salvar progressão" className="bg-bg-secondary/60 border border-accent/20 rounded-button p-4 space-y-3">
-            <h3 className="font-heading text-sm text-text-primary flex items-center gap-1.5">
-              <span className="text-accent">+</span>
-              Salvar progressão
-            </h3>
-
-            <input
+          <Frame
+            role="dialog"
+            aria-label="Salvar progressão"
+            title="Salvar progressão"
+            titleAs="h3"
+            variant="dashed"
+            className="flex flex-col gap-3"
+          >
+            <Field
+              prompt=">"
               type="text"
               placeholder="Nome (obrigatorio)"
               aria-label="Nome da progressão"
               maxLength={60}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-bg-tertiary border border-border-default rounded-button px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               autoFocus
             />
 
-            <input
+            <Field
+              prompt=">"
               type="text"
               placeholder="Descrição (opcional)"
               aria-label="Descrição da progressão"
               maxLength={200}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-bg-tertiary border border-border-default rounded-button px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
 
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm rounded-button border border-border-default text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!canSave}
-                className="px-6 py-2.5 text-sm rounded-button bg-accent text-white hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer disabled:cursor-not-allowed"
-              >
+              <Button onClick={onClose}>Cancelar</Button>
+              <Button variant="primary" onClick={handleSave} disabled={!canSave}>
                 {saving ? 'Salvando...' : 'Salvar'}
-              </button>
+              </Button>
             </div>
-          </div>
+          </Frame>
         </motion.div>
       )}
     </AnimatePresence>

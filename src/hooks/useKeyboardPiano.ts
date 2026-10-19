@@ -1,43 +1,41 @@
-import { useEffect, useRef, useCallback, useState } from "react";
-import { useSynth } from "./useSynth";
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { useSynth } from './useSynth';
 
-// Standard virtual piano layout:
-// Lower octave (3): home row = white keys, row above = black keys
-// Upper octave (4): continues rightward
 const KEY_MAP: Record<string, { noteIndex: number; octave: number }> = {
-  // Octave 3
-  a: { noteIndex: 0, octave: 3 }, // C
-  w: { noteIndex: 1, octave: 3 }, // C#
-  s: { noteIndex: 2, octave: 3 }, // D
-  e: { noteIndex: 3, octave: 3 }, // D#
-  d: { noteIndex: 4, octave: 3 }, // E
-  f: { noteIndex: 5, octave: 3 }, // F
-  t: { noteIndex: 6, octave: 3 }, // F#
-  g: { noteIndex: 7, octave: 3 }, // G
-  y: { noteIndex: 8, octave: 3 }, // G#
-  h: { noteIndex: 9, octave: 3 }, // A
-  u: { noteIndex: 10, octave: 3 }, // A#
-  j: { noteIndex: 11, octave: 3 }, // B
-  // Octave 4
-  k: { noteIndex: 0, octave: 4 }, // C
-  o: { noteIndex: 1, octave: 4 }, // C#
-  l: { noteIndex: 2, octave: 4 }, // D
-  p: { noteIndex: 3, octave: 4 }, // D#
-  ";": { noteIndex: 4, octave: 4 }, // E
-  "'": { noteIndex: 5, octave: 4 }, // F
+  a: { noteIndex: 0, octave: 3 },
+  w: { noteIndex: 1, octave: 3 },
+  s: { noteIndex: 2, octave: 3 },
+  e: { noteIndex: 3, octave: 3 },
+  d: { noteIndex: 4, octave: 3 },
+  f: { noteIndex: 5, octave: 3 },
+  t: { noteIndex: 6, octave: 3 },
+  g: { noteIndex: 7, octave: 3 },
+  y: { noteIndex: 8, octave: 3 },
+  h: { noteIndex: 9, octave: 3 },
+  u: { noteIndex: 10, octave: 3 },
+  j: { noteIndex: 11, octave: 3 },
+  k: { noteIndex: 0, octave: 4 },
+  o: { noteIndex: 1, octave: 4 },
+  l: { noteIndex: 2, octave: 4 },
+  p: { noteIndex: 3, octave: 4 },
+  ';': { noteIndex: 4, octave: 4 },
+  "'": { noteIndex: 5, octave: 4 },
 };
 
 export function useKeyboardPiano() {
   const { playNote } = useSynth();
   const activeKeysRef = useRef<Set<string>>(new Set());
-  const [pressedKeys, setPressedKeys] = useState<
-    Set<string>
-  >(new Set());
+  const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.repeat) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLSelectElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
 
       const key = e.key.toLowerCase();
       const mapping = KEY_MAP[key];
@@ -61,11 +59,11 @@ export function useKeyboardPiano() {
   }, []);
 
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     };
   }, [handleKeyDown, handleKeyUp]);
 

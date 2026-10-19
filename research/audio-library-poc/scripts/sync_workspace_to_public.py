@@ -1,33 +1,3 @@
-"""Publish analysis results from workspace/runs/ into the React app's public/library/.
-
-Walks workspace/runs/ for succeeded chord + key + beat + BS-RoFormer stages,
-groups them by ``source_sha256`` (i.e. per source track), and writes:
-
-- ``public/library/index.json``: the top-level track list the app reads on
-  boot (title, artist, duration, detected key/tempo, per-track detail URLs).
-- ``public/library/tracks/<sha256_prefix>/chord-analysis-result.json``,
-  ``beat-analysis-result.json``, ``key-analysis-result.json``: per-track
-  analysis JSONs the app fetches on demand when a track is selected.
-
-Design constraints for the app's benefit:
-
-- Idempotent: rewrites the same files if inputs unchanged; per-file writes
-  are atomic (staging + os.replace) so partial writes never surface.
-- No stems yet — WAVs are large and their serving story deserves its own
-  slice. Only the analysis JSONs (kilobyte-sized) get copied.
-- Uses ``source_sha256`` as the stable directory key, prefixed to the first
-  12 hex chars for shorter URLs. Collisions extremely unlikely at this
-  prefix length for a personal library.
-- No cloud, no upload, no backend runtime — the React app reads static
-  assets served by Vite. Zero JavaScript runtime dependency.
-
-Invocation:
-
-    .venv\\Scripts\\python.exe scripts/sync_workspace_to_public.py \\
-        --workspace workspace \\
-        --public ../../public
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -44,9 +14,17 @@ from typing import Any
 import yaml
 
 from audio_library_poc.beat_analysis import BeatAnalysisResult
+from audio_library_poc.beat_input_quality import BeatInputQualityDecision
 from audio_library_poc.chord_analysis import ChordAnalysisResult
 from audio_library_poc.key_analysis import KeyAnalysisResult
+from audio_library_poc.manifest import resolve_source_path
+from audio_library_poc.metadata import hash_file
 from audio_library_poc.section_analysis import SectionAnalysisResult
+from audio_library_poc.structural_segmentation import (
+    SectionDecision,
+    StructuralSegmentationResult,
+)
+from audio_library_poc.track_intake import INTAKE_TRACKS_MANIFEST
 
 _PITCH_CLASS_NAMES = (
     "C",
@@ -66,33 +44,49 @@ _PITCH_CLASS_NAMES = (
 _STAGE_TO_ARTIFACT = {
     "chord.chordmini_btc": ("chord-analysis-result.json", ChordAnalysisResult),
     "beat.beat_this": ("beat-analysis-result.json", BeatAnalysisResult),
+    "quality.beat_input": (
+        "beat-input-quality-decision.json",
+        BeatInputQualityDecision,
+    ),
     "key.hpcp": ("key-analysis-result.json", KeyAnalysisResult),
     "section.librosa_segment": (
         "section-analysis-result.json",
         SectionAnalysisResult,
     ),
+    "section.mcfee_ellis_laplacian": (
+        "structural-segmentation-result.json",
+        StructuralSegmentationResult,
+    ),
 }
 
-# Chord + beat + key must all be present for a track to appear in the index;
-# section analysis is optional and ships alongside when it exists.
 _REQUIRED_STAGES = ("chord.chordmini_btc", "beat.beat_this", "key.hpcp")
 
 
 @dataclass(frozen=True)
 class TrackAnalyses:
-    """Analysis JSONs a track carries — chord/beat/key required, section optional."""
-
     source_sha256: str
     chord: ChordAnalysisResult
     beat: BeatAnalysisResult
     key: KeyAnalysisResult
+    beat_quality: BeatInputQualityDecision | None = None
+    beat_quality_sha256: str | None = None
     section: SectionAnalysisResult | None = None
+    structural_segmentation: StructuralSegmentationResult | None = None
+
+
+def _version_key(value: Any) -> tuple[int, ...]:
+
+    try:
+        return tuple(int(part) for part in str(value or "").split("."))
+    except ValueError:
+        return ()
 
 
 def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
-    """Group succeeded analysis stages by source_sha256; keep only complete triples."""
 
-    per_source: dict[str, dict[str, Any]] = defaultdict(dict)
+    per_source: dict[str, dict[str, tuple[tuple[int, ...], Any, str]]] = defaultdict(
+        dict
+    )
     runs_root = workspace / "runs"
     if not runs_root.is_dir():
         return {}
@@ -121,46 +115,90 @@ def collect_analyses(workspace: Path) -> dict[str, TrackAnalyses]:
                 result = _load_pydantic(artifact_path, model_cls)
                 if result is None:
                     continue
-                per_source[result.source_sha256][stage_dir.name] = result
+                version = _version_key(
+                    (envelope.get("identity") or {}).get("implementation_version")
+                )
+                previous = per_source[result.source_sha256].get(stage_dir.name)
+                if previous is None or version >= previous[0]:
+                    per_source[result.source_sha256][stage_dir.name] = (
+                        version,
+                        result,
+                        hash_file(artifact_path),
+                    )
     complete: dict[str, TrackAnalyses] = {}
-    for source_sha256, per_stage in per_source.items():
+    for source_sha256, versioned in per_source.items():
+        per_stage = {kind: result for kind, (_, result, _) in versioned.items()}
         chord = per_stage.get("chord.chordmini_btc")
         beat = per_stage.get("beat.beat_this")
         key = per_stage.get("key.hpcp")
         if chord is None or beat is None or key is None:
             continue
+        quality = per_stage.get("quality.beat_input")
+        if quality is not None and not _quality_matches_beat(
+            quality, beat, versioned["beat.beat_this"][2]
+        ):
+            quality = None
         complete[source_sha256] = TrackAnalyses(
             source_sha256=source_sha256,
             chord=chord,
             beat=beat,
             key=key,
+            beat_quality=quality,
+            beat_quality_sha256=(
+                versioned["quality.beat_input"][2] if quality is not None else None
+            ),
             section=per_stage.get("section.librosa_segment"),
+            structural_segmentation=per_stage.get("section.mcfee_ellis_laplacian"),
         )
     return complete
 
 
-def load_corpus_titles(workspace: Path) -> dict[str, dict[str, Any]]:
-    """Return per-source_sha256 metadata pulled from the corpus manifest.
+def _quality_matches_beat(
+    quality: BeatInputQualityDecision,
+    beat: BeatAnalysisResult,
+    beat_artifact_sha256: str,
+) -> bool:
+    identity = quality.beat_result_identity
+    provenance = beat.provenance
+    return (
+        quality.source_sha256 == beat.source_sha256
+        and identity.result_sha256 == beat_artifact_sha256
+        and identity.analyzer_candidate == provenance.candidate
+        and identity.analyzer_implementation_version
+        == provenance.implementation_version
+        and identity.model_identifier == provenance.model_identifier
+        and identity.model_sha256 == provenance.model_sha256
+        and identity.code_revision == provenance.code_revision
+    )
 
-    Missing corpus → empty dict; the app just gets less friendly display.
-    """
 
-    manifest_path = workspace / "corpus.local.yaml"
-    if not manifest_path.is_file():
-        return {}
-    raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+_METADATA_MANIFESTS = ("corpus.local.yaml", INTAKE_TRACKS_MANIFEST)
+
+
+def load_track_metadata(workspace: Path) -> dict[str, dict[str, Any]]:
+
     entries: dict[str, dict[str, Any]] = {}
-    for track in raw.get("tracks", []):
-        sha256 = str(track.get("expected_sha256", ""))
-        if not sha256:
+    for name in _METADATA_MANIFESTS:
+        manifest_path = workspace / name
+        if not manifest_path.is_file():
             continue
-        annotation = track.get("annotation") or {}
-        entries[sha256] = {
-            "title": annotation.get("title"),
-            "artist": annotation.get("artist"),
-            "track_id": track.get("track_id"),
-            "source_path": track.get("source_path"),
-        }
+        raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+        for track in raw.get("tracks", []) or []:
+            sha256 = str(track.get("expected_sha256", ""))
+            if not sha256:
+                continue
+            annotation = track.get("annotation") or {}
+            source_path = track.get("source_path")
+            entries[sha256] = {
+                "title": annotation.get("title"),
+                "artist": annotation.get("artist"),
+                "track_id": track.get("track_id"),
+                "source_path": (
+                    resolve_source_path(manifest_path, source_path)
+                    if source_path
+                    else None
+                ),
+            }
     return entries
 
 
@@ -191,11 +229,12 @@ def build_index(
             "beat_count": len(bundle.beat.beats),
             "downbeat_count": bundle.beat.downbeat_count,
             "chord_segment_count": len(bundle.chord.segments),
-            "has_sections": bundle.section is not None,
+            "has_sections": True,
+            "section_origin": _section_origin(bundle),
+            "review_required": _section_origin(bundle) == "fallback",
             "detail_directory": f"tracks/{sha256[:12]}",
         }
-        if bundle.section is not None:
-            entry["section_count"] = len(bundle.section.sections)
+        entry["section_count"] = len(_section_export(bundle)["sections"])
         tracks.append(entry)
     return {
         "schema_version": "1.0.0",
@@ -212,15 +251,10 @@ def sync(
     generated_at: datetime | None = None,
     copy_audio: bool = False,
 ) -> tuple[Path, list[Path], list[Path]]:
-    """Write the library manifest + per-track detail files.
-
-    Returns ``(index_path, detail_files, audio_files)``. ``audio_files`` is
-    always the empty list when ``copy_audio`` is False.
-    """
 
     analyses = collect_analyses(workspace)
-    corpus_meta = load_corpus_titles(workspace)
-    index_payload = build_index(analyses, corpus_meta, generated_at=generated_at)
+    track_meta = load_track_metadata(workspace)
+    index_payload = build_index(analyses, track_meta, generated_at=generated_at)
 
     library_root = public / "library"
     tracks_root = library_root / "tracks"
@@ -251,55 +285,151 @@ def sync(
                 bundle.key.model_dump(mode="json"),
             )
         )
-        if bundle.section is not None:
+        if bundle.beat_quality is not None:
             detail_files.append(
                 _atomic_write_json(
-                    track_dir / "section-analysis-result.json",
-                    bundle.section.model_dump(mode="json"),
+                    track_dir / "beat-input-quality-decision.json",
+                    bundle.beat_quality.model_dump(mode="json"),
                 )
             )
-        if copy_audio:
-            audio_path = _copy_audio_source(
-                workspace, corpus_meta.get(sha256, {}), track_dir
+        detail_files.append(
+            _atomic_write_json(
+                track_dir / "section-analysis-result.json",
+                _section_export(bundle),
             )
+        )
+        if copy_audio:
+            audio_path = _copy_audio_source(track_meta.get(sha256, {}), track_dir)
             if audio_path is not None:
                 audio_files.append(audio_path)
     index_path = _atomic_write_json(library_root / "index.json", index_payload)
     return index_path, detail_files, audio_files
 
 
+def _section_origin(bundle: TrackAnalyses) -> str:
+    if bundle.structural_segmentation is not None:
+        structural = _eligible_structural_result(bundle)
+        if structural is not None and structural.decision is SectionDecision.ACCEPTED:
+            return "automatic"
+        return "fallback"
+    return "automatic" if _eligible_legacy_result(bundle) is not None else "fallback"
+
+
+def _eligible_structural_result(
+    bundle: TrackAnalyses,
+) -> StructuralSegmentationResult | None:
+    structural = bundle.structural_segmentation
+    quality = bundle.beat_quality
+    if (
+        structural is None
+        or quality is None
+        or not quality.publication_allowed
+        or structural.beat_result_sha256 != quality.beat_result_identity.result_sha256
+        or structural.beat_quality_decision_sha256 != bundle.beat_quality_sha256
+    ):
+        return None
+    return structural
+
+
+def _eligible_legacy_result(bundle: TrackAnalyses) -> SectionAnalysisResult | None:
+    section = bundle.section
+    quality = bundle.beat_quality
+    if (
+        section is None
+        or quality is None
+        or not quality.publication_allowed
+        or section.beat_result_sha256 != quality.beat_result_identity.result_sha256
+        or section.beat_quality_decision_sha256 != bundle.beat_quality_sha256
+    ):
+        return None
+    return section
+
+
+def _section_export(bundle: TrackAnalyses) -> dict[str, Any]:
+    structural = _eligible_structural_result(bundle)
+    quality = bundle.beat_quality
+    if structural is not None:
+        payload = structural.model_dump(mode="json")
+        payload.update(
+            {
+                "origin": (
+                    "automatic"
+                    if structural.decision is SectionDecision.ACCEPTED
+                    else "fallback"
+                ),
+                "review_required": structural.decision is SectionDecision.FALLBACK,
+                "fallback_reason_codes": [
+                    str(reason) for reason in structural.reason_codes
+                ],
+                "settings": structural.resolved_parameters.model_dump(mode="json"),
+            }
+        )
+        return payload
+    legacy = _eligible_legacy_result(bundle)
+    if bundle.structural_segmentation is None and legacy is not None:
+        payload = legacy.model_dump(mode="json")
+        payload.update(
+            {
+                "origin": "automatic",
+                "review_required": False,
+                "fallback_reason_codes": [],
+            }
+        )
+        return payload
+
+    if quality is not None and quality.fatal_reason_codes:
+        reasons = [str(reason) for reason in quality.fatal_reason_codes]
+    elif quality is not None and quality.publication_allowed:
+        reasons = ["section.analysis_unavailable"]
+    else:
+        reasons = ["beat.gate_uncalibrated"]
+    duration = bundle.chord.source.duration_seconds
+    return {
+        "schema_version": "1.0.0",
+        "source_sha256": bundle.source_sha256,
+        "origin": "fallback",
+        "review_required": True,
+        "fallback_reason_codes": reasons,
+        "sections": [
+            {
+                "start_seconds": 0.0,
+                "end_seconds": duration,
+                "label": "Parte 1",
+            }
+        ],
+        "settings": None,
+        "warnings": [],
+    }
+
+
 def _copy_audio_source(
-    workspace: Path,
     meta: dict[str, Any],
     track_dir: Path,
 ) -> Path | None:
-    """Copy the corpus source audio into ``track_dir/source<ext>`` atomically.
 
-    Returns the destination path when the copy happened, ``None`` when the
-    corpus entry has no ``source_path`` or the file is missing on disk. The
-    original file extension is preserved so the client can probe a small set
-    of common formats.
-    """
-
-    source_path_str = meta.get("source_path")
-    if not source_path_str:
-        return None
-    source_path = Path(source_path_str)
-    if not source_path.is_absolute():
-        source_path = workspace.parent / source_path
-    if not source_path.is_file():
+    source_path = meta.get("source_path")
+    if source_path is None or not source_path.is_file():
         return None
     ext = source_path.suffix.lower() or ".bin"
     destination = track_dir / f"source{ext}"
-    # Remove sibling source.* files for other extensions so old formats do
-    # not linger when the corpus swaps the source (e.g. wav → mp3).
     for existing in track_dir.glob("source.*"):
         if existing != destination:
             existing.unlink()
+    if _same_file_contents(source_path, destination):
+        return destination
     staging = destination.with_suffix(destination.suffix + ".part")
     shutil.copyfile(source_path, staging)
-    staging.replace(destination)
+    _replace_with_retry(staging, destination)
     return destination
+
+
+def _same_file_contents(source: Path, destination: Path) -> bool:
+
+    if not destination.is_file():
+        return False
+    if source.stat().st_size != destination.stat().st_size:
+        return False
+    return hash_file(source) == hash_file(destination)
 
 
 def _load_json(path: Path) -> dict | None:
@@ -312,7 +442,7 @@ def _load_json(path: Path) -> dict | None:
 def _load_pydantic(path: Path, model_cls):
     try:
         return model_cls.model_validate_json(path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
@@ -335,23 +465,6 @@ def _atomic_write_json(path: Path, payload: Any) -> Path:
 
 
 def _replace_with_retry(staging: Path, path: Path) -> None:
-    """Put `staging`'s bytes at `path`, by rename if allowed, else in place.
-
-    POSIX rename is unconditional. On Windows it needs delete access to the
-    destination, and a process holding that file open without
-    FILE_SHARE_DELETE makes os.replace raise PermissionError even though the
-    same file can still be opened for writing. The Vite dev server serving
-    public/ does exactly that, so publishing while the app was running failed
-    every time: all four stages would succeed and the run would be thrown
-    away at the final rename.
-
-    A short retry covers a scanner or watcher that lets go on its own. When
-    the handle is durable, overwriting in place is the way through. That is a
-    real loss of atomicity -- a concurrent reader can observe a truncated
-    file -- which is acceptable here and nowhere else: these are derived
-    artifacts, the app re-fetches them, and the alternative is discarding a
-    completed analysis.
-    """
 
     denied: PermissionError | None = None
     for attempt in range(_REPLACE_ATTEMPTS):

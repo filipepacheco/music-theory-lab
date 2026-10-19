@@ -6,7 +6,6 @@ import {
 } from '@/constants/groove';
 import type { DrumPiece, GroovePattern, GrooveSubdivision } from '@/types';
 
-/** Return the active drum pieces for each step in the groove grid. */
 export function grooveHits(groove: GroovePattern): DrumPiece[][] {
   return Array.from(
     {
@@ -19,7 +18,6 @@ export function grooveHits(groove: GroovePattern): DrumPiece[][] {
   );
 }
 
-/** Return the hits that fall on one fixed 32nd-note scheduler tick. */
 export function grooveHitsAtTick(
   groove: GroovePattern,
   tick: number,
@@ -36,7 +34,6 @@ export function grooveHitsAtTick(
   return grooveHits(groove)[step] ?? [];
 }
 
-/** Duration, in seconds, of one grid step at the supplied quarter-note BPM. */
 export function grooveStepDuration(
   bpm: number,
   subdivision: GrooveSubdivision = DEFAULT_GROOVE_SUBDIVISION,

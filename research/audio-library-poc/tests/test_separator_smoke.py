@@ -1,18 +1,3 @@
-"""End-to-end smoke of the separator seam via the real `run` CLI subprocess.
-
-These tests exercise everything that would break on a first real Phase 2 run
-except loading a model: pipeline manifest validation, dispatcher wiring,
-workspace source resolution, streaming SHA-256 verification of the source
-audio, staging directory creation, and the orchestrator's typed-failure
-publishing path. They deliberately use ``subprocess`` (not the in-process
-``main``) so packaging bugs and installed-entry-point regressions surface
-before real MP3s are dropped in.
-
-The synthetic audio is a short 16-bit PCM WAV built with ``wave`` from the
-standard library — the stubs never read the file bytes past the SHA-256 the
-bridge computes, so no real audio decoding is exercised here.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -43,15 +28,12 @@ pytestmark = pytest.mark.skipif(
 
 
 def _write_synthetic_wav(path: Path, *, frames: int = 4096) -> str:
-    """Write a small deterministic 16-bit stereo PCM WAV and return its SHA-256."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(path), "wb") as sink:
         sink.setnchannels(2)
         sink.setsampwidth(2)
         sink.setframerate(44100)
-        # Alternating +1000 / -1000 samples per channel: deterministic and
-        # unambiguously non-silent, so a real decoder would see actual audio.
         pattern = b"".join(
             struct.pack("<hh", 1000 if index % 2 == 0 else -1000, 500)
             for index in range(frames)
@@ -194,8 +176,6 @@ def test_bs_roformer_run_publishes_clean_checkpoint_missing(tmp_path: Path) -> N
     assert stage["stage_kind"] == "separator.bs_roformer"
     assert stage["status"] == "failed_terminal"
     assert stage["attempts"] == 1
-    # With the real runtime wired, missing model assets surface as a typed
-    # failure before any torch import.
     assert stage["error"]["code"] == "separator.checkpoint_missing"
     assert stage["error"]["retryable"] is False
     assert stage["error"]["details"]["relative_path"] == (

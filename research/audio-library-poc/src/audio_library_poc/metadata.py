@@ -1,5 +1,3 @@
-"""Source hashing and ffprobe-backed metadata extraction."""
-
 from __future__ import annotations
 
 import hashlib
@@ -28,15 +26,12 @@ ProcessRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 class PocRuntimeError(RuntimeError):
-    """Runtime failure with a serializable error contract."""
-
     def __init__(self, error: TypedError) -> None:
         super().__init__(error.message)
         self.error = error
 
 
 def hash_file(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
-    """Return a SHA-256 digest without loading the source into memory."""
 
     if chunk_size < 1:
         raise ValueError("chunk_size must be positive")
@@ -54,7 +49,6 @@ def run_ffprobe(
     executable: str = "ffprobe",
     runner: ProcessRunner = subprocess.run,
 ) -> FfprobePayload:
-    """Run ffprobe without a shell and validate its JSON boundary."""
 
     argv = [
         executable,
@@ -131,7 +125,6 @@ def inspect_sources(
     executable: str = "ffprobe",
     runner: ProcessRunner = subprocess.run,
 ) -> SourceInspectionReport:
-    """Inspect unique content once and report duplicate source paths."""
 
     sources = [Path(path) for path in paths]
     digests = [hash_file(source) for source in sources]

@@ -1,10 +1,5 @@
-// Imports a Guitar Pro `.gp` file as a new Song. Split layout: controls on the
-// left, the transcription that would be produced permanently visible on the
-// right - so the key, the one input nobody can verify on its own, is chosen
-// while watching it re-map every bar.
-//
-// Shape decided on https://github.com/filipepacheco/music-theory-lab/issues/14.
-
+import { importFormat } from '@/domain/importFormat';
+import Callout from '@/components/shared/Callout';
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
@@ -23,6 +18,9 @@ import {
   summarise,
   type ImportedBar,
 } from '@/services/gpImport';
+import Button from '@/components/shared/Button';
+import Select from '@/components/shared/Select';
+import { confirmDialog } from '@/services/confirm';
 
 export default function GpImportPanel() {
   const rootNote = useAppStore((s) => s.rootNote);
@@ -60,10 +58,6 @@ export default function GpImportPanel() {
     [bars],
   );
 
-  // Without a dirty flag in the store, compare against what was persisted.
-  // Cheap, exact, and it avoids nagging when nothing has actually changed.
-  // Every field the editor can change counts, including key/mode/BPM/preset —
-  // the import replaces the whole open song.
   const dirty = useMemo(() => {
     if (!activeSongId) {
       return songSections.length > 0 || songTitle.trim() !== '';
@@ -105,11 +99,12 @@ export default function GpImportPanel() {
     setHarmonyTrack(null);
     setRootTrack(null);
     setFileName(file.name);
-    // Re-seed from the app's current key here, not at mount: the panel is
-    // mounted for the whole session, so a key chosen after it mounted - by
-    // opening a saved song, say - would otherwise never reach it.
     setKeyRoot(rootNote);
     setIsMinor(storeIsMinor);
+    if (importFormat(file.name) !== 'gp') {
+      setError('Selecione um arquivo Guitar Pro 7/8 (.gp).');
+      return;
+    }
     try {
       const parsed = parseGpFile(new Uint8Array(await file.arrayBuffer()));
       setGp(parsed);
@@ -126,9 +121,13 @@ export default function GpImportPanel() {
     if (!gp || bars.length === 0 || importing) return;
     if (
       dirty &&
-      !window.confirm(
-        'A transcrição aberta tem alterações não salvas. Importar cria uma música nova e substitui a que está aberta. Continuar?',
-      )
+      !(await confirmDialog({
+        title: 'Substituir a transcrição aberta?',
+        message:
+          'A transcrição aberta tem alterações não salvas. Importar cria uma música nova e substitui a que está aberta.',
+        confirmLabel: 'Importar',
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -160,7 +159,7 @@ export default function GpImportPanel() {
   };
 
   return (
-    <div className="rounded-button border border-border-default bg-bg-tertiary/40">
+    <div className="border border-border-default bg-bg-tertiary/40">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer"
@@ -173,11 +172,6 @@ export default function GpImportPanel() {
         </span>
       </button>
 
-      {/* Enter-only, and deliberately not wrapped in AnimatePresence. An exit
-          animation keeps the old children mounted while it runs, and this body
-          holds 206 focusable cells; if the animation is ever interrupted - a
-          backgrounded tab throttling rAF is enough - they are stranded in the
-          DOM at opacity 0. Closing here unmounts immediately. */}
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -188,12 +182,11 @@ export default function GpImportPanel() {
             <div className="flex flex-col gap-4">
               <Field label="Arquivo">
                 <label className="block cursor-pointer">
-                  <span className="block px-3 py-2 rounded-button bg-bg-card border border-border-default text-xs text-text-secondary truncate hover:text-text-primary transition-colors">
+                  <span className="block px-3 py-2 bg-bg-card border border-border-default text-xs text-text-secondary truncate hover:text-text-primary">
                     {fileName ?? 'Selecionar .gp'}
                   </span>
                   <input
                     type="file"
-                    accept=".gp"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
@@ -203,13 +196,17 @@ export default function GpImportPanel() {
                   />
                 </label>
                 {gp && (
-                  <span className="text-[10px] font-mono text-text-muted">
+                  <span className="text-micro font-mono text-text-muted">
                     {gp.masterBarCount} compassos - GP {gp.gpVersion}
                   </span>
                 )}
               </Field>
 
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && (
+                <Callout tone="danger" role="alert">
+                  {error}
+                </Callout>
+              )}
 
               {gp && (
                 <>
@@ -234,7 +231,7 @@ export default function GpImportPanel() {
                           key={n}
                           active={keyRoot === i}
                           onClick={() => setKeyRoot(i)}
-                          className="px-1 py-1.5 rounded text-[11px] font-mono"
+                          className="px-1 py-1.5 text-small font-mono"
                         >
                           {getPreferredRootName(i)}
                         </PillButton>
@@ -246,7 +243,7 @@ export default function GpImportPanel() {
                           key={String(m)}
                           active={isMinor === m}
                           onClick={() => setIsMinor(m)}
-                          className="flex-1 px-2 py-1.5 rounded text-[11px]"
+                          className="flex-1 px-2 py-1.5 text-small"
                         >
                           {m ? 'menor' : 'maior'}
                         </PillButton>
@@ -257,7 +254,7 @@ export default function GpImportPanel() {
               )}
             </div>
 
-            <div className="rounded-button bg-bg-card border border-border-default p-3 min-h-[240px]">
+            <div className="bg-bg-card border border-border-default p-3 min-h-[240px]">
               {bars.length === 0 ? (
                 <p className="text-xs text-text-muted">
                   A previa aparece aqui assim que o arquivo e as duas faixas
@@ -267,13 +264,11 @@ export default function GpImportPanel() {
                 <div className="flex flex-col gap-3">
                   {summary && (
                     <p className="text-xs font-mono text-text-secondary">
-                      <span className="text-emerald-400">
-                        {summary.diatonic}
-                      </span>{' '}
+                      <span className="text-success">{summary.diatonic}</span>{' '}
                       no campo{' '}
-                      <span className="text-sky-400">{summary.chromatic}</span>{' '}
+                      <span className="text-accent">{summary.chromatic}</span>{' '}
                       cromáticos{' '}
-                      <span className="text-amber-400">{summary.unclear}</span>{' '}
+                      <span className="text-warning">{summary.unclear}</span>{' '}
                       incertos{' '}
                       <span className="text-text-muted">{summary.noData}</span>{' '}
                       sem dados
@@ -287,16 +282,16 @@ export default function GpImportPanel() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
                       onClick={handleImport}
                       disabled={importing}
-                      className="px-4 py-2 rounded-button bg-accent text-white text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      variant="primary"
                     >
                       {importing
                         ? 'Importando...'
                         : `Importar ${bars.length} compassos`}
-                    </button>
-                    <span className="text-[10px] text-text-muted">
+                    </Button>
+                    <span className="text-micro text-text-muted">
                       Cria uma música nova em partes de 64 compassos.
                     </span>
                   </div>
@@ -313,28 +308,28 @@ export default function GpImportPanel() {
 const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
   const tone =
     bar.result.kind === 'unclear'
-      ? 'bg-amber-500/15'
+      ? 'bg-warning/15'
       : bar.result.kind === 'no-chord-data'
         ? 'bg-bg-tertiary'
         : bar.step.degree !== null
-          ? 'bg-emerald-500/15'
-          : 'bg-sky-500/15';
+          ? 'bg-success/15'
+          : 'ring-1 ring-inset ring-accent';
 
   return (
-    <div
-      title={
-        bar.detected ?? (bar.carried ? 'mantido do compasso anterior' : '')
-      }
-      className={`px-1.5 py-1 rounded text-center ${tone}`}
-    >
-      <div className="text-[9px] font-mono text-text-muted">{bar.bar}</div>
+    <div className={`px-1.5 py-1 text-center ${tone}`}>
+      <div className="text-micro font-mono text-text-muted">{bar.bar}</div>
       <div
-        className={`text-[11px] font-mono truncate ${
+        className={`text-small font-mono truncate ${
           bar.carried ? 'text-text-muted italic' : 'text-text-primary'
         }`}
       >
         {bar.step.label}
       </div>
+      {(bar.detected || bar.carried) && (
+        <p className="text-meta text-text-muted">
+          {bar.detected ?? 'mantido do compasso anterior'}
+        </p>
+      )}
     </div>
   );
 });
@@ -353,11 +348,8 @@ function PillButton({
   return (
     <button
       onClick={onClick}
-      className={`cursor-pointer transition-colors ${
-        active
-          ? 'bg-accent text-white'
-          : 'bg-bg-card text-text-secondary hover:text-text-primary'
-      } ${className}`}
+      aria-pressed={active}
+      className={`lh-tab justify-center ${className}`}
     >
       {children}
     </button>
@@ -373,9 +365,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-text-muted">
-        {label}
-      </span>
+      <span className="lh-label">{label}</span>
       {children}
     </div>
   );
@@ -391,17 +381,13 @@ function TrackSelect({
   onChange: (t: string) => void;
 }) {
   return (
-    <select
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-      className="px-2 py-1.5 rounded-button bg-bg-card border border-border-default text-xs text-text-primary"
-    >
+    <Select value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
       <option value="">Selecione...</option>
       {tracks.map((t) => (
         <option key={t} value={t}>
           {t}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
