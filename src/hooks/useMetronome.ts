@@ -12,14 +12,14 @@ export function useMetronome() {
   const isMetronomeOn = useAppStore((s) => s.isMetronomeOn);
   const setBpm = useAppStore((s) => s.setBpm);
 
-  // Keep the clock tempo in sync with the app tempo.
+  // The app tempo is the metronome tempo. The transport keeps the tempo of
+  // a player that owns the clock at its own tempo, such as a song.
   useEffect(() => {
-    transport.setTempo(bpm);
+    transport.setMetronomeTempo(bpm);
   }, [bpm]);
 
   const start = useCallback(async () => {
-    transport.setTempo(useAppStore.getState().bpm);
-    await transport.startMetronome();
+    await transport.startMetronome(useAppStore.getState().bpm);
   }, []);
 
   const stop = useCallback(() => {
