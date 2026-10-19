@@ -4,15 +4,18 @@
 
 O worker pequeno em `offline/worker.js` recebe uma lista de arquivos gerada
 por `build/offline.ts`, sem dependência de runtime adicional. A decisão usou
-o build local existente: 9 arquivos e 2.568.210 bytes fora da Library.
-Os arquivos públicos desta branch somavam 797.003 bytes fora da Library.
+o build local inicial: 9 arquivos e 2.568.210 bytes fora da Library.
+Depois da integração, os 64 arquivos públicos fora da Library somam
+7.551.638 bytes, incluindo os samples locais de bateria e Growlybass.
 O catálogo de áudio pode chegar a aproximadamente 48 MB; não entra na
 instalação. Essa separação permite manter a política de cache explícita.
 
 O build gera `/sw.js` com os chunks (inclusive os carregados sob demanda),
 HTML, CSS, fontes locais, ícones, manifesto e WASM. Os 156 samples dos seis
-presets e os três samples de bateria também são baixados na instalação,
-usando as URLs CORS já usadas pelo app. Uma falha nesse download impede a
+presets usam as URLs CORS já usadas pelo app. Os 12 samples FLAC de bateria
+e os 40 samples MP3 do Growlybass entram pelos arquivos públicos locais;
+os antigos MP3 de bateria do CDN não são mais necessários. Todos esses
+samples são baixados na instalação. Uma falha nesse download impede a
 instalação: o worker anterior continua ativo. É necessário terminar essa
 primeira instalação online antes de contar com o modo offline.
 

@@ -120,12 +120,15 @@ it('installs the shell, lazy chunks, WASM, fonts, all samplers and drums', async
       absolute('/manifest.webmanifest'),
       'https://tonejs.github.io/audio/salamander/C4.mp3',
       'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/electric_piano_1-mp3/C4.mp3',
-      'https://tonejs.github.io/audio/drum-samples/acoustic-kit/kick.mp3',
-      'https://tonejs.github.io/audio/drum-samples/acoustic-kit/snare.mp3',
-      'https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3',
+      absolute('/drum-samples/kick.flac'),
+      absolute('/drum-samples/snare.flac'),
+      absolute('/drum-samples/hihat-closed.flac'),
+      absolute('/audio/growlybass/c3_f_rr1.mp3'),
     ]),
   );
-  expect(downloads.filter((url) => url.endsWith('.mp3'))).toHaveLength(199);
+  expect(downloads.filter((url) => url.endsWith('.mp3'))).toHaveLength(196);
+  expect(downloads.filter((url) => url.endsWith('.flac'))).toHaveLength(12);
+  expect(downloads.some((url) => url.includes('/acoustic-kit/'))).toBe(false);
   expect(downloads.some((url) => url.includes('/fonts/'))).toBe(true);
 });
 
