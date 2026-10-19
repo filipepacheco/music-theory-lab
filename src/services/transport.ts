@@ -213,7 +213,12 @@ export function createTransport(
       };
       if (previous && previous.owner.kind !== 'metronome') {
         // The old player stops cleanly; its own release is now a no-op.
-        if (previous.ownsClick) current.ownsClick = Boolean(options.click);
+        if (previous.ownsClick) {
+          current.ownsClick = Boolean(options.click);
+          // The old player turned the click on; a new one that does not ask
+          // for it turns it off, so release cannot leave the metronome on.
+          if (!options.click) setClick(false);
+        }
         previous.onRelease?.();
       }
       if (isGroove) setClick(false);

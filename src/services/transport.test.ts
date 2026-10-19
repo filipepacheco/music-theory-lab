@@ -208,6 +208,47 @@ describe('transport', () => {
     expect(fake.isTicking()).toBe(true);
   });
 
+  it('turns the click off when a player that turned it on hands off to one that does not ask for it', async () => {
+    const { fake, transport, events } = setup();
+    await transport.takeClock(
+      { kind: 'progression', id: 'a' },
+      { onRelease: () => transport.releaseClock('a'), click: true },
+    );
+    expect(transport.isClickOn()).toBe(true);
+
+    await transport.takeClock(
+      { kind: 'progression', id: 'b' },
+      { onRelease: () => {} },
+    );
+    expect(transport.isClickOn()).toBe(false);
+    expect(events.onClickChange).toHaveBeenLastCalledWith(false);
+    fake.tick(1);
+    expect(fake.clicks).toHaveLength(0);
+
+    // On release the metronome does not turn on with no user action.
+    transport.releaseClock('b');
+    expect(transport.owner()).toBeNull();
+    expect(transport.isClickOn()).toBe(false);
+    expect(fake.isTicking()).toBe(false);
+  });
+
+  it('keeps the click when the metronome was on before the hand-off', async () => {
+    const { transport } = setup();
+    await transport.startMetronome();
+    await transport.takeClock(
+      { kind: 'progression', id: 'a' },
+      { onRelease: () => transport.releaseClock('a'), click: true },
+    );
+    await transport.takeClock(
+      { kind: 'progression', id: 'b' },
+      { onRelease: () => {} },
+    );
+    expect(transport.isClickOn()).toBe(true);
+    transport.releaseClock('b');
+    expect(transport.owner()).toEqual({ kind: 'metronome', id: 'metronome' });
+    expect(transport.isClickOn()).toBe(true);
+  });
+
   it('stops the clock and releases the owner when the metronome is the only player', async () => {
     const { fake, transport } = setup();
     await transport.startMetronome();
