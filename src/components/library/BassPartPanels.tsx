@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   DEGREE_COLORS,
   FUNCTION_COLORS,
@@ -115,6 +116,14 @@ export function TranspositionPanel({
   onPracticeTuning: (tuning: string) => void;
   onReset: () => void;
 }) {
+  const tunings = useMemo(
+    () => ({
+      original: canTransposeBassChart(chart, shift),
+      standard: canTransposeBassChart(chart, shift, E_STANDARD_TUNING),
+      dropD: canTransposeBassChart(chart, shift, DROP_D_TUNING),
+    }),
+    [chart, shift],
+  );
   return (
     <div className="flex flex-col gap-1">
       <div
@@ -167,26 +176,17 @@ export function TranspositionPanel({
           onChange={(event) => onPracticeTuning(event.target.value)}
           className="border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
         >
-          <option
-            value="original"
-            disabled={!canTransposeBassChart(chart, shift)}
-          >
+          <option value="original" disabled={!tunings.original}>
             {isStandardTuning(chart.tuning)
               ? 'E Standard (E A D G)'
               : `Original (${tuningLabel(chart.tuning)})`}
           </option>
           {!isStandardTuning(chart.tuning) && (
-            <option
-              value="standard"
-              disabled={!canTransposeBassChart(chart, shift, E_STANDARD_TUNING)}
-            >
+            <option value="standard" disabled={!tunings.standard}>
               E Standard (E A D G)
             </option>
           )}
-          <option
-            value="drop-d"
-            disabled={!canTransposeBassChart(chart, shift, DROP_D_TUNING)}
-          >
+          <option value="drop-d" disabled={!tunings.dropD}>
             Drop D (D A D G)
           </option>
         </select>

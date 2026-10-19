@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanup,
@@ -20,12 +21,26 @@ import { partChartId } from '@/services/chartId';
 import { beatMarkX, drumGridMarksByBar } from '@/domain/drumGrid';
 import { summarizeChart, type ChartSummary } from '@/domain/chartSummary';
 import type { Chart } from '@/domain/drumChart';
+import * as transposition from '@/domain/bassTransposition';
 
 const state = vi.hoisted(() => ({
   audio: { status: 'missing' } as { status: string; url?: string },
   synthChart: null as BassChart | null,
   seeks: [] as number[],
+  renderedBars: [] as number[],
 }));
+vi.mock('@/components/library/BassTabBar', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/components/library/BassTabBar')>();
+  const { memo, createElement } = await import('react');
+  return {
+    ...actual,
+    default: memo((props: ComponentProps<typeof actual.default>) => {
+      state.renderedBars.push(props.bar.index);
+      return createElement(actual.default, props);
+    }),
+  };
+});
 vi.mock('@/services/confirm', () => ({
   confirmDialog: vi.fn(() => Promise.resolve(true)),
 }));
@@ -83,6 +98,7 @@ const chart = {
 beforeEach(() => {
   state.audio = { status: 'missing' };
   state.seeks = [];
+  state.renderedBars = [];
   localStorage.clear();
   localStorage.setItem('music-theory-lab:fifths-window-open', 'false');
   vi.stubGlobal(
@@ -1215,4 +1231,47 @@ describe('octave of one bar', () => {
         .disabled,
     ).toBe(true);
   });
+});
+
+it('does not rescan the full GP chart when only playback position changes', async () => {
+  const limits = vi.spyOn(transposition, 'canTransposeBassChart');
+  const octave = vi.spyOn(transposition, 'lineOctaveOffset');
+  try {
+    render(<RocksmithTrackDetail chart={chart} onRemove={() => {}} />);
+    const before = [limits.mock.calls.length, octave.mock.calls.length];
+    for (const position of ['0.1', '0.2', '0.3', '0.4']) {
+      fireEvent.change(screen.getByRole('slider', { name: /da faixa/ }), {
+        target: { value: position },
+      });
+    }
+    expect([limits.mock.calls.length, octave.mock.calls.length]).toEqual(
+      before,
+    );
+  } finally {
+    limits.mockRestore();
+    octave.mockRestore();
+  }
+});
+
+it('updates the playing GP bar without rerendering the rest of the song', () => {
+  const song = {
+    ...fixtureChart(
+      8,
+      walking(Array.from({ length: 8 }, () => [48, 52, 55, 59])),
+    ),
+    source: 'gp' as const,
+  };
+  render(<RocksmithTrackDetail chart={song} onRemove={() => {}} />);
+  fireEvent.click(screen.getByLabelText('Mostrar graus'));
+  fireEvent.change(screen.getByLabelText(/para an.lise/), {
+    target: { value: '0-major' },
+  });
+  state.renderedBars.length = 0;
+  for (const position of ['0.1', '0.2', '0.3', '0.4']) {
+    fireEvent.change(screen.getByRole('slider', { name: /da faixa/ }), {
+      target: { value: position },
+    });
+  }
+  expect(state.renderedBars.length).toBeGreaterThan(0);
+  expect(state.renderedBars.every((bar) => bar === 0)).toBe(true);
 });

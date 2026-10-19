@@ -133,8 +133,14 @@ export default function RocksmithTrackDetail({
       : practiceTuning === 'drop-d'
         ? DROP_D_TUNING
         : E_STANDARD_TUNING;
-  const canLower = canTransposeBassChart(originalChart, shift - 1, tuning);
-  const canRaise = canTransposeBassChart(originalChart, shift + 1, tuning);
+  const canLower = useMemo(
+    () => canTransposeBassChart(originalChart, shift - 1, tuning),
+    [originalChart, shift, tuning],
+  );
+  const canRaise = useMemo(
+    () => canTransposeBassChart(originalChart, shift + 1, tuning),
+    [originalChart, shift, tuning],
+  );
   const originalFingeringAvailable = !!originalChart.originalFingering;
   const fingeringRecalculated =
     shift !== 0 ||
@@ -170,7 +176,10 @@ export default function RocksmithTrackDetail({
     () => transposeBassChart(sourceChart, shift, tuning, octaves),
     [sourceChart, shift, tuning, octaves],
   );
-  const octaveOffset = lineOctaveOffset(originalChart, shift, tuning);
+  const octaveOffset = useMemo(
+    () => lineOctaveOffset(originalChart, shift, tuning),
+    [originalChart, shift, tuning],
+  );
   const octaveOfBar = octaveBar === null ? 0 : (octaves[octaveBar] ?? 0);
   const likeBars = useMemo(
     () => (octaveBar === null ? [] : barsLike(originalChart, octaveBar)),
@@ -234,9 +243,13 @@ export default function RocksmithTrackDetail({
     [originalSuggestions, shift],
   );
   const [chosenKey, setChosenKey] = useState<MusicalKey | null>(null);
-  const musicalKey = chosenKey
-    ? transposeMusicalKey(chosenKey, shift)
-    : (keySuggestions[0] ?? null);
+  const musicalKey = useMemo(
+    () =>
+      chosenKey
+        ? transposeMusicalKey(chosenKey, shift)
+        : (keySuggestions[0] ?? null),
+    [chosenKey, shift, keySuggestions],
+  );
   const noteNames = musicalKey ? keyNoteNames(musicalKey) : NOTE_NAMES;
   const harmony = useMemo(
     () => (musicalKey ? analyzeHarmony(chart, analysis, musicalKey) : null),
@@ -560,7 +573,7 @@ export default function RocksmithTrackDetail({
           }
           avoidNotes={showDegrees ? (harmony?.avoidNotes ?? null) : null}
           noteNames={noteNames}
-          kickBeats={kickBeats ? (kickBeats[barIndex] ?? []) : undefined}
+          kickBeats={kickBeats ? (kickBeats[barIndex] ?? NO_NOTES) : undefined}
         />
       )}
       legend={`As linhas vão da corda G (em cima) à E (embaixo); pontilhados marcam os tempos. x = nota abafada, / e \\ = slide.${
