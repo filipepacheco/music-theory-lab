@@ -10,10 +10,13 @@ describe('playback session', () => {
 
   it('adapts supported browser APIs independently when one media action is unavailable', async () => {
     const audioSession = { type: 'auto' };
-    const actions = new Map<string, (() => void) | null>();
+    const actions = new Map<string, MediaSessionActionHandler | null>();
     const mediaSession = {
       metadata: null as MediaMetadata | null,
-      setActionHandler: (action: string, handler: (() => void) | null) => {
+      setActionHandler: (
+        action: string,
+        handler: MediaSessionActionHandler | null,
+      ) => {
         if (action === 'pause') throw new Error('Unsupported action');
         actions.set(action, handler);
       },
@@ -38,7 +41,7 @@ describe('playback session', () => {
     const close = session.openLibrary(song);
     expect(audioSession.type).toBe('playback');
     expect(mediaSession.metadata?.title).toBe('Asa Branca');
-    actions.get('play')?.();
+    actions.get('play')?.({ action: 'play' });
     await Promise.resolve();
     expect(song.play).toHaveBeenCalledOnce();
     close();
