@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import * as Tone from 'tone';
-import { DEFAULT_GROOVE_SUBDIVISION } from '@/constants/groove';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  grooveHits,
-  grooveHitsAtTick,
-  grooveStepDuration,
-} from '@/domain/grooveSchedule';
-import { stopScheduledMetronomes } from '@/hooks/useMetronome';
+  createGroovePlayback,
+  type GroovePlayback,
+} from '@/services/groovePlayback';
 import {
   ensureAudio,
   ensureGrooveSamples,
   playbackEngine,
 } from '@/services/playbackEngine';
+import { transport } from '@/services/toneClock';
 import { useAppStore } from '@/store/useAppStore';
 import type { GroovePattern } from '@/types';
 
@@ -23,179 +20,70 @@ export interface GroovePlayer {
   currentTick: number;
 }
 
-interface ScheduledGroove {
-  groove: GroovePattern;
-}
-
-function toScheduledGroove(groove: GroovePattern): ScheduledGroove {
-  return {
-    groove: {
-      ...groove,
-      subdivision: groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
-    },
-  };
-}
-
-/** Plays one section groove on the shared Tone transport. */
+/**
+ * The groove hook: a thin adapter over the transport. The transport owns the
+ * clock and the tempo; the playback plays the groove that the caller gives.
+ */
 export function useGroovePlayer(): GroovePlayer {
   const focusedSectionId = useAppStore((state) => state.focusedSectionId);
   const structureSections = useAppStore((state) => state.structureSections);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [playingSectionId, setPlayingSectionId] = useState<string | null>(
+    null,
+  );
   const [currentTick, setCurrentTick] = useState(-1);
 
-  const loopRef = useRef<Tone.Loop | null>(null);
-  const tickRef = useRef(0);
-  const grooveRef = useRef<ScheduledGroove | null>(null);
-  const tokenRef = useRef(0);
-  const playingRef = useRef(false);
-  const playingSectionIdRef = useRef<string | null>(null);
-  const transportOwnedRef = useRef(false);
-  const previousTransportBpmRef = useRef<number | null>(null);
-
-  const stop = useCallback(() => {
-    tokenRef.current += 1;
-    playingRef.current = false;
-    tickRef.current = 0;
-    grooveRef.current = null;
-    playingSectionIdRef.current = null;
-
-    loopRef.current?.dispose();
-    loopRef.current = null;
-    playbackEngine.stopGroove();
-
-    if (transportOwnedRef.current) {
-      const transport = Tone.getTransport();
-      transport.stop();
-      transport.position = 0;
-      if (previousTransportBpmRef.current !== null) {
-        transport.bpm.value = previousTransportBpmRef.current;
-      }
-    }
-
-    transportOwnedRef.current = false;
-    previousTransportBpmRef.current = null;
-    setCurrentTick(-1);
-    setIsPlaying(false);
-  }, []);
-
-  const play = useCallback(
-    async (groove: GroovePattern, bpm: number) => {
-      const hits = grooveHits(groove);
-      if (!hits.some((step) => step.length > 0)) return;
-
-      stop();
-
-      const state = useAppStore.getState();
-      const sectionId = state.focusedSectionId;
-      const transport = Tone.getTransport();
-
-      // Groove playback owns the shared transport while it is active.
-      previousTransportBpmRef.current = transport.bpm.value;
-      stopScheduledMetronomes();
-      transport.stop();
-      transport.position = 0;
-      state.setIsMetronomeOn(false);
-      state.setCurrentBeat(-1);
-      state.setCurrentEighth(-1);
-      state.setPlayingProgression(null);
-      transportOwnedRef.current = true;
-
-      const token = tokenRef.current;
-      const audioReady = await ensureAudio();
-      if (audioReady) await ensureGrooveSamples();
-      const latestSection = useAppStore
-        .getState()
-        .structureSections.find((section) => section.id === sectionId);
-      const latestGroove = latestSection?.groove;
-      if (
-        !audioReady ||
-        token !== tokenRef.current ||
-        useAppStore.getState().focusedSectionId !== sectionId ||
-        !latestGroove ||
-        !grooveHits(latestGroove).some((step) => step.length > 0)
-      ) {
-        if (token === tokenRef.current) stop();
-        return;
-      }
-
-      transport.bpm.value = bpm;
-      tickRef.current = 0;
-      grooveRef.current = toScheduledGroove(latestGroove);
-      playingRef.current = true;
-      playingSectionIdRef.current = sectionId;
-
-      const loop = new Tone.Loop(
-        (time) => {
-          if (!playingRef.current || tokenRef.current !== token) return;
-
-          const currentGroove = grooveRef.current;
-          if (!currentGroove) return;
-
-          const tick = tickRef.current;
-          for (const piece of grooveHitsAtTick(currentGroove.groove, tick)) {
-            playbackEngine.playGrooveHit(piece, time);
-          }
-
-          Tone.getDraw().schedule(() => {
-            if (playingRef.current && tokenRef.current === token) {
-              setCurrentTick(tick);
-            }
-          }, time);
-
-          tickRef.current += 1;
+  const playback: GroovePlayback = useMemo(
+    () =>
+      createGroovePlayback(transport, {
+        prepare: async () => {
+          const ready = await ensureAudio();
+          if (ready) await ensureGrooveSamples();
+          return ready;
         },
-        grooveStepDuration(bpm, '32n'),
-      );
-
-      loopRef.current = loop;
-      loop.start(0);
-      transport.start();
-      setIsPlaying(true);
-    },
-    [stop],
+        playHit: (piece, time) => playbackEngine.playGrooveHit(piece, time),
+        onTick: setCurrentTick,
+        onSectionChange: setPlayingSectionId,
+        silence: () => playbackEngine.stopGroove(),
+      }),
+    [],
   );
 
-  useEffect(() => {
-    const playingSectionId = playingSectionIdRef.current;
-    if (!playingSectionId || !playingRef.current) return;
+  const stop = useCallback(() => playback.stop(), [playback]);
 
-    const section = structureSections.find(
-      (item) => item.id === playingSectionId,
-    );
+  const play = useCallback(
+    (groove: GroovePattern, bpm: number) =>
+      playback.play({
+        groove,
+        bpm,
+        sectionId: useAppStore.getState().focusedSectionId,
+      }),
+    [playback],
+  );
+
+  // Edits to the playing section reach the next tick; a removed section stops.
+  useEffect(() => {
+    const playing = playback.playingSectionId();
+    if (!playing) return;
+    const section = structureSections.find((item) => item.id === playing);
     if (!section?.groove) {
-      stop();
+      playback.stop();
       return;
     }
-
-    // Read the latest store value on every edit so the next scheduled tick
-    // reflects changes made while the groove is already playing.
-    grooveRef.current = toScheduledGroove(section.groove);
-  }, [structureSections, stop]);
+    playback.update(section.groove);
+  }, [structureSections, playback]);
 
   useEffect(() => {
-    const playingSectionId = playingSectionIdRef.current;
-    if (playingSectionId && focusedSectionId !== playingSectionId) {
-      stop();
-    }
-  }, [focusedSectionId, stop]);
+    const playing = playback.playingSectionId();
+    if (playing && focusedSectionId !== playing) playback.stop();
+  }, [focusedSectionId, playback]);
 
-  useEffect(() => {
-    const playingSectionId = playingSectionIdRef.current;
-    if (
-      playingSectionId &&
-      !structureSections.some((section) => section.id === playingSectionId)
-    ) {
-      stop();
-    }
-  }, [structureSections, stop]);
-
-  useEffect(() => stop, [stop]);
+  useEffect(() => () => playback.stop(), [playback]);
 
   return {
     play,
     stop,
-    isPlaying,
-    playingSectionId: playingSectionIdRef.current,
+    isPlaying: playingSectionId !== null,
+    playingSectionId,
     currentTick,
   };
 }

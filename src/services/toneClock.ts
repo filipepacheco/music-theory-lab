@@ -48,6 +48,13 @@ export const toneClock: ClockAdapter = {
       loop.dispose();
     };
   },
+  repeat: (cb, seconds) => {
+    const loop = new Tone.Loop(cb, seconds);
+    loop.start(0);
+    return () => {
+      loop.dispose();
+    };
+  },
   eighthSeconds: () => Tone.Time('8n').toSeconds(),
   draw: (cb, time) => {
     Tone.getDraw().schedule(cb, time);
