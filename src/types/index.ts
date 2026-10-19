@@ -149,6 +149,13 @@ export interface AppState {
   songBaseBpm: number;
   /** Sound preset of the open song. */
   songPresetId: string;
+  /**
+   * Key (note index 0-11) and mode of the open song. While the transcription
+   * module is open, `rootNote`/`isMinor` follow these; a key change in another
+   * module leaves them alone.
+   */
+  songKey: number;
+  songMode: 'major' | 'minor';
   /** Copy of the last saved state of the open song, or null if never saved. */
   savedSong: Omit<Song, 'id' | 'createdAt' | 'updatedAt'> | null;
 
@@ -200,6 +207,7 @@ export interface AppState {
     title: string;
     artist: string;
     key: number;
+    mode: 'major' | 'minor';
     sections: SongSection[];
   }) => void;
   clearSong: () => void;

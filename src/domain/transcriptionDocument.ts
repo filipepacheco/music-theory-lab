@@ -12,8 +12,10 @@ export interface TranscriptionSections {
 }
 
 /**
- * The open song. The base tempo and the preset belong to the song, not to the
- * app-wide tempo and preset; the practice speed only scales the tempo that
+ * The open song. The key, the mode, the base tempo, and the preset belong to
+ * the song, not to the app-wide key, tempo, and preset; while the
+ * transcription module is open the app-wide key follows the song. The
+ * practice speed only scales the tempo that
  * plays. `saved` is the copy of the last saved state ("unsaved changes"
  * compares against it).
  */
@@ -61,6 +63,12 @@ export interface TranscriptionDocumentModule {
   setPreset(
     document: TranscriptionDocument,
     presetId: string,
+  ): TranscriptionDocument;
+  /** Sets the key of the song (a note index, wrapped to 0-11). */
+  setKey(document: TranscriptionDocument, key: number): TranscriptionDocument;
+  setMode(
+    document: TranscriptionDocument,
+    mode: TranscriptionDocument['mode'],
   ): TranscriptionDocument;
   addSection<D extends TranscriptionSections>(
     document: D,
@@ -222,6 +230,14 @@ export const transcriptionDocument: TranscriptionDocumentModule = {
 
   setPreset(document, presetId) {
     return { ...document, presetId };
+  },
+
+  setKey(document, key) {
+    return { ...document, key: ((key % 12) + 12) % 12 };
+  },
+
+  setMode(document, mode) {
+    return { ...document, mode };
   },
 
   addSection(document, type, customLabel, options) {
