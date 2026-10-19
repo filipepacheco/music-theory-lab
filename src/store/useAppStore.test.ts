@@ -167,15 +167,5 @@ describe('the key and mode of the open song', () => {
     expect(s.songMode).toBe('minor');
     expect(s.isMinor).toBe(true);
     expect(s.songKey).toBe(9);
-
-    useAppStore.getState().loadImportedSong({
-      title: 'GP 2',
-      artist: '',
-      key: 4,
-      mode: 'minor',
-      sections: [],
-    });
-    expect(useAppStore.getState().songMode).toBe('minor');
-    expect(useAppStore.getState().songKey).toBe(4);
   });
 });

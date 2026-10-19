@@ -344,19 +344,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  loadImportedSong: ({ title, artist, key, mode, sections }) =>
-    set({
-      ...applySongState({
-        title,
-        artist,
-        key,
-        mode,
-        sections,
-        id: null,
-      }),
-      savedSong: null,
-    }),
-
   clearSong: () =>
     set({
       activeSongId: null,

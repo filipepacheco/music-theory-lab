@@ -60,7 +60,9 @@ export function useGroovePlayer(): GroovePlayer {
     [playback],
   );
 
-  // Edits to the playing section reach the next tick; a removed section stops.
+  // The stored groove of the playing section is the one that plays: an edit
+  // to it replaces the groove given to play() from the next tick, and a
+  // removed section, or one with no groove, stops the playback.
   useEffect(() => {
     const playing = playback.playingSectionId();
     if (!playing) return;

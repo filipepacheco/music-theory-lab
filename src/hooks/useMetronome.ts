@@ -3,11 +3,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { transport } from '@/services/toneClock';
 import type { BeatListener } from '@/services/transport';
 
-/** Stop every player on the shared clock before another player takes it. */
-export function stopScheduledMetronomes() {
-  transport.stopAll();
-}
-
 /**
  * The metronome hook: a thin adapter over the transport. The transport
  * owns the clock, the click, and the one list of beat listeners.
