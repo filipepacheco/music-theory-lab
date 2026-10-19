@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   barChordSymbol,
   degreeLabel,
@@ -222,6 +222,7 @@ function BassTabBar({
   degreeLevels,
   kickBeats,
 }: Props) {
+  const [detailsVisible, setDetailsVisible] = useState(false);
   const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * beatWidth;
   const isActive = playhead !== null;
@@ -253,20 +254,33 @@ function BassTabBar({
       ? `${noteLabel(note)} (${degreeLabel(degree)})`
       : noteLabel(note);
   };
+  const uncertainty =
+    symbol && analysis && !analysis.evidence.chordType
+      ? analysis.evidence.third === null
+        ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
+        : 'As notas tocadas permitem mais de um acorde'
+      : '';
+  const details = [
+    barTitle(bar, analysis, segment),
+    uncertainty,
+    notes.some(({ index }) => avoidNotes?.has(index) && degreeOf(index))
+      ? 'Graus sublinhados — Nota evitada: forma b9 com uma nota do acorde'
+      : '',
+    repeat ? `igual ao compasso ${repeatOf + 1}, o de cima` : '',
+    octave
+      ? `${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <button
       type="button"
-      onClick={onSeek ? () => onSeek(bar.startTime) : undefined}
-      disabled={onSeek === null}
-      title={
-        repeat
-          ? `Compasso ${bar.index + 1} · igual ao compasso ${repeatOf + 1}, o de cima`
-          : `${barTitle(bar, analysis, segment)}${
-              octave
-                ? ` · ${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
-                : ''
-            }`
-      }
+      onClick={() => {
+        setDetailsVisible(true);
+        onSeek?.(bar.startTime);
+      }}
+      title={details}
       data-bar={bar.index}
       data-octave={octave || undefined}
       aria-pressed={selected || undefined}
@@ -278,7 +292,7 @@ function BassTabBar({
           : selected
             ? 'border-text-primary bg-bg-card'
             : 'border-border-default bg-bg-card'
-      } ${onSeek ? 'cursor-pointer hover:border-text-primary' : 'cursor-default'}`}
+      } cursor-pointer hover:border-text-primary`}
     >
       <span className="absolute left-1 top-0 font-heading text-micro leading-none text-text-muted tabular-nums">
         {bar.index + 1}
@@ -305,14 +319,7 @@ function BassTabBar({
           <span className="text-text-primary">
             {symbol}
             {symbol && !analysis.evidence.chordType && (
-              <span
-                className="text-text-muted"
-                title={
-                  analysis.evidence.third === null
-                    ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
-                    : 'As notas tocadas permitem mais de um acorde'
-                }
-              >
+              <span className="text-text-muted" title={uncertainty}>
                 ?
               </span>
             )}
@@ -449,6 +456,11 @@ function BassTabBar({
             </text>
           ))}
       </svg>
+      {(selected || detailsVisible) && (
+        <span className="block border-t border-border-default p-2 text-small text-text-secondary">
+          {details}
+        </span>
+      )}
     </button>
   );
 }
