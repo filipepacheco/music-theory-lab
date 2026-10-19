@@ -420,7 +420,7 @@ describe('frame of the song detail', () => {
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
         if (this.dataset.bar !== undefined)
-          return { top: 600, height: 100 } as DOMRect;
+          return { top: 800, height: 100 } as DOMRect;
         return { top: 700, height: 0, width: 0 } as DOMRect;
       });
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
@@ -431,7 +431,7 @@ describe('frame of the song detail', () => {
       expect(state.seeks).toEqual([chart.bars[4].startTime]);
       expect(scrollTo).toHaveBeenCalledTimes(1);
       expect(scrollTo).toHaveBeenLastCalledWith({
-        top: 300,
+        top: 500,
         behavior: 'smooth',
       });
       fireEvent.click(screen.getByLabelText('Acompanhar a reprodução'));
@@ -505,4 +505,32 @@ describe('frame of the song detail', () => {
       offsetTop.mockRestore();
     }
   });
+});
+
+it('does not restart smooth scrolling when the next bar is already visible', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const rect = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.bar !== undefined)
+        return { top: 300, bottom: 400, height: 100 } as DOMRect;
+      return { top: 700, bottom: 100, height: 0, width: 0 } as DOMRect;
+    });
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  try {
+    render(<Part playing />);
+    fireEvent.click(bars()[2]);
+    fireEvent.click(bars()[3]);
+    expect(state.seeks).toHaveLength(2);
+    expect(scroll).not.toHaveBeenCalled();
+  } finally {
+    rect.mockRestore();
+    scroll.mockRestore();
+  }
 });

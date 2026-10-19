@@ -226,8 +226,12 @@ export default function SongDetailFrame<L>({
     );
     const bottom =
       dockRef.current?.getBoundingClientRect().top ?? window.innerHeight;
+    if (bar.top >= top && bar.top + bar.height <= bottom) return;
     window.scrollTo({
-      top: window.scrollY + bar.top + bar.height / 2 - (top + bottom) / 2,
+      top: Math.max(
+        0,
+        window.scrollY + bar.top + bar.height / 2 - (top + bottom) / 2,
+      ),
       behavior: 'smooth',
     });
   }, [activeBar, playing, follow]);
