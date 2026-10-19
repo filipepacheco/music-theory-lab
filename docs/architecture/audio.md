@@ -39,3 +39,13 @@ Samplers are cached globally and loaded eagerly at module init. Never dispose a 
 When a song has the bass chart and the drum chart of one file (`partChartId(bassId, 'drums')`), and neither has a linked recording, `useSongPartsPlayback` (held by `LibraryModule`, above the part, so a change of part keeps playing) runs both on one clock through `songPartsTransport`. The rules (which parts sound, given the mutes, the recording, the same-file test) are in `domain/songPartsPlayback.ts`. A mute is read at each scheduling and stops only its part. Parts of different files play alone.
 
 The shared bass/drum transport queues 500 ms ahead on its audio clock so short main-thread stalls do not drop paired notes. This queue is separate from Tone's 50 ms look-ahead for interactive instruments. Pause, seek, and mute stop already queued sources. The real-iPad playback check still determines whether this headroom is sufficient; a deterministic transport regression covers repeated 400 ms timer stalls.
+
+## Shared chart playhead
+
+Paired bass/drum playback exposes `readPosition()` from the transport's audio
+clock. `PlayheadAnimation` uses one animation-frame callback for the chart and
+updates only its current SVG line, including transitions between bars. It does
+not set React state. The song UI publishes at bass onsets, bar boundaries and
+at most 100 ms between those changes; its slower position snapshots do not
+control the animated cursor. Pause and seek still publish immediately. Other
+playback paths retain their existing cursor behavior.

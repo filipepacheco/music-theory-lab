@@ -43,6 +43,7 @@ export function useSongCursor(
 
   const playhead = (barIndex: number): number | null => {
     if (barIndex !== activeBar) return null;
+    if (audio.readPosition) return 0;
     const bar = chart.bars[barIndex];
     return (clock - bar.startTime) / (bar.endTime - bar.startTime);
   };

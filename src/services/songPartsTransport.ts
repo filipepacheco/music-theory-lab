@@ -38,6 +38,7 @@ const browserTimer: SongPartsTimer = (callback, milliseconds) => {
 
 export interface SongPartsSession extends LibraryAudioSession {
   muteChanged(part: PlaybackPart): void;
+  readPosition(): number;
 }
 
 export function createSongPartsTransport(
@@ -45,6 +46,7 @@ export function createSongPartsTransport(
     bass: BassSynthNote[];
     drums: DrumPlaybackHit[];
     durationSeconds: number;
+    visualTimes?: number[];
   },
   voice: SongPartsVoice,
   sounding: () => PartMutes,
@@ -55,6 +57,14 @@ export function createSongPartsTransport(
   const pitches = [...new Set(parts.bass.map((n) => n.midi))];
   const samples = [...new Set(parts.drums.map((h) => h.sample))];
   const duration = parts.durationSeconds;
+  const visualTimes = [
+    ...new Set([
+      ...parts.bass.map((note) => note.time),
+      ...(parts.visualTimes ?? []),
+    ]),
+  ].sort((a, b) => a - b);
+  let nextVisual = 0;
+  let publishedAt = -Infinity;
   let state: LibraryAudioState = {
     ready: true,
     playing: false,
@@ -71,6 +81,7 @@ export function createSongPartsTransport(
   const update = (change: Partial<LibraryAudioState>) => {
     if (disposed) return;
     state = { ...state, ...change };
+    publishedAt = voice.now();
     onStateChange(state);
   };
   const position = () =>
@@ -85,6 +96,8 @@ export function createSongPartsTransport(
     };
     const index = events.findIndex((e) => e.time >= seconds);
     next = index < 0 ? events.length : index;
+    const visualIndex = visualTimes.findIndex((time) => time >= seconds);
+    nextVisual = visualIndex < 0 ? visualTimes.length : visualIndex;
   };
   const halt = () => {
     ringing = false;
@@ -114,12 +127,24 @@ export function createSongPartsTransport(
       update({ playing: false, currentSeconds: duration });
       return;
     }
-    update({ currentSeconds: current });
+    let visualChanged = false;
+    while (
+      nextVisual < visualTimes.length &&
+      visualTimes[nextVisual] <= current
+    ) {
+      nextVisual += 1;
+      visualChanged = true;
+    }
+    state = { ...state, currentSeconds: current };
+    if (visualChanged || now - publishedAt >= 0.1) {
+      update({ currentSeconds: current });
+    }
   };
 
   onStateChange(state);
 
   return {
+    readPosition: () => (state.playing ? position() : state.currentSeconds),
     play: async () => {
       if (disposed || state.playing || starting) return;
       starting = true;

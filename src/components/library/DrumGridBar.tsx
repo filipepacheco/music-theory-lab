@@ -1,3 +1,4 @@
+import ChartPlayhead from '@/components/library/ChartPlayhead';
 import { memo } from 'react';
 import { BEAT_WIDTH, RepeatSign } from '@/components/library/BassTabBar';
 import type { BassChartBar } from '@/domain/bassChart';
@@ -132,17 +133,13 @@ function DrumGridBar({
           />
         ))}
         {repeat && <RepeatSign x={width / 2} y={height / 2} />}
-        {playhead !== null && (
-          <line
-            data-playhead
-            x1={PAD_X + playhead * bar.beatCount * beatWidth}
-            x2={PAD_X + playhead * bar.beatCount * beatWidth}
-            y1={2}
-            y2={height - 2}
-            stroke="var(--color-accent)"
-            strokeWidth={1.5}
-          />
-        )}
+        <ChartPlayhead
+          bar={bar}
+          progress={playhead}
+          start={PAD_X}
+          width={bar.beatCount * beatWidth}
+          height={height}
+        />
         {!repeat &&
           marks.map((mark) => {
             const rowIndex = rows.indexOf(mark.row);
