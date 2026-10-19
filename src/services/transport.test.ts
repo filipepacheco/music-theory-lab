@@ -15,6 +15,7 @@ function createFakeClock() {
   const clicks: Array<{ accent: boolean; time: number }> = [];
   const calls: string[] = [];
   let bpm = 120;
+  const repeats = new Set<(time: number) => void>();
 
   const clock: ClockAdapter = {
     resume: async () => {},
@@ -37,6 +38,12 @@ function createFakeClock() {
         calls.push('cancel');
       };
     },
+    repeat: (cb) => {
+      repeats.add(cb);
+      return () => {
+        repeats.delete(cb);
+      };
+    },
     eighthSeconds: () => 30 / bpm,
     draw: (cb, time) => {
       drawQueue.push({ cb, time });
@@ -52,6 +59,10 @@ function createFakeClock() {
     calls,
     drawQueue,
     isTicking: () => tickCallback !== null,
+    repeatCount: () => repeats.size,
+    fireRepeats(time = 0) {
+      for (const cb of [...repeats]) cb(time);
+    },
     tick(count = 1) {
       for (let i = 0; i < count; i++) {
         now += 0.5;
@@ -245,6 +256,112 @@ describe('transport', () => {
   });
 });
 
+describe('transport and a groove', () => {
+  const groove = { kind: 'groove', id: 'g1' } as const;
+
+  it('a groove takes the clock from the metronome and silences the click', async () => {
+    const { fake, transport } = setup();
+    await transport.startMetronome();
+    fake.tick(1);
+    await transport.takeClock(groove, { onRelease: () => {} });
+    expect(transport.owner()).toEqual(groove);
+    expect(transport.isClickOn()).toBe(false);
+    fake.tick(2);
+    expect(fake.clicks).toHaveLength(1);
+  });
+
+  it('a groove takes the clock from a progression, and the progression stops cleanly', async () => {
+    const { fake, transport } = setup();
+    const release = vi.fn(() => transport.releaseClock('p1'));
+    await transport.takeClock(
+      { kind: 'progression', id: 'p1' },
+      { onRelease: release, click: true },
+    );
+    await transport.takeClock(groove, { onRelease: () => {} });
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(transport.owner()).toEqual(groove);
+    expect(transport.isClickOn()).toBe(false);
+    expect(fake.isTicking()).toBe(true);
+  });
+
+  it('a progression takes the clock from a groove, and the groove stops', async () => {
+    const { transport } = setup();
+    const releaseGroove = vi.fn();
+    await transport.takeClock(groove, { onRelease: releaseGroove });
+    await transport.takeClock(
+      { kind: 'progression', id: 'p1' },
+      { onRelease: () => {}, click: true },
+    );
+    expect(releaseGroove).toHaveBeenCalledTimes(1);
+    expect(transport.owner()?.kind).toBe('progression');
+  });
+
+  it('the metronome turned on during a groove does not take the clock', async () => {
+    const { transport } = setup();
+    await transport.takeClock(groove, { onRelease: () => {} });
+    await transport.startMetronome();
+    expect(transport.owner()?.kind).toBe('groove');
+  });
+
+  it('stops the groove ticks when the clock stops', async () => {
+    const { fake, transport } = setup();
+    await transport.takeClock(groove, { onRelease: () => {} });
+    const cb = vi.fn();
+    transport.repeat(0.1, cb);
+    fake.fireRepeats();
+    expect(cb).toHaveBeenCalledTimes(1);
+    transport.releaseClock('g1');
+    expect(fake.repeatCount()).toBe(0);
+    expect(fake.isTicking()).toBe(false);
+  });
+
+  it('restores the tempo after a groove stops', async () => {
+    const { fake, transport } = setup();
+    transport.setTempo(100);
+    await transport.takeClock(groove, { onRelease: () => {} });
+    transport.setTempo(150);
+    expect(fake.clock.getBpm()).toBe(150);
+    transport.releaseClock('g1');
+    expect(fake.clock.getBpm()).toBe(100);
+  });
+
+  it('restores the tempo once when a groove replaces a groove, and on stopAll', async () => {
+    const { fake, transport } = setup();
+    transport.setTempo(90);
+    await transport.takeClock(groove, { onRelease: () => {} });
+    transport.setTempo(140);
+    await transport.takeClock(
+      { kind: 'groove', id: 'g2' },
+      { onRelease: () => {} },
+    );
+    transport.setTempo(160);
+    transport.stopAll();
+    expect(fake.clock.getBpm()).toBe(90);
+  });
+
+  it('restores the tempo when another player takes the clock from the groove', async () => {
+    const { fake, transport } = setup();
+    transport.setTempo(80);
+    await transport.takeClock(groove, { onRelease: () => {} });
+    transport.setTempo(130);
+    await transport.takeClock(
+      { kind: 'progression', id: 'p1' },
+      { onRelease: () => {} },
+    );
+    expect(fake.clock.getBpm()).toBe(80);
+  });
+
+  it('restores the tempo when the metronome is on and the groove stops', async () => {
+    const { fake, transport } = setup();
+    transport.setTempo(70);
+    await transport.startMetronome();
+    await transport.takeClock(groove, { onRelease: () => {} });
+    transport.setTempo(120);
+    transport.releaseClock('g1');
+    expect(fake.clock.getBpm()).toBe(70);
+  });
+});
+
 describe('the shared clock boundary', () => {
   const srcDir = join(__dirname, '..');
   const files: string[] = [];
@@ -261,8 +378,7 @@ describe('the shared clock boundary', () => {
   const rel = (path: string) => relative(srcDir, path).replace(/\\/g, '/');
 
   it('only the Tone clock adapter touches the shared Tone clock', () => {
-    // The groove player moves onto the transport in ticket 05.
-    const allowed = new Set(['services/toneClock.ts', 'hooks/useGroovePlayer.ts']);
+    const allowed = new Set(['services/toneClock.ts']);
     const offenders = files
       .filter((path) => !allowed.has(rel(path)))
       .filter((path) =>
@@ -275,7 +391,11 @@ describe('the shared clock boundary', () => {
   });
 
   it('the metronome hook and the step player hold no direct call to the clock', () => {
-    for (const file of ['hooks/useMetronome.ts', 'hooks/useStepPlayer.ts']) {
+    for (const file of [
+      'hooks/useMetronome.ts',
+      'hooks/useStepPlayer.ts',
+      'hooks/useGroovePlayer.ts',
+    ]) {
       const source = readFileSync(join(srcDir, file), 'utf8');
       expect(source, file).not.toMatch(/from 'tone'/);
       expect(source, file).not.toMatch(/Tone\./);
