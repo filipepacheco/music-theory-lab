@@ -35,19 +35,17 @@ export interface PlaybackEngine {
 const limiter = new Tone.Limiter(-6).toDestination();
 const reverb = new Tone.Reverb({ decay: 1.8, wet: 0.2 }).connect(limiter);
 
-let audioStarted = false;
 let audioStartPromise: Promise<boolean> | null = null;
 
 export function ensureAudio(): Promise<boolean> {
-  if (audioStarted) return Promise.resolve(true);
+  Tone.getContext().lookAhead = 0.05;
+  if (Tone.getContext().state === 'running') return Promise.resolve(true);
   if (audioStartPromise) return audioStartPromise;
 
   audioStartPromise = (async () => {
     try {
       await Tone.start();
-      Tone.getContext().lookAhead = 0.01;
-      audioStarted = true;
-      return true;
+      return Tone.getContext().state === 'running';
     } catch {
       return false;
     }
@@ -56,6 +54,12 @@ export function ensureAudio(): Promise<boolean> {
   });
 
   return audioStartPromise;
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void ensureAudio();
+  });
 }
 
 interface SamplerEntry {
