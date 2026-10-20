@@ -1,3 +1,4 @@
+import Callout from '@/components/shared/Callout';
 import { useMemo } from 'react';
 import Field from '@/components/shared/Field';
 import Select from '@/components/shared/Select';
@@ -76,7 +77,7 @@ export default function RocksmithChartList({
   const set = (patch: Partial<ListView>) => onViewChange({ ...view, ...patch });
   return (
     <div className="flex flex-col gap-2 min-w-0">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="lh-label">Linhas de baixo</h3>
         <label
           htmlFor={inputId}
@@ -92,7 +93,6 @@ export default function RocksmithChartList({
         <input
           id={inputId}
           type="file"
-          accept=".psarc,.mid,.midi,.gp"
           disabled={importing}
           className="sr-only"
           onChange={(event) => {
@@ -114,170 +114,174 @@ export default function RocksmithChartList({
         </p>
       )}
       {importStatus.state === 'error' && (
-        <p role="alert" className="text-small text-text-error">
+        <Callout tone="danger" role="alert">
           {importStatus.message}
-        </p>
+        </Callout>
       )}
 
-      {allSongs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2" role="search">
-          <Field
-            type="search"
-            prompt=">"
-            aria-label="Buscar por título ou artista"
-            placeholder="Buscar título ou artista"
-            value={view.search}
-            onChange={(event) => set({ search: event.target.value })}
-            className="w-full min-w-0 sm:w-64"
-          />
-          <Select
-            aria-label="Fonte"
-            value={view.source}
-            onChange={(event) =>
-              set({ source: event.target.value as ListView['source'] })
-            }
-          >
-            <option value="all">Fonte: todas</option>
-            <option value="gp">GP</option>
-            <option value="rocksmith">Rocksmith</option>
-            <option value="midi">MIDI</option>
-            <option value="analysis">Análise</option>
-          </Select>
-          <Select
-            aria-label="Parte"
-            value={view.part}
-            onChange={(event) =>
-              set({ part: event.target.value as ListView['part'] })
-            }
-          >
-            <option value="all">Parte: todas</option>
-            <option value="bass">Baixo</option>
-            <option value="drums">Bateria</option>
-          </Select>
-          <Select
-            aria-label="Afinação"
-            value={view.tuning}
-            onChange={(event) => set({ tuning: event.target.value })}
-          >
-            <option value="all">Afinação: todas</option>
-            {tunings.map((tuning) => (
-              <option key={tuning} value={tuning}>
-                {tuning}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="Gravação vinculada"
-            value={view.linked}
-            onChange={(event) =>
-              set({ linked: event.target.value as ListView['linked'] })
-            }
-          >
-            <option value="all">Gravação: todas</option>
-            <option value="linked">Com gravação</option>
-            <option value="unlinked">Sem gravação</option>
-          </Select>
-          <Select
-            aria-label="Ordenar por"
-            value={view.sort}
-            onChange={(event) =>
-              set({ sort: event.target.value as ListView['sort'] })
-            }
-          >
-            <option value="imported">Ordem: importação</option>
-            <option value="title">Ordem: título</option>
-            <option value="artist">Ordem: artista</option>
-            <option value="tempo">Ordem: andamento</option>
-          </Select>
-        </div>
-      )}
-
-      {allSongs.length === 0 ? (
-        <p className="text-small text-text-muted">
-          Importe Rocksmith 2014 (.psarc), MIDI (.mid) ou Guitar Pro 7/8 (.gp)
-          para ver a linha de baixo compasso a compasso, tocando junto com a
-          música.
-        </p>
-      ) : songs.length === 0 ? (
-        <div role="status" className="flex flex-col items-start gap-1">
-          <p className="text-small text-text-muted">
-            Nenhuma música encontrada com esta busca e estes filtros.
-          </p>
-          {isNarrowed(view) && (
-            <button
-              type="button"
-              onClick={() =>
-                onViewChange({ ...DEFAULT_LIST_VIEW, sort: view.sort })
+      <div className="library-list-columns">
+        {allSongs.length > 0 && (
+          <div className="library-filters" role="search">
+            <Field
+              type="search"
+              prompt=">"
+              aria-label="Buscar por título ou artista"
+              placeholder="Buscar título ou artista"
+              value={view.search}
+              onChange={(event) => set({ search: event.target.value })}
+              className="w-full min-w-0"
+            />
+            <Select
+              aria-label="Fonte"
+              value={view.source}
+              onChange={(event) =>
+                set({ source: event.target.value as ListView['source'] })
               }
-              className="text-small text-accent underline"
             >
-              Limpar busca e filtros
-            </button>
-          )}
-        </div>
-      ) : (
-        <table className="block w-full border-collapse text-left sm:table">
-          <thead className="sr-only sm:not-sr-only sm:table-header-group">
-            <tr className="border-b border-border-default">
-              {HEADINGS.map((heading) => (
-                <th
-                  key={heading}
-                  scope="col"
-                  className="lh-label px-3 py-2 font-normal"
-                >
-                  {heading}
-                </th>
+              <option value="all">Fonte: todas</option>
+              <option value="gp">GP</option>
+              <option value="rocksmith">Rocksmith</option>
+              <option value="midi">MIDI</option>
+              <option value="analysis">Análise</option>
+            </Select>
+            <Select
+              aria-label="Parte"
+              value={view.part}
+              onChange={(event) =>
+                set({ part: event.target.value as ListView['part'] })
+              }
+            >
+              <option value="all">Parte: todas</option>
+              <option value="bass">Baixo</option>
+              <option value="drums">Bateria</option>
+            </Select>
+            <Select
+              aria-label="Afinação"
+              value={view.tuning}
+              onChange={(event) => set({ tuning: event.target.value })}
+            >
+              <option value="all">Afinação: todas</option>
+              {tunings.map((tuning) => (
+                <option key={tuning} value={tuning}>
+                  {tuning}
+                </option>
               ))}
-            </tr>
-          </thead>
-          <tbody className="block sm:table-row-group">
-            {songs.map((song) => (
-              <tr
-                key={song.key}
-                onClick={(event) => {
-                  if ((event.target as HTMLElement).closest('a')) return;
-                  onSelect(song);
-                }}
-                className="mb-1.5 flex cursor-pointer flex-wrap items-baseline gap-x-3 border border-border-default bg-bg-card px-3 py-2 hover:bg-bg-tertiary sm:mb-0 sm:table-row sm:border-0 sm:border-b sm:p-0"
+            </Select>
+            <Select
+              aria-label="Gravação vinculada"
+              value={view.linked}
+              onChange={(event) =>
+                set({ linked: event.target.value as ListView['linked'] })
+              }
+            >
+              <option value="all">Gravação: todas</option>
+              <option value="linked">Com gravação</option>
+              <option value="unlinked">Sem gravação</option>
+            </Select>
+            <Select
+              aria-label="Ordenar por"
+              value={view.sort}
+              onChange={(event) =>
+                set({ sort: event.target.value as ListView['sort'] })
+              }
+            >
+              <option value="imported">Ordem: importação</option>
+              <option value="title">Ordem: título</option>
+              <option value="artist">Ordem: artista</option>
+              <option value="tempo">Ordem: andamento</option>
+            </Select>
+          </div>
+        )}
+
+        {allSongs.length === 0 ? (
+          <p className="text-small text-text-muted">
+            Importe Rocksmith 2014 (.psarc), MIDI (.mid) ou Guitar Pro 7/8 (.gp)
+            para ver a linha de baixo compasso a compasso, tocando junto com a
+            música.
+          </p>
+        ) : songs.length === 0 ? (
+          <div role="status" className="flex flex-col items-start gap-1">
+            <p className="text-small text-text-muted">
+              Nenhuma música encontrada com esta busca e estes filtros.
+            </p>
+            {isNarrowed(view) && (
+              <button
+                type="button"
+                onClick={() =>
+                  onViewChange({ ...DEFAULT_LIST_VIEW, sort: view.sort })
+                }
+                className="text-small text-accent underline"
               >
-                <td className="w-full min-w-0 sm:table-cell sm:w-auto sm:px-3 sm:py-2">
-                  <a
-                    href={formatLibraryRoute(
-                      routeOfSong(song, readLastSource(song.key)),
-                    )}
-                    className="font-medium text-text-primary hover:underline"
+                Limpar busca e filtros
+              </button>
+            )}
+          </div>
+        ) : (
+          <table className="library-song-table block w-full border-collapse text-left">
+            <thead className="sr-only">
+              <tr className="border-b border-border-default">
+                {HEADINGS.map((heading) => (
+                  <th
+                    key={heading}
+                    scope="col"
+                    className="lh-label px-3 py-2 font-normal"
                   >
-                    {song.title}
-                  </a>
-                </td>
-                <td className="w-full min-w-0 text-xs text-text-secondary sm:table-cell sm:w-auto sm:px-3 sm:py-2">
-                  {song.artist}
-                </td>
-                <td className="w-full text-small sm:table-cell sm:w-auto sm:px-3 sm:py-2">
-                  <span className="flex flex-wrap gap-1">
-                    {song.sources.map((source) => (
-                      <SongBadge key={source} label={SOURCE_LABEL[source]} />
-                    ))}
-                    {song.analysed.length > 0 && <SongBadge label="Análise" />}
-                    {song.parts.map((part) => (
-                      <SongBadge key={part} label={PART_LABEL[part]} />
-                    ))}
-                  </span>
-                </td>
-                <td className="text-small text-text-muted sm:table-cell sm:px-3 sm:py-2">
-                  {tempoOf(song)}
-                </td>
-                <td className="text-small text-text-muted sm:table-cell sm:px-3 sm:py-2">
-                  {durationOf(song)}
-                </td>
-                <td className="text-small text-text-muted sm:table-cell sm:px-3 sm:py-2">
-                  {importedOf(song)}
-                </td>
+                    {heading}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody className="block">
+              {songs.map((song) => (
+                <tr
+                  key={song.key}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('a')) return;
+                    onSelect(song);
+                  }}
+                  className="mb-1.5 flex cursor-pointer flex-wrap items-baseline gap-x-3 border border-border-default bg-bg-card px-3 py-2 hover:bg-bg-tertiary"
+                >
+                  <td className="w-full min-w-0">
+                    <a
+                      href={formatLibraryRoute(
+                        routeOfSong(song, readLastSource(song.key)),
+                      )}
+                      className="font-medium text-text-primary hover:underline"
+                    >
+                      {song.title}
+                    </a>
+                  </td>
+                  <td className="w-full min-w-0 text-xs text-text-secondary">
+                    {song.artist}
+                  </td>
+                  <td className="w-full text-small">
+                    <span className="flex flex-wrap gap-1">
+                      {song.sources.map((source) => (
+                        <SongBadge key={source} label={SOURCE_LABEL[source]} />
+                      ))}
+                      {song.analysed.length > 0 && (
+                        <SongBadge label="Análise" />
+                      )}
+                      {song.parts.map((part) => (
+                        <SongBadge key={part} label={PART_LABEL[part]} />
+                      ))}
+                    </span>
+                  </td>
+                  <td className="text-small text-text-muted">
+                    {tempoOf(song)}
+                  </td>
+                  <td className="text-small text-text-muted">
+                    {durationOf(song)}
+                  </td>
+                  <td className="text-small text-text-muted">
+                    {importedOf(song)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

@@ -79,7 +79,7 @@ export default function LibraryTrackDetail({ track }: Props) {
 
   const audioUrl = audioSource.status === 'ready' ? audioSource.url : null;
 
-  const audio = useLibraryAudio(audioUrl);
+  const audio = useLibraryAudio(audioUrl ?? null, track.title);
 
   const bars = useMemo(() => {
     if (!data) return [];
@@ -226,7 +226,7 @@ export default function LibraryTrackDetail({ track }: Props) {
         <Stat label="Compassos" value={String(track.downbeat_count)} />
       </dl>
 
-      {audioUrl && <LibraryPlayer audio={audio} />}
+      {audioUrl && <LibraryPlayer audio={audio} title={track.title} />}
 
       <LocalAudioAttachment
         fileName={

@@ -209,9 +209,13 @@ export default function ChromaticChordPicker({
                                       )
                                     }
                                     className="px-2.5 py-1.5 text-xs font-mono bg-bg-tertiary text-text-secondary hover:bg-accent hover:text-on-accent cursor-pointer"
-                                    title={`${chord.description} (${displayName})`}
                                   >
-                                    {chord.label}
+                                    <span className="block">
+                                      {chord.label} ({displayName})
+                                    </span>
+                                    <span className="block text-meta">
+                                      {chord.description}
+                                    </span>
                                   </button>
                                 );
                               })}

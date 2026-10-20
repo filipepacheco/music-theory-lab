@@ -52,7 +52,7 @@ const BassFret = memo(function BassFret({
         isRootHighlighted ? ' (fundamental)' : ''
       }`}
       className={`
-        h-14 flex items-center justify-center relative cursor-pointer focus-visible:z-20
+        instrument-touch h-14 flex items-center justify-center relative cursor-pointer focus-visible:z-20
         ${isOpenString ? 'bg-bg-tertiary border-r-2 border-r-text-muted' : 'border-r border-r-fret-border bg-fret-bg hover:bg-bg-secondary'}
         ${isOctaveStart ? 'border-l-[3px] border-l-text-muted' : ''}
       `}

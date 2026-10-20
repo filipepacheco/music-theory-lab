@@ -14,7 +14,7 @@ import type {
 import type { BassSynthNote } from '@/services/bassSynthTransport';
 
 const TICK_MS = 25;
-const LOOKAHEAD_SECONDS = 0.2;
+const LOOKAHEAD_SECONDS = 0.5;
 const START_DELAY_SECONDS = 0.05;
 const LATE_SECONDS = 0.05;
 

@@ -26,7 +26,10 @@ it('loads the deployed function and keeps chart settings in a fresh session', as
       workPath: root,
       meta: { skipDownload: true },
       config: {
-        projectSettings: { installCommand: '', buildCommand: 'true' },
+        projectSettings: {
+          installCommand: '',
+          buildCommand: 'node --version',
+        },
       },
       considerBuildCommand: true,
     });

@@ -1,0 +1,38 @@
+.transcription-module {
+  container-type: inline-size;
+  overflow-wrap: anywhere;
+}
+
+.transcription-review-columns,
+.transcription-import-columns,
+.transcription-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.transcription-import-columns > * {
+  min-width: 0;
+}
+
+.transcription-chord-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: 0.5rem;
+}
+
+@container (min-width: 40rem) {
+  .transcription-import-columns {
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  }
+
+  .transcription-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .transcription-review-columns {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}

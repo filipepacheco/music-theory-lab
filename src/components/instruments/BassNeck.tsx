@@ -83,7 +83,7 @@ export default function BassNeck({ highlight }: Props = {}) {
 
   return (
     <div className="min-w-0">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h3 className="lh-label">Baixo (4 cordas)</h3>
         <Segmented
           label="Notas no braço"

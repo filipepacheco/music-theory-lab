@@ -1,3 +1,4 @@
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useCallback, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
@@ -63,6 +64,11 @@ export default function SongPlaybackControls({
     setOriginalBpm(bpm);
     play({ steps: getPlaybackSteps() });
   };
+
+  usePlaybackShortcut(() => {
+    if (isPlaying) stop();
+    else handlePlay();
+  }, hasSteps);
 
   return (
     <div className="space-y-3">

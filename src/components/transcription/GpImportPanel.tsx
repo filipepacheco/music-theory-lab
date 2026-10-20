@@ -1,3 +1,5 @@
+import { importFormat } from '@/domain/importFormat';
+import Callout from '@/components/shared/Callout';
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
@@ -99,15 +101,19 @@ export default function GpImportPanel() {
     setFileName(file.name);
     setKeyRoot(rootNote);
     setIsMinor(storeIsMinor);
+    if (importFormat(file.name) !== 'gp') {
+      setError('Selecione um arquivo Guitar Pro 7/8 (.gp).');
+      return;
+    }
     try {
       const parsed = parseGpFile(new Uint8Array(await file.arrayBuffer()));
       setGp(parsed);
     } catch (e) {
-      setError(
+      const message =
         e instanceof GpParseError
           ? gpParseErrorMessage(e)
-          : 'Não foi possível ler o arquivo.',
-      );
+          : 'Não foi possível ler o arquivo.';
+      setError(`${message} Selecione um arquivo Guitar Pro 7/8 (.gp).`);
     }
   };
 
@@ -172,7 +178,7 @@ export default function GpImportPanel() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.15 }}
         >
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-4 p-4 pt-0">
+          <div className="transcription-import-columns p-4 pt-0">
             <div className="flex flex-col gap-4">
               <Field label="Arquivo">
                 <label className="block cursor-pointer">
@@ -181,7 +187,6 @@ export default function GpImportPanel() {
                   </span>
                   <input
                     type="file"
-                    accept=".gp"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
@@ -197,7 +202,11 @@ export default function GpImportPanel() {
                 )}
               </Field>
 
-              {error && <p className="text-xs text-danger">{error}</p>}
+              {error && (
+                <Callout tone="danger" role="alert">
+                  {error}
+                </Callout>
+              )}
 
               {gp && (
                 <>
@@ -272,7 +281,7 @@ export default function GpImportPanel() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Button
                       onClick={handleImport}
                       disabled={importing}
@@ -307,12 +316,7 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
           : 'ring-1 ring-inset ring-accent';
 
   return (
-    <div
-      title={
-        bar.detected ?? (bar.carried ? 'mantido do compasso anterior' : '')
-      }
-      className={`px-1.5 py-1 text-center ${tone}`}
-    >
+    <div className={`px-1.5 py-1 text-center ${tone}`}>
       <div className="text-micro font-mono text-text-muted">{bar.bar}</div>
       <div
         className={`text-small font-mono truncate ${
@@ -321,6 +325,11 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
       >
         {bar.step.label}
       </div>
+      {(bar.detected || bar.carried) && (
+        <p className="text-meta text-text-muted">
+          {bar.detected ?? 'mantido do compasso anterior'}
+        </p>
+      )}
     </div>
   );
 });

@@ -170,7 +170,7 @@ export default function DrumPartDetail({
         />
       )}
       lineStart={lineStart}
-      legend="Cada linha é uma peça, dos pratos (em cima) ao pedal do chimbal (embaixo); pontilhados marcam os tempos. ● = tambor, x = prato ou chimbal fechado, o = chimbal aberto, (x) = nota fantasma, > = acento."
+      legend="Pratos = Pratos de ataque e de condução; Tons = Tons agudo e médio; Pedal = Pedal do chimbal; Outros = Outras peças. Virada: este compasso foge do groove da seção. Cada linha é uma peça, dos pratos (em cima) ao pedal do chimbal (embaixo); pontilhados marcam os tempos. ● = tambor, x = prato ou chimbal fechado, o = chimbal aberto, (x) = nota fantasma, > = acento."
       dock={{
         label: 'Bateria',
         showLabel: 'Mostrar legenda',

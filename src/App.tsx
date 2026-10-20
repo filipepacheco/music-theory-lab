@@ -16,6 +16,7 @@ import Frame from '@/components/shared/Frame';
 import Piano from '@/components/instruments/Piano';
 import BassNeck from '@/components/instruments/BassNeck';
 import { useAppStore } from '@/store/useAppStore';
+import '@/components/layout/appShell.css';
 
 export default function App() {
   const activeModule = useAppStore((s) => s.activeModule);
@@ -28,28 +29,32 @@ export default function App() {
   }, [theme]);
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary overflow-x-hidden pb-24 sm:pb-0">
+    <div className="app-shell bg-bg-primary text-text-primary overflow-x-hidden pb-24 sm:pb-0">
       <Header />
       <KeySelector />
 
-      <main className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8 max-w-full">
-        {activeModule === 'harmonicField' && <HarmonicFieldModule />}
-        {activeModule === 'progressions' && <ProgressionsModule />}
-        {activeModule === 'scales' && <ScalesModule />}
-        {activeModule === 'quiz' && <QuizModule />}
-        {activeModule === 'transcription' && <TranscriptionModule />}
-        {activeModule === 'structure' && <StructureModule />}
-        {activeModule === 'library' && <LibraryModule />}
-        {activeModule === 'analyze' && import.meta.env.DEV && <AnalyzeModule />}
-
+      <main className="px-4 sm:px-6 lg:px-8 py-6 app-workspace gap-8 max-w-full">
+        <div className="module-workspace">
+          {activeModule === 'harmonicField' && <HarmonicFieldModule />}
+          {activeModule === 'progressions' && <ProgressionsModule />}
+          {activeModule === 'scales' && <ScalesModule />}
+          {activeModule === 'quiz' && <QuizModule />}
+          {activeModule === 'transcription' && <TranscriptionModule />}
+          {activeModule === 'structure' && <StructureModule />}
+          {activeModule === 'library' && <LibraryModule />}
+          {activeModule === 'analyze' && import.meta.env.DEV && (
+            <AnalyzeModule />
+          )}
+        </div>
         <Frame
+          className="instrument-workspace"
           collapsed={!instrumentsPanelOpen}
           titleAs="h3"
           title={
             <button
               onClick={() => setInstrumentsPanelOpen(!instrumentsPanelOpen)}
               aria-expanded={instrumentsPanelOpen}
-              className="cursor-pointer uppercase hover:text-text-primary focus-visible:bg-accent focus-visible:text-on-accent focus-visible:outline-none"
+              className="cursor-pointer uppercase hover:text-text-primary focus-visible:bg-accent focus-visible:text-on-accent"
             >
               {instrumentsPanelOpen ? '[-]' : '[+]'} Instrumentos
             </button>
@@ -64,7 +69,7 @@ export default function App() {
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 className="overflow-hidden"
               >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                   <Piano />
                   <div className="min-w-0 overflow-hidden">
                     <BassNeck />

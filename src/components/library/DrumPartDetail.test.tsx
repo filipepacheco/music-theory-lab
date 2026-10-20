@@ -179,6 +179,14 @@ function renderPart(of = chart, onRemove = vi.fn()) {
 }
 
 describe('drum part of the song detail', () => {
+  it('explains grouped drum rows and fills without hover', () => {
+    renderPart();
+    expect(screen.getByText(/Pratos de ataque e de condução/)).toBeTruthy();
+    expect(screen.getByText(/Tons agudo e médio/)).toBeTruthy();
+    expect(
+      screen.getByText(/Virada: este compasso foge do groove da seção/),
+    ).toBeTruthy();
+  });
   it('shows the song, the stats, and the sections of the drum chart', () => {
     renderPart();
     expect(screen.getByRole('heading', { name: 'Test' })).toBeTruthy();

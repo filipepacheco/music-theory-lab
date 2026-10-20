@@ -243,13 +243,11 @@ export default function TranscriptionReviewWorkspace() {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="transcription-review-columns">
       <main className="min-w-0 border border-border-default bg-bg-tertiary/20 p-4 sm:p-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="lh-label">
-              Revisão focada
-            </p>
+            <p className="lh-label">Revisão focada</p>
             <h3 className="mt-2 font-heading text-2xl text-text-primary">
               Revise os pontos incertos
             </h3>
@@ -302,7 +300,7 @@ export default function TranscriptionReviewWorkspace() {
                     {section.steps.length} acordes
                   </span>
                 </button>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="transcription-chord-grid">
                   {section.steps.map((step, stepIndex) => (
                     <ReviewChordCard
                       key={`${section.id}-${stepIndex}`}
@@ -322,14 +320,12 @@ export default function TranscriptionReviewWorkspace() {
         </div>
       </main>
 
-      <aside className="flex h-fit flex-col border border-border-default bg-bg-card p-5 xl:sticky xl:top-4">
+      <aside className="min-w-0 flex h-fit flex-col border border-border-default bg-bg-card p-4">
         {selectedItem && selectedDetails ? (
           <>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="lh-label text-warning">
-                  Acorde selecionado
-                </p>
+                <p className="lh-label text-warning">Acorde selecionado</p>
                 <h3
                   className={`mt-2 font-heading text-4xl ${
                     selectedItem.step.confidence === 'unsure'
@@ -361,9 +357,7 @@ export default function TranscriptionReviewWorkspace() {
 
             <div className="mt-6 space-y-4 border-y border-border-default py-4">
               <div>
-                <p className="lh-label">
-                  Notas detectadas
-                </p>
+                <p className="lh-label">Notas detectadas</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedDetails.noteNames.length > 0 ? (
                     selectedDetails.noteNames.map((note) => (
@@ -421,11 +415,8 @@ export default function TranscriptionReviewWorkspace() {
               Confira as notas detectadas e marque o acorde como correto quando
               estiver satisfeito.
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <Button
-                onClick={toggleConfidence}
-                className="justify-center"
-              >
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button onClick={toggleConfidence} className="justify-center">
                 {selectedItem.step.confidence === 'unsure'
                   ? 'Manter incerto'
                   : 'Marcar incerto'}
@@ -452,7 +443,7 @@ export default function TranscriptionReviewWorkspace() {
             >
               Remover acorde
             </Button>
-            <div className="mt-5 flex gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <Button
                 onClick={() => moveSelection(-1)}
                 disabled={!allSteps[allSteps.indexOf(selectedItem) - 1]}

@@ -265,7 +265,6 @@ export function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
           <span key={segment.startBar} className="flex items-baseline gap-1">
             {i > 0 && <span className="text-text-muted">–</span>}
             <span
-              title={segment.harmony.detail}
               className="font-bold"
               style={{
                 color: segment.harmony.func
@@ -274,6 +273,9 @@ export function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
               }}
             >
               {segment.harmony.numeral}
+              <span className="block text-meta font-normal">
+                {segment.harmony.detail}
+              </span>
             </span>
           </span>
         ))}

@@ -110,7 +110,7 @@ export default function BottomNav() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="lh-dialog absolute bottom-24 left-4 right-4 w-auto flex flex-col"
+              className="app-more-menu lh-dialog absolute bottom-24 left-4 right-4 w-auto flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {MORE_TABS.map((tab) => (
@@ -132,7 +132,7 @@ export default function BottomNav() {
       </AnimatePresence>
 
       <nav
-        className="fixed bottom-0 inset-x-0 z-50 sm:hidden flex items-stretch border-t border-border-default bg-bg-secondary pb-7"
+        className="app-bottom-nav fixed bottom-0 inset-x-0 z-50 sm:hidden flex items-stretch border-t border-border-default bg-bg-secondary pb-7"
         aria-label="Navegação principal"
       >
         {MAIN_TABS.map((tab) => (

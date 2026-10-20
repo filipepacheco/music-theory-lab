@@ -1,3 +1,4 @@
+import { importFormat } from '@/domain/importFormat';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Chart } from '@/domain/drumChart';
 import type { ChartSummary } from '@/domain/chartSummary';
@@ -12,7 +13,10 @@ export type RocksmithImportStatus =
   | { state: 'error'; message: string };
 
 async function loadImporter(file: File) {
-  if (/\.gp$/i.test(file.name)) {
+  const format = importFormat(file.name);
+  if (!format)
+    throw new Error('Selecione um arquivo .gp, .psarc, .mid ou .midi.');
+  if (format === 'gp') {
     const { importGpChart, gpChartImportErrorMessage } =
       await import('@/services/gp/importGpChart');
     return {
@@ -20,7 +24,7 @@ async function loadImporter(file: File) {
       importErrorMessage: gpChartImportErrorMessage,
     };
   }
-  if (/\.midi?$/i.test(file.name)) {
+  if (format === 'midi') {
     const { importMidi, midiImportErrorMessage } =
       await import('@/services/midi/importMidi');
     return {
@@ -154,7 +158,7 @@ export function useRocksmithCharts() {
       setImportStatus({ state: 'importing', fileName: file.name });
       await new Promise((resolve) => setTimeout(resolve, 30));
       let importErrorMessage: (error: unknown) => string = () =>
-        'Não foi possível importar o arquivo.';
+        'Não foi possível importar este arquivo.';
       try {
         const loaded = await loadImporter(file);
         importErrorMessage = loaded.importErrorMessage;
@@ -186,7 +190,7 @@ export function useRocksmithCharts() {
           message:
             error instanceof DOMException
               ? 'Não foi possível salvar a importação neste navegador.'
-              : importErrorMessage(error),
+              : `${importErrorMessage(error)} Tipos aceitos: .gp, .psarc, .mid ou .midi.`,
         });
         return null;
       }

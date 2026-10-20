@@ -66,7 +66,7 @@ function Octave({
     (highlightOctaveMap === null || highlightOctaveMap[noteIndex] === octave);
 
   return (
-    <div className="relative" style={{ width: WHITE_KEY_WIDTH * 7 }}>
+    <div className="relative shrink-0" style={{ width: WHITE_KEY_WIDTH * 7 }}>
       <div className="flex">
         {whiteKeys.map((key, i) => (
           <PianoKey
@@ -136,7 +136,7 @@ export default function Piano() {
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <h3 className="lh-label mb-3">Piano</h3>
       <div className="flex overflow-x-auto relative">
         {[3, 4].map((octave) => (

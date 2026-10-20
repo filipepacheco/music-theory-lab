@@ -1,3 +1,4 @@
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useCallback, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
@@ -211,9 +212,10 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
-      <div className="flex gap-3 sm:gap-4">
-        <div className="flex flex-col items-center gap-1.5 shrink-0">
+      <div className="structure-section-content">
+        <div className="structure-section-tools flex items-center gap-1.5">
           <span
+            style={{ touchAction: 'none' }}
             className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing select-none"
             {...attributes}
             {...listeners}
@@ -310,7 +312,7 @@ function DroppableSection({
         </div>
 
         <div
-          className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
+          className="min-w-0 flex flex-wrap gap-1 sm:gap-1.5 content-start"
           style={
             section.barsPerRow
               ? {
@@ -331,7 +333,7 @@ function DroppableSection({
         </div>
 
         <div
-          className={`flex-1 min-w-0 self-stretch grid items-start gap-2 ${
+          className={`structure-section-notes min-w-0 self-stretch grid items-start gap-2 ${
             !grooveOpen && section.groove
               ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]'
               : 'grid-cols-1'
@@ -400,6 +402,15 @@ function DroppableSection({
 
 export default function StructureSections() {
   const groovePlayer = useGroovePlayer();
+  const focusedSection = useAppStore((s) =>
+    s.structureSections.find((section) => section.id === s.focusedSectionId),
+  );
+  const bpm = useAppStore((s) => s.bpm);
+  usePlaybackShortcut(() => {
+    if (groovePlayer.isPlaying) groovePlayer.stop();
+    else if (focusedSection?.groove)
+      void groovePlayer.play(focusedSection.groove, bpm);
+  }, Boolean(focusedSection?.groove));
   const sections = useAppStore((s) => s.structureSections);
   const structureBars = useAppStore((s) => s.structureBars);
   const focusedSectionId = useAppStore((s) => s.focusedSectionId);

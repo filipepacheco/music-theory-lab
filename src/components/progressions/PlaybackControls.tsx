@@ -1,3 +1,4 @@
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useAppStore } from '@/store/useAppStore';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
 import Button from '@/components/shared/Button';
@@ -16,6 +17,11 @@ export default function PlaybackControls() {
     presetId: activePresetId,
     bpm,
   });
+
+  usePlaybackShortcut(() => {
+    if (isPlaying) stop();
+    else void play();
+  }, customProgression.length > 0);
 
   return (
     <div className="flex items-center gap-3">

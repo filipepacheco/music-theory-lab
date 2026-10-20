@@ -184,6 +184,19 @@ afterEach(() => {
 });
 
 describe('frame of the song detail', () => {
+  it('shows the repetition rule without hovering the checkbox', () => {
+    render(<Part />);
+    expect(
+      screen.getByText(
+        'Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByLabelText('Marcar repetições')
+        .getAttribute('aria-describedby'),
+    ).toBe('repeat-rule');
+  });
   it('shows the song, the stats of any chart, and the sections', () => {
     render(<Part />);
     expect(screen.getByRole('heading', { name: 'Test' })).toBeTruthy();
