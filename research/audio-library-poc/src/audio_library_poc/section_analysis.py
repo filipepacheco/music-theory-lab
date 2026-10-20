@@ -1,16 +1,3 @@
-"""Versioned contracts for Phase 3 section-boundary output.
-
-Kept separate from ``chord_analysis.py`` and ``beat_analysis.py`` for the
-same reason those two are separate: section segmentation has its own
-vocabulary (letter labels for repeating parts) that never mixes with chord
-recognition or beat tracking.
-
-The librosa-based baseline is a pure algorithm (chroma + Laplacian /
-agglomerative clustering), so ``model_identifier`` and ``model_sha256`` are
-absent from provenance by design — the HPCP key stage follows the same
-pattern.
-"""
-
 from __future__ import annotations
 
 from typing import Literal, Self
@@ -32,8 +19,6 @@ from audio_library_poc.models import (
 
 
 class FrozenSectionModel(ContractModel):
-    """Immutable base for the committed section contracts."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 
@@ -147,7 +132,6 @@ class SectionAnalysisResult(FrozenSectionModel):
 def coverage_seconds(
     sections: tuple[SectionSegment, ...] | list[SectionSegment],
 ) -> float:
-    """Sum the durations of every section. Used by the coverage-to-duration test."""
 
     total = 0.0
     for section in sections:

@@ -1,5 +1,3 @@
-"""Deterministic and atomic local JSON persistence."""
-
 from __future__ import annotations
 
 import json
@@ -25,7 +23,6 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 
 def atomic_write_json(destination: Path, value: Any) -> None:
-    """Publish JSON through a same-directory temporary file and os.replace."""
 
     target = Path(destination)
     payload = canonical_json_bytes(value)

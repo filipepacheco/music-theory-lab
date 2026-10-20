@@ -52,20 +52,17 @@ const BassFret = memo(function BassFret({
         isRootHighlighted ? ' (fundamental)' : ''
       }`}
       className={`
-        h-14 flex items-center justify-center relative cursor-pointer focus-visible:z-20
+        instrument-touch h-14 flex items-center justify-center relative cursor-pointer focus-visible:z-20
         ${isOpenString ? 'bg-bg-tertiary border-r-2 border-r-text-muted' : 'border-r border-r-fret-border bg-fret-bg hover:bg-bg-secondary'}
         ${isOctaveStart ? 'border-l-[3px] border-l-text-muted' : ''}
       `}
     >
-      {/* String line */}
       <div className="absolute inset-x-0 top-1/2 h-[2px] bg-string" />
 
-      {/* Fret marker */}
       {hasFretMarker && (
         <div className="absolute bottom-0.5 w-2 h-2 rounded-full bg-text-muted opacity-40" />
       )}
 
-      {/* Note indicator */}
       <div className="relative z-10">
         {shouldShowNote ? (
           isHighlighted ? (

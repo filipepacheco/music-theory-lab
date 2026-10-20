@@ -24,7 +24,6 @@ async function aesBlock(block: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(out, 0, 16);
 }
 
-/** Reference AES-CFB128 encryption, block by block. */
 async function encryptCfb(plain: Uint8Array): Promise<Uint8Array> {
   const cipher = new Uint8Array(plain.length);
   let previous: Uint8Array = new Uint8Array(16);
@@ -50,7 +49,6 @@ function writeUint(
   }
 }
 
-/** Build a PSARC holding `files`, compressing blocks when `compress`. */
 async function buildPsarc(
   files: Record<string, Uint8Array>,
   compress: boolean,
@@ -88,7 +86,6 @@ async function buildPsarc(
     }
   });
   blocks.forEach((block, i) => {
-    // A full-size raw block is recorded as 0.
     const stored = block.length === BLOCK_SIZE && !compress ? 0 : block.length;
     writeUint(toc, entries.length * entrySize + i * 2, 2, stored);
   });

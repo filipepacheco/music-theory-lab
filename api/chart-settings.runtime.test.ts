@@ -6,7 +6,6 @@ import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // Vite resolves @/ imports in unit tests; Vercel's Node runtime does not.
-// Build with the real function builder, then invoke its output without Vite.
 const require = createRequire(import.meta.url);
 const { build } = require('@vercel/node');
 const { FileFsRef, FileBlob } = require('@vercel/build-utils');
@@ -27,7 +26,10 @@ it('loads the deployed function and keeps chart settings in a fresh session', as
       workPath: root,
       meta: { skipDownload: true },
       config: {
-        projectSettings: { installCommand: '', buildCommand: 'true' },
+        projectSettings: {
+          installCommand: '',
+          buildCommand: 'node --version',
+        },
       },
       considerBuildCommand: true,
     });

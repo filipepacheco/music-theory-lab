@@ -35,6 +35,7 @@ export function DraggableBar({
         animate={{ opacity: isDragging ? 0.3 : 1 }}
         className="group relative w-10 h-7 sm:w-14 sm:h-10 flex flex-col items-center justify-center text-xs font-mono cursor-grab select-none active:cursor-grabbing"
         style={{
+          touchAction: 'none',
           backgroundColor: effectiveColor
             ? effectiveColor + '20'
             : 'var(--color-bg-tertiary)',
@@ -66,6 +67,7 @@ export function DraggableBar({
             type="button"
             aria-label={`Remover compasso ${shownIndex}`}
             onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
@@ -89,7 +91,6 @@ export function DraggableBar({
   );
 }
 
-/** Floating overlay bar shown while dragging */
 export function BarOverlay({
   bar,
   displayIndex,

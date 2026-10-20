@@ -1,7 +1,3 @@
-// Local chart cache, deletion journal, chart summaries and chart settings.
-// Only derived charts synchronize; original packages and audio blobs remain
-// in this browser.
-
 import type { Chart } from '@/domain/drumChart';
 import {
   isNewerChartRecord,
@@ -22,7 +18,6 @@ const AUDIO_STORE = 'audio';
 const RECORD_STORE = 'records';
 const SUMMARY_STORE = 'summaries';
 const SETTINGS_STORE = 'settings';
-/** Every store a chart write touches, so the summary can never drift. */
 const CHART_WRITE_STORES = [
   CHART_STORE,
   AUDIO_STORE,
@@ -34,33 +29,23 @@ export interface StoredChartAudio {
   chartId: string;
   fileName: string;
   blob: Blob;
-  /** `psarc` when extracted from the package, `local` when the user chose it. */
   origin: 'psarc' | 'local';
 }
 
 export interface RocksmithLibraryRepository {
   listCharts(): Promise<Chart[]>;
-  /** One full chart, or null when it is not stored. */
   getChart(chartId: string): Promise<Chart | null>;
   getAudio(chartId: string): Promise<StoredChartAudio | null>;
-  /** The ids of the charts that have a recording in this browser. */
   listAudioIds(): Promise<string[]>;
   save(chart: Chart, audio: StoredChartAudio | null): Promise<void>;
   saveAudio(audio: StoredChartAudio): Promise<void>;
   remove(chartId: string): Promise<void>;
   listRecords(): Promise<BassChartRecord[]>;
   applyRecord(record: BassChartRecord): Promise<void>;
-  /** One summary for each stored chart, newest import first. */
   listSummaries(): Promise<ChartSummary[]>;
   getSettings(chartId: string): Promise<ChartSettings | null>;
-  /**
-   * Store a change that this device made. It refuses a value that the chart
-   * settings do not allow. The change wins over the stored record, also when
-   * the clock of this device is slow.
-   */
   saveSettings(settings: ChartSettings): Promise<void>;
   listSettings(): Promise<ChartSettings[]>;
-  /** Store a record from a different device when it is the newer one. */
   applySettings(settings: ChartSettings): Promise<void>;
 }
 
@@ -94,7 +79,6 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
         const records = database.createObjectStore(RECORD_STORE, {
           keyPath: 'id',
         });
-        // Upgrade existing MIDI/Rocksmith imports so they also synchronize.
         const cursor = request
           .transaction!.objectStore(CHART_STORE)
           .openCursor();
@@ -310,8 +294,6 @@ export function createIndexedDbRocksmithLibrary(
         const done = transactionComplete(transaction);
         const store = transaction.objectStore(SETTINGS_STORE);
         const request = store.get(settings.chartId);
-        // The comparison is inside the transaction, so a change that this
-        // device made during the network request stays.
         request.onsuccess = () => {
           if (isNewerChartSettings(settings, request.result)) {
             store.put(settings);

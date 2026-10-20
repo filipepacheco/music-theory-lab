@@ -48,19 +48,14 @@ export interface Song {
 
 export type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
 
-/** One row of a groove grid: the drum pieces a groove can mark. */
 export type DrumPiece = 'bumbo' | 'caixa' | 'chimbal';
 
-/** The note subdivision used by a groove across a 4/4 measure. */
 export type GrooveSubdivision = '4n' | '8n' | '16n' | '32n';
 
-/** The number of 4/4 measures captured by a groove. */
 export type GrooveMeasureCount = 1 | 2;
 
-/** The main drum pattern of a section: a three-piece, variable-step grid. */
 export interface GroovePattern {
   subdivision: GrooveSubdivision;
-  /** Optional for backwards compatibility; omitted patterns mean one measure. */
   measureCount?: GrooveMeasureCount;
   bumbo: boolean[];
   caixa: boolean[];
@@ -83,7 +78,6 @@ export interface StructureSection {
   repeatOf?: string;
   comment?: string;
   barsPerRow?: number;
-  /** Main drum pattern of the section (drawn in the section editor). */
   groove?: GroovePattern;
 }
 
@@ -99,58 +93,45 @@ export interface SongStructure {
 }
 
 export interface AppState {
-  // Key selection
   rootNote: number;
   isMinor: boolean;
 
-  // Navigation
   activeModule: ActiveModule;
 
-  // Harmonic field
   harmonicField: HarmonicChord[];
   selectedChordIndex: number | null;
 
-  // Instrument highlights
   highlightedNotes: number[];
   highlightColors: Record<number, string>;
   highlightRootName: string | null;
   highlightOctaveMap: Record<number, number> | null;
 
-  // Tone preset
   activePresetId: string;
 
-  // Metronome
   bpm: number;
   isMetronomeOn: boolean;
   currentBeat: number;
 
-  // Beat timeline
   currentEighth: number;
   playingProgression: ProgressionExample | null;
 
-  // Custom progression builder
   customProgression: ProgressionStep[];
 
-  // Scales module
   selectedScaleId: string | null;
   comparisonScaleId: string | null;
 
-  // UI panels
   instrumentsPanelOpen: boolean;
   theme: 'dark' | 'light';
 
-  // Transcription
   activeSongId: string | null;
   songSections: SongSection[];
   activeSectionIndex: number;
   songTitle: string;
   songArtist: string;
 
-  // Practice
   practiceSpeed: number;
   loopSection: boolean;
 
-  // Structure
   structureBars: StructureBar[];
   structureSections: StructureSection[];
   activeStructureId: string | null;
@@ -160,7 +141,6 @@ export interface AppState {
   activeTimeSignature: TimeSignature;
   focusedSectionId: string | null;
 
-  // Actions
   setRootNote: (note: number) => void;
   setIsMinor: (isMinor: boolean) => void;
   setActiveModule: (module: ActiveModule) => void;
@@ -188,7 +168,6 @@ export interface AppState {
   setInstrumentsPanelOpen: (open: boolean) => void;
   toggleTheme: () => void;
 
-  // Transcription actions
   loadSong: (song: Song) => void;
   loadImportedSong: (data: {
     title: string;
@@ -215,11 +194,9 @@ export interface AppState {
     confidence: ChordConfidence,
   ) => void;
 
-  // Practice actions
   setPracticeSpeed: (percent: number) => void;
   setLoopSection: (loop: boolean) => void;
 
-  // Structure actions
   setStructureTitle: (title: string) => void;
   setStructureArtist: (artist: string) => void;
   setStructureBpm: (bpm: number) => void;
@@ -255,6 +232,5 @@ export interface AppState {
   loadStructure: (structure: SongStructure) => void;
   clearStructure: () => void;
 
-  // Saved structures actions
   setActiveStructureId: (id: string | null) => void;
 }

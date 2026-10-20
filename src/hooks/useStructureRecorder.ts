@@ -9,11 +9,20 @@ export function useStructureRecorder() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.repeat) return;
+      if (e.repeat || e.defaultPrevented) return;
       if (e.key !== ' ') return;
 
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        (e.target instanceof Element &&
+          e.target.closest(
+            'button, a, [contenteditable]:not([contenteditable="false"])',
+          ))
+      )
+        return;
 
       e.preventDefault();
       const now = Date.now();

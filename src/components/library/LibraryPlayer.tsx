@@ -1,12 +1,15 @@
-import type { ChangeEvent } from 'react';
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
+import { useEffect, useRef, type ChangeEvent } from 'react';
+import { playbackSession } from '@/services/playbackSession';
 import { formatDuration } from './libraryData';
 import type { LibraryAudio } from './useLibraryAudio';
 
 interface Props {
   audio: LibraryAudio;
+  title?: string;
 }
 
-export default function LibraryPlayer({ audio }: Props) {
+export default function LibraryPlayer({ audio, title = 'Biblioteca' }: Props) {
   const disabled = !audio.ready;
   const handleSeek = (event: ChangeEvent<HTMLInputElement>) => {
     audio.seek(Number(event.target.value));
@@ -15,6 +18,25 @@ export default function LibraryPlayer({ audio }: Props) {
     if (audio.playing) audio.pause();
     else void audio.play();
   };
+
+  usePlaybackShortcut(togglePlay, !disabled);
+  const current = useRef(audio);
+  current.current = audio;
+  const id = useRef(Symbol('library-player'));
+  useEffect(() => {
+    if (audio.playing) playbackSession.start(id.current);
+    else playbackSession.stop(id.current);
+    const player = id.current;
+    return () => playbackSession.stop(player);
+  }, [audio.playing]);
+  useEffect(() => {
+    if (!audio.ready) return;
+    return playbackSession.openLibrary({
+      title,
+      play: () => current.current.play(),
+      pause: () => current.current.pause(),
+    });
+  }, [audio.ready, title]);
 
   return (
     <div className="border border-border-default bg-bg-card px-3 py-2 flex items-center gap-3">

@@ -10,11 +10,6 @@ import type { BarOctaves } from '@/domain/bassTransposition';
 
 const NO_OCTAVES: BarOctaves = {};
 
-/**
- * The bar octaves of one chart, from its chart settings. They reload when
- * `refreshKey` changes. A change shows at once, is stored through the
- * settings path, and synchronizes without waiting; the chart is not touched.
- */
 export function useBarOctaves(chartId: string, refreshKey: unknown) {
   const [octaves, setOctaves] = useState<BarOctaves>(NO_OCTAVES);
 
@@ -25,9 +20,7 @@ export function useBarOctaves(chartId: string, refreshKey: unknown) {
       try {
         const stored = await rocksmithLibrary.getSettings(chartId);
         if (!cancelled) setOctaves(stored?.barOctaves ?? NO_OCTAVES);
-      } catch {
-        // No local store: each bar plays as written.
-      }
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -52,7 +45,6 @@ export function useBarOctaves(chartId: string, refreshKey: unknown) {
     [chartId],
   );
 
-  /** One write for all `bars`; an octave of 0 removes their choice. */
   const setOctave = useCallback(
     (bars: readonly number[], octave: number) =>
       write((s, now) => withBarOctave(s, chartId, bars, octave, now)),

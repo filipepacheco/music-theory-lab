@@ -1,15 +1,3 @@
-"""Bridge that runs the vendored ChordMini BTC chord recognizer.
-
-Mirrors ``BeatThisStageExecutor`` and ``SeparatorStageExecutor``: validate
-config, require model identity, resolve the source audio inside the
-workspace, hash-verify it against ``input_sha256``, then call the runtime.
-The runtime returns a strict ``ChordAnalysisResult`` and matching metrics.
-
-The ChordMini BTC model is vendored under
-``audio_library_poc.vendor.chordmini.model``; see that package's README for
-provenance and license.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -76,17 +64,6 @@ _ROOT_TO_PITCH_CLASS: dict[str, int] = {
 
 
 class ChordMiniBtcStageConfig(ContractModel):
-    """Config surface for the chord.chordmini_btc stage.
-
-    Only two required paths — the vendored model class is imported directly
-    from ``audio_library_poc.vendor.chordmini.model``, no config yaml needs
-    to be resolved from the workspace.
-
-    ``sliding_window_overlap`` in [0, 0.95) enables overlap-averaging of
-    consecutive seq_len windows. 0 means non-overlapping (fastest). 0.5 is a
-    reasonable default; ChordMini's own CLI defaults to 0.5 as well.
-    """
-
     source_relative_path: str = Field(min_length=1)
     checkpoint_relative_path: str = Field(min_length=1)
     device: str = Field(default="cuda", min_length=1, max_length=128)
@@ -118,8 +95,6 @@ class ChordMiniBtcStageConfig(ContractModel):
 
 
 class ChordMiniBtcStageExecutor:
-    """StageExecutor for the chord.chordmini_btc stage kind."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
         self.candidate_id = CHORDMINI_BTC_CANDIDATE_ID
@@ -153,10 +128,6 @@ class ChordMiniBtcStageExecutor:
         staging = Path(staging_directory)
         staging.mkdir(parents=True, exist_ok=True)
 
-        # Resolve the checkpoint BEFORE the lazy import below: a missing
-        # checkpoint must surface as a typed failure, not as the
-        # ModuleNotFoundError the torch import would raise first on a
-        # machine without the inference extras.
         checkpoint_path = _resolve_checkpoint(
             self.workspace, config.checkpoint_relative_path
         )
@@ -203,12 +174,6 @@ class ChordMiniBtcStageExecutor:
 
 
 class VerifiedChordMiniBtcStageExecutor(ChordMiniBtcStageExecutor):
-    """Fixed BTC path under a new stage/candidate identity.
-
-    Existing ``chord.chordmini_btc`` envelopes stay addressable as the
-    baseline. New parity-fixed runs must opt into this distinct kind.
-    """
-
     def __init__(self, workspace: Path) -> None:
         super().__init__(workspace)
         self.candidate_id = CHORDMINI_BTC_VERIFIED_CANDIDATE_ID
@@ -218,8 +183,6 @@ class VerifiedChordMiniBtcStageExecutor(ChordMiniBtcStageExecutor):
 
 
 class BaselineEvidenceChordMiniBtcStageExecutor(ChordMiniBtcStageExecutor):
-    """Legacy BTC semantics with a distinct, evidence-bearing identity."""
-
     def __init__(self, workspace: Path) -> None:
         super().__init__(workspace)
         self.candidate_id = CHORDMINI_BTC_BASELINE_EVIDENCE_CANDIDATE_ID
@@ -230,17 +193,6 @@ class BaselineEvidenceChordMiniBtcStageExecutor(ChordMiniBtcStageExecutor):
 
 
 def normalize_chordmini_label(raw_label: str) -> tuple[ChordLabel, int | None]:
-    """Fold ChordMini's 170-token vocabulary into (major, minor, unknown, no_chord).
-
-    - Root-only labels ("C", "D", "F#") map to (MAJOR, pitch_class).
-    - "<root>:min" maps to (MINOR, pitch_class).
-    - "N" maps to (NO_CHORD, None), the explicit no-chord token.
-    - "X" maps to (UNKNOWN, None).  It is a distinct ChordMini vocabulary
-      item and has not been established as silence.
-    - Everything else (7ths, sus, aug, dim, hdim, min6, maj6, min7, maj7,
-      minmaj7, dim7, sus2, sus4) maps to (UNKNOWN, None) — the caller can
-      choose whether to promote or drop these later.
-    """
 
     label = raw_label.strip()
     if label == "N":
@@ -264,13 +216,6 @@ def normalize_chordmini_label(raw_label: str) -> tuple[ChordLabel, int | None]:
 def normalize_chordmini_baseline_label(
     raw_label: str,
 ) -> tuple[ChordLabel, int | None]:
-    """Preserve the original BTC product mapping under its old identity.
-
-    The historical stage treated both upstream ``N`` and ``X`` as no-chord.
-    Its old envelopes and cache key remain meaningful only while that mapping
-    stays intact. The verified candidate uses ``normalize_chordmini_label``
-    instead, where ``X`` is the distinct unknown token documented upstream.
-    """
 
     if raw_label.strip() == "X":
         return ChordLabel.NO_CHORD, None
@@ -285,14 +230,6 @@ def build_segments(
     *,
     min_segment_seconds: float = 0.0,
 ) -> list[ChordSegment]:
-    """Turn a per-frame prediction stream into merged, gap-free ChordSegments.
-
-    Consecutive frames with the same predicted index are merged. Segments
-    shorter than ``min_segment_seconds`` are absorbed into the previous
-    segment. The last segment is stretched to cover through
-    ``duration_seconds`` exactly so downstream consumers do not have to
-    handle sub-frame gaps.
-    """
 
     if not predictions:
         if duration_seconds <= 0:
@@ -335,16 +272,12 @@ def build_segments(
         else:
             merged.append((start, end, raw_label))
 
-    # Clip every tail to the source bound. CQT may add a final analysis frame
-    # beyond the PCM duration; that must not appear as invented audio.
     merged = [
         (start, min(end, duration_seconds), raw_label)
         for start, end, raw_label in merged
         if start < duration_seconds
     ]
 
-    # Stretch last segment to exactly source duration so downstream contracts
-    # never see a sub-frame gap at the tail.
     if merged and duration_seconds > merged[-1][1]:
         s, _, lbl = merged[-1]
         merged[-1] = (s, duration_seconds, lbl)
@@ -372,12 +305,6 @@ def build_baseline_segments(
     *,
     min_segment_seconds: float = 0.0,
 ) -> list[ChordSegment]:
-    """Reproduce the historical BTC segment behavior byte-for-byte in spirit.
-
-    This deliberately retains the old, un-clipped CQT tail and ``X`` mapping.
-    Corrected timing and product-token semantics belong only to the distinct
-    verified and evidence-bearing stage identities.
-    """
 
     if not predictions:
         label, root_pc = normalize_chordmini_baseline_label("X")
@@ -443,7 +370,6 @@ def build_chordmini_metrics(
     segment_count: int,
     coverage,
 ) -> Metrics:
-    """Shared metrics shape the runtime returns and tests assert against."""
 
     return Metrics(
         duration_seconds=wall_seconds,
@@ -534,7 +460,6 @@ def _verify_source_hash(source_path: Path, declared_sha256: str) -> None:
 
 
 def _verify_checkpoint_hash(checkpoint_path: Path, expected_sha256: str | None) -> None:
-    """Bind the bytes about to be deserialized to the stage identity."""
 
     if expected_sha256 is None:
         raise ExpectedStageFailure(
@@ -607,7 +532,6 @@ def _require_owned_identity(
         )
 
 
-# Re-export a couple of pure helpers so tests can exercise them directly.
 __all__ = (
     "CHORDMINI_BTC_STAGE_KIND",
     "CHORDMINI_BTC_CANDIDATE_ID",
@@ -628,11 +552,6 @@ __all__ = (
 
 
 def _resolve_checkpoint(workspace: Path, checkpoint_relative_path: str) -> Path:
-    """Validate the checkpoint exists inside the workspace.
-
-    Mirrors the resolution the runtime performs, so the typed failure is
-    identical whether or not torch is importable.
-    """
 
     return resolve_workspace_asset(
         workspace,

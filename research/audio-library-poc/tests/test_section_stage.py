@@ -1,5 +1,3 @@
-"""Tests for the section.librosa_segment stage bridge, contract, and labeling."""
-
 from __future__ import annotations
 
 import hashlib
@@ -173,7 +171,6 @@ def test_result_boundary_monotonicity() -> None:
         ),
     )
     assert len(result.sections) == 3
-    # coverage-to-duration invariant
     assert coverage_seconds(result.sections) == pytest.approx(
         result.source.duration_seconds
     )

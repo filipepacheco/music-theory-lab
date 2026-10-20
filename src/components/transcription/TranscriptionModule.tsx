@@ -15,6 +15,7 @@ import Frame from '@/components/shared/Frame';
 import Button from '@/components/shared/Button';
 import Field from '@/components/shared/Field';
 import Tag from '@/components/shared/Tag';
+import '@/components/transcription/transcriptionLayout.css';
 
 export default function TranscriptionModule() {
   const songSections = useAppStore((state) => state.songSections);
@@ -49,9 +50,9 @@ export default function TranscriptionModule() {
   const keyDisplay = `${getNoteName(rootNote)} ${isMinor ? 'menor' : 'maior'}`;
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="transcription-module min-w-0 flex flex-col gap-6">
       <div>
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="transcription-heading mb-4">
           <div className="min-w-0 flex-1">
             <p className="lh-label">Revisão focada</p>
             <input
@@ -65,9 +66,7 @@ export default function TranscriptionModule() {
               <span>{chordCountLabel}</span>
               <span>·</span>
               <span
-                className={
-                  reviewCount > 0 ? 'text-warning' : 'text-success'
-                }
+                className={reviewCount > 0 ? 'text-warning' : 'text-success'}
               >
                 {reviewCount > 0
                   ? `${reviewCount} para revisar`
@@ -75,24 +74,17 @@ export default function TranscriptionModule() {
               </span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <SaveSongButton />
             {(activeSongId || songSections.length > 0) && (
-              <Button
-                onClick={clearSong}
-                size="sm"
-              >
+              <Button onClick={clearSong} size="sm">
                 Nova transcrição
               </Button>
             )}
           </div>
         </div>
 
-        <Frame
-          title="Transcrição"
-          titleAs="h2"
-          className="flex flex-col gap-4"
-        >
+        <Frame title="Transcrição" titleAs="h2" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4">
             <Field
               type="text"

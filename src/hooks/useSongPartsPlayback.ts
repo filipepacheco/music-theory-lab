@@ -47,16 +47,12 @@ const engineVoice: SongPartsVoice = {
   },
 };
 
-/** The two parts of one file, with the clock above the part on the screen. */
 export interface SongPartsPlayback {
-  /** The two parts play together on this clock. */
   active: boolean;
   audio: LibraryAudio;
   mutes: PartMutes;
   toggleMute: (part: PlaybackPart) => void;
-  /** The bass part tells which line (and shift) it plays. */
   reportBass: (chart: BassChart, shift: number, voicing?: string) => void;
-  /** The open part tells whether a recording is linked to it. */
   reportRecording: (chartId: string, linked: boolean) => void;
 }
 
@@ -89,12 +85,6 @@ const IDLE: LibraryAudioState = {
   currentSeconds: 0,
 };
 
-/**
- * The bass and the drum samples on one clock for a song whose two parts come
- * from one file. The clock lives in the module, above the part, so a change
- * of part keeps the playback going. It is inactive (the parts play alone)
- * without a partner chart in the same file, or with a linked recording.
- */
 export function useSongPartsPlayback(
   openId: string | null,
   openPart: ChartPart | null,
@@ -123,6 +113,8 @@ export function useSongPartsPlayback(
   stateRef.current = state;
   const wasActive = useRef(false);
 
+  const songChartsRef = useRef(songCharts);
+  songChartsRef.current = songCharts;
   const chartsKey = songCharts.map((c) => c.id).join(',');
   useEffect(() => {
     if (!openId || !openPart) {
@@ -130,10 +122,9 @@ export function useSongPartsPlayback(
       return;
     }
     let live = true;
-    void findPair(openId, openPart, songCharts)
+    void findPair(openId, openPart, songChartsRef.current)
       .then((found) => {
         if (!live) return;
-        // The same pair, seen from the other part, stays the same object.
         setPair((current) =>
           current &&
           found &&
@@ -149,7 +140,6 @@ export function useSongPartsPlayback(
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId, openPart, chartsKey]);
 
   const bassId = pair?.bassId ?? null;
@@ -175,11 +165,8 @@ export function useSongPartsPlayback(
     };
   }, [bassId, drumId]);
 
-  // A recording linked to the other part also silences the samples. It is
-  // read again whenever the part on the screen changes.
   const partnerId = openId === bassId ? drumId : bassId;
   const hasLoaded = loaded !== null;
-  // The mutes belong to one song: a part change keeps them, a new song resets.
   useEffect(() => {
     mutesRef.current = NO_MUTES;
     setMutes(NO_MUTES);
@@ -218,7 +205,6 @@ export function useSongPartsPlayback(
   const useReported = !!reported && reported.chart.id === bassId;
   const bassChart = useReported ? reported.chart : (loaded?.bass ?? null);
   const shift = useReported ? reported.shift : 0;
-  // The bar octaves of the bass part: a change gives a new sound.
   const voicing = useReported ? reported.voicing : '';
   const drumsChart = loaded?.drums ?? null;
   const active =
@@ -269,8 +255,6 @@ export function useSongPartsPlayback(
       transport.dispose();
       if (transportRef.current === transport) transportRef.current = null;
     };
-    // The chart objects are read from refs: a change of part or of fingering
-    // gives new objects with the same sound and must not restart the clock.
   }, [active, bassId, drumId, shift, voicing]);
 
   const toggleMute = useCallback((part: PlaybackPart) => {

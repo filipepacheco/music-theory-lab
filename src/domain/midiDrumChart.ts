@@ -12,30 +12,13 @@ import {
 import { midiToArrangement, tickToSeconds } from '@/domain/midiBassChart';
 import type { MidiFile, MidiNote } from '@/services/midi/midiFile';
 
-// The percussion channel of a MIDI file holds the drum part, with General
-// MIDI numbers. This module puts its hits on the bar grid that the bass chart
-// of the same file uses.
-
-/** The General MIDI percussion channel, 0-based. */
 export const DRUM_CHANNEL = 9;
-/** A channel with no note: it gives the bar grid alone. */
 const NO_CHANNEL = -1;
-/**
- * The position of a hit is a whole number of these. It covers the 32nd note
- * and the sextuplet, which the twelfths of the bass chart do not.
- */
 export const DRUM_TICKS_PER_BEAT = 48;
 
-/** A hit this much softer than the usual one of its piece is a ghost note. */
 export const GHOST_RATIO = 0.6;
-/** A hit this much louder than the usual one of its piece is an accent. */
 export const ACCENT_RATIO = 1.3;
 
-/**
- * A MIDI file has no score, so the ghost note and the accent come from the
- * velocity of the hit against the median velocity of its drum piece in the
- * file. A piece with a single level of velocity has only normal hits.
- */
 export function dynamicsByVelocity(
   midi: MidiFile,
 ): (note: MidiNote) => DrumDynamic {
@@ -69,12 +52,6 @@ export function hasDrumNotes(midi: MidiFile): boolean {
   return midi.notes.some((note) => note.channel === DRUM_CHANNEL);
 }
 
-/**
- * The drum chart of a MIDI file, or null when its percussion channel is
- * empty. All percussion tracks share that channel, so they make one chart.
- * `dynamicOf` gives the ghost note or the accent of a hit, when the source
- * knows it.
- */
 export function midiToDrumChart(input: {
   id: string;
   sourceFileName: string;
@@ -88,8 +65,6 @@ export function midiToDrumChart(input: {
   const played = midi.notes.filter((note) => note.channel === DRUM_CHANNEL);
   if (played.length === 0) return null;
 
-  // The bass chart builder owns the bars and the sections. A chart with no
-  // note gives them, so the two parts of one file cannot differ.
   const arrangement = midiToArrangement(midi, NO_CHANNEL);
   const grid = buildBassChart({
     id: input.id,
@@ -112,7 +87,6 @@ export function midiToDrumChart(input: {
       0,
       Math.round(beatPosition(beatTimes, time) * DRUM_TICKS_PER_BEAT),
     );
-    // The notes come in time order, so the bar only moves forward.
     while (
       bar + 1 < barStartBeats.length &&
       barStartBeats[bar + 1] * DRUM_TICKS_PER_BEAT <= tick

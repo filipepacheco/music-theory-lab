@@ -25,7 +25,6 @@ function note(
   };
 }
 
-/** A voice on a clock the test advances, with a timer it fires by hand. */
 function harness(notes: BassChartNote[], songLengthSeconds = 4) {
   let now = 10;
   let tick: (() => void) | null = null;
@@ -130,7 +129,6 @@ describe('createBassSynthTransport', () => {
     await h.transport.play();
     expect(h.voice.prepare).toHaveBeenCalledWith([35, 40]);
     expect(h.state().playing).toBe(true);
-    // Only the first note is inside the look-ahead window at the start.
     expect(h.scheduled.map((s) => s.when)).toEqual([10.05]);
 
     h.advance(0.4);
@@ -153,7 +151,6 @@ describe('createBassSynthTransport', () => {
     h.advance(5);
     await h.transport.play();
     h.advance(1.9);
-    // The note at 3 s is two seconds after the resume point.
     expect(h.scheduled[h.scheduled.length - 1].when).toBeCloseTo(
       10 + 1.05 + 5 + 0.05 + 2,
     );
@@ -198,7 +195,6 @@ describe('createBassSynthTransport', () => {
     const h = harness(line);
     await h.transport.play();
     h.advance(2.95);
-    // 0.5 s was due long ago; 3 s is still ahead.
     expect(h.scheduled.map((s) => s.note.time)).toEqual([0, 3]);
   });
 

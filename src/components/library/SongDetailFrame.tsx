@@ -37,7 +37,6 @@ import type { LineLength } from '@/domain/chartSettings';
 import type { RocksmithAudioState } from '@/hooks/useRocksmithAudio';
 import { confirmDialog } from '@/services/confirm';
 
-/** What the frame reads of a chart; a chart of any part has it. */
 export interface SongFrameChart extends ChartBars {
   title: string;
   artist: string;
@@ -52,7 +51,6 @@ export interface SongStat {
   value: string;
 }
 
-/** The stats that a chart of any part has: tempo, meter, length, bars. */
 export function songStats(chart: SongFrameChart): SongStat[] {
   return [
     { label: 'Andamento', value: `~${Math.round(chart.averageTempoBpm)} bpm` },
@@ -62,100 +60,53 @@ export function songStats(chart: SongFrameChart): SongStat[] {
   ];
 }
 
-/** What the frame gives a part to draw one bar. */
 export interface BarLayout<L> {
-  /** Pixels per beat; all bars of the section share it. */
   beatWidth: number;
-  /** The bar right above when it draws the same: draw the repeat mark. */
   repeatOf: number | undefined;
-  /** What the part worked out for the section of the bar. */
   section: L;
 }
 
-/**
- * What a part draws at the start of each line of bars, such as the labels
- * of the rows of a grid. The frame keeps `width` pixels for it at the start
- * of each line, so the bars of all lines start at the same place.
- */
 export interface LineStart<L> {
   width: number;
-  /** As tall as a bar of the section. Keep it stable. */
   render: (section: L) => ReactNode;
 }
 
-/** Where a floating panel of a part has room. */
 export interface FloatingRoom {
-  /** Pixels from the bottom of the viewport to just above the dock. */
   anchorBottom: number;
   viewportWidth: number;
 }
 
-/**
- * The frame of the song detail, shared by the parts. It owns the sections,
- * the line length controls, the lines of bars, the repeat marks, the cursor
- * on the screen (the active section, the scroll that follows the playback,
- * the click on a rest), the player, the linked recording, and the dock.
- * A part supplies its bar and its panels; the frame holds no control of one
- * part. `L` is what a part works out one time for a section.
- */
 interface Props<L> {
   chart: SongFrameChart;
-  /** The chart whose chart settings hold the line lengths. */
   chartId: string;
-  /** A new value reloads the line lengths (a synchronization brought some). */
   settingsKey?: unknown;
   onRemove: () => void;
-  /** Under the artist: where the part came from. */
   sourceNote: string;
   stats: SongStat[];
-  /** The panels of the part between the stats and the player. */
   panels?: ReactNode;
   audio: LibraryAudio;
   hasPlayer: boolean;
-  /** The notices and the controls of the part right under the player. */
   playerPanels?: ReactNode;
   recording: {
     state: RocksmithAudioState;
     saveError: boolean;
     onAttach: (file: File) => Promise<void>;
-    /** What plays while no recording is linked. */
     missingNote: string;
   };
   cursor: SongCursor;
   chartHeading: string;
-  /** The options of the part, next to the options of the frame. */
   chartOptions?: ReactNode;
-  /** The panels of the part above the sections. */
   chartPanels?: ReactNode;
-  /** The panels of the part at the head of a section, by section index. */
   sectionPanels?: (sectionIndex: number) => ReactNode;
-  /** The bars that the part fills; a run of the others is one rest. */
   filledBars: ReadonlySet<number>;
-  /** The base beat width of the bar of the part, in pixels. */
   baseBeatWidth: number;
-  /** The pixels of a bar that do not grow with its beats. */
   barChrome: number;
-  /** Clear space kept between two labels of a lane, in pixels. */
   labelGap: number;
-  /** The label lanes of a bar. Keep it stable: it sizes the beats. */
   barLanes: (barIndex: number) => LabelLane[];
-  /** What a bar draws, for the repeat marks. Keep it stable. */
   barDrawing: (barIndex: number) => string | null;
-  /** Worked out one time for a section at its beat width. Keep it stable. */
   sectionLayout: (section: BassChartSection, beatWidth: number) => L;
-  /**
-   * The bar of the part. The frame relies on the element that this returns:
-   * - it carries `data-bar={barIndex}`, or the scroll that follows the
-   *   playback does nothing;
-   * - a click on it calls `cursor.seek` with the start time of the bar, and
-   *   it is disabled while `cursor.seek` is null;
-   * - it draws the repeat mark for `layout.repeatOf`, and the playhead of
-   *   `cursor.playhead(barIndex)`. The frame draws neither.
-   */
   renderBar: (barIndex: number, layout: BarLayout<L>) => ReactNode;
-  /** What the part draws at the start of each line of bars. */
   lineStart?: LineStart<L>;
-  /** How to read a bar of the part, in the note under the chart. */
   legend: string;
   dock: {
     label: string;
@@ -166,13 +117,10 @@ interface Props<L> {
     showLabel: string;
     hideLabel: string;
   };
-  /** Mute buttons of the two parts; present while they play together. */
   partMutes?: { mutes: PartMutes; onToggle: (part: PlaybackPart) => void };
-  /** A floating panel of the part, such as the circle of fifths. */
   floating?: (room: FloatingRoom) => ReactNode;
 }
 
-/** Tailwind's gap-1 between bars, in pixels. */
 const BAR_GAP = 4;
 const LINE_LENGTH_OPTIONS = Array.from({ length: 16 }, (_, i) => i + 1);
 
@@ -189,9 +137,7 @@ function readMarkRepeats(): boolean {
 function writeMarkRepeats(on: boolean): void {
   try {
     localStorage.setItem(MARK_REPEATS_KEY, String(on));
-  } catch {
-    // Blocked storage: repeats go back to being drawn in full next time.
-  }
+  } catch {}
 }
 
 const NO_REPEATS: ReadonlyMap<number, number> = new Map();
@@ -251,7 +197,6 @@ export default function SongDetailFrame<L>({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  // A floating panel of the part starts just above the dock.
   const [floatingAnchor, setFloatingAnchor] = useState(16);
   useEffect(() => {
     const dockTop = dockRef.current?.getBoundingClientRect().top;
@@ -266,8 +211,6 @@ export default function SongDetailFrame<L>({
   );
   const { activeBar, activeSection, playing, seek } = cursor;
 
-  // Keep the playing bar in the middle of what is visible: below the app
-  // header while it is on screen and above the floating dock.
   useEffect(() => {
     if (!follow || !playing || activeBar < 0) return;
     const element = chartRef.current?.querySelector(
@@ -325,7 +268,7 @@ export default function SongDetailFrame<L>({
 
       {panels}
 
-      {hasPlayer && <LibraryPlayer audio={audio} />}
+      {hasPlayer && <LibraryPlayer audio={audio} title={chart.title} />}
       {playerPanels}
 
       <LinkedRecording
@@ -381,13 +324,11 @@ export default function SongDetailFrame<L>({
               />
               Acompanhar a reprodução
             </label>
-            <label
-              className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer"
-              title="Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição"
-            >
+            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={markRepeats}
+                aria-describedby="repeat-rule"
                 onChange={(e) => {
                   setMarkRepeats(e.target.checked);
                   writeMarkRepeats(e.target.checked);
@@ -396,6 +337,10 @@ export default function SongDetailFrame<L>({
               />
               Marcar repetições
             </label>
+            <p id="repeat-rule" className="text-meta text-text-muted">
+              Nas seções com “por linha”, o compasso igual ao de cima vira o
+              sinal de repetição
+            </p>
           </div>
         </div>
         {chartPanels}
@@ -442,7 +387,6 @@ export default function SongDetailFrame<L>({
         </p>
       </div>
 
-      {/* Room under the last bars so the fixed dock never hides them. */}
       <div aria-hidden style={{ height: dockHeight }} />
       <PlaybackDock
         dockRef={dockRef}
@@ -500,12 +444,10 @@ function FrameSection<L>({
   block: BassChartSectionBlock;
   isActive: boolean;
   panels: ReactNode;
-  /** The line length of the section, or null to wrap at the screen's edge. */
   lineLength: number | null;
   onLineLengthChange: (count: number | null) => void;
   ownLength: boolean;
   onClearOwnLength: () => void;
-  /** Leave a bar that repeats the one above empty, under a repeat sign. */
   markRepeats: boolean;
   baseBeatWidth: number;
   barChrome: number;
@@ -523,22 +465,17 @@ function FrameSection<L>({
   useEffect(() => {
     const element = linesRef.current;
     if (lineLength === null || !element) return;
-    // The exact width: a rounded one could be wider than the line, and the
-    // last bar would wrap.
     const observer = new ResizeObserver(() =>
       setLineWidth(element.getBoundingClientRect().width),
     );
     observer.observe(element);
     return () => observer.disconnect();
   }, [lineLength]);
-  // The beats of the widest bar of the section size the line.
   const mostBeats = Math.max(
     ...chart.bars
       .slice(section.startBar, section.endBar)
       .map((b) => b.beatCount),
   );
-  // The widest beat any bar of the section needs, so that no two labels
-  // touch; all bars of the section share it.
   const needed = useMemo(
     () =>
       neededBeatWidth(
@@ -549,10 +486,6 @@ function FrameSection<L>({
       ),
     [chart, section, barLanes, labelGap],
   );
-  // One beat width for the whole section, so the beats align from line to
-  // line: the one that makes a line of its widest bars fill the line. A set
-  // line length always holds: the bars take the width that fits.
-  // The start of a line takes its width, and one gap, from the bars.
   const startWidth = lineStart ? lineStart.width + BAR_GAP : 0;
   const beatWidth =
     lineLength === null || lineWidth === null
@@ -569,7 +502,6 @@ function FrameSection<L>({
     () => sectionLayout(section, beatWidth),
     [sectionLayout, section, beatWidth],
   );
-  // "Above" only means something once the lines have a set length.
   const repeats: ReadonlyMap<number, number> = useMemo(
     () =>
       markRepeats && lineLength
@@ -577,8 +509,6 @@ function FrameSection<L>({
         : NO_REPEATS,
     [markRepeats, lineLength, block, barDrawing],
   );
-  // In the automatic layout the browser wraps the bars, so the frame reads
-  // where each line of bars starts: the top of each line that holds a bar.
   const wrapRef = useRef<HTMLDivElement>(null);
   const [lineTops, setLineTops] = useState<number[]>([]);
   const hasLineStart = lineStart !== undefined;
@@ -741,7 +671,6 @@ function FrameSection<L>({
                 }
               >
                 {lineStart && (
-                  // A line with only a rest keeps the room, with no labels.
                   <div
                     data-line-start
                     className="shrink-0"
@@ -761,7 +690,6 @@ function FrameSection<L>({
   );
 }
 
-/** The recording linked to the song: what plays, and the file picker. */
 function LinkedRecording({
   state,
   saveError,

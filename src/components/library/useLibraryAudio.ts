@@ -1,3 +1,4 @@
+import { playbackSession } from '@/services/playbackSession';
 import { useEffect, useRef, useState } from 'react';
 import type { BassMixMode } from '@/domain/bassMix';
 import { createBassMixGraph, type BassMixGraph } from '@/services/bassMixGraph';
@@ -22,19 +23,10 @@ export interface BassMixSetting {
   crossoverHz: number;
 }
 
-/**
- * Wrap an <audio> element for the Biblioteca player. `url` may be null while
- * the source is being probed (no player rendered upstream); a fresh URL
- * swaps the source and rewinds to zero. Cleans up on unmount so we never
- * leak the underlying media element or its ticker.
- *
- * `bassMix` filters playback into a practice mix. The Web Audio graph is
- * built only when a filtered mix is first chosen, so plain playback never
- * depends on an AudioContext.
- */
 export function useLibraryAudio(
   url: string | null,
-  bassMix?: BassMixSetting,
+  bassMix?: BassMixSetting | string,
+  mediaTitle = 'Biblioteca',
 ): LibraryAudio {
   const [state, setState] = useState<LibraryAudioState>({
     ready: false,
@@ -45,8 +37,9 @@ export function useLibraryAudio(
   const sessionRef = useRef<LibraryAudioSession | null>(null);
   const mediaRef = useRef<HTMLAudioElement | null>(null);
   const graphRef = useRef<BassMixGraph | null>(null);
-  const mixMode = bassMix?.mode ?? 'full';
-  const crossoverHz = bassMix?.crossoverHz ?? 0;
+  const mixMode = typeof bassMix === 'object' ? bassMix.mode : 'full';
+  const title = typeof bassMix === 'string' ? bassMix : mediaTitle;
+  const crossoverHz = typeof bassMix === 'object' ? bassMix.crossoverHz : 0;
 
   useEffect(() => {
     setState({
@@ -65,15 +58,36 @@ export function useLibraryAudio(
     sessionRef.current = session;
     mediaRef.current = audio;
     audio.src = url;
+    const id = Symbol('library');
+    const closeMedia = playbackSession.openLibrary({
+      title,
+      play: async () => {
+        void graphRef.current?.resume();
+        await session.play().catch(() => {});
+      },
+      pause: () => session.pause(),
+    });
+    const onPlaying = () => playbackSession.start(id);
+    const onStop = () => playbackSession.stop(id);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('pause', onStop);
+    audio.addEventListener('ended', onStop);
+    audio.addEventListener('error', onStop);
 
     return () => {
       session.dispose();
+      onStop();
+      closeMedia();
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('pause', onStop);
+      audio.removeEventListener('ended', onStop);
+      audio.removeEventListener('error', onStop);
       graphRef.current?.dispose();
       graphRef.current = null;
       if (sessionRef.current === session) sessionRef.current = null;
       if (mediaRef.current === audio) mediaRef.current = null;
     };
-  }, [url]);
+  }, [url, title]);
 
   useEffect(() => {
     const media = mediaRef.current;

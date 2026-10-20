@@ -19,11 +19,6 @@ import { confirmDialog } from '@/services/confirm';
 import { fixtureDrumChart, type HitSpec } from '@/domain/drumChartFixture';
 import type { LabelLane } from '@/domain/bassChart';
 
-// The frame with a part that is not the bass: a drum chart, which has hits
-// and no bass notes, and a bar that is one plain button. The frame must lay
-// the bars out, hold the line lengths, mark the repeats and move the cursor
-// with no control of the bass.
-
 const state = vi.hoisted(() => ({ seeks: [] as number[] }));
 vi.mock('@/services/confirm', () => ({
   confirmDialog: vi.fn(() => Promise.resolve(true)),
@@ -37,10 +32,6 @@ const BASE_BEAT_WIDTH = 20;
 const BAR_CHROME = 10;
 const NO_LANES: LabelLane[] = [];
 
-/**
- * Ten bars: an intro of two bars with no hit, then a verse of eight bars with
- * a kick on beat 1 and a snare on beat 3; the last bar has one more snare.
- */
 const specs: HitSpec[] = [
   ...Array.from({ length: 8 }, (_, i) => [
     { bar: i + 2, beat: 0, midi: 36 },
@@ -62,7 +53,6 @@ const barDrawing = (bar: number): string | null => {
 };
 const sectionLayout = () => null;
 const LINE_START_WIDTH = 50;
-/** What a part with rows draws at the start of each line of bars. */
 const rowLabels: LineStart<null> = {
   width: LINE_START_WIDTH,
   render: () => <span data-row-names>Peças</span>,
@@ -77,7 +67,6 @@ function Part({
   playing?: boolean;
   lineStart?: LineStart<null>;
 }) {
-  // A seek moves the clock, as the transport of a real player does.
   const [currentSeconds, setCurrentSeconds] = useState(0);
   const audio = {
     ready: true,
@@ -167,7 +156,6 @@ const allLengths = () =>
     'Compassos por linha de todas as seções',
   ) as HTMLSelectElement;
 
-/** A line that the frame can measure: `LINE_WIDTH` pixels wide. */
 function measuredLines() {
   vi.stubGlobal(
     'ResizeObserver',
@@ -196,6 +184,19 @@ afterEach(() => {
 });
 
 describe('frame of the song detail', () => {
+  it('shows the repetition rule without hovering the checkbox', () => {
+    render(<Part />);
+    expect(
+      screen.getByText(
+        'Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByLabelText('Marcar repetições')
+        .getAttribute('aria-describedby'),
+    ).toBe('repeat-rule');
+  });
   it('shows the song, the stats of any chart, and the sections', () => {
     render(<Part />);
     expect(screen.getByRole('heading', { name: 'Test' })).toBeTruthy();
@@ -212,7 +213,6 @@ describe('frame of the song detail', () => {
     expect(screen.getByText('Intro')).toBeTruthy();
     expect(screen.getByText('Verso')).toBeTruthy();
     expect(screen.getByText(/· 8 compassos/)).toBeTruthy();
-    // The two bars of the intro that the part does not fill are one rest.
     expect(screen.getByText('Pausa ×2')).toBeTruthy();
     expect(screen.getByText('compassos 1–2')).toBeTruthy();
     expect(bars().map((bar) => Number(bar.dataset.bar))).toEqual([
@@ -242,10 +242,7 @@ describe('frame of the song detail', () => {
     }
     expect(screen.queryByRole('radiogroup')).toBeNull();
     expect(screen.queryByRole('group')).toBeNull();
-    // The tab and the fretboard draw their numbers and names in an SVG; the
-    // frame draws only the icons of the player.
     expect(document.querySelector('svg text')).toBeNull();
-    // The options of the frame: the line length, the follow, the repeats.
     expect(
       [...document.querySelectorAll('input[type="checkbox"]')].map(
         (input) => input.parentElement?.textContent,
@@ -295,13 +292,10 @@ describe('frame of the song detail', () => {
       [2, 3, 4, 5],
       [6, 7, 8, 9],
     ]);
-    // A measured row has no flex wrap.
     expect(wrapping()).toEqual([]);
-    // (1000 - 3 gaps of 4 - 4 × 10 of chrome) / 16 beats, in 1/64 px.
     expect(new Set(bars().map((bar) => bar.dataset.beatWidth))).toEqual(
       new Set(['59.25']),
     );
-    // No divisor rule: three bars to a line leave a last line of two.
     fireEvent.change(verseLength(), { target: { value: '3' } });
     expect(barsOfLines()).toEqual([
       [2, 3, 4],
@@ -309,7 +303,6 @@ describe('frame of the song detail', () => {
       [8, 9],
     ]);
     expect(wrapping()).toEqual([]);
-    // Eight bars narrow the beats, and the line length still holds.
     fireEvent.change(verseLength(), { target: { value: '8' } });
     expect(barsOfLines()).toEqual([[2, 3, 4, 5, 6, 7, 8, 9]]);
     expect(wrapping()).toEqual([]);
@@ -340,7 +333,6 @@ describe('frame of the song detail', () => {
     fireEvent.change(allLengths(), { target: { value: '4' } });
     await waitFor(() => expect(verseLength().value).toBe('4'));
     expect(introLength().value).toBe('4');
-    // The intro is one rest on one line; the verse has two lines of four.
     expect(barsOfLines()).toEqual([[], [2, 3, 4, 5], [6, 7, 8, 9]]);
     expect(confirmDialog).not.toHaveBeenCalled();
     expect(document.querySelectorAll('[data-own-length]').length).toBe(0);
@@ -355,7 +347,6 @@ describe('frame of the song detail', () => {
       [6, 7],
       [8, 9],
     ]);
-    // A section has its own value: the control for all asks first.
     fireEvent.change(allLengths(), { target: { value: '8' } });
     await waitFor(() => expect(verseLength().value).toBe('8'));
     expect(confirmDialog).toHaveBeenCalledTimes(1);
@@ -370,17 +361,14 @@ describe('frame of the song detail', () => {
         .filter((bar) => bar.dataset.repeatOf !== undefined)
         .map((bar) => [Number(bar.dataset.bar), Number(bar.dataset.repeatOf)]);
     fireEvent.change(verseLength(), { target: { value: '4' } });
-    // The repeats are drawn in full until the musician asks for the marks.
     expect(repeats()).toEqual([]);
     fireEvent.click(screen.getByLabelText('Marcar repetições'));
-    // The last bar has one more hit than the bar above it.
     expect(repeats()).toEqual([
       [6, 2],
       [7, 3],
       [8, 4],
     ]);
     expect(localStorage.getItem('music-theory-lab:mark-repeats')).toBe('true');
-    // "Above" means nothing in the automatic layout.
     fireEvent.change(verseLength(), { target: { value: '' } });
     expect(repeats()).toEqual([]);
   });
@@ -401,18 +389,15 @@ describe('frame of the song detail', () => {
     expect(state.seeks).toEqual([chart.bars[5].startTime]);
     expect(active()).toEqual([5]);
     expect(bars()[3].dataset.playhead).toBe('0');
-    // The frame marks the section of the cursor.
     expect(heading('Verso').classList.contains('text-text-primary')).toBe(true);
     expect(heading('Intro').classList.contains('text-text-primary')).toBe(
       false,
     );
 
-    // The cursor holds when the line length changes.
     fireEvent.change(verseLength(), { target: { value: '4' } });
     expect(active()).toEqual([5]);
     expect(state.seeks).toEqual([chart.bars[5].startTime]);
 
-    // A seek to the start of the song leaves the clock at zero: no cursor.
     fireEvent.click(screen.getByText('Pausa ×2'));
     expect(state.seeks).toEqual([
       chart.bars[5].startTime,
@@ -424,9 +409,6 @@ describe('frame of the song detail', () => {
   });
 
   it('scrolls to the bar under the playhead while the song plays', () => {
-    // The bar is 100 px tall at 600 px; the dock starts at 700 px, and the
-    // page has no header. The middle of the bar goes to the middle of the
-    // room above the dock: 650 - 350.
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -444,7 +426,6 @@ describe('frame of the song detail', () => {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     try {
       const { unmount } = render(<Part playing />);
-      // The playhead starts in the rest of the intro, which is not a bar.
       expect(scrollTo).not.toHaveBeenCalled();
       fireEvent.click(bars()[2]);
       expect(state.seeks).toEqual([chart.bars[4].startTime]);
@@ -453,14 +434,12 @@ describe('frame of the song detail', () => {
         top: 300,
         behavior: 'smooth',
       });
-      // The musician turns the follow off: the page stays where it is.
       fireEvent.click(screen.getByLabelText('Acompanhar a reprodução'));
       fireEvent.click(bars()[5]);
       expect(state.seeks).toHaveLength(2);
       expect(scrollTo).toHaveBeenCalledTimes(1);
       unmount();
 
-      // A song that does not play does not move the page.
       state.seeks = [];
       render(<Part />);
       fireEvent.click(bars()[2]);
@@ -490,23 +469,18 @@ describe('frame of the song detail', () => {
       '50px',
       '50px',
     ]);
-    // The line of the intro holds only a rest: it keeps the room, so its
-    // rest starts where the bars start, and it has nothing to name.
     expect(starts.map((start) => start.textContent)).toEqual([
       '',
       'Peças',
       'Peças',
     ]);
     expect(barsOfLines()).toEqual([[], [2, 3, 4, 5], [6, 7, 8, 9]]);
-    // The bars share what the line start leaves:
-    // (1000 - 50 - 4 - 3 gaps of 4 - 4 × 10 of chrome) / 16 beats.
     expect(new Set(bars().map((bar) => bar.dataset.beatWidth))).toEqual(
       new Set(['55.875']),
     );
   });
 
   it('draws the line start of the part at each line that the browser wraps', () => {
-    // The browser puts bars 3 to 6 on a first line and 7 to 10 on a second.
     const offsetTop = vi
       .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
       .mockImplementation(function (this: HTMLElement) {
@@ -518,7 +492,6 @@ describe('frame of the song detail', () => {
       const starts = [
         ...document.querySelectorAll<HTMLElement>('[data-line-start]'),
       ];
-      // The intro is one rest, with no bar: it has no line start.
       expect(starts.map((start) => start.style.top)).toEqual(['0px', '80px']);
       expect(starts.map((start) => start.textContent)).toEqual([
         'Peças',
@@ -526,7 +499,6 @@ describe('frame of the song detail', () => {
       ]);
       const wrap = bars()[0].parentElement as HTMLElement;
       expect(starts.every((start) => start.parentElement === wrap)).toBe(true);
-      // The bars start after the room of the line start and one gap.
       expect(wrap.style.paddingLeft).toBe('54px');
       expect(wrap.classList.contains('flex-wrap')).toBe(true);
     } finally {

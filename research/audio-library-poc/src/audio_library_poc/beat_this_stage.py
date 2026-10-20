@@ -1,12 +1,3 @@
-"""Bridge that runs the Beat This! beat-tracking model inside the stage seam.
-
-Structure mirrors ``SeparatorStageExecutor``: validate config, require
-model identity, resolve the source audio inside the workspace, hash-verify
-it against ``input_sha256``, then call the runtime. The Beat This! runtime
-returns a strict ``BeatAnalysisResult`` plus the name of the JSON artifact
-to publish.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,15 +37,6 @@ _RESULT_ARTIFACT_FILENAME = "beat-analysis-result.json"
 
 
 class BeatThisStageConfig(ContractModel):
-    """Config surface for a beat.beat_this stage.
-
-    ``source_relative_path`` and ``checkpoint_relative_path`` locate the
-    audio file and the pinned Beat This! ``.ckpt`` inside the workspace.
-    Precision maps to Beat This!'s ``float16`` boolean; use_dbn to its
-    optional madmom-DBN post-processor (off by default per the Phase 3
-    plan).
-    """
-
     source_relative_path: str = Field(min_length=1)
     checkpoint_relative_path: str = Field(min_length=1)
     device: str = Field(default="cuda", min_length=1, max_length=128)
@@ -75,8 +57,6 @@ class BeatThisStageConfig(ContractModel):
 
 
 class BeatThisStageExecutor:
-    """StageExecutor for the beat.beat_this stage kind."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
 
@@ -102,8 +82,6 @@ class BeatThisStageExecutor:
             _require_model_identity(specification)
             source_path = _resolve_source(self.workspace, config.source_relative_path)
             _verify_source_hash(source_path, identity.input_sha256)
-            # Resolve before the lazy import so a missing checkpoint keeps its
-            # specific typed diagnostic on machines without inference extras.
             _resolve_checkpoint(self.workspace, config.checkpoint_relative_path)
             from audio_library_poc._beat_this_runtime import run_beat_this_inference
 
@@ -121,7 +99,7 @@ class BeatThisStageExecutor:
                 identity=identity,
                 error=exc.error,
             )
-        except Exception as exc:  # noqa: BLE001 - analyzer boundary is fail-closed
+        except Exception as exc:
             result, metrics = _failed_analysis_result(
                 source_path=source_path,
                 config=config,
@@ -308,7 +286,6 @@ def build_beat_this_metrics(
     downbeat_count: int,
     tempo_bpm: float,
 ) -> Metrics:
-    """Shared helper: metric shape the runtime returns and tests assert against."""
 
     return Metrics(
         duration_seconds=wall_seconds,
@@ -321,11 +298,6 @@ def build_beat_this_metrics(
 
 
 def _resolve_checkpoint(workspace: Path, checkpoint_relative_path: str) -> Path:
-    """Validate the checkpoint exists inside the workspace.
-
-    Mirrors the resolution the runtime performs, so the typed failure is
-    identical whether or not torch is importable.
-    """
 
     return resolve_workspace_asset(
         workspace,

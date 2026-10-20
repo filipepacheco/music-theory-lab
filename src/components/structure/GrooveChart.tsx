@@ -73,12 +73,6 @@ function groupStems(
   });
 }
 
-/**
- * A compact drum chart in standard notation, close to the one of Songsterr:
- * the hi-hat is an `x` above the staff, the snare is in the third space, and
- * the kick is in the first space. All stems go down to the beams under the
- * staff, with one beam group for each beat (for each half bar in eighths).
- */
 export function GrooveChart({
   groove,
   color,

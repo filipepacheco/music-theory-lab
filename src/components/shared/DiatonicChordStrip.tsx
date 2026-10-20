@@ -12,7 +12,6 @@ interface DiatonicChordStripProps {
   onSelect: (step: ProgressionStep) => void;
 }
 
-/** Harmonic-field chord strip: preview + add, capped at MAX_PROGRESSION_STEPS. */
 export default function DiatonicChordStrip({
   title,
   stepCount,
@@ -36,7 +35,11 @@ export default function DiatonicChordStrip({
           {stepCount} acordes
         </span>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label={title}>
+      <div
+        className="flex gap-2 overflow-x-auto pb-2"
+        role="group"
+        aria-label={title}
+      >
         {harmonicField.map((chord, index) => (
           <ChordCard
             key={`${chord.chordName}-${index}`}

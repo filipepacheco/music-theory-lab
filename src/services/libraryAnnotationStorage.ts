@@ -30,9 +30,7 @@ export function listLibraryAnnotations(
         const document = current ?? migrateStoredV1Annotation(row, raw);
         if (document) documents.push(document);
         if (!current && document) migrations.push(document);
-      } catch {
-        // Malformed local rows are never candidates for cloud replacement.
-      }
+      } catch {}
     }
   } finally {
     statement.free();

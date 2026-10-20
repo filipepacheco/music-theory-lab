@@ -1,7 +1,6 @@
 import type { BassChartSource } from '@/domain/bassChart';
 import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
 
-/** An analysed track, as far as grouping needs to know it. */
 export interface AnalysedTrackRef {
   sha: string;
   title: string;
@@ -9,25 +8,21 @@ export interface AnalysedTrackRef {
   durationSeconds?: number;
 }
 
-/** What a row opens: the chart of its best source, or the analysis. */
 export type LibrarySongTarget =
   | { kind: 'chart'; id: string }
   | { kind: 'analysis'; sha: string };
 
-/** One row of the list: the charts and analysed tracks of one song key. */
 export interface LibrarySong {
   key: string;
   title: string;
   artist: string;
   charts: ChartSummary[];
   analysed: AnalysedTrackRef[];
-  /** The sources of the charts, best first. */
   sources: BassChartSource[];
   parts: ChartPart[];
   best: LibrarySongTarget;
 }
 
-/** Words that name the file, not the song. */
 const FILE_WORDS = new Set([
   'bass',
   'baixo',
@@ -47,30 +42,23 @@ const SOURCE_ORDER: BassChartSource[] = ['gp', 'rocksmith', 'midi'];
 
 function normalizeText(text: string): string {
   let result = text;
-  // Text in brackets, repeated for nested pairs.
   for (let i = 0; i < 3; i += 1) {
     result = result.replace(/\([^()]*\)|\[[^[\]]*\]|\{[^{}]*\}/g, ' ');
   }
-  return (
-    result
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      // Letters and digits of every script stay, with the marks that are part
-      // of a letter (the voiced mark of kana, the vowel signs of Hindi).
-      .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
-      .trim()
-      .normalize('NFC')
-  );
+  return result
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
+    .trim()
+    .normalize('NFC');
 }
 
-/** The part of a song key that comes from one text (title or artist). */
 function keyPart(text: string, dropFileWords: boolean): string {
   const words = normalizeText(text).split(' ').filter(Boolean);
   const kept = words.filter((word, index) => {
     if (!dropFileWords) return true;
     if (FILE_WORDS.has(word)) return false;
-    // A version number: v2, or a number after "version", "ver", or "v".
     if (/^v\d+$/.test(word)) return false;
     if (/^\d+$/.test(word) && index > 0) {
       const before = words[index - 1];
@@ -83,11 +71,6 @@ function keyPart(text: string, dropFileWords: boolean): string {
   return kept.join(' ');
 }
 
-/**
- * The song key: the normalized title and artist. Lower case, no accents, no
- * punctuation, no text in brackets, and no word that names the file. It is
- * not a musical key.
- */
 export function songKey(title: string, artist: string): string {
   return `${keyPart(title, true)}|${keyPart(artist, false)}`;
 }
@@ -106,15 +89,10 @@ function hasArtist(key: string): boolean {
   return key.slice(key.indexOf('|') + 1) !== '';
 }
 
-/** The key of a member that never groups. It has no artist part. */
 function ownKey(id: string): string {
   return `separate:${id}|`;
 }
 
-/**
- * The song key of a member. A key without a title names no song: a title of
- * only punctuation, brackets, or file words. Such a member stays alone.
- */
 function calculatedKey(title: string, artist: string, id: string): string {
   const key = songKey(title, artist);
   return titleOf(key) === '' ? ownKey(id) : key;
@@ -124,11 +102,6 @@ function sourceRank(source: BassChartSource): number {
   return SOURCE_ORDER.indexOf(source);
 }
 
-/**
- * Group charts and analysed tracks into library songs. The group is a view:
- * it reads its input and changes nothing stored. `overrides` maps a chart id
- * to a song key or `separate` (from the group override of its settings).
- */
 export function groupLibrarySongs(
   charts: ChartSummary[],
   tracks: AnalysedTrackRef[],
@@ -153,7 +126,6 @@ export function groupLibrarySongs(
     ),
   ];
 
-  // A member without an artist joins by title when one song has that title.
   const keysByTitle = new Map<string, Set<string>>();
   for (const { key } of members) {
     if (!hasArtist(key)) continue;
@@ -210,11 +182,6 @@ export function groupLibrarySongs(
   });
 }
 
-/**
- * The song that an imported chart joins, or null when it makes a song of its
- * own (or only replaces a chart that was already there). The group overrides
- * count: a chart that was moved or separated is not in its calculated song.
- */
 export function songJoinedByImport(
   charts: ChartSummary[],
   tracks: AnalysedTrackRef[],
@@ -229,11 +196,6 @@ export function songJoinedByImport(
   return song.charts.length + song.analysed.length > 1 ? song : null;
 }
 
-/**
- * The songs that can take a chart by a move: not the song that holds it, not a
- * separated song, and not a song that already holds a chart of the same source
- * and part (the address would name two charts).
- */
 export function moveTargets(
   songs: LibrarySong[],
   chart: ChartSummary,

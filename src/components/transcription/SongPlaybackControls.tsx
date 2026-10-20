@@ -1,3 +1,4 @@
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useCallback, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useStepPlayer } from '@/hooks/useStepPlayer';
@@ -24,7 +25,6 @@ export default function SongPlaybackControls({
 
   const [originalBpm, setOriginalBpm] = useState(bpm);
 
-  // Compute which steps to play based on loopSection
   const getPlaybackSteps = useCallback((): ProgressionStep[] => {
     if (loopSection) {
       const section = songSections[activeSectionIndex];
@@ -65,6 +65,11 @@ export default function SongPlaybackControls({
     play({ steps: getPlaybackSteps() });
   };
 
+  usePlaybackShortcut(() => {
+    if (isPlaying) stop();
+    else handlePlay();
+  }, hasSteps);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
@@ -81,7 +86,6 @@ export default function SongPlaybackControls({
           {isPlaying ? 'Parar' : loopSection ? 'Tocar Seção' : 'Tocar Tudo'}
         </Button>
 
-        {/* Loop section toggle */}
         <Button
           size="sm"
           pressed={loopSection}

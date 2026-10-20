@@ -372,8 +372,6 @@ def test_fatal_classification_change_requires_a_new_major_gate_version() -> None
 
 
 def test_waveform_measurement_uses_rms_channel_fold_and_ignores_edge_silence() -> None:
-    # Opposite-polarity stereo would cancel under signed summation. The required
-    # RMS fold still marks the middle 16 seconds active.
     audio = np.zeros((2000, 2), dtype=np.float32)
     audio[70:1670, 0] = 0.25
     audio[70:1670, 1] = -0.25

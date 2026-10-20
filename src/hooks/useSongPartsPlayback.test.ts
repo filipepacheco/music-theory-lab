@@ -1,6 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  waitFor,
+} from '@testing-library/react';
+import { createElement } from 'react';
+import LibraryPlayer from '@/components/library/LibraryPlayer';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import { summarizeChart } from '@/domain/chartSummary';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
@@ -75,6 +84,37 @@ afterEach(() => {
 });
 
 describe('useSongPartsPlayback', () => {
+  it('routes Space through the Library player to all parts of the open song', async () => {
+    const { bass, summaries } = await songOf('same');
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(bass.id, 'bass', summaries),
+    );
+    act(() => result.current.reportRecording(bass.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    const player = render(
+      createElement(LibraryPlayer, {
+        audio: result.current.audio,
+      }),
+    );
+    await act(async () => {
+      fireEvent.keyDown(document.body, { key: ' ', code: 'Space' });
+    });
+    expect(result.current.audio.playing).toBe(true);
+    expect(engine.scheduleBassNote).toHaveBeenCalled();
+    expect(engine.scheduleDrumHit).toHaveBeenCalled();
+    player.rerender(
+      createElement(LibraryPlayer, {
+        audio: result.current.audio,
+      }),
+    );
+    act(() => {
+      fireEvent.keyDown(document.body, { key: ' ', code: 'Space' });
+    });
+    expect(result.current.audio.playing).toBe(false);
+    expect(engine.stopBassNotes).toHaveBeenCalled();
+    expect(engine.stopDrumHits).toHaveBeenCalled();
+  });
+
   it('pairs the bass chart with the drum chart of its file and plays both on one clock', async () => {
     const { bass, summaries } = await songOf('same');
     const { result } = renderHook(() =>
@@ -92,7 +132,6 @@ describe('useSongPartsPlayback', () => {
     expect(engine.scheduleDrumHit).toHaveBeenCalled();
     const bassWhen = engine.scheduleBassNote.mock.calls[0][3] as number;
     const drumWhen = engine.scheduleDrumHit.mock.calls[0][1] as number;
-    // Both first events sit at chart time 0: the same moment on the clock.
     expect(Math.abs(bassWhen - drumWhen)).toBeLessThan(0.001);
     act(() => result.current.audio.pause());
   });
@@ -116,7 +155,6 @@ describe('useSongPartsPlayback', () => {
     act(() => {
       result.current.reportRecording(bass.id, false);
     });
-    // Let the pair lookup and the chart loads settle.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
     });
@@ -182,8 +220,6 @@ describe('useSongPartsPlayback', () => {
 
   it('keeps playing across a change of part: the new part reports only after its storage answers', async () => {
     const { drums, hook } = await playingPair();
-    // The new detail mounts with its audio still loading and reports nothing;
-    // then its storage answers "missing".
     hook.rerender({ id: drums.id, part: 'drums' });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 60));

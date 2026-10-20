@@ -18,7 +18,6 @@ export class MidiImportError extends Error {
   }
 }
 
-/** User-facing (pt-BR) message for an import failure. */
 export function midiImportErrorMessage(error: unknown): string {
   const kind = error instanceof MidiImportError ? error.kind : null;
   switch (kind) {
@@ -33,12 +32,6 @@ export function midiImportErrorMessage(error: unknown): string {
   }
 }
 
-/**
- * A MIDI file carries no recording: the charts are imported without audio and
- * the user attaches one, which only lines up if the file follows its timing.
- * A file gives one chart for each part that it has, the bass chart first, and
- * it asks no question about tracks.
- */
 export async function importMidi(
   file: Blob & { name: string },
   now: Date = new Date(),
@@ -60,7 +53,6 @@ export async function importMidi(
       charts.push(
         buildBassChart({
           ...shared,
-          // The id of the bass chart stays the hash of the file.
           id: await partChartId(fileHash, 'bass'),
           arrangement: midiToArrangement(midi, channel),
         }),
@@ -84,10 +76,6 @@ export async function importMidi(
   return { charts, audio: null };
 }
 
-/**
- * MIDI files rarely name the song inside, so it comes from the file name:
- * `Title - Artist.mid`, with underscores standing in for spaces.
- */
 export function metadataFromFileName(name: string): BassChartMetadata {
   const [title, ...artist] = name
     .replace(/\.[^.]+$/, '')

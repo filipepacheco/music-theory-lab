@@ -23,10 +23,7 @@ function deviceQuery(): string {
   return `device_id=${encodeURIComponent(getDeviceId())}`;
 }
 
-async function postRecords(
-  path: string,
-  records: object[],
-): Promise<void> {
+async function postRecords(path: string, records: object[]): Promise<void> {
   const response = await fetch(`${API_BASE}/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,10 +48,6 @@ async function pullRows<T>(path: string, withDevice = true): Promise<T[]> {
   if (!res.ok) return [];
   return res.json();
 }
-
-// ---------------------------------------------------------------------------
-// Push (fire-and-forget from callers)
-// ---------------------------------------------------------------------------
 
 export async function pushProgression(prog: SavedProgression): Promise<void> {
   await postRecords('progressions', [
@@ -124,21 +117,15 @@ export async function pushDeleteStructure(id: string): Promise<void> {
   await deleteRecord('structures', id);
 }
 
-// ---------------------------------------------------------------------------
-// Pull
-// ---------------------------------------------------------------------------
-
 export function pullProgressions(): Promise<CloudProgression[]> {
   return pullRows<CloudProgression>('progressions');
 }
 
 export function pullSongs(): Promise<CloudSong[]> {
-  // Transcriptions are shared globally across devices — no device filter.
   return pullRows<CloudSong>('songs', false);
 }
 
 export function pullStructures(): Promise<CloudStructure[]> {
-  // Structures are shared globally across devices — no device filter.
   return pullRows<CloudStructure>('structures', false);
 }
 
@@ -155,11 +142,6 @@ export async function pullLibraryAnnotations(): Promise<
   });
 }
 
-// ---------------------------------------------------------------------------
-// Full sync
-// ---------------------------------------------------------------------------
-
-/** What sync needs from one persisted collection. */
 export interface SyncCollection<Local, Cloud> {
   listLocal: () => Local[];
   applyCloud: (record: Cloud) => void;
@@ -174,7 +156,6 @@ export interface SyncDeps {
     LibraryAnnotationDocument,
     LibraryAnnotationDocument
   >;
-  /** Single flush after all cloud upserts. */
   persist: () => void;
 }
 
@@ -193,7 +174,6 @@ function applyLastWriteWins<
   }
 }
 
-/** Bidirectional merge: union for progressions, last-write-wins elsewhere. */
 export async function syncAll(deps: SyncDeps): Promise<void> {
   const [cloudProgs, cloudSongs, cloudStructures, cloudAnnotations] =
     await Promise.all([
@@ -234,6 +214,5 @@ export async function syncAll(deps: SyncDeps): Promise<void> {
     mergeLastWriteWins(deps.structures.listLocal(), cloudStructures),
   );
 
-  // Single persist after all upserts (instead of per-upsert)
   deps.persist();
 }

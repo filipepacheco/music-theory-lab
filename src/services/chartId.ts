@@ -9,11 +9,6 @@ export async function sha256Hex(
   ).join('');
 }
 
-/**
- * The id of the chart of one part of a file. The bass chart keeps the hash
- * of the file, so a chart from before the drum charts stays the same chart.
- * A different part gets a hash of the file hash and the part name.
- */
 export async function partChartId(
   fileHash: string,
   part: ChartPart,

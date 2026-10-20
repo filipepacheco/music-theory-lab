@@ -1,12 +1,3 @@
-"""Versioned contracts for Phase 3 key-detection output.
-
-One transparent HPCP/profile baseline per the Phase 3 plan. The
-architecture doc specifies "retains scores for all 24 major/minor
-candidates" — the result carries all 24 scores sorted best-first so
-downstream consumers can compute top-k, calibrate confidence, or
-inspect the second-best candidate directly.
-"""
-
 from __future__ import annotations
 
 from typing import Literal, Self
@@ -29,8 +20,6 @@ from audio_library_poc.models import (
 
 
 class FrozenKeyModel(ContractModel):
-    """Immutable base for the committed key contracts."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 
@@ -129,6 +118,5 @@ class KeyAnalysisResult(FrozenKeyModel):
 
 
 def peak_margin(result: KeyAnalysisResult) -> float:
-    """Convenience: top-1 score minus top-2 score. Larger = more confident."""
 
     return float(result.estimates[0].score - result.estimates[1].score)

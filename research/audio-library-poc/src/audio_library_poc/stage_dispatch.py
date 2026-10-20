@@ -1,5 +1,3 @@
-"""Stage-kind → executor registry used by the orchestrator and CLI."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -92,7 +90,6 @@ _STAGE_KIND_REGISTRY: dict[str, StageExecutorFactory] = {
 
 
 def known_stage_kinds() -> tuple[str, ...]:
-    """Return the stable, sorted set of registered stage kinds."""
 
     return tuple(sorted(_STAGE_KIND_REGISTRY))
 
@@ -100,12 +97,6 @@ def known_stage_kinds() -> tuple[str, ...]:
 def build_stage_dispatcher(
     workspace: Path,
 ) -> Callable[[StageSpecification], StageExecutor]:
-    """Return a dispatcher that resolves per-stage executors from the registry.
-
-    Unknown stage kinds raise ``ExpectedStageFailure`` with a typed error so
-    the orchestrator publishes a clean ``FAILED_TERMINAL`` result instead of
-    a Python traceback.
-    """
 
     workspace_root = Path(workspace)
 

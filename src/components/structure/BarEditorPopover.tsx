@@ -38,7 +38,6 @@ export default function BarEditorPopover({
         onClose();
       }
     }
-    // Delay to avoid the double-click that opened this from closing it
     const timer = setTimeout(() => {
       document.addEventListener('pointerdown', handleClick);
     }, 100);
@@ -58,11 +57,8 @@ export default function BarEditorPopover({
       className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-bg-card border border-border-default p-3 shadow-xl min-w-[200px]"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {/* Time signature */}
       <div className="mb-3">
-        <div className="lh-label mb-1.5">
-          Compasso
-        </div>
+        <div className="lh-label mb-1.5">Compasso</div>
         <div className="flex gap-1">
           {TIME_SIGNATURES.map((ts) => (
             <button
@@ -81,11 +77,8 @@ export default function BarEditorPopover({
         </div>
       </div>
 
-      {/* Accent dots */}
       <div className="mb-3">
-        <div className="lh-label mb-1.5">
-          Acentos
-        </div>
+        <div className="lh-label mb-1.5">Acentos</div>
         <div className="flex flex-col items-start gap-1.5">
           {[0, 1].map((row) => (
             <div key={row} className="flex gap-1.5">
@@ -128,11 +121,8 @@ export default function BarEditorPopover({
         </div>
       </div>
 
-      {/* Color picker */}
       <div>
-        <div className="lh-label mb-1.5">
-          Cor
-        </div>
+        <div className="lh-label mb-1.5">Cor</div>
         <div className="flex flex-wrap gap-1.5 items-center">
           {STRUCTURE_PALETTE.map((color) => (
             <button
@@ -149,7 +139,6 @@ export default function BarEditorPopover({
               style={{ backgroundColor: color }}
             />
           ))}
-          {/* Clear color */}
           <button
             type="button"
             onClick={() => setBarColor(bar.id, undefined)}

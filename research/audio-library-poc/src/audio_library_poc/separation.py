@@ -1,5 +1,3 @@
-"""Versioned contracts for separator output and synthetic validation."""
-
 from __future__ import annotations
 
 import math
@@ -32,8 +30,6 @@ CandidateNativeSourceName = Annotated[
 
 
 class FrozenContractModel(ContractModel):
-    """Immutable contract base that also revalidates existing model instances."""
-
     model_config = ConfigDict(frozen=True, revalidate_instances="always")
 
 
@@ -246,7 +242,6 @@ class SeparationResult(FrozenContractModel):
 
 
 def validate_separation_result(value: object) -> SeparationResult:
-    """Revalidate untrusted input, including objects built with ``model_construct``."""
 
     if isinstance(value, BaseModel):
         value = {

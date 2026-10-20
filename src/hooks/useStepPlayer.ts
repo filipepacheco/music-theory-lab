@@ -5,41 +5,29 @@ import { useMetronome } from '@/hooks/useMetronome';
 import { useSynth } from '@/hooks/useSynth';
 import { createEighthPlaybackEvents } from '@/domain/playbackSchedule';
 import { resolveStep } from '@/domain/stepResolution';
-import type { ProgressionExample, ProgressionStep } from '@/constants/progressions';
+import type {
+  ProgressionExample,
+  ProgressionStep,
+} from '@/constants/progressions';
 
 export interface StepPlayerOptions {
-  /** id stored on the playing descriptor; views match on it. */
   id: string;
   steps: ProgressionStep[];
   mode: 'major' | 'minor';
   presetId: string;
   bpm: number;
-  /** Apply the example's mode/preset/bpm globally before playing (example cards do this). */
   applyGlobals?: boolean;
-  /** Eighths per segment (e.g. per song section); enables onSegmentChange. */
   segmentLengths?: number[];
-  /** Called inside Tone.getDraw when the active step changes; -1 on stop. */
   onStepChange?: (stepIndex: number) => void;
-  /** Called inside Tone.getDraw when the active segment changes; undefined on stop. */
   onSegmentChange?: (segmentIndex: number | undefined) => void;
 }
 
-/**
- * The step player: one module owning everything a progression transport
- * needs — playing state, metronome subscription, eighth counting, event
- * scheduling, step resolution, voicing, and UI highlight side effects.
- * Callers pass steps and options; `play()` accepts per-play overrides.
- */
 export function useStepPlayer(defaults: StepPlayerOptions) {
   const defaultsRef = useRef(defaults);
   defaultsRef.current = defaults;
 
   const { playChord } = useSynth();
-  const {
-    start: startMetronome,
-    stop: stopMetronome,
-    onBeat,
-  } = useMetronome();
+  const { start: startMetronome, stop: stopMetronome, onBeat } = useMetronome();
 
   const playingRef = useRef(false);
   const eighthCountRef = useRef(0);
@@ -66,7 +54,7 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
   }, [stopMetronome]);
 
   const play = useCallback(
-    (overrides?: Partial<StepPlayerOptions>) => {
+    async (overrides?: Partial<StepPlayerOptions>) => {
       const opts = { ...defaultsRef.current, ...overrides };
       if (opts.steps.length === 0) return;
 
@@ -109,6 +97,11 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
           playChord(resolved.notes, 3, '2n', opts.presetId, scheduleTime);
         }
         Tone.getDraw().schedule(() => {
+          if (
+            !playingRef.current ||
+            useAppStore.getState().playingProgression !== prog
+          )
+            return;
           opts.onStepChange?.(stepIndex);
           const state = useAppStore.getState();
           if (resolved.degree !== null) {
@@ -144,6 +137,11 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         for (const event of events) {
           if (event.type === 'timeline') {
             Tone.getDraw().schedule(() => {
+              if (
+                !playingRef.current ||
+                useAppStore.getState().playingProgression !== prog
+              )
+                return;
               useAppStore.getState().setCurrentEighth(event.cycleEighth);
               opts.onSegmentChange?.(segmentIndexAt(event.cycleEighth));
             }, event.scheduleTime);
@@ -153,14 +151,16 @@ export function useStepPlayer(defaults: StepPlayerOptions) {
         }
       });
 
-      if (!useAppStore.getState().isMetronomeOn) {
-        startMetronome();
-      }
+      if (
+        !(await startMetronome()) &&
+        playingRef.current &&
+        useAppStore.getState().playingProgression === prog
+      )
+        stop();
     },
     [onBeat, playChord, startMetronome, stop],
   );
 
-  // Unmount mid-play: release the beat subscription and fully stop.
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) {

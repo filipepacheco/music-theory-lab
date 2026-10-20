@@ -37,7 +37,6 @@ export interface GrooveChartLayout {
   beatX: (measure: number, beat: number) => number;
 }
 
-/** Shared geometry for the browser SVG and the PDF drum chart. */
 export function grooveChartLayout(
   groove: GroovePattern,
   options: GrooveChartLayoutOptions = {},

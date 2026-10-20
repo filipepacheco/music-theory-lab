@@ -1,10 +1,5 @@
-// Imports a Guitar Pro `.gp` file as a new Song. Split layout: controls on the
-// left, the transcription that would be produced permanently visible on the
-// right - so the key, the one input nobody can verify on its own, is chosen
-// while watching it re-map every bar.
-//
-// Shape decided on https://github.com/filipepacheco/music-theory-lab/issues/14.
-
+import { importFormat } from '@/domain/importFormat';
+import Callout from '@/components/shared/Callout';
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
@@ -63,10 +58,6 @@ export default function GpImportPanel() {
     [bars],
   );
 
-  // Without a dirty flag in the store, compare against what was persisted.
-  // Cheap, exact, and it avoids nagging when nothing has actually changed.
-  // Every field the editor can change counts, including key/mode/BPM/preset —
-  // the import replaces the whole open song.
   const dirty = useMemo(() => {
     if (!activeSongId) {
       return songSections.length > 0 || songTitle.trim() !== '';
@@ -108,20 +99,21 @@ export default function GpImportPanel() {
     setHarmonyTrack(null);
     setRootTrack(null);
     setFileName(file.name);
-    // Re-seed from the app's current key here, not at mount: the panel is
-    // mounted for the whole session, so a key chosen after it mounted - by
-    // opening a saved song, say - would otherwise never reach it.
     setKeyRoot(rootNote);
     setIsMinor(storeIsMinor);
+    if (importFormat(file.name) !== 'gp') {
+      setError('Selecione um arquivo Guitar Pro 7/8 (.gp).');
+      return;
+    }
     try {
       const parsed = parseGpFile(new Uint8Array(await file.arrayBuffer()));
       setGp(parsed);
     } catch (e) {
-      setError(
+      const message =
         e instanceof GpParseError
           ? gpParseErrorMessage(e)
-          : 'Não foi possível ler o arquivo.',
-      );
+          : 'Não foi possível ler o arquivo.';
+      setError(`${message} Selecione um arquivo Guitar Pro 7/8 (.gp).`);
     }
   };
 
@@ -180,18 +172,13 @@ export default function GpImportPanel() {
         </span>
       </button>
 
-      {/* Enter-only, and deliberately not wrapped in AnimatePresence. An exit
-          animation keeps the old children mounted while it runs, and this body
-          holds 206 focusable cells; if the animation is ever interrupted - a
-          backgrounded tab throttling rAF is enough - they are stranded in the
-          DOM at opacity 0. Closing here unmounts immediately. */}
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.15 }}
         >
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-4 p-4 pt-0">
+          <div className="transcription-import-columns p-4 pt-0">
             <div className="flex flex-col gap-4">
               <Field label="Arquivo">
                 <label className="block cursor-pointer">
@@ -200,7 +187,6 @@ export default function GpImportPanel() {
                   </span>
                   <input
                     type="file"
-                    accept=".gp"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
@@ -216,7 +202,11 @@ export default function GpImportPanel() {
                 )}
               </Field>
 
-              {error && <p className="text-xs text-danger">{error}</p>}
+              {error && (
+                <Callout tone="danger" role="alert">
+                  {error}
+                </Callout>
+              )}
 
               {gp && (
                 <>
@@ -274,9 +264,7 @@ export default function GpImportPanel() {
                 <div className="flex flex-col gap-3">
                   {summary && (
                     <p className="text-xs font-mono text-text-secondary">
-                      <span className="text-success">
-                        {summary.diatonic}
-                      </span>{' '}
+                      <span className="text-success">{summary.diatonic}</span>{' '}
                       no campo{' '}
                       <span className="text-accent">{summary.chromatic}</span>{' '}
                       cromáticos{' '}
@@ -293,7 +281,7 @@ export default function GpImportPanel() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Button
                       onClick={handleImport}
                       disabled={importing}
@@ -328,12 +316,7 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
           : 'ring-1 ring-inset ring-accent';
 
   return (
-    <div
-      title={
-        bar.detected ?? (bar.carried ? 'mantido do compasso anterior' : '')
-      }
-      className={`px-1.5 py-1 text-center ${tone}`}
-    >
+    <div className={`px-1.5 py-1 text-center ${tone}`}>
       <div className="text-micro font-mono text-text-muted">{bar.bar}</div>
       <div
         className={`text-small font-mono truncate ${
@@ -342,6 +325,11 @@ const BarCell = memo(function BarCell({ bar }: { bar: ImportedBar }) {
       >
         {bar.step.label}
       </div>
+      {(bar.detected || bar.carried) && (
+        <p className="text-meta text-text-muted">
+          {bar.detected ?? 'mantido do compasso anterior'}
+        </p>
+      )}
     </div>
   );
 });

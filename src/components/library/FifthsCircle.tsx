@@ -10,30 +10,21 @@ import {
 } from '@/domain/circleOfFifths';
 
 export interface CircleMark extends CircleCell {
-  /** The bass left the third open, so the ring is a guess. */
   guess: boolean;
 }
 
 interface Props {
   musicalKey: MusicalKey | null;
   current: CircleMark | null;
-  /** Where the harmony goes next: outlined, with an arrow from `current`. */
   next: CircleMark | null;
-  /** pt-BR description of the coming root move, shown under the circle. */
   caption: string | null;
-  /** pt-BR note on whether the current chord's third was played. */
   note: string | null;
-  /** Shown small in the middle, e.g. `D menor`. */
   centerLabel: string | null;
-  /** Shown large in the middle: the current chord, e.g. `Am`. */
   centerChord: string | null;
-  /** Shown small under it: the next chord, e.g. `Dm`. */
   nextChord: string | null;
-  /** Rendered width and height in pixels. */
   size: number;
 }
 
-/** Drawing units; the SVG scales to `size`. */
 const VIEW = 300;
 const CENTER = VIEW / 2;
 const RINGS = {
@@ -41,7 +32,6 @@ const RINGS = {
   minor: { outer: 102, inner: 62 },
 } as const;
 const FONT = { major: 15, minor: 12, numeral: 10 } as const;
-/** Dark text that stays readable on the amber highlight in both themes. */
 const ON_HIGHLIGHT = 'var(--color-on-accent)';
 
 function point(radius: number, degrees: number): [number, number] {
@@ -52,7 +42,6 @@ function point(radius: number, degrees: number): [number, number] {
   ];
 }
 
-/** Angle of a cell's centre: C at the top, clockwise. */
 function cellAngle(position: number): number {
   return -90 + position * 30;
 }
@@ -73,10 +62,6 @@ function cellCentre({ ring, position }: CircleCell): [number, number] {
   return point((outer + inner) / 2, cellAngle(position));
 }
 
-/**
- * The arrow between two cell centres, pulled in at both ends so it does
- * not cover the chord names it connects.
- */
 function arrowBetween(
   from: CircleCell,
   to: CircleCell,
@@ -96,13 +81,6 @@ function arrowBetween(
 const sameCell = (a: CircleCell | null, b: CircleCell | null) =>
   a !== null && b !== null && a.ring === b.ring && a.position === b.position;
 
-/**
- * The circle of fifths with the key's harmonic field shaded by function,
- * the current chord in amber, an arrow to the chord that comes next (its
- * cell outlined), and the key, current and next chords in the middle. A
- * guessed quality is marked `?`: the current chord is drawn lighter and the
- * same root with the other third gets a dotted outline.
- */
 function FifthsCircle({
   musicalKey,
   current,

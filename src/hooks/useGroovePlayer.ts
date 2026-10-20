@@ -13,6 +13,7 @@ import {
   playbackEngine,
 } from '@/services/playbackEngine';
 import { useAppStore } from '@/store/useAppStore';
+import { playbackSession } from '@/services/playbackSession';
 import type { GroovePattern } from '@/types';
 
 export interface GroovePlayer {
@@ -36,7 +37,6 @@ function toScheduledGroove(groove: GroovePattern): ScheduledGroove {
   };
 }
 
-/** Plays one section groove on the shared Tone transport. */
 export function useGroovePlayer(): GroovePlayer {
   const focusedSectionId = useAppStore((state) => state.focusedSectionId);
   const structureSections = useAppStore((state) => state.structureSections);
@@ -44,6 +44,7 @@ export function useGroovePlayer(): GroovePlayer {
   const [currentTick, setCurrentTick] = useState(-1);
 
   const loopRef = useRef<Tone.Loop | null>(null);
+  const sessionId = useRef(Symbol('groove'));
   const tickRef = useRef(0);
   const grooveRef = useRef<ScheduledGroove | null>(null);
   const tokenRef = useRef(0);
@@ -53,6 +54,7 @@ export function useGroovePlayer(): GroovePlayer {
   const previousTransportBpmRef = useRef<number | null>(null);
 
   const stop = useCallback(() => {
+    playbackSession.stop(sessionId.current);
     tokenRef.current += 1;
     playingRef.current = false;
     tickRef.current = 0;
@@ -89,7 +91,6 @@ export function useGroovePlayer(): GroovePlayer {
       const sectionId = state.focusedSectionId;
       const transport = Tone.getTransport();
 
-      // Groove playback owns the shared transport while it is active.
       previousTransportBpmRef.current = transport.bpm.value;
       stopScheduledMetronomes();
       transport.stop();
@@ -150,6 +151,7 @@ export function useGroovePlayer(): GroovePlayer {
       loopRef.current = loop;
       loop.start(0);
       transport.start();
+      playbackSession.start(sessionId.current);
       setIsPlaying(true);
     },
     [stop],
@@ -167,8 +169,6 @@ export function useGroovePlayer(): GroovePlayer {
       return;
     }
 
-    // Read the latest store value on every edit so the next scheduled tick
-    // reflects changes made while the groove is already playing.
     grooveRef.current = toScheduledGroove(section.groove);
   }, [structureSections, stop]);
 

@@ -1,5 +1,3 @@
-"""Single-process, file-backed orchestration for deterministic POC stages."""
-
 from __future__ import annotations
 
 import hashlib
@@ -62,19 +60,15 @@ class ControlRequest(StrEnum):
 
 
 class PathEntryKind(StrEnum):
-    """Filesystem entry kinds relevant to safe derived-cache access."""
-
     REGULAR = "regular"
     SYMLINK = "symlink"
     JUNCTION = "junction"
 
 
-class _InvalidStageOutput(ValueError):
-    """A staged bundle violated the executor output contract."""
+class _InvalidStageOutput(ValueError): ...
 
 
 def inspect_path_entry(path: Path) -> PathEntryKind:
-    """Inspect one path without resolving through a link or junction."""
 
     candidate = Path(path)
     if candidate.is_symlink():
@@ -91,8 +85,6 @@ class PersistedRunControl(ContractModel):
 
 
 class StageOrchestrator:
-    """Run one stage while persisting every orchestration boundary."""
-
     def __init__(
         self,
         workspace: Path,

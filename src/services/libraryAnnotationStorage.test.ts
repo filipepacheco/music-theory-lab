@@ -158,8 +158,6 @@ describe('Library annotation local storage', () => {
     const edited = renameLibrarySection(original, 'section-1', 'Introdução');
     storeLibraryAnnotation(database, edited.document);
 
-    // A regenerated immutable result proposes a different partition. The UI
-    // asks storage first, so this proposal may seed only without a document.
     const regeneratedProposal = createLibraryAnnotation('source-sha', 4, [2]);
     const loaded = loadLibraryAnnotation(database, 'source-sha', 4);
 

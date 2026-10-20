@@ -13,7 +13,9 @@ export type LibraryAudioSource =
   | { status: 'ready'; url: string; localFileName: string | null };
 
 export type AudioAttachmentStatus =
-  AttachLocalAudioResult['status'] | 'idle' | 'checking';
+  | AttachLocalAudioResult['status']
+  | 'idle'
+  | 'checking';
 
 export function useLibraryAudioSource(track: LibraryIndexEntry): {
   audioSource: LibraryAudioSource;
@@ -53,9 +55,7 @@ export function useLibraryAudioSource(track: LibraryIndexEntry): {
           });
           return;
         }
-      } catch {
-        // A blocked/unavailable IndexedDB must not hide a published source.
-      }
+      } catch {}
 
       const publishedUrl = await probeAudioUrl(track, controller.signal);
       if (controller.signal.aborted) return;

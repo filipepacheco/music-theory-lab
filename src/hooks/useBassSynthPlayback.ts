@@ -30,11 +30,6 @@ const engineVoice: BassSynthVoice = {
   stop: () => playbackEngine.stopBassNotes(),
 };
 
-/**
- * A player for a chart that has no recording: the sampled bass plays the
- * chart's notes. It has the shape of `useLibraryAudio`, so the same player
- * and playhead drive either. `failed` reports samples that would not load.
- */
 export function useBassSynthPlayback(
   chart: BassChart,
   enabled: boolean,

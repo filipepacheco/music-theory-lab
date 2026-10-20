@@ -6,25 +6,14 @@ import type {
   SngNote,
 } from '@/services/rocksmith/sng';
 
-// A MIDI file says which pitches a bass plays and when, but not where on the
-// neck. This module turns one MIDI channel into the arrangement shape the
-// bass chart is built from, suggesting a string and fret for every note.
-
 const DRUM_CHANNEL = 9;
-/** General MIDI programs 33–40: acoustic, finger, pick, fretless, slap, synth. */
 const FIRST_BASS_PROGRAM = 32;
 const LAST_BASS_PROGRAM = 39;
 const DEFAULT_MICROS_PER_QUARTER = 500_000;
 const MAX_FRET = 24;
 const BEND_MASK = 0x1000;
-/** Shown as the only section of a file without markers. */
 const WHOLE_SONG_SECTION = 'Música';
 
-/**
- * The channel that carries the bass line: the busiest one on a General MIDI
- * bass program, otherwise the lowest-pitched melodic channel. Null when the
- * file has no melodic notes at all.
- */
 export function pickBassChannel(midi: MidiFile): number | null {
   const pitches = new Map<number, number[]>();
   for (const note of midi.notes) {
@@ -54,11 +43,6 @@ export function pickBassChannel(midi: MidiFile): number | null {
   );
 }
 
-/**
- * One channel of a MIDI file as a single-level arrangement on the file's own
- * tempo map: a beat per time-signature beat, a section per marker, and every
- * note placed on a four-string bass by `suggestFingering`.
- */
 export function midiToArrangement(
   midi: MidiFile,
   channel: number,
@@ -71,7 +55,6 @@ export function midiToArrangement(
   const highest = openPitches[openPitches.length - 1] + MAX_FRET;
 
   const timed = played.map((note) => {
-    // Above the last fret there is nowhere to play it: drop it an octave.
     let pitch = note.pitch;
     while (pitch > highest) pitch -= 12;
     return { note, pitch, time: toSeconds(note.startTick) };
@@ -109,7 +92,6 @@ export function midiToArrangement(
   };
 }
 
-/** Seconds elapsed at a tick, following every tempo change in the file. */
 export function tickToSeconds(midi: MidiFile): (tick: number) => number {
   const segments = [
     { tick: 0, seconds: 0, microsPerQuarter: DEFAULT_MICROS_PER_QUARTER },
@@ -140,11 +122,6 @@ export function tickToSeconds(midi: MidiFile): (tick: number) => number {
   };
 }
 
-/**
- * Beats from tick 0 to the end of the bar the file ends in. A beat is the
- * time signature's own unit (an eighth note in 6/8); a signature change in
- * the middle of a bar cuts that bar short.
- */
 function beatGrid(
   midi: MidiFile,
   toSeconds: (tick: number) => number,
@@ -165,7 +142,6 @@ function beatGrid(
     const next = signatures[i + 1];
     let tick = signature.tick;
     let beat = 0;
-    // The last signature runs until its final bar is complete.
     while (next ? tick < next.tick : tick < midi.endTick || beat !== 0) {
       beats.push({ time: toSeconds(tick), measure, beat });
       tick += beatTicks;
@@ -180,11 +156,6 @@ function beatGrid(
   return beats;
 }
 
-/**
- * Semitone offsets from E-A-D-G that reach the lowest note: standard when it
- * fits, a dropped fourth string for a whole step or less, and otherwise every
- * string lowered together (B-E-A-D for a five-string's low B).
- */
 function tuningFor(pitches: number[]): number[] {
   const lowest = pitches.reduce((min, pitch) => Math.min(min, pitch), Infinity);
   const below = STANDARD_OPEN_MIDI[0] - lowest;
@@ -194,19 +165,15 @@ function tuningFor(pitches: number[]): number[] {
 }
 
 export interface FretPosition {
-  /** 0 = lowest string. */
   string: number;
   fret: number;
 }
 
 const FRET_COST = 0.1;
-/** An open string costs about as much as the third fret. */
 const OPEN_STRING_COST = 0.3;
 const STRING_CHANGE_COST = 0.15;
-/** Frets the hand covers without moving. */
 const HAND_SPAN = 3;
 const SHIFT_COST = 1;
-/** After a rest this long the hand has time to move. */
 const REST_SECONDS = 2;
 const REST_DISCOUNT = 0.25;
 const STRING_CLASH_COST = 1000;
@@ -214,16 +181,9 @@ const STRING_CLASH_COST = 1000;
 interface FingeringState extends FretPosition {
   cost: number;
   previous: number;
-  /** Fret of the last stopped note on the way here; open strings keep it. */
   anchor: number | null;
 }
 
-/**
- * A playable string and fret for each note, in order. The cheapest path
- * through every possible position prefers low frets, keeps the hand inside a
- * four-fret span, and charges for shifts and string crossings. Notes with the
- * same `time` must be given low to high and land on separate strings.
- */
 export function suggestFingering(
   notes: { pitch: number; time: number }[],
   openPitches: number[],

@@ -9,7 +9,6 @@
   font-display: swap;
 }
 
-/* Latin subset; other characters fall back to the regular face. */
 @font-face {
   font-family: 'JetBrains Mono';
   src: url('/fonts/JetBrainsMono-SemiBold-latin.woff2') format('woff2');
@@ -18,17 +17,10 @@
   font-display: swap;
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 
-/* Lighthouse design system primitives. Night is the default theme; day
-   applies under .light on <html>. Components use the semantic --color-*
-   tokens in @theme below, never these directly. See docs/adr/0001.
-
-   .ink-night and .ink-day pin a palette to one element whatever the theme:
-   a piano key is a physical object, so a white key always carries day ink
-   and a black key night ink. */
 :root,
 .ink-night {
   --sea-950: #131518;
@@ -74,7 +66,6 @@
 }
 
 @theme {
-  /* Surfaces */
   --color-bg-primary: var(--sea-950);
   --color-bg-section: var(--sea-950);
   --color-bg-secondary: var(--sea-900);
@@ -90,35 +81,28 @@
   --color-border-default: var(--rule);
   --color-border-strong: var(--rule-strong);
 
-  /* Selected and primary: inverted text, fog-bright fill with on-accent text. */
   --color-accent: var(--fog-bright);
   --color-on-accent: var(--sea-950);
 
-  /* The lamp. Only for a live state: playing, recording, the current beat. */
   --color-live: var(--beam);
   --color-live-tint: var(--beam-tint);
 
-  /* Status. Always with a glyph or a word, never colour alone. */
   --color-success: var(--buoy);
   --color-warning: var(--flare);
   --color-danger: var(--wreck);
 
-  /* Harmonic function colors */
   --color-tonic: var(--sky);
   --color-subdominant: var(--buoy);
   --color-dominant: var(--flare);
 
-  /* Scale comparison colors */
   --color-scale-a: var(--sky);
   --color-scale-b: var(--heather);
   --color-scale-shared: var(--flare);
 
-  /* Bass colors */
   --color-fret-bg: var(--sea-800);
   --color-fret-border: var(--rule-strong);
   --color-string: var(--fog-dim);
 
-  /* Bass octave palette and highlight */
   --color-octave-1: color-mix(in srgb, var(--flare) 75%, transparent);
   --color-octave-2: color-mix(in srgb, var(--buoy) 75%, transparent);
   --color-octave-3: color-mix(in srgb, var(--sky) 75%, transparent);
@@ -133,21 +117,15 @@
   --color-bass-highlight: var(--buoy);
   --color-bass-root-highlight: var(--flare);
 
-  /* Bass-line degrees over the bar's root (Biblioteca analysis). Text on
-     the card background; the root uses --color-text-primary. */
   --color-degree-third: var(--sky);
   --color-degree-fifth: var(--buoy);
   --color-degree-seventh: var(--heather);
   --color-degree-tension: var(--wreck);
 
-  /* Harmonic functions as small text on cards (bass-line degree numerals). */
   --color-tonic-text: var(--sky);
   --color-subdominant-text: var(--buoy);
   --color-dominant-text: var(--flare);
 
-  /* Song-form labels (Biblioteca). Cycled by order of first appearance;
-     the detector's letters are opaque cluster ids, not verse/chorus names.
-     Accents only, never text on their own background. */
   --color-form-1: var(--sky);
   --color-form-2: var(--flare);
   --color-form-3: var(--heather);
@@ -155,8 +133,6 @@
   --color-form-5: var(--wreck);
   --color-form-6: var(--fog);
 
-  /* Shadows: hard, no blur, like a window in a text UI. Only things that
-     float (window) or lift under the pointer (lift) cast one. */
   --shadow-window: 6px 6px 0 0 var(--shadow-ink);
   --shadow-lift: 4px 4px 0 0 var(--rule);
   --shadow-2xs: 0 0 #0000;
@@ -167,8 +143,6 @@
   --shadow-xl: 6px 6px 0 0 var(--shadow-ink);
   --shadow-2xl: 6px 6px 0 0 var(--shadow-ink);
 
-  /* Radius: square, like a terminal grid. rounded-full is the one exception,
-     for dots and pips. */
   --radius-xs: 0;
   --radius-sm: 0;
   --radius-md: 0;
@@ -178,7 +152,6 @@
   --radius-3xl: 0;
   --radius-4xl: 0;
 
-  /* Font families: one mono for chrome and prose alike. */
   --font-mono:
     'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
     'Liberation Mono', monospace;
@@ -186,13 +159,10 @@
   --font-heading: var(--font-mono);
   --font-body: var(--font-mono);
 
-  /* Two weights only: 400 and 600. */
   --font-weight-medium: 400;
   --font-weight-bold: 600;
   --font-weight-extrabold: 600;
 
-  /* The Lighthouse type scale: text-title, text-heading, text-ui, text-label,
-     text-meta, text-prose. A label is upper case only. */
   --text-display: 28px;
   --text-display--line-height: 34px;
   --text-display--font-weight: 600;
@@ -211,8 +181,6 @@
   --text-label--letter-spacing: 0.08em;
   --text-meta: 12px;
   --text-meta--line-height: 18px;
-  /* Dense data (grids, bar cells, chart labels). No weight or tracking of
-     their own; 10px is the floor. */
   --text-small: 11px;
   --text-small--line-height: 16px;
   --text-micro: 10px;
@@ -225,8 +193,6 @@ html {
   scrollbar-color: var(--rule-strong) transparent;
 }
 
-/* The Lighthouse ui size. The line height has no unit, so smaller text keeps
-   its ratio. */
 body {
   font-family: var(--font-body);
   font-size: 13px;
@@ -238,10 +204,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* One focus mark for every control. It is in the base layer, so a component
-   can move it; do not hide it with focus:outline-none. */
-/* The @theme aliases resolve on :root, so an element that pins its own ink
-   has to resolve the ones it uses again. */
 .ink-day,
 .ink-night {
   --color-bg-primary: var(--sea-950);
@@ -280,7 +242,14 @@ h6 {
   font-family: var(--font-heading);
 }
 
-/* Hide scrollbar but keep scrollable */
+.instrument-touch {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;

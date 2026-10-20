@@ -10,11 +10,9 @@ import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
 
 const state = vi.hoisted(() => ({
   charts: [] as Chart[],
-  /** The id of each chart that the import wrote. */
   saves: [] as string[],
   chartReads: 0,
   listReads: 0,
-  /** The time that the local list takes to answer, in ms. */
   listDelayMs: 0,
   sync: vi.fn(),
   syncSettings: vi.fn(),
@@ -67,7 +65,6 @@ const drums = { ...fixtureDrumChart(1, [{ bar: 0, beat: 0, midi: 36 }]) };
 beforeEach(() => {
   state.charts = [];
   state.saves = [];
-  // An import reads the stored chart of each id, so each test counts anew.
   state.chartReads = 0;
   state.listReads = 0;
   state.listDelayMs = 0;
@@ -80,6 +77,39 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Biblioteca import and refresh', () => {
+  it('keeps supported types in the guidance when an importer rejects the content', async () => {
+    state.importGp.mockRejectedValue(new Error('invalid score'));
+    const { result } = renderHook(useRocksmithCharts);
+    await act(async () => {
+      expect(
+        await result.current.importFile(new File(['bad'], 'wrong.gp')),
+      ).toBeNull();
+    });
+    expect(result.current.importStatus).toEqual({
+      state: 'error',
+      message: 'Erro Guitar Pro Tipos aceitos: .gp, .psarc, .mid ou .midi.',
+    });
+    expect(state.saves).toEqual([]);
+    expect(result.current.summaries).toEqual([]);
+  });
+
+  it('rejects an unsupported filename without reading or saving it', async () => {
+    const file = new File(['bad'], 'wrong.mp3');
+    const read = vi.fn();
+    Object.defineProperty(file, 'arrayBuffer', { value: read });
+    const { result } = renderHook(useRocksmithCharts);
+    await act(async () => {
+      expect(await result.current.importFile(file)).toBeNull();
+    });
+    expect(result.current.importStatus).toMatchObject({ state: 'error' });
+    expect(JSON.stringify(result.current.importStatus)).toContain(
+      '.gp, .psarc, .mid ou .midi',
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(state.saves).toEqual([]);
+    expect(state.importGp).not.toHaveBeenCalled();
+  });
+
   it('routes .gp files through the GP importer and saves the shared chart', async () => {
     const { result } = renderHook(useRocksmithCharts);
     const file = new File(['score'], 'Example.GP');
@@ -115,7 +145,6 @@ describe('Biblioteca import and refresh', () => {
 
   it('a new import of a file that the library holds as a bass chart adds only the drum chart', async () => {
     state.charts = [chart as BassChart];
-    // The new import gives the bass chart again, with a new import time.
     const again = { ...chart, importedAt: '2026-10-12T10:00:00.000Z' };
     state.importGp.mockResolvedValue({ charts: [again, drums], audio: null });
     const { result } = renderHook(useRocksmithCharts);
@@ -285,7 +314,6 @@ describe('Biblioteca synchronization status', () => {
     await waitFor(() => expect(result.current.syncStatus).toBe('offline'));
     expect(state.sync).toHaveBeenCalled();
 
-    // The retry of the status line runs the two again.
     state.syncSettings.mockResolvedValue(undefined);
     await act(async () => {
       await result.current.synchronize();
@@ -301,8 +329,6 @@ describe('Biblioteca synchronization status', () => {
   });
 
   it('lists the charts that a synchronization brought before it reports the end', async () => {
-    // The pass stores a chart that this device did not hold, and the local
-    // list takes a moment to answer.
     state.listDelayMs = 20;
     state.sync.mockImplementation(async () => {
       state.charts = [chart as BassChart];
@@ -314,7 +340,6 @@ describe('Biblioteca synchronization status', () => {
       return value;
     });
     await waitFor(() => expect(seen[seen.length - 1]).toBe('synced:1'));
-    // No render shows an ended pass with the list of before it.
     expect(seen).not.toContain('synced:0');
   });
 

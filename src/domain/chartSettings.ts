@@ -1,39 +1,20 @@
-// The settings route of the server imports this file without the aliases of
-// Vite, so it has no import.
-
-/** Bars in each line of a section: 1 to 16, or the automatic layout. */
 export type LineLength = number | 'auto';
 
-/**
- * The view choices of one chart, kept apart from the chart so a change never
- * rewrites the chart itself. They outlive the deletion of their chart and
- * apply again when the same file returns.
- */
 export interface ChartSettings {
   chartId: string;
   updatedAt: string;
   songLineLength: LineLength;
-  /** By the first bar of a section; a missing bar uses the song line length. */
   sectionLineLengths: Record<number, LineLength>;
-  /** A song key, `separate`, or null for the calculated group. */
   groupOverride: string | null;
-  /**
-   * Octaves that a bar of the bass tab moves, by bar index. A bar that is
-   * not here plays as written. Absent when no bar moves.
-   */
   barOctaves?: Record<number, number>;
 }
 
 export const MAX_LINE_LENGTH = 16;
-/** A chart holds 100 000 bars at most, so a first bar has six digits. */
 const FIRST_BAR = /^(?:0|[1-9]\d{0,5})$/;
 const MAX_SECTION_LINE_LENGTHS = 1000;
-/** A word of a song key: letters, their marks, and digits of any script. */
 const KEY_WORDS = String.raw`(?:[\p{L}\p{M}\p{N}]+(?: [\p{L}\p{M}\p{N}]+)*)?`;
-/** The form that `songKey` gives: words of a title, `|`, words of an artist. */
 const SONG_KEY = new RegExp(`^${KEY_WORDS}\\|${KEY_WORDS}$`, 'u');
 const MAX_SONG_KEY_LENGTH = 400;
-/** The largest number of octaves that one bar moves, up or down. */
 export const MAX_BAR_OCTAVE = 2;
 const MAX_BAR_OCTAVES = 5000;
 const OPTIONAL_FIELDS = ['barOctaves'];
@@ -49,7 +30,6 @@ function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** The update time in one form, so text order is time order; or null. */
 function timestamp(value: unknown): string | null {
   if (
     typeof value !== 'string' ||
@@ -60,7 +40,6 @@ function timestamp(value: unknown): string | null {
   )
     return null;
   const text = new Date(value).toISOString();
-  // A year of five digits has a different form and a different text order.
   return text.length === 24 ? text : null;
 }
 
@@ -74,11 +53,6 @@ function lineLength(value: unknown): value is LineLength {
   );
 }
 
-/**
- * True for a text that `songKey` can give: its words, in lower case, with no
- * accents, and in the composed form (NFC). This follows the text rules of
- * `normalizeText` in `librarySong.ts`; change the two together.
- */
 function songKeyText(value: string): boolean {
   return (
     SONG_KEY.test(value) &&
@@ -100,7 +74,6 @@ function barOctave(value: unknown): value is number {
   );
 }
 
-/** The bar octaves of a record in one form, or null when one is not allowed. */
 function barOctaves(value: unknown): Record<number, number> | null {
   if (value === undefined) return {};
   if (!object(value)) return null;
@@ -123,11 +96,6 @@ function groupOverride(value: unknown): value is string | null {
   );
 }
 
-/**
- * Check a chart settings record from a screen, the local store, or the
- * network. The result is a new record in one form, or null when a value is
- * not allowed or a field is not known.
- */
 export function parseChartSettings(value: unknown): ChartSettings | null {
   if (!object(value)) return null;
   const keys = Object.keys(value);
@@ -160,7 +128,6 @@ export function parseChartSettings(value: unknown): ChartSettings | null {
     chartId: value.chartId,
     updatedAt,
     songLineLength: value.songLineLength,
-    // Keys that are whole numbers read back in number order.
     sectionLineLengths: Object.fromEntries(sections) as Record<
       number,
       LineLength
@@ -171,17 +138,14 @@ export function parseChartSettings(value: unknown): ChartSettings | null {
 }
 
 /**
- * The view choices as one text. Two valid records with equal choices
- * give equal text. The text holds only ASCII, so its order is the same in the
- * browser and in the database of the server: a song key in another script is
- * written with `\u` escapes, and `JSON.parse` reads it back.
+ * ASCII only: a string orders differently in the browser and in the database
+ * of the server for characters outside the BMP.
  */
 export function chartSettingsBody(settings: ChartSettings): string {
   return JSON.stringify({
     songLineLength: settings.songLineLength,
     sectionLineLengths: settings.sectionLineLengths,
     groupOverride: settings.groupOverride,
-    // Left out when empty: a record from before the bar octaves keeps its text.
     ...(Object.keys(settings.barOctaves ?? {}).length > 0 && {
       barOctaves: settings.barOctaves,
     }),
@@ -191,7 +155,6 @@ export function chartSettingsBody(settings: ChartSettings): string {
   );
 }
 
-/** What orders two records of one chart: the update time, then the text. */
 export interface ChartSettingsVersion {
   updatedAt: string;
   body: string;
@@ -203,10 +166,6 @@ export function chartSettingsVersion(
   return { updatedAt: settings.updatedAt, body: chartSettingsBody(settings) };
 }
 
-/**
- * The last write wins. Two writes with one update time and different choices
- * have a fixed order, so all devices and the server keep the same one.
- */
 export function isNewerSettingsVersion(
   incoming: ChartSettingsVersion,
   current: ChartSettingsVersion,
@@ -217,7 +176,6 @@ export function isNewerSettingsVersion(
   );
 }
 
-/** True when `incoming` replaces the stored record of its chart. */
 export function isNewerChartSettings(
   incoming: ChartSettings,
   current: ChartSettings | undefined,
@@ -231,12 +189,6 @@ export function isNewerChartSettings(
   );
 }
 
-/**
- * The record that a change on this device stores. The change is the last
- * write that this device knows, so its update time goes after the stored
- * record when the clock of the device is behind it. A change that repeats the
- * stored choices keeps the stored record.
- */
 export function laterChartSettings(
   change: ChartSettings,
   stored: ChartSettings | undefined,
@@ -249,7 +201,6 @@ export function laterChartSettings(
   };
 }
 
-/** The settings of a chart that never had any: all choices automatic. */
 export function defaultChartSettings(
   chartId: string,
   now: string,
@@ -263,10 +214,6 @@ export function defaultChartSettings(
   };
 }
 
-/**
- * The settings with a new group override (null removes it). Only the group
- * changes: the line lengths stay as they were.
- */
 export function withGroupOverride(
   current: ChartSettings | null,
   chartId: string,
@@ -280,7 +227,6 @@ export function withGroupOverride(
   };
 }
 
-/** The overrides of a list of settings, by chart id; no override is left out. */
 export function groupOverridesOf(
   settings: ChartSettings[],
 ): Record<string, string> {
@@ -291,11 +237,6 @@ export function groupOverridesOf(
   return overrides;
 }
 
-/**
- * The line length of the section that starts at `startBar`: its own choice,
- * else the song line length. Without settings the layout is automatic. A set
- * number always holds: the layout never lowers it.
- */
 export function sectionLineLength(
   settings: ChartSettings | null,
   startBar: number,
@@ -304,11 +245,6 @@ export function sectionLineLength(
   return settings.sectionLineLengths[startBar] ?? settings.songLineLength;
 }
 
-/**
- * The settings with a new line length for the section that starts at
- * `startBar`. Only that section changes. `auto` is stored as a choice, so it
- * also holds against a song line length.
- */
 export function withSectionLineLength(
   current: ChartSettings | null,
   chartId: string,
@@ -324,10 +260,6 @@ export function withSectionLineLength(
   };
 }
 
-/**
- * The settings with a new song line length. The section line lengths are
- * removed in the same write, so every section follows the song.
- */
 export function withSongLineLength(
   current: ChartSettings | null,
   chartId: string,
@@ -343,10 +275,6 @@ export function withSongLineLength(
   };
 }
 
-/**
- * The settings without the own line length of the section that starts at
- * `startBar`: the section then uses the song line length.
- */
 export function withoutSectionLineLength(
   current: ChartSettings | null,
   chartId: string,
@@ -359,7 +287,6 @@ export function withoutSectionLineLength(
   return { ...base, updatedAt: now, sectionLineLengths: rest };
 }
 
-/** True when the section has its own line length (a number or automatic). */
 export function hasOwnSectionLineLength(
   settings: ChartSettings | null,
   startBar: number,
@@ -367,13 +294,6 @@ export function hasOwnSectionLineLength(
   return settings?.sectionLineLengths[startBar] !== undefined;
 }
 
-/**
- * The settings that copy the section line lengths of the old browser store
- * into `current`. A section that the settings already hold keeps its value,
- * and a value that is not allowed is left out. The copy has the import time
- * of its chart as update time, so a real edit on any device is newer. Null
- * when nothing is copied.
- */
 export function withBrowserLineLengths(
   current: ChartSettings | null,
   chartId: string,
@@ -394,10 +314,6 @@ export function withBrowserLineLengths(
   return copied ? { ...base, sectionLineLengths: sections } : null;
 }
 
-/**
- * The settings with a new octave for each bar of `bars`. An octave of 0
- * removes the choice of the bar. Only the bar octaves change.
- */
 export function withBarOctave(
   current: ChartSettings | null,
   chartId: string,
@@ -419,7 +335,6 @@ export function withBarOctave(
   };
 }
 
-/** The settings with no bar octave: each bar plays as written. */
 export function withoutBarOctaves(
   current: ChartSettings | null,
   chartId: string,

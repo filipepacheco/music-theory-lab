@@ -1,5 +1,3 @@
-"""Smoke tests for the key-evaluation module."""
-
 from __future__ import annotations
 
 from pathlib import Path

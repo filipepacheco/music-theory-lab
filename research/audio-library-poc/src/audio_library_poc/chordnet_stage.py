@@ -1,12 +1,3 @@
-"""Guarded ChordMini ChordNet stage.
-
-The ChordNet source is pinned to the same ChordMini revision as BTC, but its
-checkpoint terms, source URL, and reviewed model subset are not committed.
-This bridge deliberately validates those facts before importing a runtime.
-It can therefore be dispatched and synthetically tested without claiming a
-real ChordNet inference run.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -82,8 +73,6 @@ class ChordNetStageConfig(ContractModel):
 
 
 class ChordNetStageExecutor:
-    """Execution boundary for an evidenced ChordNet candidate only."""
-
     def __init__(self, workspace: Path) -> None:
         self.workspace = Path(workspace).resolve()
 
@@ -115,9 +104,6 @@ class ChordNetStageExecutor:
         )
         _verify_checkpoint_hash(checkpoint_path, identity.model_sha256)
 
-        # This import stays after every source/terms/hash gate. The checked-in
-        # runtime raises a typed "vendor unavailable" failure until the pinned
-        # upstream subset has been reviewed and its checkpoint rights recorded.
         from audio_library_poc._chordnet_runtime import run_chordnet_inference
 
         result, metrics, evidence = run_chordnet_inference(

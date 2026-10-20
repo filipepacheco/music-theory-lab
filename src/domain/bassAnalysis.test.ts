@@ -15,7 +15,6 @@ function labels(bar: BarAnalysis): string[] {
   return bar.notes.map(degreeLabel);
 }
 
-// Pitches: C2 = 36, so D2 38, G2 43, A2 45, C3 48.
 const D2 = 38;
 const F2 = 41;
 const G2 = 43;
@@ -56,7 +55,6 @@ describe('analyzeBassChart', () => {
       'D',
     ]);
     expect(bars.map((b) => b.rootSource)).toEqual(Array(5).fill('downbeat'));
-    // The A♭ is a half step into G on the next downbeat, not a b5 of D.
     expect(bars[0].notes.map((n) => n.role)).toEqual([
       'chordTone',
       'chordTone',
@@ -78,7 +76,6 @@ describe('analyzeBassChart', () => {
   });
 
   it('marks stepwise weak-beat notes as passing and leaves the quality open', () => {
-    // C D E F | G: the major third is on beat 3, the fifth never sounds.
     const [bar] = analyzeBassChart(chart(2, walking([[C3, D3, E3, F3], [G3]])));
     expect(bar.notes.map((n) => n.role)).toEqual([
       'chordTone',
@@ -88,14 +85,12 @@ describe('analyzeBassChart', () => {
     ]);
     expect(bar.evidence.third).toBe('major');
     expect(bar.evidence.fifth).toBeNull();
-    // Major or augmented: the bass does not say which.
     expect(bar.evidence.chordType).toBeNull();
     expect(barChordSymbol(bar)).toBe('C');
     expect(describeEvidence(bar.evidence)).toBe('3ª maior · sem 5ª · sem 7ª');
   });
 
   it('keeps a repeated root a root even when it leads into the next bar', () => {
-    // B♭ for a whole bar, then A: the last B♭ is a half step above A.
     const [bar] = analyzeBassChart(chart(2, walking([[46, 46, 46, 46], [A2]])));
     expect(bar.notes.map((n) => n.role)).toEqual(Array(4).fill('chordTone'));
     expect(bar.counts.root).toBe(4);
@@ -122,7 +117,6 @@ describe('analyzeBassChart', () => {
         { bar: 0, beat: 0, midi: A2 },
         { bar: 0, beat: 1, midi: A2 },
         { bar: 0, beat: 2, midi: A2 },
-        // On the "and" of 4, held for a beat and a half into bar 2.
         { bar: 0, beat: 3.5, midi: D3, sustain: 1.5 },
         { bar: 1, beat: 2, midi: A3 },
       ]),
@@ -159,7 +153,6 @@ describe('analyzeBassChart', () => {
   });
 
   it('hears an off-beat half step into a beat as a chromatic approach', () => {
-    // The blues b3 → 3: the major third is the chord tone.
     const [bar] = analyzeBassChart(
       chart(1, [
         { bar: 0, beat: 0, midi: C3 },
@@ -187,13 +180,11 @@ describe('analyzeBassChart', () => {
     expect(barChordSymbol(dim7)).toBe('Bdim7');
     expect(labels(dim7)).toEqual(['R', 'b3', 'b5', 'bb7']);
     expect(barChordSymbol(halfDim)).toBe('Bm7(b5)');
-    // A minor third alone could be minor or diminished.
     expect(onlyThird.evidence.third).toBe('minor');
     expect(onlyThird.evidence.chordType).toBeNull();
   });
 
   it('spells the chord symbol with the key’s note names', () => {
-    // B♭ major: B♭2 D3 F3 D3.
     const [bar] = analyzeBassChart(chart(1, walking([[46, D3, F3, D3]])));
     expect(barChordSymbol(bar)).toBe('A#');
     expect(barChordSymbol(bar, NOTE_NAMES_FLAT)).toBe('Bb');
@@ -226,7 +217,6 @@ describe('soundingMidi', () => {
       { bar: 0, beat: 1, string: 0, fret: 7, techniques: ['harmonic'] },
       { bar: 0, beat: 2, string: 0, fret: 5 },
     ]).notes;
-    // Open E1 = 28: two octaves up at fret 5, an octave and a fifth at 7.
     expect(base.map(soundingMidi)).toEqual([52, 47, 33]);
   });
 });
@@ -252,7 +242,6 @@ describe('summarizeBars', () => {
       tension: 0,
       ornament: 0,
     });
-    // G→B→D→F leaps, F→C leap, C→E→G→B leaps: every move is a leap.
     expect(summary.motion).toEqual({ repeats: 0, steps: 0, leaps: 7 });
   });
 });

@@ -14,21 +14,13 @@ export interface ModeViewContext {
 }
 
 export interface QuizModeConfig {
-  /** Mode selector button label. */
   label: string;
-  /** Mode selector description. */
   modeDescription: string;
-  /** Intro line above the scoreboard. */
   description: (ctx: ModeViewContext) => string;
-  /** Question prompt shown on the card. */
   prompt: (ctx: ModeViewContext) => string;
-  /** Tips table for the current key context. */
   tipsFor: (ctx: ModeViewContext) => Record<string | number, string>;
-  /** Whether tip keys are interval semitones (number) or chord type ids (string). */
   tipKeyIsNumber: boolean;
-  /** Show the "limit to key" toggle (chordId only). */
   showKeyToggle?: boolean;
-  /** Extra line on the start screen. */
   startHint?: string;
 }
 

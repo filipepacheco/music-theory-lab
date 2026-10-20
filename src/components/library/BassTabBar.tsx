@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   barChordSymbol,
   degreeLabel,
@@ -20,53 +20,24 @@ import type { HarmonicFunction } from '@/constants/harmonicFields';
 
 export interface IndexedNote {
   note: BassChartNote;
-  /** Position in `chart.notes`. */
   index: number;
 }
 
 interface Props {
   bar: BassChartBar;
   notes: IndexedNote[];
-  /** Chart note indexes sounding now; only meaningful for the active bar. */
   activeNotes: readonly number[];
-  /** 0–1 position of the playhead inside this bar, or null elsewhere. */
   playhead: number | null;
   onSeek: ((seconds: number) => void) | null;
-  /**
-   * When set, frets take their degree's colour and a lane under the strings
-   * names each note's degree over the bar's root.
-   */
   analysis: BarAnalysis | null;
-  /** The chord this bar belongs to, read in the chosen key. */
   segment: HarmonicSegment | null;
-  /** Chart note indexes to mark as avoid notes. */
   avoidNotes: ReadonlySet<number> | null;
-  /** Note names for chord symbols, spelled for the key in use. */
   noteNames: readonly string[];
-  /**
-   * Pixels per beat, when the section's bars share a line of a set length.
-   * The bar is drawn at that real size: only the spacing grows, never the
-   * text. Defaults to `BEAT_WIDTH`.
-   */
   beatWidth?: number;
-  /**
-   * The bar drawn right above this one when it shows the same tab: the bar
-   * is then left empty under a repeat sign.
-   */
   repeatOf?: number;
-  /**
-   * How many levels the degree lane keeps room for, so the bars of a section
-   * share one height. Defaults to the levels this bar's labels use.
-   */
   degreeLevels?: number;
-  /**
-   * Beats of the kick hits in this bar, from the drum chart of the same file.
-   * When set (even empty), a kick row sits under the strings.
-   */
   kickBeats?: readonly number[];
-  /** Octaves that the musician moved this bar; 0 or absent is as written. */
   octave?: number;
-  /** The bar that the octave control points to. */
   selected?: boolean;
 }
 
@@ -112,27 +83,20 @@ function barTitle(
     .join(' · ');
 }
 
-/** The base beat width, in pixels: the one the automatic layout uses. */
 export const BEAT_WIDTH = 34;
-/** The largest beat width: only there may a degree label move right. */
 const MAX_SHIFT_WIDTH = BEAT_WIDTH * MAX_BEAT_WIDTH_SCALE;
 const PAD_X = BAR_PAD_X;
-/** The pixels of a bar that do not grow with its beats: padding and border. */
 export const BAR_CHROME = PAD_X * 2 + 2;
-/** Type sizes in a bar; none goes under the design system's 10 px floor. */
 const FRET_FONT_SIZE = 11;
 const DEGREE_FONT_SIZE = 10;
 const PAD_TOP = 9;
 const LINE_GAP = 12;
 const STRING_COUNT = 4;
 const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
-/** Height of one level of the degree lane drawn under the strings. */
 const DEGREE_LANE = 12;
-/** Height of the kick row drawn under the strings. */
 const KICK_LANE = 14;
 const KICK_RADIUS = 3.5;
 
-/** A bar's drawn width in pixels, border included. */
 export function tabBarWidth(
   beatCount: number,
   beatWidth: number = BEAT_WIDTH,
@@ -140,10 +104,6 @@ export function tabBarWidth(
   return BAR_CHROME + beatCount * beatWidth;
 }
 
-/**
- * The bar-repeat sign (a slash between two dots, like %), centred on
- * `x`, `y`: play the bar above again.
- */
 export function RepeatSign({ x, y }: { x: number; y: number }) {
   return (
     <g aria-hidden fill="var(--color-text-secondary)">
@@ -162,22 +122,15 @@ export function RepeatSign({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** Tab label for one note: fret, `x` for a dead note, slide direction. */
 export function noteLabel(note: BassChartNote): string {
   const base = note.techniques.includes('mute') ? 'x' : String(note.fret);
   if (note.slideToFret === null) return base;
   return `${base}${note.slideToFret > note.fret ? '/' : '\\'}`;
 }
 
-/** Character width of the heading font (monospace), in em. */
 const CHAR_EM = 0.6;
-/** Clear space kept between two labels of a lane, in pixels. */
 export const LABEL_GAP = 4;
 
-/**
- * The label lanes of a bar: one for the fret numbers of each string, and
- * the degree lane (one label per onset) when degrees are shown.
- */
 export function barLabelLanes(
   notes: IndexedNote[],
   analysis: BarAnalysis | null,
@@ -198,13 +151,8 @@ export function barLabelLanes(
   return lanes;
 }
 
-/** An onset of the degree lane: its beat and the degrees that sound there. */
 type DegreeOnset = [beatInBar: number, degrees: AnalyzedNote[]];
 
-/**
- * The entries of a bar's degree lane, one per onset; a double stop lists its
- * degrees low to high. Notes without a degree get no entry.
- */
 function degreeOnsets(
   notes: IndexedNote[],
   analysis: BarAnalysis | null,
@@ -223,7 +171,6 @@ function degreeOnsets(
   ]);
 }
 
-/** The degree lane as labels: a double stop is one label, `b3/5`. */
 function degreeLane(onsets: DegreeOnset[]): LabelLane {
   return {
     charWidth: DEGREE_FONT_SIZE * CHAR_EM,
@@ -234,10 +181,6 @@ function degreeLane(onsets: DegreeOnset[]): LabelLane {
   };
 }
 
-/**
- * How many levels a bar's degree lane uses at `beatWidth` pixels a beat: 1,
- * or 2 when a label touches the label before it.
- */
 export function barDegreeLevels(
   notes: IndexedNote[],
   analysis: BarAnalysis | null,
@@ -252,12 +195,10 @@ export function barDegreeLevels(
   );
 }
 
-/** Y of a string; the highest string (G) is drawn on top, as in tab. */
 function stringY(string: number): number {
   return PAD_TOP + (STRING_COUNT - 1 - string) * LINE_GAP;
 }
 
-/** The kick hits of a bar, for the label that a screen reader reads. */
 function spokenKicks(beats: readonly number[]): string {
   return beats.length === 0
     ? 'Bumbo: nenhum'
@@ -281,6 +222,7 @@ function BassTabBar({
   degreeLevels,
   kickBeats,
 }: Props) {
+  const [detailsVisible, setDetailsVisible] = useState(false);
   const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * beatWidth;
   const isActive = playhead !== null;
@@ -292,8 +234,6 @@ function BassTabBar({
     const degree = degrees.get(index);
     return degree && degreeLabel(degree) ? degree : null;
   };
-  // One lane entry per onset, on the level and at the x where it is clear
-  // of the entries before it.
   const onsets = degreeOnsets(notes, analysis);
   const places = degreeLanePlaces(
     degreeLane(onsets),
@@ -314,20 +254,33 @@ function BassTabBar({
       ? `${noteLabel(note)} (${degreeLabel(degree)})`
       : noteLabel(note);
   };
+  const uncertainty =
+    symbol && analysis && !analysis.evidence.chordType
+      ? analysis.evidence.third === null
+        ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
+        : 'As notas tocadas permitem mais de um acorde'
+      : '';
+  const details = [
+    barTitle(bar, analysis, segment),
+    uncertainty,
+    notes.some(({ index }) => avoidNotes?.has(index) && degreeOf(index))
+      ? 'Graus sublinhados — Nota evitada: forma b9 com uma nota do acorde'
+      : '',
+    repeat ? `igual ao compasso ${repeatOf + 1}, o de cima` : '',
+    octave
+      ? `${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <button
       type="button"
-      onClick={onSeek ? () => onSeek(bar.startTime) : undefined}
-      disabled={onSeek === null}
-      title={
-        repeat
-          ? `Compasso ${bar.index + 1} · igual ao compasso ${repeatOf + 1}, o de cima`
-          : `${barTitle(bar, analysis, segment)}${
-              octave
-                ? ` · ${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
-                : ''
-            }`
-      }
+      onClick={() => {
+        setDetailsVisible(true);
+        onSeek?.(bar.startTime);
+      }}
+      title={details}
       data-bar={bar.index}
       data-octave={octave || undefined}
       aria-pressed={selected || undefined}
@@ -339,7 +292,7 @@ function BassTabBar({
           : selected
             ? 'border-text-primary bg-bg-card'
             : 'border-border-default bg-bg-card'
-      } ${onSeek ? 'cursor-pointer hover:border-text-primary' : 'cursor-default'}`}
+      } cursor-pointer hover:border-text-primary`}
     >
       <span className="absolute left-1 top-0 font-heading text-micro leading-none text-text-muted tabular-nums">
         {bar.index + 1}
@@ -366,14 +319,7 @@ function BassTabBar({
           <span className="text-text-primary">
             {symbol}
             {symbol && !analysis.evidence.chordType && (
-              <span
-                className="text-text-muted"
-                title={
-                  analysis.evidence.third === null
-                    ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
-                    : 'As notas tocadas permitem mais de um acorde'
-                }
-              >
+              <span className="text-text-muted" title={uncertainty}>
                 ?
               </span>
             )}
@@ -510,6 +456,11 @@ function BassTabBar({
             </text>
           ))}
       </svg>
+      {(selected || detailsVisible) && (
+        <span className="block border-t border-border-default p-2 text-small text-text-secondary">
+          {details}
+        </span>
+      )}
     </button>
   );
 }

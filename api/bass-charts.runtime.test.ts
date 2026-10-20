@@ -7,7 +7,6 @@ import { execFileSync } from 'node:child_process';
 import { fixtureChart } from '@/domain/bassChartFixture';
 
 // Vite resolves @/ imports in unit tests; Vercel's Node runtime does not.
-// Build with the real function builder, then invoke its output without Vite.
 const require = createRequire(import.meta.url);
 const { build } = require('@vercel/node');
 const { FileFsRef, FileBlob } = require('@vercel/build-utils');
@@ -26,7 +25,10 @@ it('loads the deployed function and retains charts in a fresh session', async ()
       workPath: root,
       meta: { skipDownload: true },
       config: {
-        projectSettings: { installCommand: '', buildCommand: 'true' },
+        projectSettings: {
+          installCommand: '',
+          buildCommand: 'node --version',
+        },
       },
       considerBuildCommand: true,
     });
@@ -39,7 +41,12 @@ it('loads the deployed function and retains charts in a fresh session', async ()
       });
       await writeFile(target, blob.data);
     }
-    await symlink(join(root, 'node_modules'), join(directory, 'node_modules'));
+    await rm(join(directory, 'node_modules'), { recursive: true, force: true });
+    await symlink(
+      join(root, 'node_modules'),
+      join(directory, 'node_modules'),
+      'junction',
+    );
     const chart = {
       ...fixtureChart(1, [{ bar: 0, beat: 0, midi: 33 }]),
       id: 'a'.repeat(64),
@@ -48,7 +55,7 @@ it('loads the deployed function and retains charts in a fresh session', async ()
     await writeFile(
       join(directory, 'invoke.mjs'),
       `import assert from 'node:assert/strict';
-import handler from './${output.handler}';
+import handler from './${output.handler.replace(/\\/g, '/')}';
 const chart = ${JSON.stringify(chart)};
 const record = { id: chart.id, updatedAt: '2026-10-05T10:00:00.000Z', chart };
 async function request(method, body) {

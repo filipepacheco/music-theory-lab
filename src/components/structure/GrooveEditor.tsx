@@ -10,7 +10,7 @@ import {
 } from '@/constants/groove';
 import type { GroovePlayer } from '@/hooks/useGroovePlayer';
 import { useAppStore } from '@/store/useAppStore';
-import { GrooveChart } from './GrooveChart';
+import { GrooveChart } from '@/components/structure/GrooveChart';
 import type {
   GrooveMeasureCount,
   GroovePattern,
@@ -19,11 +19,16 @@ import type {
 } from '@/types';
 import Button from '@/components/shared/Button';
 
+const DRUM_NAMES = {
+  bumbo: 'Bumbo',
+  caixa: 'Caixa',
+  chimbal: 'Chimbal',
+};
+
 function hasAnyHit(groove: GroovePattern): boolean {
   return DRUM_PIECES.some((piece) => groove[piece.id].some(Boolean));
 }
 
-/** Songsterr-inspired chart preview shown on a section card. */
 export function GroovePreview({
   groove,
   color,
@@ -40,7 +45,6 @@ export function GroovePreview({
   );
 }
 
-/** Full editor: three toggleable rows with a selectable resolution. */
 export function GrooveEditor({
   section,
   color,
@@ -146,17 +150,8 @@ export function GrooveEditor({
 
       {DRUM_PIECES.map((piece) => (
         <div key={piece.id} className="flex items-center gap-1">
-          <span
-            className="w-5 shrink-0 text-center font-mono text-micro text-text-muted"
-            title={
-              piece.id === 'bumbo'
-                ? 'Bumbo'
-                : piece.id === 'caixa'
-                  ? 'Caixa'
-                  : 'Chimbal'
-            }
-          >
-            {piece.label}
+          <span className="w-14 shrink-0 font-mono text-small text-text-muted">
+            {DRUM_NAMES[piece.id]}
           </span>
           <div className="flex-1 min-w-0 overflow-x-auto pb-0.5">
             <div className="flex gap-[3px] min-w-max">
@@ -166,7 +161,7 @@ export function GrooveEditor({
                   <button
                     key={step}
                     type="button"
-                    aria-label={`${piece.label} ${step + 1}`}
+                    aria-label={`${DRUM_NAMES[piece.id]} ${step + 1}`}
                     aria-pressed={active}
                     onClick={(e) => {
                       e.stopPropagation();

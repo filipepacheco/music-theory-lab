@@ -17,7 +17,6 @@ describe('buildManualChromaticStep', () => {
   });
 
   it('expresses intervals relative to the key root', () => {
-    // D major against C major: notes D F# A.
     const result = buildManualChromaticStep(2, 'major', 0);
 
     expect(result.notes).toEqual([2, 6, 9]);
@@ -34,7 +33,6 @@ describe('buildManualChromaticStep', () => {
 
 describe('buildCommonChromaticStep', () => {
   it('resolves a template offset and type against the key', () => {
-    // V7/V in C major: D7, intervals 2/6/9/0 relative to C.
     const result = buildCommonChromaticStep('V7/V', 2, 'dom7', 0);
 
     expect(result.notes).toEqual([2, 6, 9, 0]);

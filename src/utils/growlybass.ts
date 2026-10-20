@@ -4,7 +4,6 @@ import {
 } from '@/constants/growlybass.generated';
 
 export const GROWLYBASS_BASE_URL = '/audio/growlybass/';
-/** E1 to G3: the range the sampled bass covers. */
 export const GROWLYBASS_LOWEST_MIDI = 28;
 export const GROWLYBASS_HIGHEST_MIDI = 55;
 

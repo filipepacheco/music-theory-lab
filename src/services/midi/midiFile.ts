@@ -1,10 +1,3 @@
-// Reader for Standard MIDI Files (format 0 and 1).
-//
-// A MIDI file is a big-endian header chunk followed by track chunks; each
-// track is a stream of delta-timed events with running status. Only what a
-// bass chart needs is kept: notes with their channel, the tempo map, time
-// signatures, markers and the General MIDI program each channel plays with.
-
 const PITCH_BEND_CENTRE = 0x2000;
 const CHANNEL_COUNT = 16;
 
@@ -22,7 +15,6 @@ export interface MidiNote {
   velocity: number;
   startTick: number;
   endTick: number;
-  /** True when the channel's pitch wheel was off-centre while it sounded. */
   bent: boolean;
 }
 
@@ -31,9 +23,7 @@ export interface MidiFile {
   tempos: { tick: number; microsPerQuarter: number }[];
   timeSignatures: { tick: number; numerator: number; denominator: number }[];
   markers: { tick: number; text: string }[];
-  /** Program selected on each channel when its first note plays. */
   programs: Record<number, number>;
-  /** Ordered by start, then pitch. */
   notes: MidiNote[];
   endTick: number;
 }

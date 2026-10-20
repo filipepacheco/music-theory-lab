@@ -1,5 +1,3 @@
-"""Portable path contracts shared by execution and persisted models."""
-
 from __future__ import annotations
 
 from pathlib import PurePosixPath, PureWindowsPath
@@ -20,7 +18,6 @@ _WINDOWS_RESERVED_DEVICE_BASENAMES = frozenset(
 
 
 def validate_portable_path_component(value: str) -> str:
-    """Return one portable path component or raise ``ValueError``."""
 
     if not isinstance(value, str) or not value or value in {".", ".."}:
         raise ValueError("path component must be a non-empty filename")
@@ -47,13 +44,11 @@ def validate_portable_path_component(value: str) -> str:
 
 
 def validate_portable_filename(value: str) -> str:
-    """Return a portable single filename, rejecting every path form."""
 
     return validate_portable_path_component(value)
 
 
 def validate_workspace_relative_path(value: str) -> str:
-    """Return a normalized portable path relative to a workspace root."""
 
     if not isinstance(value, str) or not value:
         raise ValueError("path must be a non-empty workspace-relative path")

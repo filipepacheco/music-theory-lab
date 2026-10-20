@@ -18,10 +18,6 @@ import type { Chart } from '@/domain/drumChart';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { partChartId } from '@/services/chartId';
 
-// The REAL shared clock (useSongPartsPlayback) with the real bass and drum
-// parts behind the part selector. Only the audio engine, the chart store and
-// the storage of the recordings are fake.
-
 const engine = vi.hoisted(() => ({
   preloadBassNotes: vi.fn(async () => {}),
   preloadDrumSamples: vi.fn(async () => {}),
@@ -49,7 +45,6 @@ vi.mock('@/services/rocksmithLibrary', async (original) => {
       ...real,
       getChart: async (id: string) =>
         (state.charts as Chart[]).find((c) => c.id === id) ?? null,
-      // Storage that answers after a moment: no recording linked.
       getAudio: () => new Promise((resolve) => setTimeout(resolve, 15, null)),
     },
   };
@@ -146,7 +141,6 @@ describe('shared playback across a change of part', () => {
         screen.getByRole('heading', { name: 'Tablatura por seção' }),
       ).toBeTruthy(),
     );
-    // The storage answers "no recording", then the pair loads.
     await waitFor(() => expect(engine.preloadDrumSamples).not.toBeUndefined());
     await act(async () => {
       await new Promise((r) => setTimeout(r, 80));
@@ -167,7 +161,6 @@ describe('shared playback across a change of part', () => {
         screen.getByRole('heading', { name: 'Grade da bateria por seção' }),
       ).toBeTruthy(),
     );
-    // Let the new part's storage answer and every effect run.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 120));
     });

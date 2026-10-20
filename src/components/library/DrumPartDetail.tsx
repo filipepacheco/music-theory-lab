@@ -34,15 +34,12 @@ import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 
 interface Props {
   chart: DrumChart;
-  /** A new value reloads the line lengths (a synchronization brought some). */
   settingsKey?: unknown;
   onRemove: () => void;
-  /** The clock of the two parts of one file; it lives above the part. */
   parts?: SongPartsPlayback;
 }
 
 const NO_MARKS: DrumGridMark[] = [];
-/** The drum part works out nothing for a section. */
 const noSectionLayout = () => null;
 
 const LEGEND: [symbol: string, meaning: string][] = [
@@ -57,13 +54,6 @@ const LEGEND: [symbol: string, meaning: string][] = [
   ['>', 'acento, sobre o símbolo em negrito'],
 ];
 
-/**
- * The drum part of the song detail. It supplies the bar of the drum grid and
- * the labels of its rows to the frame, which owns the rest of the screen. It
- * has no transposition, tuning, fingering, degrees, key, fretboard, or circle
- * of fifths. With a linked recording the cursor follows it; without one the
- * drum samples play the chart.
- */
 export default function DrumPartDetail({
   chart,
   settingsKey,
@@ -82,8 +72,6 @@ export default function DrumPartDetail({
   const recordingLinked = audioState.status !== 'missing';
   const recordingKnown = audioState.status !== 'loading';
   useEffect(() => {
-    // A part that was just opened has not read its storage: keep the answer
-    // of the part before it, so a change of part does not stop the playback.
     if (recordingKnown) reportRecording?.(chart.id, recordingLinked);
   }, [reportRecording, chart.id, recordingLinked, recordingKnown]);
   const hasPlayer = audioUrl !== null || synthOnly;
@@ -105,8 +93,6 @@ export default function DrumPartDetail({
       ),
     [chart, marks],
   );
-  // The groove chart of each section; null when the section has no groove or
-  // the chart cannot draw it.
   const grooves = useMemo(
     () =>
       chart.sections.map((section) => {
@@ -188,7 +174,7 @@ export default function DrumPartDetail({
         />
       )}
       lineStart={lineStart}
-      legend="Cada linha é uma peça, dos pratos (em cima) ao pedal do chimbal (embaixo). A linha cheia marca o tempo e a pontilhada o meio tempo. ● = tambor, ▲ = tom 1, ▼ = tom 2, x = chimbal fechado, o = chimbal aberto, ✱ = ataque, ◇ = condução, (x) = nota fantasma, > = acento."
+      legend="Pratos = Pratos de ataque e de condução; Tons = Tons agudo e médio; Pedal = Pedal do chimbal; Outros = Outras peças. Virada: este compasso foge do groove da seção. Cada linha é uma peça, dos pratos (em cima) ao pedal do chimbal (embaixo). A linha cheia marca o tempo e a pontilhada o meio tempo. ● = tambor, ▲ = tom 1, ▼ = tom 2, x = chimbal fechado, o = chimbal aberto, ✱ = ataque, ◇ = condução, (x) = nota fantasma, > = acento."
       dock={{
         label: 'Bateria',
         showLabel: 'Mostrar legenda',

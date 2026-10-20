@@ -1,5 +1,3 @@
-"""Tests for the Beat This! stage bridge and its typed-failure surface."""
-
 from __future__ import annotations
 
 import hashlib
@@ -324,7 +322,7 @@ def test_beat_analysis_result_rejects_wrong_downbeat_count() -> None:
                 BeatEstimate(time_seconds=0.3, is_downbeat=True),
                 BeatEstimate(time_seconds=0.6, is_downbeat=False),
             ),
-            downbeat_count=99,  # wrong
+            downbeat_count=99,
             tempo_median_bpm=120.0,
         )
 

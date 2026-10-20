@@ -1,5 +1,3 @@
-"""Stage bridge for stable McFee-Ellis structural segmentation."""
-
 from __future__ import annotations
 
 import hashlib
@@ -49,7 +47,6 @@ def structural_calibration_config_sha256(
     scipy_version: str = "1.18.1",
     scikit_learn_version: str = "1.9.0",
 ) -> str:
-    """Digest every fixed choice that held-out section calibration evaluates."""
 
     parameters = ResolvedStructuralParameters(
         sample_rate=sample_rate,

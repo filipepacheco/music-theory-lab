@@ -15,11 +15,6 @@ export interface CollectionLabels {
   remove: string;
 }
 
-/**
- * The one collection-observation adapter: loads on mount, re-reads after
- * cloud sync merges, and re-lists after each CRUD operation. Replace
- * per-entity hook copies with one generated hook per collection.
- */
 export function useCollection<T, SaveInput, UpdateInput = never>(
   collection: CollectionAdapter<T, SaveInput, UpdateInput>,
   labels: CollectionLabels,
@@ -34,10 +29,7 @@ export function useCollection<T, SaveInput, UpdateInput = never>(
     if (cancelled.current) return;
     setItems(first);
 
-    // Re-read after the background cloud sync merges remote records.
-    // Deliberately not chained into the outer promise: loading must clear
-    // on the first read, not wait for the network.
-    savedLibrary.waitUntilSynchronized().then(async () => {
+    void savedLibrary.waitUntilSynchronized().then(async () => {
       if (!cancelled.current) setItems(await collection.list());
     });
   }, [collection]);
@@ -58,9 +50,6 @@ export function useCollection<T, SaveInput, UpdateInput = never>(
     };
   }, [refresh, labels.load]);
 
-  // The library re-syncs when the tab regains focus (savedLibrary); keep the
-  // visible list in step. refresh() itself re-reads after the sync settles,
-  // so the final state always lands.
   useEffect(() => {
     const onFocus = () => {
       refresh().catch(() => {});

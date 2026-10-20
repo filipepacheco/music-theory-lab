@@ -11,10 +11,6 @@ import Segmented from '@/components/shared/Segmented';
 export interface BassNeckHighlight {
   pitchClasses: number[];
   rootPitchClass: number | null;
-  /**
-   * Exact spots to light (string 0 = low E). When present, only these frets
-   * highlight, in the root colour, instead of every fret of each pitch class.
-   */
   positions?: { string: number; fret: number }[];
 }
 
@@ -22,11 +18,9 @@ interface Props {
   highlight?: BassNeckHighlight;
 }
 
-// Standard bass tuning: E1, A1, D2, G2 (note indices)
-const TUNING = [4, 9, 2, 7]; // E, A, D, G
-const TUNING_OCTAVES = [1, 1, 2, 2]; // E1, A1, D2, G2
-// Display order: G (highest) to E (lowest), top to bottom
-const DISPLAY_ORDER = [3, 2, 1, 0]; // G, D, A, E
+const TUNING = [4, 9, 2, 7];
+const TUNING_OCTAVES = [1, 1, 2, 2];
+const DISPLAY_ORDER = [3, 2, 1, 0];
 const STRING_LABELS = ['G', 'D', 'A', 'E'];
 const FRET_COUNT = 12;
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12]);
@@ -47,9 +41,6 @@ export default function BassNeck({ highlight }: Props = {}) {
     : (storedHighlightRootName ?? getNoteName(rootNote));
   const hasAnyHighlights = highlightedNotes.length > 0;
 
-  // When a chord voicing is active, compute exact (string, fret) positions
-  // so each chord tone appears once on the bass, like the piano.
-  // Pick the lowest-fret position for each note (most natural fingering).
   const bassHighlightPositions = useMemo(() => {
     if (highlightOctaveMap === null) return null;
     const octaveMap = computeVoicingOctaveMap(highlightedNotes, 1);
@@ -62,8 +53,6 @@ export default function BassNeck({ highlight }: Props = {}) {
       let bestString = -1;
       let bestFret = FRET_COUNT + 1;
 
-      // Try target octave first, then octave+1 as fallback
-      // (e.g. D1 doesn't exist on bass - lowest note is E1)
       for (const tryOctave of [targetOctave, targetOctave + 1]) {
         for (let si = 0; si < 4; si++) {
           const open = TUNING[si];
@@ -77,7 +66,7 @@ export default function BassNeck({ highlight }: Props = {}) {
             break;
           }
         }
-        if (bestString >= 0) break; // found at this octave, no fallback needed
+        if (bestString >= 0) break;
       }
 
       if (bestString >= 0) {
@@ -94,10 +83,8 @@ export default function BassNeck({ highlight }: Props = {}) {
 
   return (
     <div className="min-w-0">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="lh-label">
-          Baixo (4 cordas)
-        </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h3 className="lh-label">Baixo (4 cordas)</h3>
         <Segmented
           label="Notas no braço"
           value={showAllNotes ? 'all' : 'chords'}
@@ -109,7 +96,6 @@ export default function BassNeck({ highlight }: Props = {}) {
         />
       </div>
       <div className="overflow-x-auto min-w-0">
-        {/* Fret numbers */}
         <div
           className="grid gap-0 mb-1"
           style={{
@@ -118,16 +104,12 @@ export default function BassNeck({ highlight }: Props = {}) {
         >
           <div />
           {Array.from({ length: FRET_COUNT + 1 }, (_, fret) => (
-            <div
-              key={fret}
-              className="text-center text-xs text-text-muted"
-            >
+            <div key={fret} className="text-center text-xs text-text-muted">
               {fret === 0 ? '' : fret}
             </div>
           ))}
         </div>
 
-        {/* Strings */}
         {DISPLAY_ORDER.map((stringIdx, rowIdx) => {
           const openNote = TUNING[stringIdx];
           return (
@@ -138,12 +120,10 @@ export default function BassNeck({ highlight }: Props = {}) {
                 gridTemplateColumns: `44px repeat(${FRET_COUNT + 1}, minmax(44px, 1fr))`,
               }}
             >
-              {/* String label */}
               <div className="flex items-center justify-center text-sm text-text-secondary">
                 {STRING_LABELS[rowIdx]}
               </div>
 
-              {/* Frets (0 = open string) */}
               {Array.from({ length: FRET_COUNT + 1 }, (_, fret) => {
                 const noteIndex = (openNote + fret) % 12;
                 const noteName = getNoteName(noteIndex, rootNoteName);

@@ -11,8 +11,6 @@ interface PianoKeyProps {
   onClick: (noteIndex: number) => void;
 }
 
-// A key keeps its own ink in both themes (see .ink-day / .ink-night), so the
-// highlight colour always has contrast against the keys beside it.
 const PianoKey = memo(function PianoKey({
   noteIndex,
   noteName,
@@ -36,7 +34,7 @@ const PianoKey = memo(function PianoKey({
       <button
         onPointerDown={handleClick}
         aria-label={`${noteName} (tecla preta)`}
-        className="ink-night absolute z-10 w-8 h-24 border border-border-strong flex flex-col items-center justify-end pb-1 cursor-pointer"
+        className="instrument-touch ink-night absolute z-10 w-8 h-24 border border-border-strong flex flex-col items-center justify-end pb-1 cursor-pointer"
         style={{ backgroundColor }}
       >
         {isHighlighted && (
@@ -61,7 +59,7 @@ const PianoKey = memo(function PianoKey({
     <button
       onPointerDown={handleClick}
       aria-label={`${noteName} (tecla branca)`}
-      className="ink-day relative w-12 h-36 border border-border-strong flex flex-col items-center justify-end pb-2 cursor-pointer"
+      className="instrument-touch ink-day relative w-12 h-36 border border-border-strong flex flex-col items-center justify-end pb-2 cursor-pointer"
       style={{ backgroundColor }}
     >
       <span

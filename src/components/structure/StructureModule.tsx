@@ -2,9 +2,6 @@ import { useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
@@ -22,10 +19,12 @@ import SaveStructureButton from './SaveStructureButton';
 import StructureList from './StructureList';
 import { exportStructurePdf, type PdfFormat } from '@/utils/exportStructurePdf';
 import type { StructureBar, StructureSection } from '@/types';
+import { useStructureDragSensors } from '@/hooks/useStructureDragSensors';
 import Frame from '@/components/shared/Frame';
 import Button from '@/components/shared/Button';
 import Field from '@/components/shared/Field';
 import Select from '@/components/shared/Select';
+import '@/components/structure/structureLayout.css';
 
 type DragItem =
   | { type: 'bar'; bar: StructureBar; displayIndex?: number }
@@ -48,11 +47,7 @@ export default function StructureModule() {
   const [newSectionColor, setNewSectionColor] = useState(STRUCTURE_PALETTE[0]);
   const [pdfFormat, setPdfFormat] = useState<PdfFormat>('ipad-air');
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
-  );
+  const sensors = useStructureDragSensors();
 
   useStructureRecorder();
 
@@ -61,7 +56,6 @@ export default function StructureModule() {
     if (!name) return;
     addStructureSection(name, newSectionColor);
     setNewSectionName('');
-    // Cycle to next color
     const idx = STRUCTURE_PALETTE.indexOf(newSectionColor);
     setNewSectionColor(STRUCTURE_PALETTE[(idx + 1) % STRUCTURE_PALETTE.length]);
   }
@@ -120,20 +114,13 @@ export default function StructureModule() {
   }
 
   return (
-    <section className="flex flex-col gap-6">
-      <Frame
-        title="Estrutura"
-        titleAs="h2"
-        className="flex flex-col gap-5"
-      >
-        {/* -- Metadata -- */}
+    <section className="structure-module min-w-0 flex flex-col gap-6">
+      <Frame title="Estrutura" titleAs="h2" className="flex flex-col gap-5">
         <StructureMetadataBar />
 
-        {/* -- Controls: compasso + add section -- */}
-        <div className="flex flex-col gap-4">
+        <div className="structure-controls">
           <StructureRecorder />
 
-          {/* New section creation */}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <Field
@@ -169,7 +156,6 @@ export default function StructureModule() {
               </Button>
             </div>
 
-            {/* Quick suggestion chips */}
             <div className="flex flex-wrap gap-1.5">
               {SECTION_SUGGESTIONS.map((s) => (
                 <button
@@ -190,10 +176,8 @@ export default function StructureModule() {
           </div>
         </div>
 
-        {/* -- Separator -- */}
         <div className="border-t border-border-default" />
 
-        {/* -- Content: sections with DnD -- */}
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
@@ -214,8 +198,7 @@ export default function StructureModule() {
           </DragOverlay>
         </DndContext>
 
-        {/* -- Actions -- */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-border-default">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border-default">
           <SaveStructureButton />
           {structureBars.length > 0 && (
             <div className="flex items-center gap-[1ch]">
@@ -256,10 +239,7 @@ export default function StructureModule() {
             </div>
           )}
           {(activeStructureId || structureBars.length > 0) && (
-            <Button
-              onClick={clearStructure}
-              className="text-danger"
-            >
+            <Button onClick={clearStructure} className="text-danger">
               Limpar estrutura
             </Button>
           )}

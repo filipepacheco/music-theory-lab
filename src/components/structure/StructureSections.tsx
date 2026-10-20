@@ -1,3 +1,4 @@
+import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useCallback, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
@@ -122,7 +123,6 @@ function InlineSectionName({
   );
 }
 
-/** Lightweight overlay shown while dragging a section */
 export function SectionOverlay({ section }: { section: StructureSection }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-2 border-accent bg-bg-card shadow-lg opacity-90">
@@ -212,11 +212,10 @@ function DroppableSection({
       }}
       onClick={() => onFocus(section.id)}
     >
-      {/* Horizontal layout: actions | bars grid | comment */}
-      <div className="flex gap-3 sm:gap-4">
-        {/* Left column: action buttons stacked vertically */}
-        <div className="flex flex-col items-center gap-1.5 shrink-0">
+      <div className="structure-section-content">
+        <div className="structure-section-tools flex items-center gap-1.5">
           <span
+            style={{ touchAction: 'none' }}
             className="w-6 h-6 flex items-center justify-center text-text-muted/40 hover:text-text-muted text-sm cursor-grab active:cursor-grabbing select-none"
             {...attributes}
             {...listeners}
@@ -312,9 +311,8 @@ function DroppableSection({
           </div>
         </div>
 
-        {/* Middle column: bars grid */}
         <div
-          className="flex flex-wrap gap-1 sm:gap-1.5 content-start"
+          className="min-w-0 flex flex-wrap gap-1 sm:gap-1.5 content-start"
           style={
             section.barsPerRow
               ? {
@@ -334,9 +332,8 @@ function DroppableSection({
           ))}
         </div>
 
-        {/* Right column: description and chart */}
         <div
-          className={`flex-1 min-w-0 self-stretch grid items-start gap-2 ${
+          className={`structure-section-notes min-w-0 self-stretch grid items-start gap-2 ${
             !grooveOpen && section.groove
               ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]'
               : 'grid-cols-1'
@@ -374,7 +371,6 @@ function DroppableSection({
         </div>
       </div>
 
-      {/* Groove editor: expands under the bars row */}
       {grooveOpen && (
         <div
           onPointerDown={(e) => e.stopPropagation()}
@@ -406,6 +402,15 @@ function DroppableSection({
 
 export default function StructureSections() {
   const groovePlayer = useGroovePlayer();
+  const focusedSection = useAppStore((s) =>
+    s.structureSections.find((section) => section.id === s.focusedSectionId),
+  );
+  const bpm = useAppStore((s) => s.bpm);
+  usePlaybackShortcut(() => {
+    if (groovePlayer.isPlaying) groovePlayer.stop();
+    else if (focusedSection?.groove)
+      void groovePlayer.play(focusedSection.groove, bpm);
+  }, Boolean(focusedSection?.groove));
   const sections = useAppStore((s) => s.structureSections);
   const structureBars = useAppStore((s) => s.structureBars);
   const focusedSectionId = useAppStore((s) => s.focusedSectionId);

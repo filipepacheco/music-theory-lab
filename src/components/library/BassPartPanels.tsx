@@ -32,12 +32,6 @@ import {
   E_STANDARD_TUNING,
 } from '@/domain/bassTransposition';
 
-/**
- * The panels of the bass part of the song detail: fingering, transposition
- * and tuning, the bass mix, the key, and the degrees of a section. The frame
- * of the song detail shows them and holds none of them.
- */
-
 const ALL_KEYS: MusicalKey[] = (['major', 'minor'] as const).flatMap((mode) =>
   Array.from({ length: 12 }, (_, tonic) => ({ tonic, mode })),
 );
@@ -46,7 +40,6 @@ function keyValue(key: MusicalKey): string {
   return `${key.tonic}-${key.mode}`;
 }
 
-/** The chords and the harmonic events of one section. */
 export interface SectionHarmony {
   segments: HarmonicSegment[];
   events: HarmonicEvent[];
@@ -61,16 +54,13 @@ const CATEGORY_LABELS: Record<DegreeCategory, string> = {
   ornament: 'ornamentos',
 };
 
-/** Which fingering of a Guitar Pro chart the tab shows. */
 export function FingeringPanel({
   available,
   recalculated,
   value,
   onChange,
 }: {
-  /** The file brought its own string and fret positions. */
   available: boolean;
-  /** A transposition or a practice tuning replaced the fingering. */
   recalculated: boolean;
   value: string;
   onChange: (fingering: string) => void;
@@ -100,7 +90,6 @@ export function FingeringPanel({
   );
 }
 
-/** Transposition in semitones, and the tuning to practice in. */
 export function TranspositionPanel({
   chart,
   shift,
@@ -114,16 +103,13 @@ export function TranspositionPanel({
   onPracticeTuning,
   onReset,
 }: {
-  /** The chart as imported, before a transposition. */
   chart: BassChart;
   shift: number;
   canTranspose: boolean;
   canLower: boolean;
   canRaise: boolean;
   practiceTuning: string;
-  /** A linked recording plays in the original key: no transposition. */
   hasRecording: boolean;
-  /** Octaves the whole line moved to fit the tuning. */
   octaveOffset: number;
   onShift: (semitones: number) => void;
   onPracticeTuning: (tuning: string) => void;
@@ -238,7 +224,6 @@ function percent(part: number, total: number): string {
   return `${total > 0 ? Math.round((part / total) * 100) : 0}%`;
 }
 
-/** Share of the section's notes per degree, and how the line moves. */
 export function SectionSummary({ summary }: { summary: AnalysisSummary }) {
   const { counts, motion } = summary;
   const total = DEGREE_CATEGORIES.reduce((sum, c) => sum + counts[c], 0);
@@ -262,9 +247,7 @@ export function SectionSummary({ summary }: { summary: AnalysisSummary }) {
   );
 }
 
-/** The section's chords as numerals, a repeated cycle shown once ×n. */
 export function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
-  // A rest between two bars of one chord splits it; show it once.
   const chords = harmony.segments.filter(
     (segment, i) =>
       segment.harmony.numeral !== harmony.segments[i - 1]?.harmony.numeral,
@@ -282,7 +265,6 @@ export function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
           <span key={segment.startBar} className="flex items-baseline gap-1">
             {i > 0 && <span className="text-text-muted">–</span>}
             <span
-              title={segment.harmony.detail}
               className="font-bold"
               style={{
                 color: segment.harmony.func
@@ -291,6 +273,9 @@ export function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
               }}
             >
               {segment.harmony.numeral}
+              <span className="block text-meta font-normal">
+                {segment.harmony.detail}
+              </span>
             </span>
           </span>
         ))}
@@ -386,7 +371,6 @@ export function DegreeLegend() {
   );
 }
 
-/** Which part of the linked recording sounds: all, the bass, or the rest. */
 export function BassMixPicker({
   mode,
   crossoverHz,

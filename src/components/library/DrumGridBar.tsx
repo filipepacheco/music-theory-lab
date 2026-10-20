@@ -13,71 +13,43 @@ import {
   type DrumGridSymbol,
 } from '@/domain/drumGrid';
 
-/** The base beat width: the one of the bass tab, so the two parts align. */
 export const DRUM_BEAT_WIDTH = BEAT_WIDTH;
 const PAD_X = BAR_PAD_X;
-/** The pixels of a bar that do not grow with its beats: padding and border. */
 export const DRUM_BAR_CHROME = PAD_X * 2 + 2;
-/** Type sizes in a bar; none goes under the design system's 10 px floor. */
 const SYMBOL_FONT_SIZE = 11;
 const ACCENT_FONT_SIZE = 10;
-/** The width of one symbol, and of one parenthesis of a ghost note. */
 export const DRUM_CHAR_WIDTH = DRUM_MARK_WIDTH;
-/** Clear space kept between two symbols of a row, in pixels. */
 export const DRUM_LABEL_GAP = 4;
-/** Room above the first row for the bar number and the `>` of an accent. */
 const PAD_TOP = 22;
 const PAD_BOTTOM = 9;
 const ROW_GAP = 18;
-/** How far above its symbol the `>` of an accent is. */
 const ACCENT_RISE = 9;
 const DOT_RADIUS = 2.6;
-/** Half the size of a shape symbol: a tom, the crash, or the ride. */
 const SHAPE_HALF = 3.8;
-/** The dot of an accent is larger: the bold form of a dot. */
 const ACCENT_DOT_RADIUS = DRUM_CHAR_WIDTH / 2;
-/** The width that the row labels take at the start of a line of bars. */
 export const DRUM_LABEL_WIDTH = 52;
 
 const rowY = (index: number) => PAD_TOP + index * ROW_GAP;
 
-/** The height of the grid of a bar, in pixels, without the border. */
 export function drumGridHeight(rowCount: number): number {
   return PAD_TOP + Math.max(0, rowCount - 1) * ROW_GAP + PAD_BOTTOM;
 }
 
-/** A bar's drawn width in pixels, border included. */
 export function drumBarWidth(beatCount: number, beatWidth: number): number {
   return DRUM_BAR_CHROME + beatCount * beatWidth;
 }
 
 interface Props {
   bar: BassChartBar;
-  /** The rows of the chart; all bars draw the same rows. */
   rows: readonly DrumGridRow[];
   marks: DrumGridMark[];
   beatWidth: number;
-  /**
-   * The bar right above this one when it draws the same grid. The bar is
-   * then left empty under a repeat sign.
-   */
   repeatOf?: number;
-  /** 0–1 position of the playhead inside this bar, or null in another bar. */
   playhead: number | null;
-  /** The bar leaves the section groove: it is a fill. */
   fill?: boolean;
-  /** Jump to a time; null while there is nothing to play. */
   onSeek: ((seconds: number) => void) | null;
 }
 
-/**
- * One bar of the drum grid: a row for each drum piece of the chart, in the
- * bar layout of the bass tab. A drum is a filled dot, tom 1 and tom 2 are a
- * triangle up and down, a closed hi-hat is `x`, an open hi-hat is `o`, the
- * crash is a star, and the ride is a diamond. A solid line marks each beat
- * and a dotted line each half beat. A ghost note is in parentheses; an
- * accent is bold under a `>`.
- */
 function DrumGridBar({
   bar,
   rows,
@@ -256,11 +228,6 @@ function DrumGridBar({
 
 export default memo(DrumGridBar);
 
-/**
- * A symbol that is a shape, not a character: the dot of a drum, the
- * triangles of the toms, the star of the crash, and the diamond of the ride.
- * An accent draws the shape larger.
- */
 function MarkShape({
   symbol,
   x,
@@ -326,10 +293,6 @@ function MarkShape({
   }
 }
 
-/**
- * The labels of the rows, at the start of a line of bars. It is as tall as a
- * bar, and each label is at the height of its row.
- */
 export function DrumRowLabels({ rows }: { rows: readonly DrumGridRow[] }) {
   return (
     <div
@@ -337,7 +300,6 @@ export function DrumRowLabels({ rows }: { rows: readonly DrumGridRow[] }) {
       role="list"
       aria-label="Peças da grade"
       style={{
-        // One pixel for the border of the bar.
         height: drumGridHeight(rows.length) + 2,
         paddingTop: 1 + PAD_TOP - ROW_GAP / 2,
       }}

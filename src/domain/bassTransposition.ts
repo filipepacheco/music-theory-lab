@@ -9,7 +9,6 @@ export function supportsBassTransposition(chart: BassChart): boolean {
   return chart.source === 'midi' || chart.source === 'gp';
 }
 
-/** One register shift for the whole line keeps every melodic interval intact. */
 function playableOctaveOffset(
   chart: BassChart,
   semitones: number,
@@ -33,7 +32,6 @@ function playableOctaveOffset(
   )
     return null;
 
-  // Try the written register first, then the closest octaves in either direction.
   for (let distance = 0; distance <= 120; distance += 12) {
     for (const offset of distance === 0 ? [0] : [distance, -distance]) {
       if (
@@ -67,12 +65,10 @@ export function transposeMusicalKey<T extends MusicalKey>(
   return { ...key, tonic: (((key.tonic + semitones) % 12) + 12) % 12 };
 }
 
-/** The octaves that bars of the tab move, by bar index. */
 export type BarOctaves = Readonly<Record<number, number>>;
 
 const NO_BAR_OCTAVES: BarOctaves = {};
 
-/** Octaves the whole line moves to fit the tuning; 0 when it cannot fit. */
 export function lineOctaveOffset(
   chart: BassChart,
   semitones: number,
@@ -81,10 +77,6 @@ export function lineOctaveOffset(
   return (playableOctaveOffset(chart, semitones, tuning) ?? 0) / 12;
 }
 
-/**
- * True when each note of the bar still has a place on the neck after the bar
- * moves `octave` octaves, on top of the transposition of the whole line.
- */
 export function barOctaveFits(
   chart: BassChart,
   bar: number,
@@ -104,7 +96,6 @@ export function barOctaveFits(
   });
 }
 
-/** The bars with the same notes at the same beats as `bar`, `bar` included. */
 export function barsLike(chart: BassChart, bar: number): number[] {
   const texts = new Map<number, string>();
   for (const note of chart.notes) {
@@ -123,12 +114,6 @@ export function barsLike(chart: BassChart, bar: number): number[] {
     .map((item) => item.index);
 }
 
-/**
- * A practice view of the original import; timing and saved bytes stay intact.
- * A bar octave moves the notes of one bar; a bar whose notes then leave the
- * neck plays as written. With no transposition, only the moved bars get a new
- * fingering.
- */
 export function transposeBassChart(
   chart: BassChart,
   semitones: number,
@@ -168,7 +153,6 @@ export function transposeBassChart(
     ? suggestFingering(pitched, open)
     : chart.notes.map(() => null);
   if (!lineChanges) {
-    // Each run of moved notes gets its own fingering; the rest stays.
     let start = 0;
     while (start < chart.notes.length) {
       if (!moved.has(chart.notes[start].bar)) {

@@ -15,8 +15,7 @@ export default function PresetList() {
   const bpm = useAppStore((s) => s.bpm);
 
   const mode = isMinor ? 'minor' : 'major';
-  const { progressions, isLoading, save, remove } =
-    useSavedProgressions(mode);
+  const { progressions, isLoading, save, remove } = useSavedProgressions(mode);
 
   const [showSave, setShowSave] = useState(false);
 
@@ -39,7 +38,6 @@ export default function PresetList() {
 
   return (
     <div className="space-y-4">
-      {/* Save button */}
       {customProgression.length > 0 && (
         <Button onClick={() => setShowSave(true)}>+ Salvar progressão</Button>
       )}
@@ -54,7 +52,6 @@ export default function PresetList() {
         onClose={() => setShowSave(false)}
       />
 
-      {/* User saved progressions */}
       {userSaved.length > 0 && (
         <div>
           <h3 className="font-heading text-sm text-text-secondary mb-2">
@@ -104,7 +101,6 @@ export default function PresetList() {
         </div>
       )}
 
-      {/* Examples */}
       <div>
         <h4 className="font-heading text-sm text-text-secondary mb-2">
           Exemplos

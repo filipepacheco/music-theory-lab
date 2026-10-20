@@ -22,6 +22,7 @@ import {
 } from '@/domain/chartSummary';
 import { isDrumChart } from '@/domain/drumChart';
 import Frame from '@/components/shared/Frame';
+import '@/components/library/libraryLayout.css';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
 import {
   choiceOfTarget,
@@ -65,7 +66,6 @@ export default function LibraryModule() {
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const { route, navigate } = useLibraryRoute();
-  // Lives here, not in the list, so it survives a visit to a song screen.
   const [listView, setListView] = useState<ListView>(DEFAULT_LIST_VIEW);
   const {
     summaries,
@@ -105,8 +105,6 @@ export default function LibraryModule() {
     [tracks],
   );
   const lineLengthCopies = useLineLengthMigration();
-  // The chart settings reload after each synchronization of them: one can
-  // bring settings of a different device and leave `summaries` as it is.
   const settingsKey = useMemo(
     () => [summaries, lineLengthCopies, settingsRevision],
     [summaries, lineLengthCopies, settingsRevision],
@@ -126,7 +124,6 @@ export default function LibraryModule() {
   const choices = resolved ? songSourceChoices(resolved.song) : [];
   const songKeyOpen = resolved?.song.key ?? null;
   const targetChartId = target?.kind === 'chart' ? target.id : null;
-  // The parts of the open source, and the one that the song screen shows.
   const parts =
     resolved && currentChoice
       ? songPartChoices(resolved.song, currentChoice)
@@ -138,7 +135,6 @@ export default function LibraryModule() {
   const linkedChartIds = useLinkedRecordings(listShown);
   useListScroll(listShown);
 
-  // The first load is over when the index answered and one sync ended.
   useEffect(() => {
     if ((tracks !== null || error !== null) && syncStatus !== 'syncing') {
       setSettled(true);
@@ -149,7 +145,6 @@ export default function LibraryModule() {
     if (targetChartId && openId !== targetChartId) void open(targetChartId);
   }, [targetChartId, openId, open]);
 
-  // The device keeps the source that the song screen shows, for each song.
   useEffect(() => {
     if (songKeyOpen && currentChoice)
       writeLastSource(songKeyOpen, currentChoice);
@@ -188,17 +183,12 @@ export default function LibraryModule() {
     targetChartId && openChart?.id === targetChartId ? openChart : null;
   const selectedSummary =
     summaries.find((item) => item.id === targetChartId) ?? null;
-  // The clock of the two parts of one file lives here, above the detail that
-  // a change of part remounts, so the playback goes on.
-  // It reads the summary of the target, not the open chart: the chart loads
-  // after the address changes, and that gap must not look like a closed song.
   const songParts = useSongPartsPlayback(
     selectedSummary?.id ?? null,
     selectedSummary?.part ?? null,
     resolved?.song.charts ?? NO_SONG_CHARTS,
   );
 
-  /** Store a group override, then show the song that now holds the chart. */
   const correctGroup = async (chartId: string, override: string | null) => {
     setJoinMessage(null);
     setCorrectionError(null);
@@ -224,8 +214,6 @@ export default function LibraryModule() {
     const before = summaries;
     const chart = await importFile(file);
     if (chart) {
-      // The group overrides count here too: a chart that was moved or
-      // separated opens on the song that holds it, not on the calculated one.
       const joined = songJoinedByImport(
         before,
         analysedRefs,
@@ -252,7 +240,7 @@ export default function LibraryModule() {
       as="section"
       title="Biblioteca"
       titleAs="h2"
-      className="flex flex-col gap-4"
+      className="library-module min-w-0 flex flex-col gap-4"
     >
       <p className="text-xs text-text-muted">
         Análise automática de cifra, tom e andamento das faixas processadas pelo

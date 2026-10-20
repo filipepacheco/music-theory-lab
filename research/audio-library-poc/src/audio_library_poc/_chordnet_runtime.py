@@ -1,5 +1,3 @@
-"""Lazy, pinned-source ChordNet inference runtime."""
-
 from __future__ import annotations
 
 from audio_library_poc.chord_analysis import (
@@ -34,7 +32,6 @@ def _count_layers(state_dict, prefix: str, marker: str) -> int | None:
 def _infer_chordnet_architecture(
     state_dict, defaults: dict[str, object]
 ) -> dict[str, object]:
-    """Mirror the pinned loader's state-shape inference before config overrides."""
 
     inferred = dict(defaults)
     fc_weight = state_dict["fc.weight"]
@@ -70,7 +67,6 @@ def _infer_chordnet_architecture(
 
 
 def _resolve_chordnet_state_dict(checkpoint) -> dict[str, object]:
-    """Extract and normalize the state dict before inspecting its shape."""
 
     if not isinstance(checkpoint, dict):
         raise ExpectedStageFailure(
@@ -106,7 +102,6 @@ def _resolve_chordnet_state_dict(checkpoint) -> dict[str, object]:
 def run_chordnet_inference(
     *, source_path, checkpoint_path, config, identity, **_kwargs
 ) -> tuple[ChordAnalysisResult, object, ChordFrameEvidenceArtifact]:
-    """Run only after the bridge has verified checkpoint provenance and bytes."""
 
     import time
 
@@ -142,9 +137,6 @@ def run_chordnet_inference(
                 retryable=False,
             )
         )
-    # The executor performed the early, dependency-free hash gate. Repeat it
-    # immediately before deserializing because a local checkpoint can still be
-    # replaced while torch and the model runtime are loading.
     if hash_file(checkpoint_path) != identity.model_sha256:
         raise ExpectedStageFailure(
             TypedError(
@@ -157,7 +149,6 @@ def run_chordnet_inference(
         str(checkpoint_path), map_location="cpu", weights_only=False
     )
     state = _resolve_chordnet_state_dict(checkpoint)
-    # Pinned checkpoint loader fallbacks precede checkpoint-config overrides.
     architecture = _infer_chordnet_architecture(
         state,
         {
