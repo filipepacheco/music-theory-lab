@@ -277,25 +277,36 @@ describe('drum part of the song detail', () => {
     }
   });
 
-  it('draws a drum as a dot, a cymbal or a closed hi-hat as x, and an open hi-hat as o', () => {
+  it('draws a drum as a dot, a closed hi-hat as x, and an open hi-hat as o', () => {
     renderPart();
     const kick = mark(3, 'bumbo', 0);
     expect(kick.dataset.symbol).toBe('dot');
     expect(kick.querySelectorAll('circle')).toHaveLength(1);
     expect(kick.textContent).toBe('');
     expect(mark(3, 'caixa', 1).querySelectorAll('circle')).toHaveLength(1);
-    expect(mark(9, 'toms', 0).querySelectorAll('circle')).toHaveLength(1);
     expect(mark(9, 'surdo', 2).querySelectorAll('circle')).toHaveLength(1);
 
     const closed = mark(3, 'chimbal', 0);
     expect(closed.textContent).toBe('x');
     expect(closed.querySelector('circle')).toBeNull();
-    expect(mark(2, 'pratos', 0).textContent).toContain('x');
 
     const open = mark(2, 'chimbal', 3.5);
     expect(open.dataset.symbol).toBe('o');
     expect(open.textContent).toBe('o');
     expect(mark(2, 'chimbal', 3).textContent).toBe('x');
+  });
+
+  it('draws the crash, the ride, and each tom with a shape of its own', () => {
+    renderPart();
+    const crash = mark(2, 'pratos', 0);
+    expect(crash.dataset.symbol).toBe('crash');
+    expect(crash.querySelectorAll('path').length).toBeGreaterThan(0);
+    expect(crash.textContent).not.toContain('x');
+
+    const tom1 = mark(9, 'toms', 0);
+    expect(tom1.dataset.symbol).toBe('tom1');
+    expect(tom1.querySelectorAll('polygon')).toHaveLength(1);
+    expect(tom1.querySelector('circle')).toBeNull();
   });
 
   it('draws a ghost note in parentheses, and an accent in bold under a >', () => {
@@ -322,13 +333,16 @@ describe('drum part of the song detail', () => {
 
     const accentCrash = mark(2, 'pratos', 0);
     expect(accentCrash.dataset.dynamic).toBe('accent');
-    expect(accentCrash.textContent).toBe('>x');
-    const [sign, symbol] = [...accentCrash.querySelectorAll('text')];
-    expect(weight(symbol)).toBe('600');
-    expect(sign.getAttribute('x')).toBe(symbol.getAttribute('x'));
-    expect(Number(sign.getAttribute('y'))).toBeLessThan(
-      Number(symbol.getAttribute('y')),
+    expect(accentCrash.textContent).toBe('>');
+    // The > is above the star, and the star of an accent is bold.
+    const sign = accentCrash.querySelector('text');
+    const paths = accentCrash.querySelectorAll('path');
+    const star = paths[paths.length - 1];
+    expect(Number(sign?.getAttribute('y'))).toBeLessThan(
+      Number(star?.getAttribute('d')?.split(' ')[2]),
     );
+    expect(Number(star?.getAttribute('stroke-width'))).toBeGreaterThan(1.2);
+    // A dot has no bold form: the dot of an accent is larger.
     const accentKick = mark(2, 'bumbo', 0);
     expect(accentKick.textContent).toBe('>');
     expect(radius(accentKick)).toBeGreaterThan(radius(mark(3, 'bumbo', 0)));

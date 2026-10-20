@@ -14,6 +14,18 @@ interface GrooveChartProps {
   currentTick?: number;
 }
 
+/** The ink of the notation: one neutral colour, as in a printed chart. */
+const INK = 'var(--color-text-primary)';
+/** Room at the left of the staff for the percussion clef and the 4/4. */
+const CLEF_WIDTH = 26;
+const STAFF_TOP = 18;
+const STAFF_SPACING = 6;
+/** How far under the bottom staff line the stems end, at the first beam. */
+const STEM_BELOW = 12;
+const BEAM_GAP = 3.2;
+const BEAM_WIDTH = 2;
+const HEIGHT = 70;
+
 function resolutionLabel(groove: GroovePattern): string {
   const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
   return (
@@ -22,16 +34,43 @@ function resolutionLabel(groove: GroovePattern): string {
   );
 }
 
-function emptyBeatPath(x: number, y: number): string {
-  return `M ${x - 2.5} ${y - 5} l 4 4 - 3 4 4 4`;
+function quarterRestPath(x: number, y: number): string {
+  return `M ${x - 2.5} ${y - 5} l 4 4 -3 4 4 4`;
 }
 
-function isPieceHit(
+/** One stem of the chart: a step with one or more hits. */
+interface NoteStem {
+  step: number;
+  pieces: DrumPiece[];
+  /** Beams of the note: 1 for an eighth, 2 for a sixteenth, 0 for longer. */
+  beams: number;
+  dotted: boolean;
+}
+
+/**
+ * The stems of one beam group. A note lasts to the next hit of its group or
+ * to the end of the group, so a hit alone in its half of the beat is longer.
+ */
+function groupStems(
   hits: DrumPiece[][],
-  step: number,
-  piece: DrumPiece,
-): boolean {
-  return hits[step]?.includes(piece) ?? false;
+  start: number,
+  end: number,
+  stepsPerBeat: number,
+): NoteStem[] {
+  const steps: number[] = [];
+  for (let step = start; step < end; step += 1) {
+    if ((hits[step]?.length ?? 0) > 0) steps.push(step);
+  }
+  return steps.map((step, index) => {
+    const quarters = ((steps[index + 1] ?? end) - step) / stepsPerBeat;
+    const level = Math.floor(Math.log2(quarters));
+    return {
+      step,
+      pieces: hits[step],
+      beams: quarters >= 1 ? 0 : -level,
+      dotted: quarters / 2 ** level === 1.5,
+    };
+  });
 }
 
 export function GrooveChart({
@@ -39,16 +78,35 @@ export function GrooveChart({
   color,
   currentTick = -1,
 }: GrooveChartProps) {
-  const layout = grooveChartLayout(groove);
+  const layout = grooveChartLayout(groove, {
+    labelWidth: CLEF_WIDTH,
+    staffTop: STAFF_TOP,
+    staffSpacing: STAFF_SPACING,
+    height: HEIGHT,
+  });
   const hits = grooveHits(groove);
   const totalTicks = grooveTotalStepCount('32n', groove.measureCount);
   const normalizedTick = ((currentTick % totalTicks) + totalTicks) % totalTicks;
   const ticksPerStep = totalTicks / layout.totalSteps;
   const activeStep =
     currentTick >= 0 ? Math.floor(normalizedTick / ticksPerStep) : -1;
-  const noteRadius = Math.min(4, layout.stepWidth * 0.35);
-  const crossHalf = Math.min(4, layout.stepWidth * 0.38);
-  const stemOffset = Math.min(3, layout.stepWidth * 0.25);
+  const headRx = Math.min(3.6, layout.stepWidth * 0.38);
+  const headRy = headRx * 0.72;
+  const crossHalf = headRx * 0.9;
+  const beamY = layout.staffBottom + STEM_BELOW;
+  const stemX = (step: number) => layout.stepX(step) - headRx + 0.4;
+  const groupSize =
+    layout.stepsPerBeat === 2 ? layout.stepsPerBeat * 2 : layout.stepsPerBeat;
+  const groups = Array.from(
+    { length: layout.totalSteps / groupSize },
+    (_, group) =>
+      groupStems(
+        hits,
+        group * groupSize,
+        (group + 1) * groupSize,
+        layout.stepsPerBeat,
+      ),
+  );
   const label = `Chart de bateria, ${layout.measureCount} ${layout.measureCount === 1 ? 'compasso' : 'compassos'}, resolução ${resolutionLabel(groove)}`;
 
   return (
@@ -62,35 +120,14 @@ export function GrooveChart({
       >
         <title>{label}</title>
 
-        <text
-          x={4}
-          y={10}
-          fill="var(--color-text-secondary)"
-          fontFamily="var(--font-mono)"
-          fontSize={8}
-          fontWeight="600"
-          letterSpacing="0.08em"
-        >
-          DRUMS
-        </text>
-        <text
-          x={layout.staffLeft}
-          y={10}
-          fill="var(--color-text-muted)"
-          fontFamily="var(--font-mono)"
-          fontSize={8}
-        >
-          4/4 · {resolutionLabel(groove)}
-        </text>
-
         {Array.from({ length: layout.measureCount }, (_, measure) => (
           <text
             key={`measure-label-${measure}`}
-            x={layout.measureX(measure) + 4}
-            y={21}
-            fill={color}
+            x={measure === 0 ? 2 : layout.measureX(measure) + 2}
+            y={8}
+            fill="var(--color-text-muted)"
             fontFamily="var(--font-mono)"
-            fontSize={7}
+            fontSize={8}
             fontWeight="600"
           >
             {measure + 1}
@@ -100,45 +137,51 @@ export function GrooveChart({
         {Array.from({ length: 5 }, (_, line) => (
           <line
             key={`staff-line-${line}`}
-            x1={layout.staffLeft}
+            x1={2}
             x2={layout.staffRight}
             y1={layout.staffTop + line * layout.staffSpacing}
             y2={layout.staffTop + line * layout.staffSpacing}
-            stroke="var(--color-border-default)"
-            strokeWidth={line === 0 || line === 4 ? 1 : 0.7}
-            strokeOpacity={0.85}
+            stroke="var(--color-text-muted)"
+            strokeWidth={0.7}
           />
         ))}
 
-        {Array.from({ length: layout.measureCount }, (_, measure) => (
-          <g key={`measure-${measure}`}>
-            {Array.from({ length: 5 }, (_, beat) => (
-              <line
-                key={`beat-line-${measure}-${beat}`}
-                x1={layout.beatX(measure, beat)}
-                x2={layout.beatX(measure, beat)}
-                y1={layout.staffTop - 5}
-                y2={layout.staffBottom + 5}
-                stroke="var(--color-border-default)"
-                strokeWidth={0.6}
-                strokeOpacity={beat === 0 ? 0.9 : 0.35}
-              />
-            ))}
-          </g>
+        <g data-percussion-clef fill={INK}>
+          {[5, 8.5].map((x) => (
+            <rect
+              key={x}
+              x={x}
+              y={layout.staffTop + layout.staffSpacing}
+              width={1.8}
+              height={layout.staffSpacing * 2}
+            />
+          ))}
+        </g>
+        {[1, 3].map((line) => (
+          <text
+            key={`time-${line}`}
+            x={18}
+            y={layout.staffTop + line * layout.staffSpacing}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={INK}
+            fontFamily="var(--font-mono)"
+            fontSize={12}
+            fontWeight="600"
+          >
+            4
+          </text>
         ))}
 
-        {Array.from({ length: layout.measureCount + 1 }, (_, measure) => (
+        {Array.from({ length: layout.measureCount }, (_, measure) => (
           <line
             key={`barline-${measure}`}
-            x1={layout.measureX(measure)}
-            x2={layout.measureX(measure)}
-            y1={layout.staffTop - 5}
-            y2={layout.staffBottom + 5}
+            x1={layout.measureX(measure + 1)}
+            x2={layout.measureX(measure + 1)}
+            y1={layout.staffTop}
+            y2={layout.staffBottom}
             stroke="var(--color-text-secondary)"
-            strokeWidth={
-              measure === 0 || measure === layout.measureCount ? 1.2 : 1
-            }
-            strokeOpacity={0.9}
+            strokeWidth={1}
           />
         ))}
 
@@ -146,17 +189,17 @@ export function GrooveChart({
           <>
             <rect
               x={layout.stepStartX(activeStep)}
-              y={layout.staffTop - 6}
+              y={layout.staffTop - 8}
               width={layout.stepWidth}
-              height={layout.staffBottom - layout.staffTop + 12}
+              height={beamY - layout.staffTop + 10}
               fill={color}
               opacity={0.12}
             />
             <line
               x1={layout.stepX(activeStep)}
               x2={layout.stepX(activeStep)}
-              y1={layout.staffTop - 7}
-              y2={layout.staffBottom + 7}
+              y1={layout.staffTop - 9}
+              y2={beamY + 3}
               stroke={color}
               strokeWidth={1.4}
               strokeLinecap="round"
@@ -164,20 +207,6 @@ export function GrooveChart({
             />
           </>
         )}
-
-        {DRUM_PIECES.map((piece) => (
-          <text
-            key={`piece-label-${piece.id}`}
-            x={4}
-            y={layout.noteY[piece.id] + 3}
-            fill="var(--color-text-muted)"
-            fontFamily="var(--font-mono)"
-            fontSize={8}
-            fontWeight="600"
-          >
-            {piece.label}
-          </text>
-        ))}
 
         {Array.from({ length: layout.measureCount }, (_, measure) =>
           Array.from({ length: 4 }, (_, beat) => {
@@ -188,135 +217,141 @@ export function GrooveChart({
               (_, offset) => hits[start + offset]?.length ?? 0,
             ).some(Boolean);
             if (hasHit) return null;
-
             return (
               <path
                 key={`rest-${measure}-${beat}`}
-                d={emptyBeatPath(
+                data-rest
+                d={quarterRestPath(
                   layout.beatX(measure, beat) + layout.measureWidth / 8,
                   layout.staffTop + layout.staffSpacing * 2,
                 )}
                 fill="none"
-                stroke="var(--color-text-muted)"
-                strokeWidth={0.9}
+                stroke={INK}
+                strokeWidth={1.1}
                 strokeLinecap="round"
-                opacity={0.75}
               />
             );
           }),
         )}
 
-        {Array.from({ length: layout.measureCount }, (_, measure) =>
-          Array.from({ length: 4 }, (_, beat) => {
-            const start =
-              measure * layout.stepsPerMeasure + beat * layout.stepsPerBeat;
-            const end = start + layout.stepsPerBeat;
-            const groups = Math.max(0, Math.log2(layout.stepsPerBeat));
-
-            return Array.from({ length: groups }, (_, level) => {
-              const groupSize = Math.max(
-                1,
-                layout.stepsPerBeat / 2 ** (level + 1),
-              );
-              return Array.from(
-                { length: layout.stepsPerBeat / groupSize },
-                (_, group) => {
-                  const groupStart = start + group * groupSize;
-                  const groupEnd = Math.min(end, groupStart + groupSize);
-                  const hasHit = Array.from(
-                    { length: groupEnd - groupStart },
-                    (_, offset) => hits[groupStart + offset]?.length ?? 0,
-                  ).some(Boolean);
-                  if (!hasHit) return null;
-
-                  const y = layout.staffTop - 11 - level * 3;
-                  return (
-                    <line
-                      key={`beam-${measure}-${beat}-${level}-${group}`}
-                      x1={layout.stepX(groupStart)}
-                      x2={layout.stepX(groupEnd - 1)}
-                      y1={y}
-                      y2={y}
-                      stroke={color}
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      opacity={0.75}
-                    />
-                  );
-                },
+        {groups.map((stems, group) =>
+          stems.map((stem, index) => {
+            const prev = stems[index - 1];
+            const next = stems[index + 1];
+            const alone = !(prev?.beams || next?.beams);
+            return Array.from({ length: stem.beams }, (_, level) => {
+              const y = beamY - level * BEAM_GAP;
+              const x = stemX(stem.step);
+              const key = `beam-${group}-${stem.step}-${level}`;
+              if (alone) {
+                return (
+                  <path
+                    key={key}
+                    data-flag
+                    d={`M ${x} ${y} q 4.5 -1.5 4.5 -6`}
+                    fill="none"
+                    stroke={INK}
+                    strokeWidth={1.2}
+                    strokeLinecap="round"
+                  />
+                );
+              }
+              if (next && next.beams > level) {
+                return (
+                  <line
+                    key={key}
+                    data-beam
+                    x1={x}
+                    x2={stemX(next.step)}
+                    y1={y}
+                    y2={y}
+                    stroke={INK}
+                    strokeWidth={BEAM_WIDTH}
+                  />
+                );
+              }
+              if (prev && prev.beams > level) return null;
+              // A short beam that points to the note it belongs with.
+              const stub = Math.min(5, layout.stepWidth * 0.6);
+              const toward = prev ? -stub : stub;
+              return (
+                <line
+                  key={key}
+                  data-beam
+                  x1={x}
+                  x2={x + toward}
+                  y1={y}
+                  y2={y}
+                  stroke={INK}
+                  strokeWidth={BEAM_WIDTH}
+                />
               );
             });
           }),
         )}
 
-        {Array.from({ length: layout.totalSteps }, (_, step) => {
-          const x = layout.stepX(step);
-          return DRUM_PIECES.filter((piece) =>
-            isPieceHit(hits, step, piece.id),
-          ).map((piece) => {
-            const y = layout.noteY[piece.id];
-            const isKick = piece.id === 'bumbo';
-            const stemX = x + (isKick ? -stemOffset : stemOffset);
-            const stemEnd = isKick
-              ? layout.staffBottom + 11
-              : layout.staffTop - 11;
-
-            return (
-              <g key={`note-${piece.id}-${step}`}>
-                <line
-                  x1={stemX}
-                  x2={stemX}
-                  y1={isKick ? y + 2 : y - 2}
-                  y2={stemEnd}
-                  stroke={color}
-                  strokeWidth={1}
-                  strokeLinecap="round"
-                />
-                {piece.id === 'chimbal' ? (
-                  <>
-                    <line
-                      x1={x - crossHalf}
-                      x2={x + crossHalf}
-                      y1={y - crossHalf}
-                      y2={y + crossHalf}
-                      stroke={color}
-                      strokeWidth={1.7}
-                      strokeLinecap="round"
-                    />
-                    <line
-                      x1={x + crossHalf}
-                      x2={x - crossHalf}
-                      y1={y - crossHalf}
-                      y2={y + crossHalf}
-                      stroke={color}
-                      strokeWidth={1.7}
-                      strokeLinecap="round"
-                    />
-                  </>
-                ) : (
-                  <ellipse
-                    cx={x}
-                    cy={y}
-                    rx={noteRadius}
-                    ry={noteRadius * 0.75}
-                    fill={color}
-                    stroke={color}
-                    strokeWidth={0.8}
-                  />
-                )}
-              </g>
-            );
-          });
+        {groups.flat().map((stem) => {
+          const x = layout.stepX(stem.step);
+          const top = Math.min(
+            ...stem.pieces.map((piece) => layout.noteY[piece]),
+          );
+          return (
+            <g key={`note-${stem.step}`} data-step={stem.step}>
+              <line
+                x1={stemX(stem.step)}
+                x2={stemX(stem.step)}
+                y1={top}
+                y2={beamY + BEAM_WIDTH / 2}
+                stroke={INK}
+                strokeWidth={0.9}
+              />
+              {DRUM_PIECES.filter((piece) =>
+                stem.pieces.includes(piece.id),
+              ).map((piece) => {
+                const y = layout.noteY[piece.id];
+                return (
+                  <g key={piece.id} data-piece={piece.id}>
+                    {piece.id === 'chimbal' ? (
+                      <path
+                        d={`M ${x - crossHalf} ${y - crossHalf} L ${x + crossHalf} ${y + crossHalf} M ${x + crossHalf} ${y - crossHalf} L ${x - crossHalf} ${y + crossHalf}`}
+                        stroke={INK}
+                        strokeWidth={1.3}
+                        strokeLinecap="round"
+                      />
+                    ) : (
+                      <ellipse
+                        cx={x}
+                        cy={y}
+                        rx={headRx}
+                        ry={headRy}
+                        transform={`rotate(-20 ${x} ${y})`}
+                        fill={INK}
+                      />
+                    )}
+                    {stem.dotted && (
+                      <circle
+                        data-dot
+                        cx={x + headRx + 2.2}
+                        cy={y}
+                        r={0.9}
+                        fill={INK}
+                      />
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          );
         })}
 
         <text
-          x={layout.staffLeft}
-          y={layout.height - 5}
+          x={2}
+          y={layout.height - 3}
           fill="var(--color-text-muted)"
           fontFamily="var(--font-body)"
           fontSize={7}
         >
-          HH chimbal · C caixa · B bumbo
+          x chimbal · meio caixa · baixo bumbo · {resolutionLabel(groove)}
         </text>
       </svg>
     </div>

@@ -10,6 +10,7 @@ import {
   DRUM_GRID_ROW_NAME,
   type DrumGridMark,
   type DrumGridRow,
+  type DrumGridSymbol,
 } from '@/domain/drumGrid';
 
 export const DRUM_BEAT_WIDTH = BEAT_WIDTH;
@@ -24,6 +25,7 @@ const PAD_BOTTOM = 9;
 const ROW_GAP = 18;
 const ACCENT_RISE = 9;
 const DOT_RADIUS = 2.6;
+const SHAPE_HALF = 3.8;
 const ACCENT_DOT_RADIUS = DRUM_CHAR_WIDTH / 2;
 export const DRUM_LABEL_WIDTH = 52;
 
@@ -108,15 +110,28 @@ function DrumGridBar({
             : `Compasso ${number}: ${drumBarSpoken(marks, rows)}`
         }
       >
-        {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
+        {Array.from({ length: bar.beatCount }, (_, beat) => (
           <line
-            key={`beat-${beat}`}
-            x1={PAD_X + (beat + 1) * beatWidth}
-            x2={PAD_X + (beat + 1) * beatWidth}
+            key={`half-${beat}`}
+            data-half-beat={beat}
+            x1={beatMarkX(beat + 0.5, beatWidth)}
+            x2={beatMarkX(beat + 0.5, beatWidth)}
             y1={PAD_TOP - 6}
             y2={height - PAD_BOTTOM + 6}
             stroke="var(--color-border-default)"
             strokeDasharray="1 3"
+          />
+        ))}
+        {Array.from({ length: bar.beatCount - 1 }, (_, beat) => (
+          <line
+            key={`beat-${beat}`}
+            data-beat-line={beat + 1}
+            x1={beatMarkX(beat + 1, beatWidth)}
+            x2={beatMarkX(beat + 1, beatWidth)}
+            y1={PAD_TOP - 8}
+            y2={height - PAD_BOTTOM + 8}
+            stroke="var(--color-border-strong)"
+            strokeWidth={1}
           />
         ))}
         {rows.map((row, index) => (
@@ -185,17 +200,18 @@ function DrumGridBar({
                     (
                   </text>
                 )}
-                {mark.symbol === 'dot' ? (
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={accent ? ACCENT_DOT_RADIUS : DOT_RADIUS}
-                    fill="var(--color-text-primary)"
-                  />
-                ) : (
+                {mark.symbol === 'x' || mark.symbol === 'o' ? (
                   <text {...text} x={x} fontWeight={accent ? 600 : 400}>
                     {mark.symbol}
                   </text>
+                ) : (
+                  <MarkShape
+                    symbol={mark.symbol}
+                    x={x}
+                    y={y}
+                    accent={accent}
+                    ground={ground}
+                  />
                 )}
                 {mark.dynamic === 'ghost' && (
                   <text {...text} x={x + DRUM_CHAR_WIDTH} fontWeight={400}>
@@ -211,6 +227,71 @@ function DrumGridBar({
 }
 
 export default memo(DrumGridBar);
+
+function MarkShape({
+  symbol,
+  x,
+  y,
+  accent,
+  ground,
+}: {
+  symbol: Exclude<DrumGridSymbol, 'x' | 'o'>;
+  x: number;
+  y: number;
+  accent: boolean;
+  ground: string;
+}) {
+  const ink = 'var(--color-text-primary)';
+  const half = (accent ? 1.25 : 1) * SHAPE_HALF;
+  switch (symbol) {
+    case 'dot':
+      return (
+        <circle
+          cx={x}
+          cy={y}
+          r={accent ? ACCENT_DOT_RADIUS : DOT_RADIUS}
+          fill={ink}
+        />
+      );
+    case 'tom1':
+    case 'tom2': {
+      const tip = symbol === 'tom1' ? -1 : 1;
+      return (
+        <polygon
+          points={`${x},${y + tip * half} ${x - half},${y - tip * half * 0.8} ${x + half},${y - tip * half * 0.8}`}
+          fill={ink}
+          stroke={ink}
+          strokeWidth={0.6}
+          strokeLinejoin="round"
+        />
+      );
+    }
+    case 'ride':
+      return (
+        <polygon
+          points={`${x},${y - half} ${x + half},${y} ${x},${y + half} ${x - half},${y}`}
+          fill={ground}
+          stroke={ink}
+          strokeWidth={accent ? 1.8 : 1.2}
+        />
+      );
+    case 'crash': {
+      const arm = half * 0.72;
+      const star = `M ${x - arm} ${y - arm} L ${x + arm} ${y + arm} M ${x + arm} ${y - arm} L ${x - arm} ${y + arm} M ${x} ${y - half} L ${x} ${y + half} M ${x - half} ${y} L ${x + half} ${y}`;
+      return (
+        <>
+          <path d={star} stroke={ground} strokeWidth={4} />
+          <path
+            d={star}
+            stroke={ink}
+            strokeWidth={accent ? 1.8 : 1.2}
+            strokeLinecap="round"
+          />
+        </>
+      );
+    }
+  }
+}
 
 export function DrumRowLabels({ rows }: { rows: readonly DrumGridRow[] }) {
   return (
