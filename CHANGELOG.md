@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-22 - Bass tab player layout
+
+- **Changed**: the Biblioteca uses the full width of the page. The
+  Instrumentos panel does not show on this page.
+- **Changed**: a click on a bar selects it. Its detail shows in the bottom
+  bar, not in the bar.
+- **Changed**: the chord name of a bar is larger. A confirmed chord has a solid
+  box. A guessed chord has a dashed box and a `?`.
+- **Added**: three views of the tab: "Tocar junto", "Graus", and "Análise
+  completa". Only "Análise completa" shows the section analysis, the key, and
+  the analysis of the full song.
+- **Changed**: Transpor, Afinação, and Digitação are in one box. Each action
+  is a button. The fixed help text is in a closed "Como funcionam" section.
+- **Added**: the transposition and the tuning of a song are saved in the chart
+  settings and sync to other devices. The bar octaves then stay correct after
+  a reload. The "Oitava por compasso" mode is also saved.
+
 ## 2026-10-14 - Drum symbols and groove notation
 
 - **Changed**: the drum grid gives each cymbal and tom a symbol of its own.
