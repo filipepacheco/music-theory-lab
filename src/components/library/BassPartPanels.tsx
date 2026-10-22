@@ -183,7 +183,7 @@ export function TranspositionPanel({
         >
           +½ tom
         </Button>
-        {(shift !== 0 || practiceTuning !== 'original') && (
+        {canTranspose && (shift !== 0 || practiceTuning !== 'original') && (
           <Button size="sm" onClick={onReset}>
             Tom original
           </Button>

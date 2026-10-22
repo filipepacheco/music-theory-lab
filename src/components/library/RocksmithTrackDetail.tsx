@@ -401,13 +401,18 @@ export default function RocksmithTrackDetail({
   }, [harmony, segment, segmentIndex, noteNames]);
 
   const audioPlaying = audio.playing;
+  const cursorPlaying = cursor.playing;
+  useEffect(() => {
+    if (cursorPlaying && !octaveMode) setSelectedBar(null);
+  }, [cursorPlaying, octaveMode]);
   const selectBar = useCallback(
     (seconds: number) => {
       const barIndex = barIndexAt(chart, seconds);
-      setSelectedBar(barIndex >= 0 ? barIndex : null);
+      const keep = octaveMode || !cursorPlaying;
+      setSelectedBar(keep && barIndex >= 0 ? barIndex : null);
       if (!octaveMode || !audioPlaying) seek?.(seconds);
     },
-    [chart, octaveMode, audioPlaying, seek],
+    [chart, octaveMode, cursorPlaying, audioPlaying, seek],
   );
   const songSummary = useMemo(
     () => summarizeBars(analysis, 0, chart.bars.length),
