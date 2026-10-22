@@ -23,6 +23,7 @@ interface Props {
   title: ReactNode;
   status: string;
   detail?: ReactNode;
+  controls?: ReactNode;
   playing: boolean;
   canPlay: boolean;
   onTogglePlay: () => void;
@@ -39,6 +40,7 @@ export default function PlaybackDock({
   title,
   status,
   detail,
+  controls,
   playing,
   canPlay,
   onTogglePlay,
@@ -118,6 +120,7 @@ export default function PlaybackDock({
             {detail}
           </p>
         )}
+        {controls}
         {!collapsed && panel}
       </div>
     </div>

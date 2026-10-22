@@ -115,6 +115,7 @@ interface Props<L> {
     title: ReactNode;
     status: string;
     detail?: ReactNode;
+    controls?: ReactNode;
     actions: ReactNode;
     panel: ReactNode;
     showLabel: string;
@@ -405,6 +406,7 @@ export default function SongDetailFrame<L>({
         title={dock.title}
         status={dock.status}
         detail={dock.detail}
+        controls={dock.controls}
         playing={playing}
         canPlay={cursor.canPlay}
         onTogglePlay={cursor.togglePlay}

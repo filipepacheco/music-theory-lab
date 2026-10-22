@@ -595,29 +595,9 @@ export default function RocksmithTrackDetail({
         </>
       }
       chartPanels={
-        (showDegrees || octaveMode) && (
+        showDegrees && (
           <>
-            {octaveMode && (
-              <BarOctavePanel
-                bar={octaveBar}
-                octave={octaveOfBar}
-                canLower={octaveFits(octaveOfBar - 1)}
-                canRaise={octaveFits(octaveOfBar + 1)}
-                likeCount={likeBars.length}
-                alike={octaveAlike}
-                movedCount={Object.keys(practice.octaves).length}
-                onAlike={setOctaveAlike}
-                onOctave={(octave) => {
-                  if (octaveBar === null) return;
-                  void practice.setOctave(
-                    octaveAlike ? likeBars : [octaveBar],
-                    octave,
-                  );
-                }}
-                onClear={() => void practice.clearOctaves()}
-              />
-            )}
-            {showDegrees && <DegreeLegend />}
+            <DegreeLegend />
             {fullAnalysis && musicalKey && (
               <KeyPicker
                 value={musicalKey}
@@ -734,6 +714,26 @@ export default function RocksmithTrackDetail({
                 .join(' + ')}`
             : 'Contorno cheio: o baixo tocou · tracejado: nota do acorde suposta pelo tom',
         detail,
+        controls: octaveMode && (
+          <BarOctavePanel
+            bar={octaveBar}
+            octave={octaveOfBar}
+            canLower={octaveFits(octaveOfBar - 1)}
+            canRaise={octaveFits(octaveOfBar + 1)}
+            likeCount={likeBars.length}
+            alike={octaveAlike}
+            movedCount={Object.keys(practice.octaves).length}
+            onAlike={setOctaveAlike}
+            onOctave={(octave) => {
+              if (octaveBar === null) return;
+              void practice.setOctave(
+                octaveAlike ? likeBars : [octaveBar],
+                octave,
+              );
+            }}
+            onClear={() => void practice.clearOctaves()}
+          />
+        ),
         actions: (
           <button
             type="button"

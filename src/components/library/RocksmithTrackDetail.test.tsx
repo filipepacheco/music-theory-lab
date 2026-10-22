@@ -1167,6 +1167,11 @@ describe('octave of one bar', () => {
   it('moves the clicked bar, stores the choice, and plays the new octave', async () => {
     render(<RocksmithTrackDetail chart={riffs} onRemove={vi.fn()} />);
     fireEvent.click(screen.getByLabelText('Oitava por compasso'));
+    expect(
+      screen
+        .getByRole('region', { name: 'Braço do baixo' })
+        .contains(screen.getByRole('group', { name: 'Oitava por compasso' })),
+    ).toBe(true);
     fireEvent.click(bar(1));
     fireEvent.click(screen.getByLabelText('Uma oitava abaixo'));
     await waitFor(() => expect(bar(1).dataset.octave).toBe('-1'));
