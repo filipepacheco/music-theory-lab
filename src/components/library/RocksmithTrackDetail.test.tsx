@@ -294,7 +294,7 @@ describe('Biblioteca semitone buttons', () => {
           onRemove={vi.fn()}
         />,
       );
-      fireEvent.click(screen.getByLabelText('Mostrar graus'));
+      fireEvent.click(screen.getByRole('button', { name: 'Análise completa' }));
       fireEvent.change(screen.getByLabelText('Tom para análise'), {
         target: { value: '0-major' },
       });
@@ -451,7 +451,7 @@ describe('Biblioteca bar layout', () => {
 
   it('draws the text at one size, never under 10 px, at each width', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText('Mostrar graus'));
+    fireEvent.click(screen.getByRole('button', { name: 'Graus' }));
     const automatic = typeSizes();
     expect(new Set(automatic).size).toBe(2);
     expect(Math.min(...automatic)).toBeGreaterThanOrEqual(10);
@@ -681,7 +681,7 @@ describe('Biblioteca dense sections', () => {
         Number(bar.querySelector('svg')?.getAttribute('height')),
       );
     const showDegrees = () =>
-      fireEvent.click(screen.getByLabelText('Mostrar graus'));
+      fireEvent.click(screen.getByRole('button', { name: 'Graus' }));
 
     it('keeps the labels of a sparse section on the first level', () => {
       render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);
@@ -1167,6 +1167,11 @@ describe('octave of one bar', () => {
   it('moves the clicked bar, stores the choice, and plays the new octave', async () => {
     render(<RocksmithTrackDetail chart={riffs} onRemove={vi.fn()} />);
     fireEvent.click(screen.getByLabelText('Oitava por compasso'));
+    expect(
+      screen
+        .getByRole('region', { name: 'Braço do baixo' })
+        .contains(screen.getByRole('group', { name: 'Oitava por compasso' })),
+    ).toBe(true);
     fireEvent.click(bar(1));
     fireEvent.click(screen.getByLabelText('Uma oitava abaixo'));
     await waitFor(() => expect(bar(1).dataset.octave).toBe('-1'));

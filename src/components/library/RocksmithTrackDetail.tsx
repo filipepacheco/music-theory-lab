@@ -3,15 +3,20 @@ import BassDegreeGuide from '@/components/library/BassDegreeGuide';
 import {
   BassMixPicker,
   DegreeLegend,
+  FINGERING_HELP,
   FingeringPanel,
+  HarmonicEvents,
   KeyPicker,
+  PracticePanel,
   SectionProgression,
   SectionSummary,
+  TRANSPOSITION_HELP,
   TranspositionPanel,
   type SectionHarmony,
 } from '@/components/library/BassPartPanels';
 import BarOctavePanel from '@/components/library/BarOctavePanel';
-import { useBarOctaves } from '@/components/library/useBarOctaves';
+import { usePracticeSettings } from '@/components/library/usePracticeSettings';
+import Segmented from '@/components/shared/Segmented';
 import { useSameFileKick } from '@/components/library/useSameFileKick';
 import type { ChartSummary } from '@/domain/chartSummary';
 import BassTabBar, {
@@ -20,6 +25,7 @@ import BassTabBar, {
   BEAT_WIDTH,
   LABEL_GAP,
   barDegreeLevels,
+  barDetails,
   barLabelLanes,
   type IndexedNote,
 } from '@/components/library/BassTabBar';
@@ -42,6 +48,7 @@ import {
 } from '@/domain/bassAnalysis';
 import {
   activeNoteIndexes,
+  barIndexAt,
   bassBarDrawing,
   isStandardTuning,
   notesByBar,
@@ -71,7 +78,11 @@ import {
 } from '@/domain/circleOfFifths';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 import { withOriginalGpFingering } from '@/domain/bassFingering';
-import { MAX_BAR_OCTAVE } from '@/domain/chartSettings';
+import {
+  MAX_BAR_OCTAVE,
+  ORIGINAL_TRANSPOSITION,
+  type PracticeTuning,
+} from '@/domain/chartSettings';
 import {
   barOctaveFits,
   barsLike,
@@ -109,6 +120,45 @@ function writeCircleOpen(open: boolean): void {
   } catch {}
 }
 
+export type ChartView = 'play' | 'degrees' | 'analysis';
+
+const CHART_VIEW_KEY = 'music-theory-lab:bass-chart-view';
+const OCTAVE_MODE_KEY = 'music-theory-lab:bar-octave-mode';
+const CHART_VIEWS: { value: ChartView; label: string }[] = [
+  { value: 'play', label: 'Tocar junto' },
+  { value: 'degrees', label: 'Graus' },
+  { value: 'analysis', label: 'Análise completa' },
+];
+
+function readChartView(): ChartView {
+  try {
+    const stored = localStorage.getItem(CHART_VIEW_KEY);
+    if (CHART_VIEWS.some((view) => view.value === stored))
+      return stored as ChartView;
+  } catch {}
+  return 'play';
+}
+
+function writeChartView(view: ChartView): void {
+  try {
+    localStorage.setItem(CHART_VIEW_KEY, view);
+  } catch {}
+}
+
+function readOctaveMode(): boolean {
+  try {
+    return localStorage.getItem(OCTAVE_MODE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeOctaveMode(on: boolean): void {
+  try {
+    localStorage.setItem(OCTAVE_MODE_KEY, String(on));
+  } catch {}
+}
+
 const NO_NOTES: readonly number[] = [];
 const NO_CHARTS: readonly ChartSummary[] = [];
 
@@ -121,18 +171,27 @@ export default function RocksmithTrackDetail({
 }: Props) {
   const kickBeats = useSameFileKick(originalChart.id, songCharts);
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
-  const [semitones, setSemitones] = useState(0);
-  const [practiceTuning, setPracticeTuning] = useState('original');
+  const practice = usePracticeSettings(originalChart.id, settingsKey);
   const [fingering, setFingering] = useState('original');
   const supportsTransposition = supportsBassTransposition(originalChart);
   const canTranspose = supportsTransposition && audioState.status === 'missing';
-  const shift = canTranspose ? semitones : 0;
-  const tuning =
-    !canTranspose || practiceTuning === 'original'
+  const tuningOf = (choice: PracticeTuning) =>
+    choice === 'original'
       ? originalChart.tuning
-      : practiceTuning === 'drop-d'
+      : choice === 'drop-d'
         ? DROP_D_TUNING
         : E_STANDARD_TUNING;
+  const savedFits = canTransposeBassChart(
+    originalChart,
+    practice.transposition.semitones,
+    tuningOf(practice.transposition.tuning),
+  );
+  const { semitones, tuning: practiceTuning } = savedFits
+    ? practice.transposition
+    : ORIGINAL_TRANSPOSITION;
+  const setTransposition = practice.setTransposition;
+  const shift = canTranspose ? semitones : 0;
+  const tuning = canTranspose ? tuningOf(practiceTuning) : originalChart.tuning;
   const canLower = canTransposeBassChart(originalChart, shift - 1, tuning);
   const canRaise = canTransposeBassChart(originalChart, shift + 1, tuning);
   const originalFingeringAvailable = !!originalChart.originalFingering;
@@ -151,20 +210,20 @@ export default function RocksmithTrackDetail({
         : originalChart,
     [originalChart, fingering],
   );
-  const barOctaves = useBarOctaves(originalChart.id, settingsKey);
-  const [octaveMode, setOctaveMode] = useState(false);
-  const [octaveBar, setOctaveBar] = useState<number | null>(null);
+  const [octaveMode, setOctaveMode] = useState(readOctaveMode);
+  const [selectedBar, setSelectedBar] = useState<number | null>(null);
+  const octaveBar = octaveMode ? selectedBar : null;
   const [octaveAlike, setOctaveAlike] = useState(false);
-  useEffect(() => setOctaveBar(null), [originalChart.id]);
+  useEffect(() => setSelectedBar(null), [originalChart.id]);
   const octaves = useMemo(() => {
     const held: Record<number, number> = {};
     if (!supportsTransposition) return held;
-    for (const [bar, octave] of Object.entries(barOctaves.octaves)) {
+    for (const [bar, octave] of Object.entries(practice.octaves)) {
       if (barOctaveFits(originalChart, Number(bar), octave, shift, tuning))
         held[Number(bar)] = octave;
     }
     return held;
-  }, [supportsTransposition, barOctaves.octaves, originalChart, shift, tuning]);
+  }, [supportsTransposition, practice.octaves, originalChart, shift, tuning]);
   const octavesKey = JSON.stringify(octaves);
   const chart = useMemo(
     () => transposeBassChart(sourceChart, shift, tuning, octaves),
@@ -199,7 +258,9 @@ export default function RocksmithTrackDetail({
     reportBass?.(chart, shift, octavesKey);
   }, [reportBass, chart, shift, octavesKey]);
   const hasPlayer = audioUrl !== null || synthOnly;
-  const [showDegrees, setShowDegrees] = useState(false);
+  const [view, setView] = useState<ChartView>(readChartView);
+  const showDegrees = view !== 'play';
+  const fullAnalysis = view === 'analysis';
   const [circleOpen, setCircleOpen] = useState(readCircleOpen);
   const toggleCircle = useCallback(() => {
     setCircleOpen((open) => {
@@ -276,9 +337,11 @@ export default function RocksmithTrackDetail({
       ),
     [chart],
   );
-  const shownBar = activeBar >= 0 ? (analysis[activeBar] ?? null) : null;
+  const detailBar =
+    !cursor.playing && selectedBar !== null ? selectedBar : activeBar;
+  const shownBar = detailBar >= 0 ? (analysis[detailBar] ?? null) : null;
   const segmentIndex =
-    harmony && activeBar >= 0 ? (harmony.barSegments[activeBar] ?? -1) : -1;
+    harmony && detailBar >= 0 ? (harmony.barSegments[detailBar] ?? -1) : -1;
   const segment =
     harmony && segmentIndex >= 0
       ? (harmony.segments[segmentIndex] ?? null)
@@ -337,6 +400,41 @@ export default function RocksmithTrackDetail({
     };
   }, [harmony, segment, segmentIndex, noteNames]);
 
+  const audioPlaying = audio.playing;
+  const cursorPlaying = cursor.playing;
+  useEffect(() => {
+    if (cursorPlaying && !octaveMode) setSelectedBar(null);
+  }, [cursorPlaying, octaveMode]);
+  const selectBar = useCallback(
+    (seconds: number) => {
+      const barIndex = barIndexAt(chart, seconds);
+      const keep = octaveMode || !cursorPlaying;
+      setSelectedBar(keep && barIndex >= 0 ? barIndex : null);
+      if (!octaveMode || !audioPlaying) seek?.(seconds);
+    },
+    [chart, octaveMode, cursorPlaying, audioPlaying, seek],
+  );
+  const songSummary = useMemo(
+    () => summarizeBars(analysis, 0, chart.bars.length),
+    [analysis, chart],
+  );
+  const segmentOfBar = (barIndex: number) =>
+    harmony
+      ? (harmony.segments[harmony.barSegments[barIndex] as number] ?? null)
+      : null;
+  const detail =
+    !cursor.playing && selectedBar !== null && chart.bars[selectedBar]
+      ? barDetails({
+          bar: chart.bars[selectedBar],
+          notes: (barNotes[selectedBar] ?? []) as IndexedNote[],
+          analysis: analysis[selectedBar] ?? null,
+          segment: segmentOfBar(selectedBar),
+          avoidNotes: harmony?.avoidNotes ?? null,
+          noteNames,
+          octave: octaves[selectedBar] ?? 0,
+        })
+      : null;
+
   const filledBars = useMemo(
     () => new Set(chart.notes.map((n) => n.bar)),
     [chart],
@@ -389,34 +487,50 @@ export default function RocksmithTrackDetail({
         { label: 'Notas', value: String(chart.notes.length) },
       ]}
       panels={
-        <>
-          {originalChart.source === 'gp' && (
-            <FingeringPanel
-              available={originalFingeringAvailable}
-              recalculated={fingeringRecalculated}
-              value={fingering}
-              onChange={setFingering}
-            />
-          )}
-          {supportsTransposition && (
-            <TranspositionPanel
-              chart={originalChart}
-              shift={shift}
-              canTranspose={canTranspose}
-              canLower={canLower}
-              canRaise={canRaise}
-              practiceTuning={practiceTuning}
-              hasRecording={audioState.status === 'ready'}
-              octaveOffset={octaveOffset}
-              onShift={(by) => setSemitones((value) => value + by)}
-              onPracticeTuning={setPracticeTuning}
-              onReset={() => {
-                setSemitones(0);
-                setPracticeTuning('original');
-              }}
-            />
-          )}
-        </>
+        (originalChart.source === 'gp' || supportsTransposition) && (
+          <PracticePanel
+            help={
+              <>
+                {supportsTransposition && <p>{TRANSPOSITION_HELP}</p>}
+                {originalChart.source === 'gp' && <p>{FINGERING_HELP}</p>}
+              </>
+            }
+          >
+            {supportsTransposition && (
+              <TranspositionPanel
+                chart={originalChart}
+                shift={shift}
+                canTranspose={canTranspose}
+                canLower={canLower}
+                canRaise={canRaise}
+                practiceTuning={practiceTuning}
+                hasRecording={audioState.status === 'ready'}
+                octaveOffset={octaveOffset}
+                onShift={(by) =>
+                  void setTransposition({
+                    semitones: semitones + by,
+                    tuning: practiceTuning,
+                  })
+                }
+                onPracticeTuning={(choice) =>
+                  void setTransposition({
+                    semitones,
+                    tuning: choice as PracticeTuning,
+                  })
+                }
+                onReset={() => void setTransposition(ORIGINAL_TRANSPOSITION)}
+              />
+            )}
+            {originalChart.source === 'gp' && (
+              <FingeringPanel
+                available={originalFingeringAvailable}
+                recalculated={fingeringRecalculated}
+                value={fingering}
+                onChange={setFingering}
+              />
+            )}
+          </PracticePanel>
+        )
       }
       audio={audio}
       hasPlayer={hasPlayer}
@@ -445,33 +559,34 @@ export default function RocksmithTrackDetail({
       recording={{
         state: audioState,
         saveError,
-        onAttach: (file) => {
-          setSemitones(0);
-          setPracticeTuning('original');
-          return attach(file);
-        },
+        onAttach: attach,
         missingNote:
           'Este arquivo não trouxe áudio: o sintetizador toca a linha de baixo. Vincule a gravação para tocar junto com ela.',
       }}
       cursor={cursor}
       chartHeading="Tablatura por seção"
+      chartViews={
+        <Segmented
+          label="Visualização da tablatura"
+          value={view}
+          options={CHART_VIEWS}
+          onChange={(next) => {
+            setView(next);
+            writeChartView(next);
+          }}
+        />
+      }
       chartOptions={
         <>
-          <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showDegrees}
-              onChange={(e) => setShowDegrees(e.target.checked)}
-              className="accent-text-primary"
-            />
-            Mostrar graus
-          </label>
           {supportsTransposition && (
             <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={octaveMode}
-                onChange={(e) => setOctaveMode(e.target.checked)}
+                onChange={(e) => {
+                  setOctaveMode(e.target.checked);
+                  writeOctaveMode(e.target.checked);
+                }}
                 className="accent-text-primary"
               />
               Oitava por compasso
@@ -480,30 +595,10 @@ export default function RocksmithTrackDetail({
         </>
       }
       chartPanels={
-        (showDegrees || octaveMode) && (
+        showDegrees && (
           <>
-            {octaveMode && (
-              <BarOctavePanel
-                bar={octaveBar}
-                octave={octaveOfBar}
-                canLower={octaveFits(octaveOfBar - 1)}
-                canRaise={octaveFits(octaveOfBar + 1)}
-                likeCount={likeBars.length}
-                alike={octaveAlike}
-                movedCount={Object.keys(barOctaves.octaves).length}
-                onAlike={setOctaveAlike}
-                onOctave={(octave) => {
-                  if (octaveBar === null) return;
-                  void barOctaves.setOctave(
-                    octaveAlike ? likeBars : [octaveBar],
-                    octave,
-                  );
-                }}
-                onClear={() => void barOctaves.clear()}
-              />
-            )}
-            {showDegrees && <DegreeLegend />}
-            {showDegrees && musicalKey && (
+            <DegreeLegend />
+            {fullAnalysis && musicalKey && (
               <KeyPicker
                 value={musicalKey}
                 suggestions={keySuggestions}
@@ -512,12 +607,22 @@ export default function RocksmithTrackDetail({
                 }
               />
             )}
-            {showDegrees && <BassDegreeGuide musicalKey={musicalKey} />}
+            {fullAnalysis && (
+              <div
+                data-song-analysis
+                className="flex flex-col gap-1 border border-border-default bg-bg-card px-3 py-2"
+              >
+                <h5 className="lh-label">Música inteira</h5>
+                <SectionSummary summary={songSummary} />
+                <HarmonicEvents events={harmony?.events ?? []} />
+              </div>
+            )}
+            {fullAnalysis && <BassDegreeGuide musicalKey={musicalKey} />}
           </>
         )
       }
       sectionPanels={(index) =>
-        showDegrees && (
+        fullAnalysis && (
           <>
             <SectionProgression harmony={sectionHarmonies[index]} />
             <SectionSummary summary={summaries[index]} />
@@ -541,23 +646,11 @@ export default function RocksmithTrackDetail({
           notes={barNotes[barIndex] as IndexedNote[]}
           activeNotes={barIndex === activeBar ? activeNotes : NO_NOTES}
           playhead={cursor.playhead(barIndex)}
-          onSeek={
-            octaveMode
-              ? (seconds) => {
-                  setOctaveBar(barIndex);
-                  if (!audio.playing) seek?.(seconds);
-                }
-              : seek
-          }
+          onSeek={selectBar}
           octave={octaves[barIndex] ?? 0}
-          selected={octaveMode && barIndex === octaveBar}
+          selected={barIndex === selectedBar && (octaveMode || !cursor.playing)}
           analysis={showDegrees ? (analysis[barIndex] as BarAnalysis) : null}
-          segment={
-            showDegrees && harmony
-              ? (harmony.segments[harmony.barSegments[barIndex] as number] ??
-                null)
-              : null
-          }
+          segment={showDegrees ? segmentOfBar(barIndex) : null}
           avoidNotes={showDegrees ? (harmony?.avoidNotes ?? null) : null}
           noteNames={noteNames}
           kickBeats={kickBeats ? (kickBeats[barIndex] ?? []) : undefined}
@@ -620,6 +713,27 @@ export default function RocksmithTrackDetail({
                 })
                 .join(' + ')}`
             : 'Contorno cheio: o baixo tocou · tracejado: nota do acorde suposta pelo tom',
+        detail,
+        controls: octaveMode && (
+          <BarOctavePanel
+            bar={octaveBar}
+            octave={octaveOfBar}
+            canLower={octaveFits(octaveOfBar - 1)}
+            canRaise={octaveFits(octaveOfBar + 1)}
+            likeCount={likeBars.length}
+            alike={octaveAlike}
+            movedCount={Object.keys(practice.octaves).length}
+            onAlike={setOctaveAlike}
+            onOctave={(octave) => {
+              if (octaveBar === null) return;
+              void practice.setOctave(
+                octaveAlike ? likeBars : [octaveBar],
+                octave,
+              );
+            }}
+            onClear={() => void practice.clearOctaves()}
+          />
+        ),
         actions: (
           <button
             type="button"

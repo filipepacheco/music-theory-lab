@@ -1,6 +1,7 @@
 import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useEffect, useRef, type ChangeEvent } from 'react';
 import { playbackSession } from '@/services/playbackSession';
+import Button from '@/components/shared/Button';
 import { formatDuration } from './libraryData';
 import type { LibraryAudio } from './useLibraryAudio';
 
@@ -40,15 +41,15 @@ export default function LibraryPlayer({ audio, title = 'Biblioteca' }: Props) {
 
   return (
     <div className="border border-border-default bg-bg-card px-3 py-2 flex items-center gap-3">
-      <button
-        type="button"
+      <Button
+        variant="primary"
         onClick={togglePlay}
         disabled={disabled}
-        className="font-heading text-sm px-3 py-1 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label={audio.playing ? 'Pausar' : 'Tocar'}
+        className="w-24 justify-center"
       >
         {audio.playing ? 'Pausar' : 'Tocar'}
-      </button>
+      </Button>
       <input
         type="range"
         min={0}

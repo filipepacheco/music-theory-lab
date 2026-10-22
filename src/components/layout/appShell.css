@@ -55,6 +55,9 @@ html body,
   .app-workspace {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   }
+  .app-workspace.is-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .instrument-workspace {
     position: sticky;
     top: 6rem;

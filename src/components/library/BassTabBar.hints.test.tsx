@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import BassTabBar from '@/components/library/BassTabBar';
+import BassTabBar, { barDetails } from '@/components/library/BassTabBar';
 import type { BarAnalysis } from '@/domain/bassAnalysis';
 
 afterEach(cleanup);
@@ -72,34 +72,28 @@ it.each([
       repeatOf: 0,
       octave: 1,
     };
-    const view = render(<BassTabBar {...props} />);
-    fireEvent.click(view.getByRole('button'));
-    const disclosure = view.getByText(
+    const details = barDetails(props);
+    expect(details).toMatch(
       /sem nota no tempo 1: raiz estimada|raiz ligada do compasso anterior/,
     );
-    expect(disclosure.textContent).toContain(text);
-    expect(disclosure.textContent).toContain('sem 3ª');
-    expect(disclosure.textContent).toContain('igual ao compasso 1');
-    expect(disclosure.textContent).toContain('1 oitava acima');
-    expect(disclosure.textContent).toContain(
+    for (const part of [
+      text,
+      'sem 3ª',
+      'igual ao compasso 1',
+      '1 oitava acima',
       'O baixo não tocou a 3ª: pode ser maior ou menor',
-    );
-    expect(disclosure.textContent).toContain(
       'Nota evitada: forma b9 com uma nota do acorde',
-    );
+    ]) {
+      expect(details).toContain(part);
+    }
+    const view = render(<BassTabBar {...props} />);
+    const button = view.getByRole('button');
+    expect(button.title).toBe(details);
+    fireEvent.click(button);
     expect(seek).toHaveBeenCalledWith(2);
-    fireEvent.click(view.getByRole('button'));
-    expect(seek).toHaveBeenCalledWith(2);
+    expect(view.queryByText(details)).toBeNull();
     view.rerender(<BassTabBar {...props} selected />);
-    expect(disclosure.isConnected).toBe(true);
-    expect(disclosure.textContent).toContain(text);
-    view.unmount();
-    const withoutSeek = render(<BassTabBar {...props} onSeek={null} />);
-    fireEvent.click(withoutSeek.getByRole('button'));
-    expect(
-      withoutSeek.getByText(
-        /sem nota no tempo 1: raiz estimada|raiz ligada do compasso anterior/,
-      ).textContent,
-    ).toContain(text);
+    expect(view.queryByText(details)).toBeNull();
+    expect(button.getAttribute('aria-pressed')).toBe('true');
   },
 );

@@ -1,5 +1,12 @@
 export type LineLength = number | 'auto';
 
+export type PracticeTuning = 'original' | 'standard' | 'drop-d';
+
+export interface ChartTransposition {
+  semitones: number;
+  tuning: PracticeTuning;
+}
+
 export interface ChartSettings {
   chartId: string;
   updatedAt: string;
@@ -7,6 +14,7 @@ export interface ChartSettings {
   sectionLineLengths: Record<number, LineLength>;
   groupOverride: string | null;
   barOctaves?: Record<number, number>;
+  transposition?: ChartTransposition;
 }
 
 export const MAX_LINE_LENGTH = 16;
@@ -17,7 +25,13 @@ const SONG_KEY = new RegExp(`^${KEY_WORDS}\\|${KEY_WORDS}$`, 'u');
 const MAX_SONG_KEY_LENGTH = 400;
 export const MAX_BAR_OCTAVE = 2;
 const MAX_BAR_OCTAVES = 5000;
-const OPTIONAL_FIELDS = ['barOctaves'];
+export const MAX_TRANSPOSITION = 12;
+const PRACTICE_TUNINGS: readonly string[] = ['original', 'standard', 'drop-d'];
+export const ORIGINAL_TRANSPOSITION: ChartTransposition = {
+  semitones: 0,
+  tuning: 'original',
+};
+const OPTIONAL_FIELDS = ['barOctaves', 'transposition'];
 const FIELDS = [
   'chartId',
   'updatedAt',
@@ -86,6 +100,28 @@ function barOctaves(value: unknown): Record<number, number> | null {
   return Object.fromEntries(bars) as Record<number, number>;
 }
 
+function isOriginalTransposition(value: ChartTransposition): boolean {
+  return value.semitones === 0 && value.tuning === 'original';
+}
+
+function transposition(value: unknown): ChartTransposition | null | undefined {
+  if (value === undefined) return undefined;
+  if (!object(value)) return null;
+  const keys = Object.keys(value);
+  const { semitones, tuning } = value;
+  if (
+    keys.length !== 2 ||
+    typeof semitones !== 'number' ||
+    !Number.isInteger(semitones) ||
+    Math.abs(semitones) > MAX_TRANSPOSITION ||
+    typeof tuning !== 'string' ||
+    !PRACTICE_TUNINGS.includes(tuning)
+  )
+    return null;
+  const parsed = { semitones, tuning: tuning as PracticeTuning };
+  return isOriginalTransposition(parsed) ? null : parsed;
+}
+
 function groupOverride(value: unknown): value is string | null {
   return (
     value === null ||
@@ -106,8 +142,10 @@ export function parseChartSettings(value: unknown): ChartSettings | null {
     return null;
   const updatedAt = timestamp(value.updatedAt);
   const octaves = barOctaves(value.barOctaves);
+  const practice = transposition(value.transposition);
   if (
     octaves === null ||
+    practice === null ||
     typeof value.chartId !== 'string' ||
     !/^[a-f0-9]{64}$/.test(value.chartId) ||
     updatedAt === null ||
@@ -134,6 +172,7 @@ export function parseChartSettings(value: unknown): ChartSettings | null {
     >,
     groupOverride: value.groupOverride,
     ...(Object.keys(octaves).length > 0 && { barOctaves: octaves }),
+    ...(practice && { transposition: practice }),
   };
 }
 
@@ -148,6 +187,12 @@ export function chartSettingsBody(settings: ChartSettings): string {
     groupOverride: settings.groupOverride,
     ...(Object.keys(settings.barOctaves ?? {}).length > 0 && {
       barOctaves: settings.barOctaves,
+    }),
+    ...(settings.transposition && {
+      transposition: {
+        semitones: settings.transposition.semitones,
+        tuning: settings.transposition.tuning,
+      },
     }),
   }).replace(
     /[\u0080-\uffff]/g,
@@ -343,4 +388,27 @@ export function withoutBarOctaves(
   const { barOctaves: _dropped, ...rest } =
     current ?? defaultChartSettings(chartId, now);
   return { ...rest, updatedAt: now };
+}
+
+export function chartTransposition(
+  settings: ChartSettings | null,
+): ChartTransposition {
+  return settings?.transposition ?? ORIGINAL_TRANSPOSITION;
+}
+
+export function withTransposition(
+  current: ChartSettings | null,
+  chartId: string,
+  next: ChartTransposition,
+  now: string,
+): ChartSettings {
+  const { transposition: _dropped, ...rest } =
+    current ?? defaultChartSettings(chartId, now);
+  return {
+    ...rest,
+    updatedAt: now,
+    ...(!isOriginalTransposition(next) && {
+      transposition: { semitones: next.semitones, tuning: next.tuning },
+    }),
+  };
 }

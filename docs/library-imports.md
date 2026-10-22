@@ -30,8 +30,10 @@ are not additional harmony evidence.
 MIDI and GP charts without a linked recording have “−½ tom” and “+½ tom”
 controls, up to an octave in either direction. Each click shifts the chord
 names, analysis key, bass notes, tabs, fretboard and sampled-bass playback.
-Playback keeps its position when the transposition changes. “Tom original”
-resets the practice view; the saved import stays unchanged.
+Playback keeps its position when the transposition changes. The
+transposition and the tuning are saved for each chart in the chart settings,
+together with the bar octaves. “Tom original” resets them; the saved import
+stays unchanged.
 
 While transposed or in a different tuning, GP fingering is recalculated and
 the original/suggested picker is disabled. Returning to the original pitches
@@ -66,7 +68,9 @@ The browser keeps charts in IndexedDB and uploads titles, artists, album,
 source filename, tuning, timing, sections and bass notes. Original imported
 files and extracted or attached recordings are not uploaded. On another
 device the chart can play through the existing sampled bass without its
-recording. View preferences and manually chosen analysis keys remain local.
+recording. The line lengths, the bar octaves, and the transposition sync with
+the chart settings. The view mode and manually chosen analysis keys stay
+local.
 
 Existing browser imports migrate into the sync journal on first use. Sync
 runs when Biblioteca opens, after importing or deleting, on focus or

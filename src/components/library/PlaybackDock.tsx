@@ -22,6 +22,8 @@ interface Props {
   onHeightChange: (height: number) => void;
   title: ReactNode;
   status: string;
+  detail?: ReactNode;
+  controls?: ReactNode;
   playing: boolean;
   canPlay: boolean;
   onTogglePlay: () => void;
@@ -37,6 +39,8 @@ export default function PlaybackDock({
   onHeightChange,
   title,
   status,
+  detail,
+  controls,
   playing,
   canPlay,
   onTogglePlay,
@@ -108,6 +112,15 @@ export default function PlaybackDock({
             {collapsed ? showLabel : hideLabel}
           </button>
         </div>
+        {detail && (
+          <p
+            data-dock-detail
+            className="border-l-2 border-text-primary pl-2 text-small text-text-secondary"
+          >
+            {detail}
+          </p>
+        )}
+        {controls}
         {!collapsed && panel}
       </div>
     </div>
