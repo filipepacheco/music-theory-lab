@@ -294,7 +294,7 @@ describe('Biblioteca semitone buttons', () => {
           onRemove={vi.fn()}
         />,
       );
-      fireEvent.click(screen.getByLabelText('Mostrar graus'));
+      fireEvent.click(screen.getByRole('button', { name: 'Análise completa' }));
       fireEvent.change(screen.getByLabelText('Tom para análise'), {
         target: { value: '0-major' },
       });
@@ -451,7 +451,7 @@ describe('Biblioteca bar layout', () => {
 
   it('draws the text at one size, never under 10 px, at each width', () => {
     render(<RocksmithTrackDetail chart={mixed} onRemove={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText('Mostrar graus'));
+    fireEvent.click(screen.getByRole('button', { name: 'Graus' }));
     const automatic = typeSizes();
     expect(new Set(automatic).size).toBe(2);
     expect(Math.min(...automatic)).toBeGreaterThanOrEqual(10);
@@ -681,7 +681,7 @@ describe('Biblioteca dense sections', () => {
         Number(bar.querySelector('svg')?.getAttribute('height')),
       );
     const showDegrees = () =>
-      fireEvent.click(screen.getByLabelText('Mostrar graus'));
+      fireEvent.click(screen.getByRole('button', { name: 'Graus' }));
 
     it('keeps the labels of a sparse section on the first level', () => {
       render(<RocksmithTrackDetail chart={fast} onRemove={vi.fn()} />);

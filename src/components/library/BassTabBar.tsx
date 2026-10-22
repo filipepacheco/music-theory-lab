@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import {
   barChordSymbol,
   degreeLabel,
@@ -205,6 +205,59 @@ function spokenKicks(beats: readonly number[]): string {
     : `Bumbo no tempo ${beats.map((beat) => beat + 1).join(', ')}`;
 }
 
+export function barUncertainty(
+  analysis: BarAnalysis | null,
+  noteNames: readonly string[],
+): string {
+  if (!analysis || analysis.evidence.chordType) return '';
+  if (!barChordSymbol(analysis, noteNames)) return '';
+  return analysis.evidence.third === null
+    ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
+    : 'As notas tocadas permitem mais de um acorde';
+}
+
+export function barDetails({
+  bar,
+  notes,
+  analysis,
+  segment,
+  avoidNotes,
+  noteNames,
+  repeatOf,
+  octave = 0,
+}: {
+  bar: BassChartBar;
+  notes: IndexedNote[];
+  analysis: BarAnalysis | null;
+  segment: HarmonicSegment | null;
+  avoidNotes: ReadonlySet<number> | null;
+  noteNames: readonly string[];
+  repeatOf?: number;
+  octave?: number;
+}): string {
+  const avoided = analysis
+    ? notes.some(({ index }) => {
+        const degree = analysis.notes.find((n) => n.index === index);
+        return avoidNotes?.has(index) && degree && degreeLabel(degree);
+      })
+    : false;
+  return [
+    barTitle(bar, analysis, segment),
+    barUncertainty(analysis, noteNames),
+    avoided
+      ? 'Graus sublinhados — Nota evitada: forma b9 com uma nota do acorde'
+      : '',
+    repeatOf !== undefined
+      ? `igual ao compasso ${repeatOf + 1}, o de cima`
+      : '',
+    octave
+      ? `${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 function BassTabBar({
   bar,
   notes,
@@ -222,7 +275,6 @@ function BassTabBar({
   degreeLevels,
   kickBeats,
 }: Props) {
-  const [detailsVisible, setDetailsVisible] = useState(false);
   const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * beatWidth;
   const isActive = playhead !== null;
@@ -254,32 +306,21 @@ function BassTabBar({
       ? `${noteLabel(note)} (${degreeLabel(degree)})`
       : noteLabel(note);
   };
-  const uncertainty =
-    symbol && analysis && !analysis.evidence.chordType
-      ? analysis.evidence.third === null
-        ? 'O baixo não tocou a 3ª: pode ser maior ou menor'
-        : 'As notas tocadas permitem mais de um acorde'
-      : '';
-  const details = [
-    barTitle(bar, analysis, segment),
-    uncertainty,
-    notes.some(({ index }) => avoidNotes?.has(index) && degreeOf(index))
-      ? 'Graus sublinhados — Nota evitada: forma b9 com uma nota do acorde'
-      : '',
-    repeat ? `igual ao compasso ${repeatOf + 1}, o de cima` : '',
-    octave
-      ? `${Math.abs(octave)} ${Math.abs(octave) === 1 ? 'oitava' : 'oitavas'} ${octave > 0 ? 'acima' : 'abaixo'}`
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const uncertainty = barUncertainty(analysis, noteNames);
+  const details = barDetails({
+    bar,
+    notes,
+    analysis,
+    segment,
+    avoidNotes,
+    noteNames,
+    repeatOf,
+    octave,
+  });
   return (
     <button
       type="button"
-      onClick={() => {
-        setDetailsVisible(true);
-        onSeek?.(bar.startTime);
-      }}
+      onClick={() => onSeek?.(bar.startTime)}
       title={details}
       data-bar={bar.index}
       data-octave={octave || undefined}
@@ -303,11 +344,11 @@ function BassTabBar({
           </span>
         )}
       </span>
-      {analysis && repeat && <span className="block h-3" />}
+      {analysis && repeat && <span className="block h-6" />}
       {analysis && !repeat && (
-        <span className="flex h-3 items-start justify-between gap-1 pl-6 pr-1 pt-0.5 font-heading text-micro leading-none">
+        <span className="flex h-6 items-center justify-between gap-1 pl-7 pr-1 font-heading">
           <span
-            className="font-bold"
+            className="text-meta font-semibold leading-none"
             style={{
               color: segment?.harmony.func
                 ? FUNCTION_COLORS[segment.harmony.func]
@@ -316,14 +357,7 @@ function BassTabBar({
           >
             {segment?.harmony.numeral}
           </span>
-          <span className="text-text-primary">
-            {symbol}
-            {symbol && !analysis.evidence.chordType && (
-              <span className="text-text-muted" title={uncertainty}>
-                ?
-              </span>
-            )}
-          </span>
+          {symbol && <ChordTag symbol={symbol} uncertainty={uncertainty} />}
         </span>
       )}
       <svg
@@ -456,12 +490,36 @@ function BassTabBar({
             </text>
           ))}
       </svg>
-      {(selected || detailsVisible) && (
-        <span className="block border-t border-border-default p-2 text-small text-text-secondary">
-          {details}
-        </span>
-      )}
     </button>
+  );
+}
+
+function ChordTag({
+  symbol,
+  uncertainty,
+}: {
+  symbol: string;
+  uncertainty: string;
+}) {
+  if (!uncertainty) {
+    return (
+      <span
+        data-chord-tag="certain"
+        className="border border-text-primary px-1 text-ui font-semibold leading-tight text-text-primary"
+      >
+        {symbol}
+      </span>
+    );
+  }
+  return (
+    <span
+      data-chord-tag="guess"
+      title={uncertainty}
+      className="border border-dashed border-border-strong px-1 text-ui leading-tight text-text-secondary"
+    >
+      {symbol}
+      <span className="font-semibold text-text-primary">?</span>
+    </span>
   );
 }
 

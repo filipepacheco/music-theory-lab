@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import Button from '@/components/shared/Button';
 import {
   DEGREE_COLORS,
   FUNCTION_COLORS,
@@ -54,6 +56,40 @@ const CATEGORY_LABELS: Record<DegreeCategory, string> = {
   ornament: 'ornamentos',
 };
 
+const PRACTICE_LABEL = 'w-28 shrink-0 text-small text-text-muted';
+const PRACTICE_SELECT =
+  'border border-border-default bg-bg-card px-2 py-1 font-heading text-xs text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
+
+export function PracticePanel({
+  children,
+  help,
+}: {
+  children: ReactNode;
+  help: ReactNode;
+}) {
+  return (
+    <section
+      aria-label="Tocar no seu baixo"
+      className="flex flex-col gap-2 border border-border-default bg-bg-card px-3 py-2"
+    >
+      <h4 className="lh-label">Tocar no seu baixo</h4>
+      {children}
+      <details className="text-small text-text-muted">
+        <summary className="cursor-pointer hover:text-text-primary">
+          Como funcionam estes controles
+        </summary>
+        <div className="mt-1 flex flex-col gap-1">{help}</div>
+      </details>
+    </section>
+  );
+}
+
+export const FINGERING_HELP =
+  'Digitação: o original do GP mantém as cordas e casas da partitura; a sugerida procura reduzir os deslocamentos da mão. As notas e a análise são as mesmas.';
+
+export const TRANSPOSITION_HELP =
+  'Transpor: cada clique muda o tom em meio tom e recalcula as casas na afinação escolhida. Se necessário, a linha inteira muda de oitava, preservando os intervalos. O tom e a afinação ficam salvos para esta música.';
+
 export function FingeringPanel({
   available,
   recalculated,
@@ -67,25 +103,25 @@ export function FingeringPanel({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-        Digitação
+      <label className="flex flex-wrap items-center gap-2">
+        <span className={PRACTICE_LABEL}>Digitação</span>
         <select
           value={available && !recalculated ? value : 'suggested'}
           disabled={!available || recalculated}
           onChange={(event) => onChange(event.target.value)}
-          className="border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+          className={PRACTICE_SELECT}
         >
           <option value="original">Original do GP</option>
           <option value="suggested">Sugerida pelo Music Lab</option>
         </select>
       </label>
-      <p className="text-small text-text-muted">
-        {!available
-          ? 'Este GP só tem a digitação sugerida. Reimporte o arquivo para recuperar as posições originais quando disponíveis.'
-          : recalculated
-            ? 'Digitação recalculada para o tom e a afinação escolhidos. Ao voltar ao tom e à afinação originais, sua escolha será restaurada.'
-            : 'Original do GP mantém as cordas e casas da partitura. A sugerida procura reduzir os deslocamentos da mão. As notas e a análise são as mesmas.'}
-      </p>
+      {(!available || recalculated) && (
+        <p className="text-small text-text-muted">
+          {!available
+            ? 'Este GP só tem a digitação sugerida. Reimporte o arquivo para recuperar as posições originais.'
+            : 'Recalculada para o tom e a afinação escolhidos. No tom original, sua escolha volta.'}
+        </p>
+      )}
     </div>
   );
 }
@@ -116,56 +152,50 @@ export function TranspositionPanel({
   onReset: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <div
         role="group"
         aria-label="Transposição da música"
-        className="flex flex-wrap items-center gap-2 text-xs"
+        className="flex flex-wrap items-center gap-2"
       >
-        <span className="text-text-secondary">Transpor</span>
-        <button
-          type="button"
+        <span className={PRACTICE_LABEL}>Transpor</span>
+        <Button
+          size="sm"
           aria-label="Diminuir meio tom"
           disabled={!canTranspose || !canLower}
           onClick={() => onShift(-1)}
-          className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           −½ tom
-        </button>
+        </Button>
         <span
           role="status"
-          className="min-w-20 text-center font-heading tabular-nums text-text-primary"
+          className="min-w-24 text-center font-heading text-xs tabular-nums text-text-primary"
         >
           {shift === 0
             ? 'Original'
             : `${shift > 0 ? '+' : ''}${shift} ${Math.abs(shift) === 1 ? 'semitom' : 'semitons'}`}
         </span>
-        <button
-          type="button"
+        <Button
+          size="sm"
           aria-label="Aumentar meio tom"
           disabled={!canTranspose || !canRaise}
           onClick={() => onShift(1)}
-          className="border border-border-default bg-bg-card px-3 py-1.5 font-heading text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           +½ tom
-        </button>
+        </Button>
         {(shift !== 0 || practiceTuning !== 'original') && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-text-muted underline hover:text-text-primary cursor-pointer"
-          >
+          <Button size="sm" onClick={onReset}>
             Tom original
-          </button>
+          </Button>
         )}
       </div>
-      <label className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-        Afinação para tocar
+      <label className="flex flex-wrap items-center gap-2">
+        <span className={PRACTICE_LABEL}>Afinação para tocar</span>
         <select
           value={canTranspose ? practiceTuning : 'original'}
           disabled={!canTranspose}
           onChange={(event) => onPracticeTuning(event.target.value)}
-          className="border border-border-default bg-bg-card px-2 py-1 font-heading text-text-primary disabled:opacity-40"
+          className={PRACTICE_SELECT}
         >
           <option
             value="original"
@@ -191,11 +221,12 @@ export function TranspositionPanel({
           </option>
         </select>
       </label>
-      <p className="text-small text-text-muted">
-        {hasRecording
-          ? 'Transposição indisponível com uma gravação vinculada. O áudio toca no tom original.'
-          : 'Cada clique muda o tom em meio tom e recalcula as casas na afinação escolhida. Se necessário, a linha inteira muda de oitava, preservando os intervalos.'}
-      </p>
+      {hasRecording && (
+        <p className="text-small text-text-muted">
+          Transposição indisponível com uma gravação vinculada. O áudio toca no
+          tom original.
+        </p>
+      )}
       {canTranspose && practiceTuning === 'drop-d' && (
         <p className="text-small text-text-muted">
           Drop D: afine apenas a corda E em D; mantenha A, D e G.
@@ -281,23 +312,28 @@ export function SectionProgression({ harmony }: { harmony: SectionHarmony }) {
         ))}
         {repeats > 1 && <span className="text-text-muted">) ×{repeats}</span>}
       </p>
-      {harmony.events.length > 0 && (
-        <p className="flex flex-wrap gap-1">
-          {harmony.events.map((event) => (
-            <span
-              key={`${event.kind}-${event.startBar}`}
-              className="border border-border-default bg-bg-card px-1.5 py-0.5 text-micro text-text-secondary"
-            >
-              {event.label}
-              <span className="text-text-muted tabular-nums">
-                {' '}
-                · c. {event.startBar + 1}–{event.endBar}
-              </span>
-            </span>
-          ))}
-        </p>
-      )}
+      <HarmonicEvents events={harmony.events} />
     </div>
+  );
+}
+
+export function HarmonicEvents({ events }: { events: HarmonicEvent[] }) {
+  if (events.length === 0) return null;
+  return (
+    <p className="flex flex-wrap gap-1">
+      {events.map((event) => (
+        <span
+          key={`${event.kind}-${event.startBar}`}
+          className="border border-border-default bg-bg-card px-1.5 py-0.5 text-micro text-text-secondary"
+        >
+          {event.label}
+          <span className="text-text-muted tabular-nums">
+            {' '}
+            · c. {event.startBar + 1}–{event.endBar}
+          </span>
+        </span>
+      ))}
+    </p>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import Button from '@/components/shared/Button';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
 import PartMuteControls from '@/components/library/PartMuteControls';
 import PlaybackDock from '@/components/library/PlaybackDock';
@@ -95,6 +96,7 @@ interface Props<L> {
   };
   cursor: SongCursor;
   chartHeading: string;
+  chartViews?: ReactNode;
   chartOptions?: ReactNode;
   chartPanels?: ReactNode;
   sectionPanels?: (sectionIndex: number) => ReactNode;
@@ -112,6 +114,7 @@ interface Props<L> {
     label: string;
     title: ReactNode;
     status: string;
+    detail?: ReactNode;
     actions: ReactNode;
     panel: ReactNode;
     showLabel: string;
@@ -156,6 +159,7 @@ export default function SongDetailFrame<L>({
   recording,
   cursor,
   chartHeading,
+  chartViews,
   chartOptions,
   chartPanels,
   sectionPanels,
@@ -279,70 +283,76 @@ export default function SongDetailFrame<L>({
       />
 
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="font-heading text-sm text-text-secondary">
             {chartHeading}
           </h4>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1 text-small text-text-muted">
-              todas as seções
-              <select
-                value={songLength === 'auto' ? '' : songLength}
-                onChange={async (e) => {
-                  const next: LineLength =
-                    e.target.value === '' ? 'auto' : Number(e.target.value);
-                  if (hasSectionLengths) {
-                    const confirmed = await confirmDialog({
-                      title: 'Aplicar a todas as seções?',
-                      message:
-                        'Os compassos por linha próprios de cada seção serão removidos.',
-                      confirmLabel: 'Aplicar',
-                    });
-                    if (!confirmed) return;
-                  }
-                  void setSongLength(next);
-                }}
-                aria-label="Compassos por linha de todas as seções"
-                title="Define os compassos por linha de todas as seções e remove os valores próprios"
-                className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
-              >
-                <option value="">auto</option>
-                {LINE_LENGTH_OPTIONS.map((count) => (
-                  <option key={count} value={count}>
-                    {count}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {chartOptions}
-            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
-              <input
-                type="checkbox"
-                checked={follow}
-                onChange={(e) => setFollow(e.target.checked)}
-                className="accent-text-primary"
-              />
-              Acompanhar a reprodução
-            </label>
-            <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
-              <input
-                type="checkbox"
-                checked={markRepeats}
-                aria-describedby="repeat-rule"
-                onChange={(e) => {
-                  setMarkRepeats(e.target.checked);
-                  writeMarkRepeats(e.target.checked);
-                }}
-                className="accent-text-primary"
-              />
-              Marcar repetições
-            </label>
-            <p id="repeat-rule" className="text-meta text-text-muted">
-              Nas seções com “por linha”, o compasso igual ao de cima vira o
-              sinal de repetição
-            </p>
-          </div>
+          {chartViews}
         </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-border-default py-1.5">
+          <label className="flex items-center gap-1 text-small text-text-muted">
+            Compassos por linha
+            <select
+              value={songLength === 'auto' ? '' : songLength}
+              onChange={async (e) => {
+                const next: LineLength =
+                  e.target.value === '' ? 'auto' : Number(e.target.value);
+                if (hasSectionLengths) {
+                  const confirmed = await confirmDialog({
+                    title: 'Aplicar a todas as seções?',
+                    message:
+                      'Os compassos por linha próprios de cada seção serão removidos.',
+                    confirmLabel: 'Aplicar',
+                  });
+                  if (!confirmed) return;
+                }
+                void setSongLength(next);
+              }}
+              aria-label="Compassos por linha de todas as seções"
+              title="Define os compassos por linha de todas as seções e remove os valores próprios"
+              className="border border-border-default bg-bg-card px-1 py-0.5 font-heading text-small text-text-secondary cursor-pointer"
+            >
+              <option value="">auto</option>
+              {LINE_LENGTH_OPTIONS.map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
+          {chartOptions}
+          <label className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer">
+            <input
+              type="checkbox"
+              checked={follow}
+              onChange={(e) => setFollow(e.target.checked)}
+              className="accent-text-primary"
+            />
+            Acompanhar a reprodução
+          </label>
+          <label
+            className="flex items-center gap-1.5 text-small text-text-muted cursor-pointer"
+            title="Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição"
+          >
+            <input
+              type="checkbox"
+              checked={markRepeats}
+              aria-describedby={markRepeats ? 'repeat-rule' : undefined}
+              onChange={(e) => {
+                setMarkRepeats(e.target.checked);
+                writeMarkRepeats(e.target.checked);
+              }}
+              className="accent-text-primary"
+            />
+            Marcar repetições
+          </label>
+        </div>
+        {markRepeats && (
+          <p id="repeat-rule" className="text-meta text-text-muted">
+            Nas seções com “por linha”, o compasso igual ao de cima vira o sinal
+            de repetição
+          </p>
+        )}
         {chartPanels}
         <div ref={chartRef} className="flex flex-col gap-3">
           {blocks.map((block) => {
@@ -394,6 +404,7 @@ export default function SongDetailFrame<L>({
         onHeightChange={setDockHeight}
         title={dock.title}
         status={dock.status}
+        detail={dock.detail}
         playing={playing}
         canPlay={cursor.canPlay}
         onTogglePlay={cursor.togglePlay}
@@ -701,47 +712,54 @@ function LinkedRecording({
   onAttach: (file: File) => Promise<void>;
   missingNote: string;
 }) {
-  const inputId = 'rocksmith-local-audio';
+  const inputRef = useRef<HTMLInputElement>(null);
   const ready = state.status === 'ready' ? state : null;
   return (
-    <div className="border border-border-default bg-bg-card px-3 py-2 flex flex-col items-start gap-2">
-      <div>
-        <p className="text-xs text-text-secondary">
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Button
+          size="sm"
+          disabled={state.status === 'loading'}
+          onClick={() => inputRef.current?.click()}
+        >
+          {ready ? 'Trocar áudio' : 'Vincular áudio'}
+        </Button>
+        <p className="min-w-0 flex-1 text-small text-text-secondary">
           {state.status === 'loading'
             ? 'Carregando áudio…'
             : ready
               ? ready.origin === 'psarc'
                 ? `Áudio extraído do pacote: ${ready.fileName}`
                 : `Áudio local: ${ready.fileName}`
-              : missingNote}
-        </p>
-        <p className="text-small text-text-muted">
-          O áudio fica somente neste navegador e não é enviado para a nuvem.
+              : missingNote}{' '}
+          <span className="text-text-muted">
+            O áudio fica somente neste navegador.
+          </span>
         </p>
       </div>
-      {ready && !ready.playable && (
-        <p role="alert" className="text-small text-text-error">
-          Este navegador não toca Ogg Vorbis. Vincule uma versão em MP3 da mesma
-          gravação.
-        </p>
-      )}
-      <label
-        htmlFor={inputId}
-        className="font-heading text-xs px-3 py-1.5 bg-bg-tertiary text-text-primary hover:bg-accent hover:text-on-accent cursor-pointer"
-      >
-        {ready ? 'Trocar áudio' : 'Vincular áudio'}
-      </label>
       <input
-        id={inputId}
+        ref={inputRef}
         type="file"
         accept="audio/*"
+        aria-label={
+          ready
+            ? 'Arquivo de áudio para trocar'
+            : 'Arquivo de áudio para vincular'
+        }
         className="sr-only"
+        tabIndex={-1}
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
           if (file) void onAttach(file);
         }}
       />
+      {ready && !ready.playable && (
+        <p role="alert" className="text-small text-text-error">
+          Este navegador não toca Ogg Vorbis. Vincule uma versão em MP3 da mesma
+          gravação.
+        </p>
+      )}
       {saveError && (
         <p role="alert" className="text-small text-text-error">
           Não foi possível salvar o áudio neste navegador. Verifique o espaço

@@ -184,13 +184,13 @@ afterEach(() => {
 });
 
 describe('frame of the song detail', () => {
-  it('shows the repetition rule without hovering the checkbox', () => {
+  it('shows the repetition rule once the repeats are marked', () => {
     render(<Part />);
-    expect(
-      screen.getByText(
-        'Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição',
-      ),
-    ).toBeTruthy();
+    const rule =
+      'Nas seções com “por linha”, o compasso igual ao de cima vira o sinal de repetição';
+    expect(screen.queryByText(rule)).toBeNull();
+    fireEvent.click(screen.getByLabelText('Marcar repetições'));
+    expect(screen.getByText(rule)).toBeTruthy();
     expect(
       screen
         .getByLabelText('Marcar repetições')
