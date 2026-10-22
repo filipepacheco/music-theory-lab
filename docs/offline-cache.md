@@ -28,7 +28,8 @@ Essa opção não se aplica ao cache sob demanda da Library.
 
 Cada arquivo da Library, inclusive o índice e as análises, entra no cache
 quando solicitado. Áudio solicitado com Range é baixado inteiro uma vez;
-HEAD e novos intervalos podem então ser respondidos offline. Apenas respostas
+HEAD e novos intervalos podem então ser respondidos offline, lendo do cache
+apenas o trecho pedido. Apenas respostas
 200 completas, sem redirecionamento e sem HTML entram nesse cache. Erros ou
 falta de espaço não impedem o uso online. Arquivos nunca abertos não ficam
 disponíveis offline. O cache não cria arquivos de áudio ausentes do deploy.
@@ -48,8 +49,10 @@ um worker de produção.
 O nome `music-theory-lab-offline-<hash>` depende dos bytes do build, arquivos
 públicos, lista de samples e código do worker. Uma versão nova termina sua
 instalação e espera as abas da versão anterior fecharem. Na ativação, apaga
-somente caches antigos com esse prefixo. Os arquivos da Library precisam ser
-abertos novamente após a atualização. Não há reload forçado durante playback.
+somente caches antigos com esse prefixo. Os arquivos da Library
+(`music-theory-lab-offline-library`) e os samples do CDN
+(`music-theory-lab-offline-samples`) ficam em caches próprios, que a
+atualização mantém: só samples ausentes são baixados de novo. Não há reload forçado durante playback.
 
 ## Rollback com o kill switch
 

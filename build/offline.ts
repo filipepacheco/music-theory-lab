@@ -28,7 +28,13 @@ export function createOfflineWorker(
   publicDir: string,
 ): string {
   const template = readFileSync(resolve('offline/worker.js'), 'utf8');
-  const files = { ...publicFiles(publicDir), ...bundle };
+  const files = Object.fromEntries(
+    Object.entries({ ...publicFiles(publicDir), ...bundle }).filter(
+      ([name]) =>
+        !/^(library|api|intake)(\/|$)/i.test(name) && !name.endsWith('.map'),
+    ),
+  );
+  // The Library is not precached, so its files do not change the release.
   const hash = createHash('sha256').update(template);
   for (const name of Object.keys(files).sort()) {
     hash.update(name).update(files[name]);
@@ -38,22 +44,16 @@ export function createOfflineWorker(
       ? Object.values(preset.urls).map((file) => preset.baseUrl + file)
       : [],
   );
-  const urls = [
-    ...Object.keys(files)
-      .filter(
-        (name) =>
-          !/^(library|api|intake)(\/|$)/i.test(name) && !name.endsWith('.map'),
-      )
-      .sort()
-      .map((name) => `/${name}`),
-    ...samples,
-  ];
-  hash.update(JSON.stringify(urls));
+  const urls = Object.keys(files)
+    .sort()
+    .map((name) => `/${name}`);
+  hash.update(JSON.stringify([...urls, ...samples]));
   return template.replace(
     '__OFFLINE_MANIFEST__',
     JSON.stringify({
       cacheName: `music-theory-lab-offline-${hash.digest('hex').slice(0, 20)}`,
       urls,
+      samples,
     }),
   );
 }

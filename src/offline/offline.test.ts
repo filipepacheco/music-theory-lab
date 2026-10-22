@@ -265,7 +265,8 @@ it('replaces only this app caches on activation and gives changed releases a new
   const names = await app.caches.keys();
   expect(names).not.toContain('music-theory-lab-offline-old');
   expect(names).toContain('another-app');
-  expect(names).toHaveLength(2);
+  expect(names).toContain('music-theory-lab-offline-samples');
+  expect(names).toHaveLength(3);
   expect(app.claim).toHaveBeenCalledOnce();
 });
 
@@ -394,4 +395,38 @@ it('does not retain missing Library files or HTML rewrites as playable audio', a
   app.network.mockRejectedValue(new Error('Offline'));
   await expect(app.dispatch('fetch', request)).rejects.toThrow('Offline');
   expect(app.network).toHaveBeenCalledTimes(4);
+});
+
+it('keeps opened Library files and samples across a release, without new downloads', async () => {
+  const library = absolute('/library/tracks/example/source.mp3');
+  const first = browser(worker());
+  await first.dispatch('install');
+  await first.dispatch('activate');
+  await first.dispatch('fetch', new Request(library));
+  const next = createOfflineWorker(
+    { ...shell, 'assets/app.js': 'new release' },
+    'public',
+  );
+  const app = browser(next);
+  for (const name of await first.caches.keys()) {
+    const from = await first.caches.open(name);
+    const to = await app.caches.open(name);
+    for (const url of [
+      library,
+      'https://tonejs.github.io/audio/salamander/C4.mp3',
+    ]) {
+      const cached = await from.match(url);
+      if (cached) await to.put(url, cached);
+    }
+  }
+  await app.dispatch('install');
+  await app.dispatch('activate');
+  const downloads = app.network.mock.calls.map(([request]) => key(request));
+  expect(downloads).not.toContain(
+    'https://tonejs.github.io/audio/salamander/C4.mp3',
+  );
+  app.network.mockRejectedValue(new Error('Offline'));
+  expect(
+    await (await app.dispatch('fetch', new Request(library)))?.text(),
+  ).toBe(library);
 });

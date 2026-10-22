@@ -62,7 +62,9 @@ export function createSongPartsTransport(
     duration,
   };
   let disposed = false;
-  let starting = false;
+  // One preparation at a time; a pause while it runs cancels the start.
+  let preparing: Promise<void> | null = null;
+  let wantsPlay = false;
   let stopTimer: (() => void) | null = null;
   let anchor = { audioTime: 0, position: 0 };
   let next = 0;
@@ -121,20 +123,21 @@ export function createSongPartsTransport(
 
   return {
     play: async () => {
-      if (disposed || state.playing || starting) return;
-      starting = true;
-      try {
-        await voice.prepare(pitches, samples);
-      } finally {
-        starting = false;
-      }
-      if (disposed) return;
+      if (disposed || state.playing) return;
+      wantsPlay = true;
+      preparing ??= voice.prepare(pitches, samples).finally(() => {
+        preparing = null;
+      });
+      await preparing;
+      if (disposed || !wantsPlay || state.playing) return;
+      wantsPlay = false;
       startFrom(state.currentSeconds >= duration ? 0 : state.currentSeconds);
       update({ playing: true, currentSeconds: anchor.position });
       tick();
       stopTimer = timer(tick, TICK_MS);
     },
     pause: () => {
+      wantsPlay = false;
       if (!state.playing) return;
       const at = position();
       halt();

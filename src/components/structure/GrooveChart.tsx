@@ -48,8 +48,9 @@ interface NoteStem {
 }
 
 /**
- * The stems of one beam group. A note lasts to the next hit of its group or
- * to the end of the group, so a hit alone in its half of the beat is longer.
+ * The stems of one beam group. A note lasts to the next hit of its group;
+ * the last note lasts to the end of its own beat, because a beat with no hit
+ * gets its own rest.
  */
 function groupStems(
   hits: DrumPiece[][],
@@ -62,7 +63,9 @@ function groupStems(
     if ((hits[step]?.length ?? 0) > 0) steps.push(step);
   }
   return steps.map((step, index) => {
-    const quarters = ((steps[index + 1] ?? end) - step) / stepsPerBeat;
+    const beatEnd = (Math.floor(step / stepsPerBeat) + 1) * stepsPerBeat;
+    const stop = steps[index + 1] ?? Math.min(end, beatEnd);
+    const quarters = (stop - step) / stepsPerBeat;
     const level = Math.floor(Math.log2(quarters));
     return {
       step,
