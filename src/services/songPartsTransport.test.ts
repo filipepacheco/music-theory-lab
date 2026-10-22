@@ -140,3 +140,29 @@ describe('createSongPartsTransport', () => {
     expect(t.stops).toEqual([]);
   });
 });
+
+describe('createSongPartsTransport while the sounds load', () => {
+  it('does not start when a pause comes before the sounds are ready', async () => {
+    let ready = () => {};
+    const scheduled: number[] = [];
+    let state: LibraryAudioState | undefined;
+    const transport = createSongPartsTransport(
+      { bass: [], drums: [], durationSeconds: 3 },
+      {
+        prepare: () => new Promise<void>((resolve) => (ready = resolve)),
+        now: () => 0,
+        scheduleBass: (note) => scheduled.push(note.time),
+        scheduleDrum: (hit) => scheduled.push(hit.time),
+        stop: () => {},
+      },
+      () => NO_MUTES,
+      (s) => (state = s),
+      () => () => {},
+    );
+    const playing = transport.play();
+    transport.pause();
+    ready();
+    await playing;
+    expect(state?.playing).toBe(false);
+  });
+});

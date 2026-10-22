@@ -1,4 +1,3 @@
-import { usePlaybackShortcut } from '@/hooks/usePlaybackShortcut';
 import { useCallback, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
@@ -402,15 +401,7 @@ function DroppableSection({
 
 export default function StructureSections() {
   const groovePlayer = useGroovePlayer();
-  const focusedSection = useAppStore((s) =>
-    s.structureSections.find((section) => section.id === s.focusedSectionId),
-  );
-  const bpm = useAppStore((s) => s.bpm);
-  usePlaybackShortcut(() => {
-    if (groovePlayer.isPlaying) groovePlayer.stop();
-    else if (focusedSection?.groove)
-      void groovePlayer.play(focusedSection.groove, bpm);
-  }, Boolean(focusedSection?.groove));
+  // Space belongs to the structure recorder here: it adds a bar.
   const sections = useAppStore((s) => s.structureSections);
   const structureBars = useAppStore((s) => s.structureBars);
   const focusedSectionId = useAppStore((s) => s.focusedSectionId);

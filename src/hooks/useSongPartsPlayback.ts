@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LibraryAudio } from '@/components/library/useLibraryAudio';
 import type { BassChart } from '@/domain/bassChart';
 import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
@@ -198,8 +198,11 @@ export function useSongPartsPlayback(
     },
     [],
   );
-  const reportRecording = useCallback((_chartId: string, linked: boolean) => {
-    setOpenRecording(linked);
+  const openIdRef = useRef(openId);
+  openIdRef.current = openId;
+  const reportRecording = useCallback((chartId: string, linked: boolean) => {
+    // A late report of the part that was open before must not count.
+    if (chartId === openIdRef.current) setOpenRecording(linked);
   }, []);
 
   const useReported = !!reported && reported.chart.id === bassId;
@@ -215,8 +218,25 @@ export function useSongPartsPlayback(
     !loaded?.partnerRecording &&
     !openRecording;
 
+  const bassNotes = useMemo(
+    () => (bassChart ? bassSynthNotes(bassChart.notes, shift) : []),
+    [bassChart, shift],
+  );
+  // A new chart object with the same sound keeps the clock; new notes do not.
+  const bassSound = useMemo(
+    () =>
+      bassNotes
+        .map(
+          (n) =>
+            `${n.time}:${n.midi}:${n.seconds}:${n.transposeSemitones ?? 0}`,
+        )
+        .join(','),
+    [bassNotes],
+  );
   const bassRef = useRef(bassChart);
   bassRef.current = bassChart;
+  const bassNotesRef = useRef(bassNotes);
+  bassNotesRef.current = bassNotes;
   const drumsRef = useRef(drumsChart);
   drumsRef.current = drumsChart;
 
@@ -229,7 +249,7 @@ export function useSongPartsPlayback(
     if (!active || !bass || !drums) return;
     const transport = createSongPartsTransport(
       {
-        bass: bassSynthNotes(bass.notes, shift),
+        bass: bassNotesRef.current,
         drums: drumPlaybackHits(drums.hits),
         durationSeconds: Math.max(
           bass.songLengthSeconds,
@@ -255,7 +275,7 @@ export function useSongPartsPlayback(
       transport.dispose();
       if (transportRef.current === transport) transportRef.current = null;
     };
-  }, [active, bassId, drumId, shift, voicing]);
+  }, [active, bassId, drumId, shift, voicing, bassSound]);
 
   const toggleMute = useCallback((part: PlaybackPart) => {
     mutesRef.current = {
