@@ -2,9 +2,6 @@ import jsPDF from 'jspdf';
 import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
-  GROOVE_SUBDIVISIONS,
-  grooveMeasureCount,
-  grooveStepsPerBeat,
   grooveTotalStepCount,
 } from '@/constants/groove';
 import {
@@ -14,7 +11,11 @@ import {
   lightenRgb,
   getSectionBars,
 } from './structureLayout';
-import { grooveChartLayout } from './grooveChartLayout';
+import { createElement } from 'react';
+import {
+  GrooveNotation,
+  grooveNotationLayout,
+} from '@/components/structure/GrooveChart';
 import type {
   DrumPiece,
   GroovePattern,
@@ -57,10 +58,6 @@ export interface FormatConfig {
   commentLineHeight: number;
   commentBesideMinW: number;
   grooveGapY: number;
-  grooveHeight: number;
-  grooveFontSize: number;
-  grooveLabelW: number;
-  grooveMeasureW: number;
 }
 
 export const FORMATS: Record<PdfFormat, FormatConfig> = {
@@ -88,10 +85,6 @@ export const FORMATS: Record<PdfFormat, FormatConfig> = {
     commentLineHeight: 3,
     commentBesideMinW: 20,
     grooveGapY: 2,
-    grooveHeight: 24,
-    grooveFontSize: 5.5,
-    grooveLabelW: 8,
-    grooveMeasureW: 43,
   },
   'ipad-air': {
     pageW: 160,
@@ -117,10 +110,6 @@ export const FORMATS: Record<PdfFormat, FormatConfig> = {
     commentLineHeight: 3.2,
     commentBesideMinW: 20,
     grooveGapY: 2,
-    grooveHeight: 24,
-    grooveFontSize: 5.5,
-    grooveLabelW: 8,
-    grooveMeasureW: 31,
   },
 };
 
@@ -135,7 +124,7 @@ export interface SectionLayout {
   contentH: number;
   grooveX: number;
   grooveY: number;
-  grooveMeasureW: number;
+  grooveW: number;
   grooveH: number;
   totalH: number;
 }
@@ -162,14 +151,6 @@ export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
   }));
 
   return rows.some((row) => row.hits.some(Boolean)) ? rows : [];
-}
-
-function grooveResolutionLabel(groove: GroovePattern): string {
-  const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
-  const resolution =
-    GROOVE_SUBDIVISIONS.find((option) => option.id === subdivision)
-      ?.shortLabel ?? '1/16';
-  return `${resolution} - ${grooveMeasureCount(groove.measureCount)}c`;
 }
 
 type WrapText = (text: string, maxWidth: number) => string[];
@@ -210,27 +191,20 @@ export function calcSectionLayout(
     contentH =
       cfg.barsTopOffset + barsH + (commentLines.length > 0 ? 2 + commentH : 0);
   }
-  const grooveH = groovePdfRows(section.groove).length ? cfg.grooveHeight : 0;
-  const measureCount = grooveMeasureCount(section.groove?.measureCount);
-  const grooveWidth = cfg.grooveLabelW + measureCount * cfg.grooveMeasureW;
-  const grooveBeside =
-    grooveH > 0 && commentBeside && grooveWidth <= availableBesideW;
-  const grooveAvailableW = grooveBeside ? availableBesideW : colW;
-  const grooveMeasureW = (grooveAvailableW - cfg.grooveLabelW) / measureCount;
-  let grooveX = 0;
-  let grooveY = contentH;
-
-  if (grooveH > 0) {
-    if (grooveBeside) {
-      grooveX = gridW + cfg.commentGap;
-      grooveY =
-        cfg.barsTopOffset +
-        (commentLines.length > 0 ? commentH + cfg.grooveGapY : 0);
-      contentH = Math.max(contentH, grooveY + grooveH);
-    } else {
-      grooveY = contentH + cfg.grooveGapY;
-    }
-  }
+  const hasGroove = groovePdfRows(section.groove).length > 0;
+  const notation = section.groove ? grooveNotationLayout(section.groove) : null;
+  const grooveAvailableW = commentBeside ? availableBesideW : colW;
+  // Keep the compact screen proportions, shrinking only to fit the notes column.
+  const grooveW =
+    hasGroove && notation
+      ? Math.min(grooveAvailableW, notation.width * 0.2)
+      : 0;
+  const grooveH = notation ? (grooveW * notation.height) / notation.width : 0;
+  const grooveX = commentBeside ? gridW + cfg.commentGap : 0;
+  const grooveY = commentBeside
+    ? cfg.barsTopOffset + (commentH > 0 ? commentH + cfg.grooveGapY : 0)
+    : contentH + (hasGroove ? cfg.grooveGapY : 0);
+  if (hasGroove) contentH = Math.max(contentH, grooveY + grooveH);
 
   return {
     section,
@@ -243,9 +217,9 @@ export function calcSectionLayout(
     contentH,
     grooveX,
     grooveY,
-    grooveMeasureW,
+    grooveW,
     grooveH,
-    totalH: grooveBeside ? contentH : grooveY + grooveH,
+    totalH: contentH,
   };
 }
 
@@ -270,171 +244,33 @@ export function layoutSections(
   return layouts;
 }
 
-function renderGroove(
+async function renderGroove(
   doc: jsPDF,
   groove: GroovePattern,
-  rows: GroovePdfRow[],
-  color: string,
   x: number,
   y: number,
-  grooveMeasureW: number,
-  cfg: FormatConfig,
+  width: number,
+  height: number,
 ) {
-  const layout = grooveChartLayout(groove, {
-    measureWidth: grooveMeasureW,
-    labelWidth: cfg.grooveLabelW,
-    staffTop: 7,
-    staffSpacing: 2.2,
-    height: cfg.grooveHeight,
-  });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(cfg.grooveFontSize);
-  doc.setTextColor(90, 90, 90);
-  doc.text(`Groove ${grooveResolutionLabel(groove)}`, x, y + 2);
-
-  const [r, g, b] = hexToRgb(color);
-  doc.setDrawColor(110, 110, 110);
-  doc.setLineWidth(0.12);
-
-  for (let line = 0; line < 5; line++) {
-    const lineY = y + layout.staffTop + line * layout.staffSpacing;
-    doc.line(x + layout.staffLeft, lineY, x + layout.staffRight, lineY);
-  }
-
-  for (let measure = 0; measure < layout.measureCount; measure++) {
-    for (let beat = 0; beat < 4; beat++) {
-      const beatX = x + layout.beatX(measure, beat);
-      doc.setDrawColor(185, 185, 185);
-      doc.setLineWidth(0.08);
-      doc.line(
-        beatX,
-        y + layout.staffTop - 2,
-        beatX,
-        y + layout.staffBottom + 2,
-      );
-    }
-  }
-
-  doc.setDrawColor(80, 80, 80);
-  doc.setLineWidth(0.2);
-  for (let measure = 0; measure <= layout.measureCount; measure++) {
-    const barX = x + layout.measureX(measure);
-    doc.line(barX, y + layout.staffTop - 2, barX, y + layout.staffBottom + 2);
-    if (measure < layout.measureCount) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(cfg.grooveFontSize);
-      doc.setTextColor(r, g, b);
-      doc.text(String(measure + 1), barX + 1, y + 5);
-    }
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(cfg.grooveFontSize);
-  doc.setTextColor(100, 100, 100);
-  for (const row of rows) {
-    doc.text(row.label, x, y + layout.noteY[row.piece] + 1.2);
-  }
-
-  const hasHit = (step: number): boolean =>
-    rows.some((row) => row.hits[step] === true);
-
-  const stepsPerBeat = grooveStepsPerBeat(
-    groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION,
+  const [{ svg2pdf }, { renderToStaticMarkup }] = await Promise.all([
+    import('svg2pdf.js'),
+    import('react-dom/server'),
+  ]);
+  const markup = renderToStaticMarkup(
+    createElement(GrooveNotation, { groove, color: '#222222', print: true }),
   );
-  const noteRadiusX = Math.min(2, layout.stepWidth * 0.32);
-  const noteRadiusY = Math.min(1.4, layout.stepWidth * 0.22);
-  const crossHalf = Math.min(2, layout.stepWidth * 0.34);
-  const stemOffset = Math.min(1.5, layout.stepWidth * 0.25);
-  for (let measure = 0; measure < layout.measureCount; measure++) {
-    for (let beat = 0; beat < 4; beat++) {
-      const start = measure * layout.stepsPerMeasure + beat * stepsPerBeat;
-      const beatHasHit = Array.from({ length: stepsPerBeat }, (_, offset) =>
-        hasHit(start + offset),
-      ).some(Boolean);
-      if (beatHasHit) continue;
-
-      const restX = x + layout.beatX(measure, beat) + layout.measureWidth / 8;
-      const restY = y + layout.staffTop + layout.staffSpacing * 2;
-      doc.setDrawColor(110, 110, 110);
-      doc.setLineWidth(0.25);
-      doc.line(restX - 1.5, restY - 1.5, restX + 1, restY + 0.5);
-      doc.line(restX + 1, restY + 0.5, restX - 0.5, restY + 2.5);
-      doc.line(restX - 0.5, restY + 2.5, restX + 1.5, restY + 4.5);
-    }
-  }
-
-  for (let measure = 0; measure < layout.measureCount; measure++) {
-    for (let beat = 0; beat < 4; beat++) {
-      const start = measure * layout.stepsPerMeasure + beat * stepsPerBeat;
-      const end = start + stepsPerBeat;
-      const groups = Math.max(0, Math.log2(stepsPerBeat));
-      for (let level = 0; level < groups; level++) {
-        const groupSize = Math.max(1, stepsPerBeat / 2 ** (level + 1));
-        for (let group = 0; group < stepsPerBeat / groupSize; group++) {
-          const groupStart = start + group * groupSize;
-          const groupEnd = Math.min(end, groupStart + groupSize);
-          if (
-            !Array.from({ length: groupEnd - groupStart }, (_, offset) =>
-              hasHit(groupStart + offset),
-            ).some(Boolean)
-          ) {
-            continue;
-          }
-          const beamY = y + layout.staffTop - 3 - level * 1.7;
-          doc.setDrawColor(r, g, b);
-          doc.setLineWidth(0.45);
-          doc.line(
-            x + layout.stepX(groupStart),
-            beamY,
-            x + layout.stepX(groupEnd - 1),
-            beamY,
-          );
-        }
-      }
-    }
-  }
-
-  for (let step = 0; step < layout.totalSteps; step++) {
-    const stepX = x + layout.stepX(step);
-    for (const row of rows) {
-      if (!row.hits[step]) continue;
-
-      const noteY = y + layout.noteY[row.piece];
-      const isKick = row.piece === 'bumbo';
-      const stemX = stepX + (isKick ? -stemOffset : stemOffset);
-      const stemEnd =
-        y + (isKick ? layout.staffBottom + 4 : layout.staffTop - 3);
-      doc.setDrawColor(r, g, b);
-      doc.setFillColor(r, g, b);
-      doc.setLineWidth(0.3);
-      doc.line(stemX, isKick ? noteY + 0.8 : noteY - 0.8, stemX, stemEnd);
-
-      if (row.piece === 'chimbal') {
-        doc.line(
-          stepX - crossHalf,
-          noteY - crossHalf,
-          stepX + crossHalf,
-          noteY + crossHalf,
-        );
-        doc.line(
-          stepX + crossHalf,
-          noteY - crossHalf,
-          stepX - crossHalf,
-          noteY + crossHalf,
-        );
-      } else {
-        doc.ellipse(stepX, noteY, noteRadiusX, noteRadiusY, 'F');
-      }
-    }
-  }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(cfg.grooveFontSize);
-  doc.setTextColor(110, 110, 110);
-  doc.text('HH chimbal - C caixa - B bumbo', x, y + cfg.grooveHeight - 1);
+  const svg = new DOMParser().parseFromString(
+    markup,
+    'image/svg+xml',
+  ).documentElement;
+  svg.removeAttribute('style');
+  svg.removeAttribute('class');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  await svg2pdf(svg, doc, { x, y, width, height });
 }
 
-function renderSection(
+async function renderSection(
   doc: jsPDF,
   layout: SectionLayout,
   x: number,
@@ -451,7 +287,7 @@ function renderSection(
     barsH,
     grooveX,
     grooveY,
-    grooveMeasureW,
+    grooveW,
     grooveH,
   } = layout;
   const [r, g, b] = hexToRgb(section.color);
@@ -561,20 +397,18 @@ function renderSection(
   }
 
   if (grooveH > 0 && section.groove) {
-    renderGroove(
+    await renderGroove(
       doc,
       section.groove,
-      groovePdfRows(section.groove),
-      section.color,
       x + grooveX,
       y + grooveY,
-      grooveMeasureW,
-      cfg,
+      grooveW,
+      grooveH,
     );
   }
 }
 
-export function exportStructurePdf({
+export async function createStructurePdf({
   title,
   artist,
   bpm,
@@ -636,24 +470,29 @@ export function exportStructurePdf({
   for (const layout of layouts) {
     if (colY[col] + layout.totalH <= pageBottom) {
       const colX = cfg.margin + col * (colW + cfg.colGap);
-      renderSection(doc, layout, colX, colY[col], cfg);
+      await renderSection(doc, layout, colX, colY[col], cfg);
       colY[col] += layout.totalH + cfg.sectionGapY;
     } else if (col + 1 < cfg.numCols) {
       col++;
       const colX = cfg.margin + col * (colW + cfg.colGap);
-      renderSection(doc, layout, colX, colY[col], cfg);
+      await renderSection(doc, layout, colX, colY[col], cfg);
       colY[col] += layout.totalH + cfg.sectionGapY;
     } else {
       doc.addPage();
       for (let i = 0; i < cfg.numCols; i++) colY[i] = cfg.margin;
       col = 0;
-      renderSection(doc, layout, cfg.margin, colY[col], cfg);
+      await renderSection(doc, layout, cfg.margin, colY[col], cfg);
       colY[col] += layout.totalH + cfg.sectionGapY;
     }
   }
 
-  const filename = title
-    ? `${title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}_estrutura.pdf`
+  return doc;
+}
+
+export async function exportStructurePdf(options: ExportOptions) {
+  const doc = await createStructurePdf(options);
+  const filename = options.title
+    ? `${options.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}_estrutura.pdf`
     : 'estrutura.pdf';
   doc.save(filename);
 }

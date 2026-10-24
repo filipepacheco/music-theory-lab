@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { grooveNotationLayout } from '@/components/structure/GrooveChart';
 import { grooveTotalStepCount } from '@/constants/groove';
 import type { GroovePattern, StructureSection } from '@/types';
 import {
@@ -81,10 +82,14 @@ describe('structure PDF groove export', () => {
     expect(layout.commentBeside).toBe(true);
     expect(layout.grooveX).toBe(layout.gridW + FORMATS.a4.commentGap);
     expect(layout.grooveY).toBeGreaterThan(FORMATS.a4.barsTopOffset);
-    expect(layout.grooveMeasureW).toBeGreaterThan(FORMATS.a4.grooveMeasureW);
+    const notation = grooveNotationLayout(section.groove!);
+    expect(layout.grooveH / layout.grooveW).toBeCloseTo(
+      notation.height / notation.width,
+    );
+    expect(layout.grooveW).toBeLessThanOrEqual(notation.width * 0.2);
   });
 
-  it('moves a chart below the section when the beside column is too narrow', () => {
+  it('fits the chart below the description even in a narrow beside column', () => {
     const section = sectionWithGroove();
     section.comment = '5-8 on the floor';
     section.barIds = ['b1', 'b2', 'b3', 'b4'];
@@ -104,15 +109,71 @@ describe('structure PDF groove export', () => {
     );
 
     expect(layout.commentBeside).toBe(true);
-    expect(layout.grooveX).toBe(0);
-    expect(layout.grooveY).toBeGreaterThan(layout.contentH);
-    expect(
-      FORMATS['ipad-air'].grooveLabelW + layout.grooveMeasureW,
-    ).toBeCloseTo(
+    expect(layout.grooveX).toBe(layout.gridW + FORMATS['ipad-air'].commentGap);
+    expect(layout.grooveY).toBe(
+      FORMATS['ipad-air'].barsTopOffset +
+        FORMATS['ipad-air'].commentLineHeight +
+        FORMATS['ipad-air'].grooveGapY,
+    );
+    const colW =
       (FORMATS['ipad-air'].pageW -
         FORMATS['ipad-air'].margin * 2 -
         FORMATS['ipad-air'].colGap) /
-        FORMATS['ipad-air'].numCols,
+      2;
+    expect(layout.grooveX + layout.grooveW).toBeLessThanOrEqual(colW);
+    expect(layout.totalH).toBeGreaterThanOrEqual(
+      layout.grooveY + layout.grooveH,
+    );
+  });
+
+  it.each(['a4', 'ipad-air'] as const)(
+    'keeps a two-measure groove beside 24 bars with no description in %s',
+    (format) => {
+      const section = sectionWithGroove();
+      section.barsPerRow = 4;
+      section.groove = groove('32n');
+      section.groove.measureCount = 2;
+      section.groove.chimbal[0] = true;
+      const bars = Array.from({ length: 24 }, (_, index) => ({
+        id: `b${index}`,
+        index,
+        timeSignature: '4/4' as const,
+      }));
+      const layout = calcSectionLayout(
+        section,
+        bars,
+        FORMATS[format],
+        () => [],
+      );
+      expect(layout.grooveX).toBe(layout.gridW + FORMATS[format].commentGap);
+      expect(layout.grooveY).toBe(FORMATS[format].barsTopOffset);
+      expect(layout.totalH).toBe(FORMATS[format].barsTopOffset + layout.barsH);
+      const notation = grooveNotationLayout(section.groove);
+      expect(layout.grooveH / layout.grooveW).toBeCloseTo(
+        notation.height / notation.width,
+      );
+    },
+  );
+
+  it('places notation below the description when the grid fills the column', () => {
+    const section = sectionWithGroove();
+    section.barsPerRow = 8;
+    section.comment = 'Descri��o longa';
+    section.groove!.bumbo[0] = true;
+    const bars = Array.from({ length: 8 }, (_, index) => ({
+      id: `b${index}`,
+      index,
+      timeSignature: '4/4' as const,
+    }));
+    const layout = calcSectionLayout(section, bars, FORMATS['ipad-air'], () => [
+      'Descri��o longa',
+    ]);
+    expect(layout.commentBeside).toBe(false);
+    expect(layout.grooveX).toBe(0);
+    expect(layout.grooveY).toBeGreaterThan(
+      FORMATS['ipad-air'].barsTopOffset +
+        layout.barsH +
+        FORMATS['ipad-air'].commentLineHeight,
     );
     expect(layout.totalH).toBe(layout.grooveY + layout.grooveH);
   });
