@@ -26,7 +26,11 @@
 
 @container (min-width: 32rem) {
   .structure-section-content {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, max-content) minmax(0, 1fr);
+  }
+
+  .structure-section-notes {
+    grid-column: auto;
   }
 
   .structure-section-tools {
