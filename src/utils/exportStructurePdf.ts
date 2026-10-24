@@ -3,6 +3,7 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   grooveTotalStepCount,
+  grooveMeasureCount,
 } from '@/constants/groove';
 import {
   dotsForTimeSignature,
@@ -153,6 +154,22 @@ export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
   return rows.some((row) => row.hits.some(Boolean)) ? rows : [];
 }
 
+const GROOVE_ROW_GAP = 2;
+
+export function groovePdfMeasures(groove: GroovePattern): GroovePattern[] {
+  const steps = grooveTotalStepCount(groove.subdivision, 1);
+  return Array.from(
+    { length: grooveMeasureCount(groove.measureCount) },
+    (_, index) => ({
+      ...groove,
+      measureCount: 1,
+      bumbo: groove.bumbo.slice(index * steps, (index + 1) * steps),
+      caixa: groove.caixa.slice(index * steps, (index + 1) * steps),
+      chimbal: groove.chimbal.slice(index * steps, (index + 1) * steps),
+    }),
+  );
+}
+
 type WrapText = (text: string, maxWidth: number) => string[];
 
 export function calcSectionLayout(
@@ -192,14 +209,19 @@ export function calcSectionLayout(
       cfg.barsTopOffset + barsH + (commentLines.length > 0 ? 2 + commentH : 0);
   }
   const hasGroove = groovePdfRows(section.groove).length > 0;
-  const notation = section.groove ? grooveNotationLayout(section.groove) : null;
+  const measures = section.groove ? groovePdfMeasures(section.groove) : [];
+  const notation = measures[0] ? grooveNotationLayout(measures[0]) : null;
   const grooveAvailableW = commentBeside ? availableBesideW : colW;
   // Keep the compact screen proportions, shrinking only to fit the notes column.
   const grooveW =
     hasGroove && notation
       ? Math.min(grooveAvailableW, notation.width * 0.2)
       : 0;
-  const grooveH = notation ? (grooveW * notation.height) / notation.width : 0;
+  const grooveH =
+    hasGroove && notation
+      ? ((grooveW * notation.height) / notation.width) * measures.length +
+        GROOVE_ROW_GAP * (measures.length - 1)
+      : 0;
   const grooveX = commentBeside ? gridW + cfg.commentGap : 0;
   const grooveY = commentBeside
     ? cfg.barsTopOffset + (commentH > 0 ? commentH + cfg.grooveGapY : 0)
@@ -256,18 +278,33 @@ async function renderGroove(
     import('svg2pdf.js'),
     import('react-dom/server'),
   ]);
-  const markup = renderToStaticMarkup(
-    createElement(GrooveNotation, { groove, color: '#222222', print: true }),
-  );
-  const svg = new DOMParser().parseFromString(
-    markup,
-    'image/svg+xml',
-  ).documentElement;
-  svg.removeAttribute('style');
-  svg.removeAttribute('class');
-  svg.setAttribute('width', String(width));
-  svg.setAttribute('height', String(height));
-  await svg2pdf(svg, doc, { x, y, width, height });
+  const measures = groovePdfMeasures(groove);
+  const rowHeight =
+    (height - GROOVE_ROW_GAP * (measures.length - 1)) / measures.length;
+  for (const [index, measure] of measures.entries()) {
+    const markup = renderToStaticMarkup(
+      createElement(GrooveNotation, {
+        groove: measure,
+        color: '#222222',
+        print: true,
+        firstMeasure: index + 1,
+      }),
+    );
+    const svg = new DOMParser().parseFromString(
+      markup,
+      'image/svg+xml',
+    ).documentElement;
+    svg.removeAttribute('style');
+    svg.removeAttribute('class');
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(rowHeight));
+    await svg2pdf(svg, doc, {
+      x,
+      y: y + index * (rowHeight + GROOVE_ROW_GAP),
+      width,
+      height: rowHeight,
+    });
+  }
 }
 
 async function renderSection(

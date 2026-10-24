@@ -13,6 +13,7 @@ export interface GrooveChartProps {
   color: string;
   currentTick?: number;
   print?: boolean;
+  firstMeasure?: number;
 }
 
 /** The ink of the notation: one neutral colour, as in a printed chart. */
@@ -99,6 +100,7 @@ export function GrooveNotation({
   color,
   currentTick = -1,
   print = false,
+  firstMeasure = 1,
 }: GrooveChartProps) {
   const layout = grooveNotationLayout(groove);
   const INK = print ? '#222222' : SCREEN_INK;
@@ -151,7 +153,7 @@ export function GrooveNotation({
           fontSize={8}
           fontWeight="600"
         >
-          {measure + 1}
+          {measure + firstMeasure}
         </text>
       ))}
 
