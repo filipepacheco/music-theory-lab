@@ -112,6 +112,11 @@ vi.mock('@/components/library/DrumPartDetail', () => ({
     <div data-testid="drums">{chart.id}</div>
   ),
 }));
+vi.mock('@/components/library/VocalPartDetail', () => ({
+  default: ({ chart }: { chart: { id: string } }) => (
+    <div data-testid="vocals">{chart.id}</div>
+  ),
+}));
 
 function chartOf(
   id: string,

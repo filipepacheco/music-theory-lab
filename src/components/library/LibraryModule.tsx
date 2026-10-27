@@ -23,6 +23,8 @@ import {
 } from '@/domain/chartSummary';
 import { isDrumChart } from '@/domain/drumChart';
 import { isGuitarChart } from '@/domain/guitarChart';
+import { isVocalChart } from '@/domain/vocalChart';
+import VocalPartDetail from '@/components/library/VocalPartDetail';
 import Frame from '@/components/shared/Frame';
 import '@/components/library/libraryLayout.css';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
@@ -394,6 +396,17 @@ export default function LibraryModule() {
               key={selectedChart.id}
               settingsKey={settingsKey}
               chart={selectedChart}
+              onRemove={() => {
+                navigate({ screen: 'list' });
+                void remove(selectedChart.id);
+              }}
+            />
+          ) : selectedChart && isVocalChart(selectedChart) ? (
+            <VocalPartDetail
+              key={selectedChart.id}
+              settingsKey={settingsKey}
+              chart={selectedChart}
+              songCharts={resolved?.song.charts}
               onRemove={() => {
                 navigate({ screen: 'list' });
                 void remove(selectedChart.id);
