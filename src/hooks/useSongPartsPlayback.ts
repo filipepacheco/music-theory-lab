@@ -106,7 +106,8 @@ export interface SongPartsPlayback {
 
 interface Pair {
   bassId: string;
-  drumId: string;
+  /** Null when the file has no drum chart. */
+  drumId: string | null;
   /** Ids of the guitar and vocal charts of the same file. */
   laneIds: string[];
 }
@@ -125,48 +126,41 @@ async function sameFileLaneIds(
   return found;
 }
 
+async function pairOf(
+  bassId: string,
+  charts: readonly ChartSummary[],
+): Promise<Pair | null> {
+  const drumId = await partChartId(bassId, 'drums');
+  const hasDrums = charts.some((c) => c.id === drumId);
+  const laneIds = await sameFileLaneIds(bassId, charts);
+  // A bass chart alone has no other part to play with.
+  return hasDrums || laneIds.length > 0
+    ? { bassId, drumId: hasDrums ? drumId : null, laneIds }
+    : null;
+}
+
 async function findPair(
   openId: string,
   openPart: ChartPart,
   charts: readonly ChartSummary[],
 ): Promise<Pair | null> {
-  const ids = new Set(charts.map((c) => c.id));
-  if (openPart === 'bass') {
-    const drumId = await partChartId(openId, 'drums');
-    return ids.has(drumId)
-      ? {
-          bassId: openId,
-          drumId,
-          laneIds: await sameFileLaneIds(openId, charts),
-        }
-      : null;
-  }
+  if (openPart === 'bass') return pairOf(openId, charts);
   const openLane =
     openPart === 'guitar' || openPart === 'vocals'
       ? charts.find((c) => c.id === openId)
       : undefined;
   for (const bass of charts.filter((c) => c.part === 'bass')) {
-    const drumId = await partChartId(bass.id, 'drums');
-    if (drumId === openId)
-      return {
-        bassId: bass.id,
-        drumId: openId,
-        laneIds: await sameFileLaneIds(bass.id, charts),
-      };
+    if ((await partChartId(bass.id, 'drums')) === openId)
+      return pairOf(bass.id, charts);
     if (
       openLane?.trackIndex !== undefined &&
-      ids.has(drumId) &&
       (await partChartId(
         bass.id,
         openPart as 'guitar' | 'vocals',
         openLane.trackIndex,
       )) === openId
     )
-      return {
-        bassId: bass.id,
-        drumId,
-        laneIds: await sameFileLaneIds(bass.id, charts),
-      };
+      return pairOf(bass.id, charts);
   }
   return null;
 }
@@ -243,12 +237,12 @@ export function useSongPartsPlayback(
   const laneKey = pair?.laneIds.join(',') ?? '';
   useEffect(() => {
     setLoaded(null);
-    if (!bassId || !drumId) return;
+    if (!bassId) return;
     let live = true;
     void (async () => {
       const [bass, drums, lanes] = await Promise.all([
         rocksmithLibrary.getChart(bassId),
-        rocksmithLibrary.getChart(drumId),
+        drumId ? rocksmithLibrary.getChart(drumId) : null,
         Promise.all(
           (laneKey ? laneKey.split(',') : []).map((id) =>
             rocksmithLibrary.getChart(id),
@@ -323,8 +317,9 @@ export function useSongPartsPlayback(
     (openId === pair.bassId ||
       openId === pair.drumId ||
       pair.laneIds.includes(openId ?? '')) &&
+    !!loaded &&
     !!bassChart &&
-    !!drumsChart &&
+    (!pair.drumId || !!drumsChart) &&
     !loaded?.partnerRecording &&
     !openRecording;
 
@@ -381,19 +376,19 @@ export function useSongPartsPlayback(
     setState(IDLE);
     const bass = bassRef.current;
     const drums = drumsRef.current;
-    if (!active || !bass || !drums) return;
+    if (!active || !bass) return;
     const guitars = guitarsRef.current ?? [];
     const vocals = vocalsRef.current ?? [];
     const keys = [
       'bass',
-      'drums',
+      ...(drums ? ['drums'] : []),
       ...guitars.map((chart) => chart.id),
       ...vocals.map((chart) => chart.id),
     ];
     const transport = createSongPartsTransport(
       {
         bass: bassNotesRef.current,
-        drums: drumPlaybackHits(drums.hits),
+        drums: drums ? drumPlaybackHits(drums.hits) : [],
         lanes: [
           ...guitars.map((chart) => ({
             key: chart.id,
@@ -406,7 +401,7 @@ export function useSongPartsPlayback(
         ],
         durationSeconds: Math.max(
           bass.songLengthSeconds,
-          drums.songLengthSeconds,
+          drums?.songLengthSeconds ?? 0,
           ...guitars.map((chart) => chart.songLengthSeconds),
           ...vocals.map((chart) => chart.songLengthSeconds),
         ),
