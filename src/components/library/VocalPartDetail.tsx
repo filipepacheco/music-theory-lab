@@ -22,6 +22,7 @@ import {
   type VocalChart,
 } from '@/domain/vocalChart';
 import { bassKeyOf } from '@/domain/vocalDegree';
+import { useBassSynth } from '@/hooks/useBassSynth';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 import Tag from '@/components/shared/Tag';
 
@@ -61,6 +62,7 @@ export default function VocalPartDetail({
   onRemove,
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
+  const { playBassNote } = useBassSynth();
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
   const audio = useLibraryAudio(audioUrl);
   const hasPlayer = audioUrl !== null;
@@ -184,6 +186,7 @@ export default function VocalPartDetail({
             tones={[]}
             active={[]}
             noteNames={names}
+            onPlayNote={playBassNote}
           />
         ),
       }}
