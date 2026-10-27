@@ -9,6 +9,8 @@ import {
   guitarSynthNotes,
   type GuitarSynthNote,
 } from '@/domain/guitarPlayback';
+import { isVocalChart, type VocalChart } from '@/domain/vocalChart';
+import { vocalSynthNotes, type VocalSynthNote } from '@/domain/vocalPlayback';
 import {
   muteControls,
   NO_MUTES,
@@ -30,9 +32,13 @@ import {
 
 const SYNTH_VELOCITY = 0.6;
 const GUITAR_VELOCITY = 0.45;
+const VOCAL_VELOCITY = 0.35;
 
-/** The voice of the engine. `guitarKeys` are the mute keys of guitar charts. */
-const engineVoice = (guitarKeys: ReadonlySet<string>): SongPartsVoice => ({
+/** The voice of the engine. The key sets hold the mute keys of the charts. */
+const engineVoice = (
+  guitarKeys: ReadonlySet<string>,
+  vocalKeys: ReadonlySet<string>,
+): SongPartsVoice => ({
   prepare: async (bassMidi, samples) => {
     if (!(await ensureAudio())) throw new Error('audio unavailable');
     await Promise.all([
@@ -51,6 +57,17 @@ const engineVoice = (guitarKeys: ReadonlySet<string>): SongPartsVoice => ({
     ),
   scheduleDrum: (hit, when) => playbackEngine.scheduleDrumHit(hit, when),
   scheduleLane: (key, event, when) => {
+    if (vocalKeys.has(key)) {
+      const vocal = event as VocalSynthNote;
+      playbackEngine.scheduleVocalNote(
+        key,
+        vocal.midi,
+        VOCAL_VELOCITY,
+        vocal.seconds,
+        when,
+      );
+      return;
+    }
     if (!guitarKeys.has(key)) return;
     const note = event as GuitarSynthNote;
     playbackEngine.scheduleGuitarNote(
@@ -66,7 +83,9 @@ const engineVoice = (guitarKeys: ReadonlySet<string>): SongPartsVoice => ({
     if (part === undefined || part === 'drums') playbackEngine.stopDrumHits();
     if (part === undefined) {
       if (guitarKeys.size > 0) playbackEngine.stopGuitarNotes();
+      if (vocalKeys.size > 0) playbackEngine.stopVocalNotes();
     } else if (guitarKeys.has(part)) playbackEngine.stopGuitarNotes(part);
+    else if (vocalKeys.has(part)) playbackEngine.stopVocalNotes(part);
   },
 });
 
@@ -159,6 +178,7 @@ export function useSongPartsPlayback(
     bass: BassChart | null;
     drums: DrumChart | null;
     guitars: GuitarChart[];
+    vocals: VocalChart[];
     partnerRecording: boolean;
   } | null>(null);
   const [openRecording, setOpenRecording] = useState(true);
@@ -231,6 +251,9 @@ export function useSongPartsPlayback(
         drums: drums && isDrumChart(drums) ? drums : null,
         guitars: lanes.flatMap((chart) =>
           chart && isGuitarChart(chart) ? [chart] : [],
+        ),
+        vocals: lanes.flatMap((chart) =>
+          chart && isVocalChart(chart) ? [chart] : [],
         ),
         partnerRecording: false,
       });
@@ -319,6 +342,15 @@ export function useSongPartsPlayback(
   const guitarCharts = loaded?.guitars;
   const guitarsRef = useRef(guitarCharts);
   guitarsRef.current = guitarCharts;
+  const vocalCharts = loaded?.vocals;
+  const vocalsRef = useRef(vocalCharts);
+  vocalsRef.current = vocalCharts;
+  const vocalSound = (vocalCharts ?? [])
+    .map(
+      (chart) =>
+        `${chart.id}:${chart.notes.map((n) => `${n.time}.${n.midi}`).join(',')}`,
+    )
+    .join(';');
   // A new chart object with the same notes keeps the clock.
   const guitarSound = (guitarCharts ?? [])
     .map(
@@ -335,22 +367,38 @@ export function useSongPartsPlayback(
     const drums = drumsRef.current;
     if (!active || !bass || !drums) return;
     const guitars = guitarsRef.current ?? [];
-    const keys = ['bass', 'drums', ...guitars.map((chart) => chart.id)];
+    const vocals = vocalsRef.current ?? [];
+    const keys = [
+      'bass',
+      'drums',
+      ...guitars.map((chart) => chart.id),
+      ...vocals.map((chart) => chart.id),
+    ];
     const transport = createSongPartsTransport(
       {
         bass: bassNotesRef.current,
         drums: drumPlaybackHits(drums.hits),
-        lanes: guitars.map((chart) => ({
-          key: chart.id,
-          events: guitarSynthNotes(chart.notes),
-        })),
+        lanes: [
+          ...guitars.map((chart) => ({
+            key: chart.id,
+            events: guitarSynthNotes(chart.notes) as { time: number }[],
+          })),
+          ...vocals.map((chart) => ({
+            key: chart.id,
+            events: vocalSynthNotes(chart.notes) as { time: number }[],
+          })),
+        ],
         durationSeconds: Math.max(
           bass.songLengthSeconds,
           drums.songLengthSeconds,
           ...guitars.map((chart) => chart.songLengthSeconds),
+          ...vocals.map((chart) => chart.songLengthSeconds),
         ),
       },
-      engineVoice(new Set(guitars.map((chart) => chart.id))),
+      engineVoice(
+        new Set(guitars.map((chart) => chart.id)),
+        new Set(vocals.map((chart) => chart.id)),
+      ),
       () =>
         partsSounding({
           open: openPartRef.current ?? 'bass',
@@ -370,7 +418,7 @@ export function useSongPartsPlayback(
       transport.dispose();
       if (transportRef.current === transport) transportRef.current = null;
     };
-  }, [active, bassId, drumId, shift, voicing, bassSound, guitarSound]);
+  }, [active, bassId, drumId, shift, voicing, bassSound, guitarSound, vocalSound]);
 
   const toggleMute = useCallback((part: PlaybackPart) => {
     mutesRef.current = {
