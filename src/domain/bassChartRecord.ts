@@ -9,6 +9,7 @@ import {
   GUITAR_MIN_STRINGS,
   type GuitarChart,
 } from './guitarChart.js';
+import { VOCAL_MAX_LYRIC_LENGTH, type VocalChart } from './vocalChart.js';
 import {
   DRUM_ARTICULATIONS,
   DRUM_CHART_PIECES,
@@ -346,10 +347,67 @@ export function parseGuitarChart(value: unknown): GuitarChart | null {
   return value as unknown as GuitarChart;
 }
 
+const VOCAL_FIELDS = ['part', 'partName', 'trackIndex', 'notes'];
+
+export function parseVocalChart(value: unknown): VocalChart | null {
+  if (!object(value) || value.part !== 'vocals') return null;
+  if (!validSharedFields(value, VOCAL_FIELDS)) return null;
+  if (
+    value.source !== 'gp' ||
+    typeof value.partName !== 'string' ||
+    !integer(value.trackIndex) ||
+    value.trackIndex < 0 ||
+    !Array.isArray(value.notes) ||
+    value.notes.length === 0 ||
+    value.notes.length > 200_000
+  )
+    return null;
+
+  const bars = value.bars as unknown[];
+  if (
+    !value.notes.every(
+      (note, i, notes) =>
+        object(note) &&
+        Object.keys(note).every((key) => VOCAL_NOTE_FIELDS.has(key)) &&
+        finite(note.time) &&
+        note.time >= 0 &&
+        (i === 0 || note.time >= notes[i - 1].time) &&
+        finite(note.endTime) &&
+        note.endTime >= note.time &&
+        integer(note.midi) &&
+        note.midi >= 0 &&
+        note.midi <= 127 &&
+        finite(note.sustain) &&
+        note.sustain >= 0 &&
+        integer(note.bar) &&
+        note.bar >= 0 &&
+        note.bar < bars.length &&
+        finite(note.beatInBar) &&
+        note.beatInBar >= 0 &&
+        (note.lyric === null ||
+          (typeof note.lyric === 'string' &&
+            note.lyric.length <= VOCAL_MAX_LYRIC_LENGTH)),
+    )
+  )
+    return null;
+  return value as unknown as VocalChart;
+}
+
+const VOCAL_NOTE_FIELDS = new Set([
+  'time',
+  'endTime',
+  'midi',
+  'sustain',
+  'bar',
+  'beatInBar',
+  'lyric',
+]);
+
 /** A chart with no `part` is a bass chart; otherwise `part` is its kind. */
 const PARSERS: Record<string, (value: unknown) => Chart | null> = {
   drums: parseDrumChart,
   guitar: parseGuitarChart,
+  vocals: parseVocalChart,
 };
 
 const knownKind = (part: string) =>

@@ -1,5 +1,6 @@
 import type { BassChart, BassChartBar, BassChartSection } from './bassChart.js';
 import type { GuitarChart } from './guitarChart.js';
+import type { VocalChart } from './vocalChart.js';
 
 export const DRUM_CHART_PIECES = [
   'bumbo',
@@ -108,7 +109,7 @@ export interface DrumChart {
   hits: DrumHit[];
 }
 
-export type Chart = BassChart | DrumChart | GuitarChart;
+export type Chart = BassChart | DrumChart | GuitarChart | VocalChart;
 
 export function isDrumChart(chart: Chart): chart is DrumChart {
   return 'part' in chart && chart.part === 'drums';

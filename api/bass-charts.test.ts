@@ -3,6 +3,7 @@ import type { Client } from '@libsql/client';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { fixtureGuitarChart } from '@/domain/guitarChartFixture';
+import { fixtureVocalChart } from '@/domain/vocalChartFixture';
 
 const state = vi.hoisted(() => ({ client: null as Client | null }));
 vi.mock('@libsql/client', async (importOriginal) => {
@@ -304,6 +305,64 @@ describe('guitar chart on the chart route', () => {
     }
     expect(
       (await write([record, { ...guitarRecord, chart: bad[0] }])).status,
+    ).toBe(400);
+    expect((await request('GET')).body).toEqual([]);
+  });
+});
+
+describe('vocal chart on the chart route', () => {
+  const vocals = fixtureVocalChart(2, [
+    { bar: 0, beat: 0, midi: 64, lyric: 'Hel-' },
+    { bar: 0, beat: 0, midi: 67, lyric: 'Hel-' },
+    { bar: 0, beat: 2, midi: 72 },
+    { bar: 1, beat: 1, midi: 62, lyric: 'lo' },
+  ]);
+  const vocalRecord = {
+    id: vocals.id,
+    updatedAt: '2026-10-05T10:00:00.000Z',
+    chart: vocals,
+  };
+
+  it('gives a vocal chart of one device to a second device, in the same table', async () => {
+    expect((await write([record, drumRecord, vocalRecord])).status).toBe(200);
+    const page = await readAfter(0);
+    expect(page.records).toEqual([record, drumRecord, vocalRecord]);
+    const stored = (await rows()).find((row) => row.id === vocals.id)!;
+    expect(JSON.parse(String(stored.chart))).toEqual(vocals);
+  });
+
+  it('keeps a deletion record of a vocal chart against a stale upload', async () => {
+    await write([vocalRecord]);
+    const deletion = { ...vocalRecord, chart: null };
+    await write([deletion], 'second');
+    await write([vocalRecord], 'offline');
+    expect((await request('GET')).body).toEqual([deletion]);
+  });
+
+  it('refuses a malformed vocal chart and writes nothing', async () => {
+    const note = vocals.notes[0];
+    const bad: unknown[] = [
+      { ...vocals, partName: 3 },
+      { ...vocals, trackIndex: -1 },
+      { ...vocals, strings: 6 },
+      { ...vocals, audio: 'binary' },
+      { ...vocals, notes: [] },
+      { ...vocals, notes: [{ ...note, midi: 130 }] },
+      { ...vocals, notes: [{ ...note, midi: 60.5 }] },
+      { ...vocals, notes: [{ ...note, lyric: 4 }] },
+      { ...vocals, notes: [{ ...note, lyric: 'x'.repeat(201) }] },
+      { ...vocals, notes: [{ ...note, string: 1 }] },
+      { ...vocals, notes: [{ ...note, bar: 9 }] },
+      { ...vocals, notes: [{ ...note, endTime: note.time - 1 }] },
+      { ...vocals, notes: [vocals.notes[2], vocals.notes[0]] },
+      { ...vocals, bars: [] },
+    ];
+    for (const [index, item] of bad.entries()) {
+      const result = await write([{ ...vocalRecord, chart: item }]);
+      expect([index, result.status]).toEqual([index, 400]);
+    }
+    expect(
+      (await write([record, { ...vocalRecord, chart: bad[0] }])).status,
     ).toBe(400);
     expect((await request('GET')).body).toEqual([]);
   });
