@@ -1,7 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { Client, Row } from '@libsql/client';
 // Vercel emits ESM without Vite's aliases; use the emitted .js module path.
-import { parseBassChartRecord } from '../src/domain/bassChartRecord.js';
+import {
+  isUnknownKindRecord,
+  parseBassChartRecord,
+} from '../src/domain/bassChartRecord.js';
 
 const PAGE_LIMIT = 10;
 
@@ -138,10 +141,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body.records.length > 100
     )
       return res.status(400).json({ error: 'device_id and records required' });
-    const records = body.records.map(parseBassChartRecord);
-    if (records.some((r: unknown) => r === null)) {
+    // A chart of an unknown kind is skipped, so a later kind never blocks sync.
+    const skipped = body.records.map(isUnknownKindRecord);
+    const parsed = body.records.map((r: unknown, i: number) =>
+      skipped[i] ? null : parseBassChartRecord(r),
+    );
+    if (parsed.some((r: unknown, i: number) => r === null && !skipped[i])) {
       return res.status(400).json({ error: 'invalid chart record' });
     }
+    type Record_ = NonNullable<ReturnType<typeof parseBassChartRecord>>;
+    const records: Record_[] = parsed.filter(
+      (r: Record_ | null) => r !== null,
+    );
     const results = await turso.batch(
       records.flatMap(
         (record: NonNullable<ReturnType<typeof parseBassChartRecord>>) => [
@@ -172,10 +183,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ),
       'write',
     );
+    let next = 0;
     return res.status(200).json({
       ok: true,
-      counters: records.map((_: unknown, index: number) => {
-        const counter = results[index * 2 + 1].rows[0]?.sync_counter;
+      counters: skipped.map((skip: boolean) => {
+        if (skip) return null;
+        const counter = results[next++ * 2 + 1].rows[0]?.sync_counter;
         return counter == null ? null : Number(counter);
       }),
     });
