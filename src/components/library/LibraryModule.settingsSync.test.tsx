@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
+
+vi.mock('@/services/playbackEngine', () => ({
+  ensureAudio: async () => true,
+  playbackEngine: { now: () => 0, scheduleGuitarNote: vi.fn() },
+}));
 import { IDBFactory } from 'fake-indexeddb';
 import LibraryModule from '@/components/library/LibraryModule';
 import { fixtureChart, walking } from '@/domain/bassChartFixture';

@@ -492,3 +492,71 @@ describe('useSongPartsPlayback with a vocal chart', () => {
     act(() => result.current.audio.pause());
   });
 });
+
+describe('useSongPartsPlayback with no drum chart', () => {
+  async function bassAndGuitar() {
+    const bass = {
+      ...fixtureChart(
+        2,
+        walking([
+          [36, 40, 43, 47],
+          [38, 41, 45, 48],
+        ]),
+      ),
+      id: BASS_ID,
+    };
+    const guitar = {
+      ...fixtureGuitarChart(
+        2,
+        [
+          { bar: 0, beat: 0, string: 2, fret: 2 },
+          { bar: 0, beat: 1, string: 3, fret: 2 },
+        ],
+        { partName: 'Guitarra 1', trackIndex: 2 },
+      ),
+      id: await partChartId(BASS_ID, 'guitar', 2),
+    };
+    library.charts.set(bass.id, bass);
+    library.charts.set(guitar.id, guitar);
+    return {
+      bass,
+      guitar,
+      all: [summarizeChart(bass), summarizeChart(guitar)],
+    };
+  }
+
+  it('plays the guitar with the bass when the file has no drums', async () => {
+    const { bass, guitar, all } = await bassAndGuitar();
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(bass.id, 'bass', all),
+    );
+    act(() => result.current.reportRecording(bass.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    expect(engine.scheduleBassNote).toHaveBeenCalled();
+    expect(engine.scheduleGuitarNote).toHaveBeenCalled();
+    expect(engine.scheduleDrumHit).not.toHaveBeenCalled();
+    expect(result.current.controls.map((c) => c.key)).toEqual([
+      'bass',
+      guitar.id,
+    ]);
+    act(() => result.current.audio.pause());
+  });
+
+  it('pairs an open guitar chart with the bass when the file has no drums', async () => {
+    const { guitar, all } = await bassAndGuitar();
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(guitar.id, 'guitar', all),
+    );
+    act(() => result.current.reportRecording(guitar.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    expect(engine.scheduleBassNote).toHaveBeenCalled();
+    expect(engine.scheduleGuitarNote).toHaveBeenCalled();
+    act(() => result.current.audio.pause());
+  });
+});

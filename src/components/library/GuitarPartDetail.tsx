@@ -35,6 +35,8 @@ import {
 } from '@/domain/guitarChart';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
 import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
+import { ensureAudio, playbackEngine } from '@/services/playbackEngine';
+
 interface Props {
   chart: GuitarChart;
   settingsKey?: unknown;
@@ -44,11 +46,7 @@ interface Props {
 
 const PREVIEW_KEY = 'fretboard-preview';
 
-// The engine loads on the first press, so the part opens with no audio code.
 async function previewNote(midi: number): Promise<void> {
-  const { ensureAudio, playbackEngine } = await import(
-    '@/services/playbackEngine'
-  );
   if (!(await ensureAudio())) return;
   playbackEngine.scheduleGuitarNote(
     PREVIEW_KEY,

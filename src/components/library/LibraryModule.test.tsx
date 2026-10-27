@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
+
+vi.mock('@/services/playbackEngine', () => ({
+  ensureAudio: async () => true,
+  playbackEngine: { now: () => 0, scheduleGuitarNote: vi.fn() },
+}));
 import {
   act,
   cleanup,
