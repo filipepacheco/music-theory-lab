@@ -141,8 +141,10 @@ async function findPair(
         }
       : null;
   }
-  const openGuitar =
-    openPart === 'guitar' ? charts.find((c) => c.id === openId) : undefined;
+  const openLane =
+    openPart === 'guitar' || openPart === 'vocals'
+      ? charts.find((c) => c.id === openId)
+      : undefined;
   for (const bass of charts.filter((c) => c.part === 'bass')) {
     const drumId = await partChartId(bass.id, 'drums');
     if (drumId === openId)
@@ -152,9 +154,13 @@ async function findPair(
         laneIds: await sameFileLaneIds(bass.id, charts),
       };
     if (
-      openGuitar?.trackIndex !== undefined &&
+      openLane?.trackIndex !== undefined &&
       ids.has(drumId) &&
-      (await partChartId(bass.id, 'guitar', openGuitar.trackIndex)) === openId
+      (await partChartId(
+        bass.id,
+        openPart as 'guitar' | 'vocals',
+        openLane.trackIndex,
+      )) === openId
     )
       return {
         bassId: bass.id,
