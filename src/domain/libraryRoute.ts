@@ -1,5 +1,9 @@
 import type { BassChartSource } from '@/domain/bassChart';
-import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
+import {
+  PART_ORDER,
+  type ChartPart,
+  type ChartSummary,
+} from '@/domain/chartSummary';
 import type { LibrarySong } from '@/domain/librarySong';
 
 export const LIBRARY_HASH = '#/biblioteca';
@@ -11,12 +15,15 @@ export type SongRoute = {
   songKey: string;
   source: BassChartSource | typeof ANALYSIS_SEGMENT;
   part: ChartPart | typeof ANALYSIS_SEGMENT;
+  /** GP track index: only for a guitar or vocal chart. */
+  track?: number;
 };
 
 export type LibraryRoute = { screen: 'list' } | SongRoute;
 
 const SOURCES: string[] = ['gp', 'rocksmith', 'midi', ANALYSIS_SEGMENT];
-const PARTS: string[] = ['bass', 'drums', ANALYSIS_SEGMENT];
+const PARTS: string[] = [...PART_ORDER, ANALYSIS_SEGMENT];
+const TRACK_PART = /^(guitar|vocals)-(\d+)$/;
 
 export function isLibraryHash(hash: string): boolean {
   return hash === LIBRARY_HASH || hash.startsWith(`${LIBRARY_HASH}/`);
@@ -29,14 +36,17 @@ export function parseLibraryRoute(hash: string): LibraryRoute {
   const [encodedKey, source, part] = segments;
   try {
     const songKey = decodeURIComponent(encodedKey).normalize('NFC');
-    if (!songKey || !SOURCES.includes(source) || !PARTS.includes(part)) {
+    const withTrack = TRACK_PART.exec(part);
+    const kind = withTrack ? withTrack[1] : part;
+    if (!songKey || !SOURCES.includes(source) || !PARTS.includes(kind)) {
       return { screen: 'list' };
     }
     return {
       screen: 'song',
       songKey,
       source: source as SongRoute['source'],
-      part: part as SongRoute['part'],
+      part: kind as SongRoute['part'],
+      ...(withTrack ? { track: Number(withTrack[2]) } : {}),
     };
   } catch {
     return { screen: 'list' };
@@ -45,15 +55,29 @@ export function parseLibraryRoute(hash: string): LibraryRoute {
 
 export function formatLibraryRoute(route: LibraryRoute): string {
   if (route.screen === 'list') return LIBRARY_HASH;
-  return `${LIBRARY_HASH}/${encodeURIComponent(route.songKey)}/${route.source}/${route.part}`;
+  return `${LIBRARY_HASH}/${encodeURIComponent(route.songKey)}/${route.source}/${route.part}${route.track === undefined ? '' : `-${route.track}`}`;
 }
 
 export function routeOfChart(
   songKey: string,
   source: SongRoute['source'],
   part: SongRoute['part'],
+  track?: number,
 ): SongRoute {
-  return { screen: 'song', songKey, source, part };
+  return {
+    screen: 'song',
+    songKey,
+    source,
+    part,
+    ...(track === undefined ? {} : { track }),
+  };
+}
+
+export function routeOfSummary(
+  songKey: string,
+  chart: ChartSummary,
+): SongRoute {
+  return routeOfChart(songKey, chart.source, chart.part, chart.trackIndex);
 }
 
 export type SourceChoice = BassChartSource | typeof ANALYSIS_SEGMENT;
@@ -74,8 +98,6 @@ export function songSourceChoices(song: LibrarySong): SourceChoice[] {
   if (song.analysed.length > 0) choices.push(ANALYSIS_SEGMENT);
   return choices;
 }
-
-const PART_ORDER: ChartPart[] = ['bass', 'drums'];
 
 export function songPartChoices(
   song: LibrarySong,
@@ -99,9 +121,7 @@ export function routeOfSource(
     ofSource.find((item) => item.part === currentPart) ??
     ofSource.find((item) => item.part === 'bass') ??
     ofSource[0];
-  return chart
-    ? routeOfChart(song.key, chart.source, chart.part)
-    : routeOfSong(song);
+  return chart ? routeOfSummary(song.key, chart) : routeOfSong(song);
 }
 
 export function routeOfSong(
@@ -113,7 +133,7 @@ export function routeOfSong(
   }
   const chart = song.charts[0];
   return chart
-    ? routeOfChart(song.key, chart.source, chart.part)
+    ? routeOfSummary(song.key, chart)
     : routeOfChart(song.key, ANALYSIS_SEGMENT, ANALYSIS_SEGMENT);
 }
 
@@ -128,11 +148,29 @@ export function choiceOfTarget(
   );
 }
 
+export function chartsOfPart(
+  song: LibrarySong,
+  source: SongRoute['source'],
+  part: ChartPart,
+): ChartSummary[] {
+  return song.charts.filter(
+    (item) => item.source === source && item.part === part,
+  );
+}
+
 export function chartOfAddress(
   song: LibrarySong,
   source: SongRoute['source'],
   part: SongRoute['part'],
+  track?: number,
 ): ChartSummary | undefined {
+  if (part === 'guitar' || part === 'vocals') {
+    const ofPart = chartsOfPart(song, source, part);
+    return (
+      ofPart.find((item) => item.trackIndex === track) ??
+      (track === undefined ? ofPart[0] : undefined)
+    );
+  }
   return song.charts
     .filter((item) => item.source === source && item.part === part)
     .reduce<
@@ -150,7 +188,12 @@ export function resolveSongRoute(
 ): { song: LibrarySong; target: RouteTarget } | null {
   const song = songs.find((item) => item.key === route.songKey);
   if (!song) return null;
-  const exact = chartOfAddress(song, route.source, route.part);
+  const exact = chartOfAddress(
+    song,
+    route.source,
+    route.part,
+    route.track,
+  );
   if (exact) return { song, target: { kind: 'chart', id: exact.id } };
   const wantsAnalysis = route.source === ANALYSIS_SEGMENT;
   if (song.charts.length > 0 && !(wantsAnalysis && song.analysed.length > 0)) {

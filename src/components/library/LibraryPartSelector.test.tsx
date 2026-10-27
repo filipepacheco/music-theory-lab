@@ -19,6 +19,7 @@ import { rocksmithLibrary } from '@/services/rocksmithLibrary';
 
 const state = vi.hoisted(() => ({
   charts: [] as unknown[],
+  extra: {} as Record<string, object>,
   remove: vi.fn(),
   shared: {
     active: false,
@@ -54,7 +55,10 @@ vi.mock('@/hooks/useRocksmithCharts', () => ({
     const [openId, setOpenId] = useState<string | null>(null);
     const charts = state.charts as Chart[];
     return {
-      summaries: charts.map((c) => summarizeChart(c)),
+      summaries: charts.map((c) => ({
+        ...summarizeChart(c),
+        ...state.extra[c.id],
+      })),
       openId,
       openChart: charts.find((c) => c.id === openId) ?? null,
       open: async (id: string | null) => setOpenId(id),
@@ -167,6 +171,7 @@ const lineLength = () =>
 
 beforeEach(() => {
   state.charts = [bassOf(MIDI_BASS, 'midi'), bassOf(GP_BASS, 'gp'), drums];
+  state.extra = {};
   state.remove.mockReset();
   state.shared.active = false;
   state.shared.playing = false;
@@ -301,6 +306,89 @@ describe('part selector of the song screen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
     await waitFor(() => expect(state.remove).toHaveBeenCalledWith(GP_DRUMS));
     expect(window.location.hash).toBe('#/biblioteca');
+  });
+
+  describe('with many guitar charts', () => {
+    const GUITAR_1 = 'e'.repeat(64);
+    const GUITAR_2 = 'f'.repeat(64);
+    const nameSelect = () =>
+      screen.queryByLabelText(
+        'Nome da parte: guitarra',
+      ) as HTMLSelectElement | null;
+
+    beforeEach(() => {
+      // Bass fixtures stand for the guitar charts: only the summary changes.
+      state.charts = [
+        bassOf(GP_BASS, 'gp'),
+        drums,
+        { ...bassOf(GUITAR_2, 'gp'), title: 'Come Together' },
+        { ...bassOf(GUITAR_1, 'gp'), title: 'Come Together' },
+      ];
+      state.extra = {
+        [GUITAR_1]: {
+          part: 'guitar',
+          partName: 'Guitarra 1 - Rhythm',
+          trackIndex: 1,
+        },
+        [GUITAR_2]: {
+          part: 'guitar',
+          partName: 'Guitarra 2 - Lead',
+          trackIndex: 3,
+        },
+      };
+    });
+
+    it('shows one button for each part kind and a select of part names for a kind with two charts', async () => {
+      window.history.replaceState(null, '', `#/biblioteca/${KEY}/gp/bass`);
+      render(<LibraryModule />);
+      await waitFor(() => expect(tab()).toBeTruthy());
+      expect(
+        within(partGroup() as HTMLElement)
+          .getAllByRole('button')
+          .map((button) => button.textContent),
+      ).toEqual(['Baixo', 'Bateria', 'Guitarra']);
+      expect(nameSelect()).toBeNull();
+
+      fireEvent.click(part('Guitarra'));
+      expect(window.location.hash).toBe(`#/biblioteca/${KEY}/gp/guitar-1`);
+      await waitFor(() => expect(nameSelect()).toBeTruthy());
+      expect(
+        [...(nameSelect() as HTMLSelectElement).options].map(
+          (option) => option.textContent,
+        ),
+      ).toEqual(['Guitarra 1 - Rhythm', 'Guitarra 2 - Lead']);
+      expect(nameSelect()?.value).toBe(GUITAR_1);
+    });
+
+    it('opens the same chart from a saved address and changes the address with the select', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `#/biblioteca/${KEY}/gp/guitar-3`,
+      );
+      render(<LibraryModule />);
+      await waitFor(() => expect(nameSelect()?.value).toBe(GUITAR_2));
+      expect(part('Guitarra').getAttribute('aria-pressed')).toBe('true');
+
+      fireEvent.change(nameSelect() as HTMLSelectElement, {
+        target: { value: GUITAR_1 },
+      });
+      expect(window.location.hash).toBe(`#/biblioteca/${KEY}/gp/guitar-1`);
+      await waitFor(() => expect(nameSelect()?.value).toBe(GUITAR_1));
+    });
+
+    it('removes only the chart on screen', async () => {
+      window.history.replaceState(
+        null,
+        '',
+        `#/biblioteca/${KEY}/gp/guitar-3`,
+      );
+      render(<LibraryModule />);
+      await waitFor(() => expect(nameSelect()?.value).toBe(GUITAR_2));
+      fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
+      await waitFor(() => expect(state.remove).toHaveBeenCalledWith(GUITAR_2));
+      expect(state.remove).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('keeps the shared playback going on a change of part and shows the cursor on the new part', async () => {

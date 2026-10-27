@@ -5,8 +5,10 @@ import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
 import { isDrumChart, type DrumChart } from '@/domain/drumChart';
 import { drumPlaybackHits } from '@/domain/drumPlaybackSchedule';
 import {
+  muteControls,
   NO_MUTES,
   partsSounding,
+  type MuteControl,
   type PartMutes,
   type PlaybackPart,
 } from '@/domain/songPartsPlayback';
@@ -42,8 +44,8 @@ const engineVoice: SongPartsVoice = {
     ),
   scheduleDrum: (hit, when) => playbackEngine.scheduleDrumHit(hit, when),
   stop: (part) => {
-    if (part !== 'drums') playbackEngine.stopBassNotes();
-    if (part !== 'bass') playbackEngine.stopDrumHits();
+    if (part === undefined || part === 'bass') playbackEngine.stopBassNotes();
+    if (part === undefined || part === 'drums') playbackEngine.stopDrumHits();
   },
 };
 
@@ -51,6 +53,8 @@ export interface SongPartsPlayback {
   active: boolean;
   audio: LibraryAudio;
   mutes: PartMutes;
+  /** One mute control for each chart of the file on the clock. */
+  controls: MuteControl[];
   toggleMute: (part: PlaybackPart) => void;
   reportBass: (chart: BassChart, shift: number, voicing?: string) => void;
   reportRecording: (chartId: string, linked: boolean) => void;
@@ -59,6 +63,22 @@ export interface SongPartsPlayback {
 interface Pair {
   bassId: string;
   drumId: string;
+  /** Ids of the guitar and vocal charts of the same file. */
+  laneIds: string[];
+}
+
+async function sameFileLaneIds(
+  bassId: string,
+  charts: readonly ChartSummary[],
+): Promise<string[]> {
+  const found: string[] = [];
+  for (const chart of charts) {
+    if (chart.part !== 'guitar' && chart.part !== 'vocals') continue;
+    if (chart.trackIndex === undefined) continue;
+    if ((await partChartId(bassId, chart.part, chart.trackIndex)) === chart.id)
+      found.push(chart.id);
+  }
+  return found;
 }
 
 async function findPair(
@@ -69,11 +89,21 @@ async function findPair(
   const ids = new Set(charts.map((c) => c.id));
   if (openPart === 'bass') {
     const drumId = await partChartId(openId, 'drums');
-    return ids.has(drumId) ? { bassId: openId, drumId } : null;
+    return ids.has(drumId)
+      ? {
+          bassId: openId,
+          drumId,
+          laneIds: await sameFileLaneIds(openId, charts),
+        }
+      : null;
   }
   for (const bass of charts.filter((c) => c.part === 'bass')) {
     if ((await partChartId(bass.id, 'drums')) === openId)
-      return { bassId: bass.id, drumId: openId };
+      return {
+        bassId: bass.id,
+        drumId: openId,
+        laneIds: await sameFileLaneIds(bass.id, charts),
+      };
   }
   return null;
 }
@@ -129,7 +159,8 @@ export function useSongPartsPlayback(
           current &&
           found &&
           current.bassId === found.bassId &&
-          current.drumId === found.drumId
+          current.drumId === found.drumId &&
+          current.laneIds.join(',') === found.laneIds.join(',')
             ? current
             : found,
         );
@@ -294,5 +325,28 @@ export function useSongPartsPlayback(
     pause: () => transportRef.current?.pause(),
     seek: (seconds) => transportRef.current?.seek(seconds),
   };
-  return { active, audio, mutes, toggleMute, reportBass, reportRecording };
+  const laneKey = pair?.laneIds.join(',') ?? '';
+  const controls = useMemo(
+    () =>
+      muteControls(
+        pair
+          ? songChartsRef.current.filter(
+              (c) =>
+                c.id === pair.bassId ||
+                c.id === pair.drumId ||
+                pair.laneIds.includes(c.id),
+            )
+          : [],
+      ),
+    [bassId, drumId, laneKey, chartsKey],
+  );
+  return {
+    active,
+    audio,
+    mutes,
+    controls,
+    toggleMute,
+    reportBass,
+    reportRecording,
+  };
 }

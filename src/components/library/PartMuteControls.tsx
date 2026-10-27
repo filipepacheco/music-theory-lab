@@ -1,28 +1,38 @@
 import Button from '@/components/shared/Button';
-import type { PartMutes, PlaybackPart } from '@/domain/songPartsPlayback';
+import type {
+  MuteControl,
+  PartMutes,
+  PlaybackPart,
+} from '@/domain/songPartsPlayback';
 
-const LABEL: Record<PlaybackPart, string> = {
-  bass: 'Baixo',
-  drums: 'Bateria',
-};
+const BASS_AND_DRUMS: MuteControl[] = [
+  { key: 'bass', label: 'Baixo' },
+  { key: 'drums', label: 'Bateria' },
+];
 
 interface Props {
   mutes: PartMutes;
-  onToggle: (part: PlaybackPart) => void;
+  onToggle: (key: PlaybackPart) => void;
+  /** One control for each chart. Bass and drums by default. */
+  controls?: readonly MuteControl[];
 }
 
-export default function PartMuteControls({ mutes, onToggle }: Props) {
+export default function PartMuteControls({
+  mutes,
+  onToggle,
+  controls = BASS_AND_DRUMS,
+}: Props) {
   return (
     <div role="group" aria-label="Silenciar partes" className="flex gap-1">
-      {(['bass', 'drums'] as const).map((part) => (
+      {controls.map(({ key, label }) => (
         <Button
-          key={part}
+          key={key}
           size="sm"
-          pressed={mutes[part]}
-          onClick={() => onToggle(part)}
-          aria-label={`Silenciar ${LABEL[part].toLowerCase()}`}
+          pressed={!!mutes[key]}
+          onClick={() => onToggle(key)}
+          aria-label={`Silenciar ${label.toLowerCase()}`}
         >
-          {mutes[part] ? `${LABEL[part]} mudo` : LABEL[part]}
+          {mutes[key] ? `${label} mudo` : label}
         </Button>
       ))}
     </div>

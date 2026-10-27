@@ -133,7 +133,11 @@ export default function DrumPartDetail({
       hasPlayer={hasPlayer}
       partMutes={
         together && parts
-          ? { mutes: parts.mutes, onToggle: parts.toggleMute }
+          ? {
+              mutes: parts.mutes,
+              onToggle: parts.toggleMute,
+              controls: parts.controls,
+            }
           : undefined
       }
       recording={{
