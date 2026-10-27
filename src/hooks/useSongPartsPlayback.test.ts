@@ -14,6 +14,7 @@ import { fixtureChart, walking } from '@/domain/bassChartFixture';
 import { summarizeChart } from '@/domain/chartSummary';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { fixtureGuitarChart } from '@/domain/guitarChartFixture';
+import { fixtureVocalChart } from '@/domain/vocalChartFixture';
 import { partChartId } from '@/services/chartId';
 import { useSongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 
@@ -24,6 +25,8 @@ const engine = vi.hoisted(() => ({
   scheduleDrumHit: vi.fn(),
   scheduleGuitarNote: vi.fn(),
   stopGuitarNotes: vi.fn(),
+  scheduleVocalNote: vi.fn(),
+  stopVocalNotes: vi.fn(),
   stopBassNotes: vi.fn(),
   stopDrumHits: vi.fn(),
   now: () => Date.now() / 1000,
@@ -391,6 +394,85 @@ describe('useSongPartsPlayback with a guitar chart', () => {
     expect(engine.stopGuitarNotes).toHaveBeenCalledWith(guitar.id);
     expect(engine.stopBassNotes).not.toHaveBeenCalled();
     expect(engine.stopDrumHits).not.toHaveBeenCalled();
+    act(() => result.current.audio.pause());
+  });
+});
+
+describe('useSongPartsPlayback with a vocal chart', () => {
+  async function songWithVocal(partName = 'Voz principal') {
+    const { bass, drums, summaries } = await songOf('same');
+    const vocal = {
+      ...fixtureVocalChart(
+        2,
+        [
+          { bar: 0, beat: 0, midi: 60, lyric: 'la' },
+          { bar: 0, beat: 0, midi: 64 },
+        ],
+        { partName, trackIndex: 3 },
+      ),
+      id: await partChartId(BASS_ID, 'vocals', 3),
+    };
+    library.charts.set(vocal.id, vocal);
+    return { bass, drums, vocal, all: [...summaries, summarizeChart(vocal)] };
+  }
+
+  it('plays the vocal on the clock of the bass, both notes at once', async () => {
+    const { bass, vocal, all } = await songWithVocal();
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(bass.id, 'bass', all),
+    );
+    act(() => result.current.reportRecording(bass.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    expect(engine.scheduleVocalNote).toHaveBeenCalledTimes(2);
+    const calls = engine.scheduleVocalNote.mock.calls as unknown[][];
+    expect(calls.map((c) => c[0])).toEqual([vocal.id, vocal.id]);
+    expect(calls.map((c) => c[1])).toEqual([60, 64]);
+    const bassWhen = engine.scheduleBassNote.mock.calls[0][3] as number;
+    expect(Math.abs((calls[0][4] as number) - bassWhen)).toBeLessThan(0.001);
+    expect(engine.scheduleGuitarNote).not.toHaveBeenCalled();
+    act(() => result.current.audio.pause());
+  });
+
+  it('has a mute named with the part name that silences only the vocal', async () => {
+    const { bass, vocal, all } = await songWithVocal();
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(bass.id, 'bass', all),
+    );
+    await waitFor(() =>
+      expect(result.current.controls).toContainEqual({
+        key: vocal.id,
+        label: 'Voz principal',
+      }),
+    );
+    act(() => result.current.reportRecording(bass.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    act(() => result.current.toggleMute(vocal.id));
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    expect(engine.scheduleVocalNote).not.toHaveBeenCalled();
+    expect(engine.scheduleBassNote).toHaveBeenCalled();
+    expect(engine.scheduleDrumHit).toHaveBeenCalled();
+    act(() => result.current.audio.pause());
+  });
+
+  it('cuts only the ringing vocal notes when the vocal is muted', async () => {
+    const { bass, vocal, all } = await songWithVocal();
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(bass.id, 'bass', all),
+    );
+    act(() => result.current.reportRecording(bass.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    engine.stopBassNotes.mockClear();
+    act(() => result.current.toggleMute(vocal.id));
+    expect(engine.stopVocalNotes).toHaveBeenCalledWith(vocal.id);
+    expect(engine.stopBassNotes).not.toHaveBeenCalled();
     act(() => result.current.audio.pause());
   });
 });
