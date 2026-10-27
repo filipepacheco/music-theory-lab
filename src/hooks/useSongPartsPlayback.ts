@@ -9,6 +9,10 @@ import {
   guitarSynthNotes,
   type GuitarSynthNote,
 } from '@/domain/guitarPlayback';
+import {
+  transposeGuitarChart,
+  transposeVocalChart,
+} from '@/domain/partsTransposition';
 import { isVocalChart, type VocalChart } from '@/domain/vocalChart';
 import { vocalSynthNotes, type VocalSynthNote } from '@/domain/vocalPlayback';
 import {
@@ -339,10 +343,16 @@ export function useSongPartsPlayback(
   bassNotesRef.current = bassNotes;
   const drumsRef = useRef(drumsChart);
   drumsRef.current = drumsChart;
-  const guitarCharts = loaded?.guitars;
+  const guitarCharts = useMemo(
+    () => loaded?.guitars.map((chart) => transposeGuitarChart(chart, shift)),
+    [loaded, shift],
+  );
   const guitarsRef = useRef(guitarCharts);
   guitarsRef.current = guitarCharts;
-  const vocalCharts = loaded?.vocals;
+  const vocalCharts = useMemo(
+    () => loaded?.vocals.map((chart) => transposeVocalChart(chart, shift)),
+    [loaded, shift],
+  );
   const vocalsRef = useRef(vocalCharts);
   vocalsRef.current = vocalCharts;
   const vocalSound = (vocalCharts ?? [])
