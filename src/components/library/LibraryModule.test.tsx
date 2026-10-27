@@ -327,6 +327,64 @@ describe('import message', () => {
   });
 });
 
+describe('batch import', () => {
+  const chartFor = (id: string, title: string, artist: string) => ({
+    ...fixtureChart(1, [{ bar: 0, beat: 0, midi: 33 }]),
+    id,
+    title,
+    artist,
+    source: 'gp' as const,
+  });
+
+  it('lists each file, imports the other two after a failure, and opens the first imported song', async () => {
+    state.summaries = [chartOf('old', 'Existing', 'Band', 'midi')];
+    const order: string[] = [];
+    state.importFile.mockImplementation(
+      async (file: File, report?: (message: string) => void) => {
+        order.push(file.name);
+        if (file.name === 'b.gp') {
+          report?.('Arquivo corrompido.');
+          return null;
+        }
+        const [id, title] =
+          file.name === 'a.gp' ? ['n1', 'First New'] : ['n2', 'Existing'];
+        state.summaries = [
+          ...state.summaries,
+          chartOf(id, title, 'Band', 'gp'),
+        ];
+        return chartFor(id, title, 'Band');
+      },
+    );
+    const { container, rerender } = render(<LibraryModule />);
+    fireEvent.change(
+      container.querySelector('input[type=file]') as HTMLElement,
+      {
+        target: {
+          files: [
+            new File(['x'], 'a.gp'),
+            new File(['x'], 'b.gp'),
+            new File(['x'], 'c.gp'),
+          ],
+        },
+      },
+    );
+    await waitFor(() => screen.getByTestId('batch-report'));
+    rerender(<LibraryModule />);
+    expect(order).toEqual(['a.gp', 'b.gp', 'c.gp']);
+    const items = Array.from(
+      screen.getByTestId('batch-report').querySelectorAll('li'),
+    ).map((li) => li.textContent);
+    expect(items).toEqual([
+      'a.gp: importado.',
+      'b.gp: falhou. Arquivo corrompido.',
+      'c.gp: entrou na música existente "Existing".',
+    ]);
+    expect(window.location.hash).toBe(
+      `#/biblioteca/${encodeURIComponent('first new|band')}/gp/bass`,
+    );
+  });
+});
+
 const KEY = encodeURIComponent('come together|the beatles');
 
 describe('Biblioteca screens and addresses', () => {

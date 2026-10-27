@@ -64,10 +64,16 @@ const PART_CHOICE_LABEL: Record<ChartPart, string> = {
   vocals: 'Vocais',
 };
 
+interface BatchLine {
+  name: string;
+  text: string;
+}
+
 export default function LibraryModule() {
   const [tracks, setTracks] = useState<LibraryIndexEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
+  const [batchReport, setBatchReport] = useState<BatchLine[] | null>(null);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const { route, navigate } = useLibraryRoute();
@@ -222,29 +228,46 @@ export default function LibraryModule() {
     if (song && chart) navigate(routeOfSummary(song.key, chart));
   };
 
-  const handleImport = async (file: File) => {
+  const handleImport = async (files: File[]) => {
     setJoinMessage(null);
-    const before = summaries;
-    const chart = await importFile(file);
-    if (chart) {
-      const joined = songJoinedByImport(
-        before,
-        analysedRefs,
-        summarizeChart(chart),
-        overrides,
-      );
-      if (joined) {
+    setBatchReport(null);
+    let known = summaries;
+    const report: BatchLine[] = [];
+    let first: { song: LibrarySong; added: ChartSummary } | null = null;
+    for (const file of files) {
+      let failure = 'Não foi possível importar este arquivo.';
+      const chart = await importFile(file, (reason) => {
+        failure = reason;
+      });
+      if (!chart) {
+        report.push({ name: file.name, text: `falhou. ${failure}` });
+        continue;
+      }
+      const added = summarizeChart(chart);
+      const joined = songJoinedByImport(known, analysedRefs, added, overrides);
+      known = [...known.filter((item) => item.id !== added.id), added];
+      report.push({
+        name: file.name,
+        text: joined
+          ? `entrou na música existente "${joined.title}".`
+          : 'importado.',
+      });
+      if (files.length === 1 && joined) {
         setJoinMessage(
           `O arquivo entrou na música existente "${joined.title}".`,
         );
       }
-      const added = summarizeChart(chart);
-      const song = groupLibrarySongs(
-        [...before.filter((item) => item.id !== added.id), added],
-        analysedRefs,
-        overrides,
-      ).find((item) => item.charts.some((c) => c.id === added.id));
-      if (song) navigate(routeOfChart(song.key, added.source, added.part));
+      if (!first) {
+        const song = groupLibrarySongs(known, analysedRefs, overrides).find(
+          (item) => item.charts.some((c) => c.id === added.id),
+        );
+        if (song) first = { song, added };
+      }
+    }
+    if (files.length > 1) setBatchReport(report);
+    if (first) {
+      const { song, added } = first;
+      navigate(routeOfChart(song.key, added.source, added.part));
     }
   };
 
@@ -260,6 +283,23 @@ export default function LibraryModule() {
         pipeline off-line, e linhas de baixo importadas do Rocksmith ou de
         arquivos MIDI e Guitar Pro (.gp).
       </p>
+
+      {batchReport && (
+        <div
+          role="status"
+          data-testid="batch-report"
+          className="text-small text-text-muted"
+        >
+          <p>Resultado da importação:</p>
+          <ul>
+            {batchReport.map((line, index) => (
+              <li key={index}>
+                {line.name}: {line.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {resolved ? (
         <div className="flex min-w-0 flex-col gap-4">
@@ -390,7 +430,7 @@ export default function LibraryModule() {
             linkedChartIds={linkedChartIds}
             importStatus={importStatus}
             onSelect={selectSong}
-            onImport={(file) => void handleImport(file)}
+            onImport={(files) => void handleImport(files)}
           />
           {error && (
             <p className="text-sm text-danger">

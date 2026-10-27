@@ -31,5 +31,5 @@ it('keeps filters beside the results without separating the import feedback', ()
   const input = container.querySelector('input[type=file]')!;
   const file = new File(['invalid'], 'unsupported.gp5');
   fireEvent.change(input, { target: { files: [file] } });
-  expect(onImport).toHaveBeenCalledWith(file);
+  expect(onImport).toHaveBeenCalledWith([file]);
 });

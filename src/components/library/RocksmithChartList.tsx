@@ -39,7 +39,7 @@ interface Props {
   linkedChartIds: ReadonlySet<string>;
   importStatus: RocksmithImportStatus;
   onSelect: (song: LibrarySong) => void;
-  onImport: (file: File) => void;
+  onImport: (files: File[]) => void;
 }
 
 function tempoOf(song: LibrarySong): string {
@@ -100,11 +100,12 @@ export default function RocksmithChartList({
           id={inputId}
           type="file"
           disabled={importing}
+          multiple
           className="sr-only"
           onChange={(event) => {
-            const file = event.target.files?.[0];
+            const files = Array.from(event.target.files ?? []);
             event.target.value = '';
-            if (file) onImport(file);
+            if (files.length > 0) onImport(files);
           }}
         />
       </div>
