@@ -12,7 +12,16 @@ export async function sha256Hex(
 export async function partChartId(
   fileHash: string,
   part: ChartPart,
+  trackIndex?: number,
 ): Promise<string> {
   if (part === 'bass') return fileHash;
+  if (part === 'guitar' || part === 'vocals') {
+    if (trackIndex === undefined) {
+      throw new Error(`A ${part} chart needs the index of its track`);
+    }
+    return sha256Hex(
+      new TextEncoder().encode(`${fileHash}:${part}:${trackIndex}`),
+    );
+  }
   return sha256Hex(new TextEncoder().encode(`${fileHash}:${part}`));
 }

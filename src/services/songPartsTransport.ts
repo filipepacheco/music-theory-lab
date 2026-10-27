@@ -3,7 +3,8 @@ import type {
   DrumSampleId,
 } from '@/domain/drumPlaybackSchedule';
 import {
-  partsTimeline,
+  partsLaneTimeline,
+  type PartLane,
   type PartMutes,
   type PlaybackPart,
 } from '@/domain/songPartsPlayback';
@@ -23,6 +24,8 @@ export interface SongPartsVoice {
   now(): number;
   scheduleBass(note: BassSynthNote, when: number): void;
   scheduleDrum(hit: DrumPlaybackHit, when: number): void;
+  /** One event of a chart other than bass and drums, by its mute key. */
+  scheduleLane?(key: PlaybackPart, event: { time: number }, when: number): void;
   stop(part?: PlaybackPart): void;
 }
 
@@ -44,6 +47,8 @@ export function createSongPartsTransport(
   parts: {
     bass: BassSynthNote[];
     drums: DrumPlaybackHit[];
+    /** Any number of other charts on the same clock. */
+    lanes?: PartLane<{ time: number }>[];
     durationSeconds: number;
   },
   voice: SongPartsVoice,
@@ -51,7 +56,11 @@ export function createSongPartsTransport(
   onStateChange: (state: LibraryAudioState) => void,
   timer: SongPartsTimer = browserTimer,
 ): SongPartsSession {
-  const events = partsTimeline(parts.bass, parts.drums);
+  const events = partsLaneTimeline(
+    parts.bass,
+    parts.drums,
+    parts.lanes ?? [],
+  );
   const pitches = [...new Set(parts.bass.map((n) => n.midi))];
   const samples = [...new Set(parts.drums.map((h) => h.sample))];
   const duration = parts.durationSeconds;
@@ -105,9 +114,10 @@ export function createSongPartsTransport(
       const event = events[next];
       next += 1;
       const when = anchor.audioTime + (event.time - anchor.position);
-      if (!audible[event.part] || when < now - LATE_SECONDS) continue;
+      if (!audible[event.key] || when < now - LATE_SECONDS) continue;
       if (event.part === 'bass') voice.scheduleBass(event.note, when);
-      else voice.scheduleDrum(event.hit, when);
+      else if (event.part === 'drums') voice.scheduleDrum(event.hit, when);
+      else voice.scheduleLane?.(event.key, event.event, when);
     }
     if (current >= duration) {
       stopTimer?.();

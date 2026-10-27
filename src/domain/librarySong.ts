@@ -1,5 +1,10 @@
 import type { BassChartSource } from '@/domain/bassChart';
-import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
+import {
+  PART_ORDER,
+  partRank,
+  type ChartPart,
+  type ChartSummary,
+} from '@/domain/chartSummary';
 
 export interface AnalysedTrackRef {
   sha: string;
@@ -154,7 +159,8 @@ export function groupLibrarySongs(
       .sort(
         (a, b) =>
           sourceRank(a.source) - sourceRank(b.source) ||
-          Number(a.part !== 'bass') - Number(b.part !== 'bass') ||
+          partRank(a.part) - partRank(b.part) ||
+          (a.trackIndex ?? 0) - (b.trackIndex ?? 0) ||
           a.importedAt.localeCompare(b.importedAt),
       );
     const analysed = group.flatMap((member) =>
@@ -172,7 +178,7 @@ export function groupLibrarySongs(
       sources: SOURCE_ORDER.filter((source) =>
         songCharts.some((chart) => chart.source === source),
       ),
-      parts: (['bass', 'drums'] as ChartPart[]).filter((part) =>
+      parts: PART_ORDER.filter((part) =>
         songCharts.some((chart) => chart.part === part),
       ),
       best: bestChart

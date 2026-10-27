@@ -11,7 +11,11 @@ import Button from '@/components/shared/Button';
 import LibraryPlayer from '@/components/library/LibraryPlayer';
 import PartMuteControls from '@/components/library/PartMuteControls';
 import PlaybackDock from '@/components/library/PlaybackDock';
-import type { PartMutes, PlaybackPart } from '@/domain/songPartsPlayback';
+import type {
+  MuteControl,
+  PartMutes,
+  PlaybackPart,
+} from '@/domain/songPartsPlayback';
 import {
   formatDuration,
   sectionColorVar,
@@ -121,7 +125,11 @@ interface Props<L> {
     showLabel: string;
     hideLabel: string;
   };
-  partMutes?: { mutes: PartMutes; onToggle: (part: PlaybackPart) => void };
+  partMutes?: {
+    mutes: PartMutes;
+    onToggle: (part: PlaybackPart) => void;
+    controls?: readonly MuteControl[];
+  };
   floating?: (room: FloatingRoom) => ReactNode;
 }
 
@@ -416,6 +424,7 @@ export default function SongDetailFrame<L>({
               <PartMuteControls
                 mutes={partMutes.mutes}
                 onToggle={partMutes.onToggle}
+                controls={partMutes.controls}
               />
             )}
             {dock.actions}

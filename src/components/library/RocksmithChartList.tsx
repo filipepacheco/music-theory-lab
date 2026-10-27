@@ -9,6 +9,7 @@ import {
   tuningOptions,
   type ListView,
 } from '@/domain/libraryListView';
+import type { ChartPart } from '@/domain/chartSummary';
 import type { LibrarySong } from '@/domain/librarySong';
 import { formatLibraryRoute, routeOfSong } from '@/domain/libraryRoute';
 import { formatDuration } from '@/components/library/libraryData';
@@ -16,7 +17,12 @@ import { readLastSource } from '@/components/library/lastSource';
 import type { RocksmithImportStatus } from '@/hooks/useRocksmithCharts';
 
 const SOURCE_LABEL = { gp: 'GP', rocksmith: 'Rocksmith', midi: 'MIDI' };
-const PART_LABEL = { bass: 'Baixo', drums: 'Bateria' };
+const PART_LABEL: Record<ChartPart, string> = {
+  bass: 'Baixo',
+  drums: 'Bateria',
+  guitar: 'Guitarra',
+  vocals: 'Vocais',
+};
 const HEADINGS = [
   'Título',
   'Artista',

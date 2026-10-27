@@ -29,8 +29,10 @@ import {
   chartOfAddress,
   formatLibraryRoute,
   resolveSongRoute,
+  chartsOfPart,
   routeOfChart,
   routeOfSong,
+  routeOfSummary,
   routeOfSource,
   songPartChoices,
   songSourceChoices,
@@ -40,6 +42,7 @@ import GroupOverrideControl from '@/components/library/GroupOverrideControl';
 import { useGroupOverrides } from '@/components/library/useGroupOverrides';
 import { useLineLengthMigration } from '@/components/library/useLineLengthMigration';
 import Segmented from '@/components/shared/Segmented';
+import Select from '@/components/shared/Select';
 import {
   readLastSource,
   writeLastSource,
@@ -57,6 +60,8 @@ const SOURCE_CHOICE_LABEL: Record<SourceChoice, string> = {
 const PART_CHOICE_LABEL: Record<ChartPart, string> = {
   bass: 'Baixo',
   drums: 'Bateria',
+  guitar: 'Guitarra',
+  vocals: 'Vocais',
 };
 
 interface BatchLine {
@@ -134,9 +139,13 @@ export default function LibraryModule() {
     resolved && currentChoice
       ? songPartChoices(resolved.song, currentChoice)
       : [];
-  const currentPart =
-    resolved?.song.charts.find((chart) => chart.id === targetChartId)?.part ??
-    null;
+  const currentChart =
+    resolved?.song.charts.find((chart) => chart.id === targetChartId) ?? null;
+  const currentPart = currentChart?.part ?? null;
+  const sameKind =
+    resolved && currentChoice && currentPart
+      ? chartsOfPart(resolved.song, currentChoice, currentPart)
+      : [];
   const listShown = !resolved;
   const linkedChartIds = useLinkedRecordings(listShown);
   useListScroll(listShown);
@@ -178,7 +187,12 @@ export default function LibraryModule() {
         ? chartOfAddress(resolved.song, currentChoice, part)
         : undefined;
     if (resolved && chart)
-      navigate(routeOfChart(resolved.song.key, chart.source, chart.part));
+      navigate(routeOfSummary(resolved.song.key, chart));
+  };
+
+  const selectPartName = (chartId: string) => {
+    const chart = resolved?.song.charts.find((item) => item.id === chartId);
+    if (resolved && chart) navigate(routeOfSummary(resolved.song.key, chart));
   };
 
   const selectedTrack =
@@ -211,8 +225,7 @@ export default function LibraryModule() {
     const song = groupLibrarySongs(summaries, analysedRefs, next).find((item) =>
       item.charts.some((c) => c.id === chartId),
     );
-    if (song && chart)
-      navigate(routeOfChart(song.key, chart.source, chart.part));
+    if (song && chart) navigate(routeOfSummary(song.key, chart));
   };
 
   const handleImport = async (files: File[]) => {
@@ -318,18 +331,37 @@ export default function LibraryModule() {
               className="self-start"
             />
           )}
-          {parts.length > 1 && currentPart && (
-            <Segmented<ChartPart>
-              label="Parte"
-              value={currentPart}
-              onChange={selectPart}
-              options={parts.map((part) => ({
-                value: part,
-                label: PART_CHOICE_LABEL[part],
-              }))}
-              className="self-start"
-            />
-          )}
+          {currentPart &&
+            currentChart &&
+            (parts.length > 1 || sameKind.length > 1) && (
+              <div className="flex flex-wrap items-center gap-2">
+                {parts.length > 1 && (
+                  <Segmented<ChartPart>
+                    label="Parte"
+                    value={currentPart}
+                    onChange={selectPart}
+                    options={parts.map((part) => ({
+                      value: part,
+                      label: PART_CHOICE_LABEL[part],
+                    }))}
+                    className="self-start"
+                  />
+                )}
+                {sameKind.length > 1 && (
+                  <Select
+                    aria-label={`Nome da parte: ${PART_CHOICE_LABEL[currentPart].toLowerCase()}`}
+                    value={currentChart.id}
+                    onChange={(event) => selectPartName(event.target.value)}
+                  >
+                    {sameKind.map((chart) => (
+                      <option key={chart.id} value={chart.id}>
+                        {chart.partName ?? PART_CHOICE_LABEL[chart.part]}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </div>
+            )}
           {targetChartId && resolved && (
             <GroupOverrideControl
               song={resolved.song}
