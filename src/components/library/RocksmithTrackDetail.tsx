@@ -172,7 +172,7 @@ export default function RocksmithTrackDetail({
   parts,
 }: Props) {
   const kickBeats = useSameFileKick(originalChart.id, songCharts);
-  const guitars = useSameFileGuitars(songCharts);
+  const guitars = useSameFileGuitars(originalChart.id, songCharts);
   const { playBassNote } = useBassSynth();
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const practice = usePracticeSettings(originalChart.id, settingsKey);

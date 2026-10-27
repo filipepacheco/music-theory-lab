@@ -17,8 +17,8 @@ function bass() {
   return fixtureChart(1, [{ bar: 0, beat: 0, midi: A2 }]);
 }
 
-function guitar(specs: GuitarNoteSpec[], sourceFileName = 'test.psarc') {
-  return { ...fixtureGuitarChart(1, specs), sourceFileName };
+function guitar(specs: GuitarNoteSpec[]) {
+  return fixtureGuitarChart(1, specs);
 }
 
 // C4 (G string, fret 5) and E4 (open high E): a minor third and a fifth over A.
@@ -53,11 +53,6 @@ describe('guitar evidence in the bar analysis', () => {
     const [bar] = analyzeBassChart(bass(), [guitar(both)]);
     expect(bar.evidence.third).toBe('both');
     expect(bar.evidence.chordType).toBeNull();
-  });
-
-  it('ignores a guitar chart from another file', () => {
-    const [bar] = analyzeBassChart(bass(), [guitar(MINOR, 'other.gp')]);
-    expect(bar).toEqual(analyzeBassChart(bass())[0]);
   });
 
   it('shows a guitar-only tone as played', () => {
