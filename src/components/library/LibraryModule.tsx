@@ -30,6 +30,7 @@ import {
   formatLibraryRoute,
   resolveSongRoute,
   chartsOfPart,
+  routeOfChart,
   routeOfSong,
   routeOfSummary,
   routeOfSource,
@@ -243,7 +244,7 @@ export default function LibraryModule() {
         analysedRefs,
         overrides,
       ).find((item) => item.charts.some((c) => c.id === added.id));
-      if (song) navigate(routeOfSummary(song.key, added));
+      if (song) navigate(routeOfChart(song.key, added.source, added.part));
     }
   };
 
