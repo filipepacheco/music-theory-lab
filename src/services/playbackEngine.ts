@@ -51,6 +51,26 @@ export interface PlaybackEngine {
     transposeSemitones?: number,
   ): void;
   stopBassNotes(): void;
+  /** One plucked-string note of the guitar chart `key`, with no samples. */
+  scheduleGuitarNote(
+    key: string,
+    midiNote: number,
+    velocity: number,
+    durationSeconds: number,
+    time: number,
+  ): void;
+  /** Cuts the ringing notes of one guitar chart, or of all of them. */
+  stopGuitarNotes(key?: string): void;
+  /** One soft lead note of the vocal chart `key`. */
+  scheduleVocalNote(
+    key: string,
+    midiNote: number,
+    velocity: number,
+    durationSeconds: number,
+    time: number,
+  ): void;
+  /** Cuts the ringing notes of one vocal chart, or of all of them. */
+  stopVocalNotes(key?: string): void;
   now(): number;
   getBassSamplerStatus(): GrowlybassSamplerStatus;
   subscribeBassSampler(
@@ -316,6 +336,156 @@ function stopDrumSources() {
   activeDrumSources.clear();
 }
 
+interface GuitarVoice {
+  synth: Tone.PluckSynth;
+  gain: Tone.Gain;
+}
+
+const GUITAR_CUT_SECONDS = 0.03;
+const GUITAR_TAIL_SECONDS = 0.15;
+const activeGuitarVoices = new Map<string, Set<GuitarVoice>>();
+
+function disposeGuitarVoice(voice: GuitarVoice) {
+  try {
+    voice.synth.dispose();
+    voice.gain.dispose();
+  } catch {}
+}
+
+function scheduleGuitarVoice(
+  key: string,
+  midiNote: number,
+  velocity: number,
+  durationSeconds: number,
+  time: number,
+) {
+  const gain = new Tone.Gain(velocity).connect(limiter);
+  const synth = new Tone.PluckSynth({
+    attackNoise: 1.5,
+    dampening: 3500,
+    resonance: 0.97,
+  }).connect(gain);
+  const voice = { synth, gain };
+  let voices = activeGuitarVoices.get(key);
+  if (!voices) {
+    voices = new Set();
+    activeGuitarVoices.set(key, voices);
+  }
+  voices.add(voice);
+  const end = time + durationSeconds;
+  gain.gain.setValueAtTime(velocity, Math.max(time, end - 0.02));
+  gain.gain.linearRampToValueAtTime(0, end + GUITAR_TAIL_SECONDS);
+  synth.triggerAttack(Tone.Frequency(midiNote, 'midi').toFrequency(), time);
+  const lifeMs =
+    Math.max(0, end + GUITAR_TAIL_SECONDS - Tone.now()) * 1000 + 200;
+  const owner = voices;
+  setTimeout(() => {
+    if (!owner.delete(voice)) return;
+    disposeGuitarVoice(voice);
+  }, lifeMs);
+}
+
+function stopGuitarVoices(key?: string) {
+  const keys = key === undefined ? [...activeGuitarVoices.keys()] : [key];
+  for (const k of keys) {
+    const voices = activeGuitarVoices.get(k);
+    if (!voices) continue;
+    activeGuitarVoices.delete(k);
+    for (const voice of voices) {
+      const now = Tone.now();
+      try {
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+        voice.gain.gain.linearRampToValueAtTime(0, now + GUITAR_CUT_SECONDS);
+      } catch {}
+      setTimeout(
+        () => disposeGuitarVoice(voice),
+        GUITAR_CUT_SECONDS * 1000 + 100,
+      );
+    }
+    voices.clear();
+  }
+}
+
+interface VocalVoice {
+  synth: Tone.Synth;
+  gain: Tone.Gain;
+}
+
+const VOCAL_RELEASE_SECONDS = 0.12;
+const VOCAL_CUT_SECONDS = 0.04;
+const activeVocalVoices = new Map<string, Set<VocalVoice>>();
+
+function disposeVocalVoice(voice: VocalVoice) {
+  try {
+    voice.synth.dispose();
+    voice.gain.dispose();
+  } catch {}
+}
+
+/** A soft mono lead note. Each note has its own synth, so chords sound whole. */
+function scheduleVocalVoice(
+  key: string,
+  midiNote: number,
+  velocity: number,
+  durationSeconds: number,
+  time: number,
+) {
+  const gain = new Tone.Gain(velocity).connect(reverb);
+  const synth = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: {
+      attack: 0.04,
+      decay: 0.1,
+      sustain: 0.8,
+      release: VOCAL_RELEASE_SECONDS,
+    },
+  }).connect(gain);
+  const voice = { synth, gain };
+  let voices = activeVocalVoices.get(key);
+  if (!voices) {
+    voices = new Set();
+    activeVocalVoices.set(key, voices);
+  }
+  voices.add(voice);
+  synth.triggerAttackRelease(
+    Tone.Frequency(midiNote, 'midi').toFrequency(),
+    durationSeconds,
+    time,
+  );
+  const lifeMs =
+    Math.max(0, time + durationSeconds + VOCAL_RELEASE_SECONDS - Tone.now()) *
+      1000 +
+    200;
+  const owner = voices;
+  setTimeout(() => {
+    if (!owner.delete(voice)) return;
+    disposeVocalVoice(voice);
+  }, lifeMs);
+}
+
+function stopVocalVoices(key?: string) {
+  const keys = key === undefined ? [...activeVocalVoices.keys()] : [key];
+  for (const k of keys) {
+    const voices = activeVocalVoices.get(k);
+    if (!voices) continue;
+    activeVocalVoices.delete(k);
+    for (const voice of voices) {
+      const now = Tone.now();
+      try {
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+        voice.gain.gain.linearRampToValueAtTime(0, now + VOCAL_CUT_SECONDS);
+      } catch {}
+      setTimeout(
+        () => disposeVocalVoice(voice),
+        VOCAL_CUT_SECONDS * 1000 + 100,
+      );
+    }
+    voices.clear();
+  }
+}
+
 export function createPlaybackEngine(): PlaybackEngine {
   let noteSynth: Tone.PolySynth | null = null;
   let notePresetId: string | null = null;
@@ -428,6 +598,16 @@ export function createPlaybackEngine(): PlaybackEngine {
       for (const player of activeGrowlybassPlayers) player.stop();
     },
 
+    scheduleGuitarNote: (key, midiNote, velocity, durationSeconds, time) =>
+      scheduleGuitarVoice(key, midiNote, velocity, durationSeconds, time),
+
+    stopGuitarNotes: (key) => stopGuitarVoices(key),
+
+    scheduleVocalNote: (key, midiNote, velocity, durationSeconds, time) =>
+      scheduleVocalVoice(key, midiNote, velocity, durationSeconds, time),
+
+    stopVocalNotes: (key) => stopVocalVoices(key),
+
     now: () => Tone.now(),
 
     getBassSamplerStatus: () => growlybassSampler.getStatus(),
@@ -491,6 +671,8 @@ export function createPlaybackEngine(): PlaybackEngine {
       for (const player of activeGrowlybassPlayers) player.stop();
       stopGrooveSources();
       stopDrumSources();
+      stopGuitarVoices();
+      stopVocalVoices();
     },
   };
 }

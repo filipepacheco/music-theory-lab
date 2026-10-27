@@ -1,6 +1,7 @@
 import type { BassChartSource } from '@/domain/bassChart';
 import { isDrumChart, type Chart } from '@/domain/drumChart';
 import { isGuitarChart } from '@/domain/guitarChart';
+import { isVocalChart } from '@/domain/vocalChart';
 
 export type ChartPart = 'bass' | 'drums' | 'guitar' | 'vocals';
 
@@ -56,6 +57,16 @@ export function summarizeChart(chart: Chart): ChartSummary {
     return {
       ...shared,
       part: 'guitar',
+      partName: chart.partName,
+      trackIndex: chart.trackIndex,
+      noteCount: chart.notes.length,
+      tuning: null,
+    };
+  }
+  if (isVocalChart(chart)) {
+    return {
+      ...shared,
+      part: 'vocals',
       partName: chart.partName,
       trackIndex: chart.trackIndex,
       noteCount: chart.notes.length,

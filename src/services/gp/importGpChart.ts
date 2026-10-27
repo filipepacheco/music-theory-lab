@@ -15,6 +15,11 @@ import {
   type GuitarTechnique,
 } from '@/domain/guitarChart';
 import {
+  buildVocalChart,
+  type VocalChart,
+  type VocalNoteInput,
+} from '@/domain/vocalChart';
+import {
   hasBassProgram,
   midiToArrangement,
   pickBassChannel,
@@ -68,12 +73,14 @@ export async function importGpChart(
     const text = section?.text.trim() || section?.marker.trim();
     return text ? [{ tick: played.start, text }] : [];
   });
-  const guitarTracks = findGuitarTracks(score);
-  const channel = pickBass(parsed, guitarTracks);
+  const vocalTracks = findVocalTracks(score);
+  const guitarTracks = findGuitarTracks(score, vocalTracks);
+  const channel = pickBass(parsed, guitarTracks, vocalTracks);
   if (
     channel === null &&
     !hasDrumNotes(parsed) &&
-    guitarTracks.length === 0
+    guitarTracks.length === 0 &&
+    vocalTracks.length === 0
   ) {
     throw new Error('no-parts');
   }
@@ -116,6 +123,9 @@ export async function importGpChart(
     fileHash,
   );
   charts.push(...guitars);
+  charts.push(
+    ...(await vocalChartsOf(vocalTracks, parsed, generator, shared, fileHash)),
+  );
   if (charts.length === 0) throw new Error('no-parts');
   return { charts, audio: null };
 }
@@ -125,9 +135,35 @@ interface GuitarTrack {
   staff: model.Staff;
 }
 
-/** A stringed staff with 5 or more strings, one for each track. */
-function findGuitarTracks(score: model.Score): GuitarTrack[] {
+interface VocalTrack {
+  track: model.Track;
+  staves: model.Staff[];
+}
+
+const FIRST_VOCAL_PROGRAM = 53;
+const LAST_VOCAL_PROGRAM = 55;
+const VOCAL_NAME = /voc|voz|voice/i;
+
+/** A track with a General MIDI voice program, or a vocal name. */
+function findVocalTracks(score: model.Score): VocalTrack[] {
   return score.tracks.flatMap((track) => {
+    const staves = track.staves.filter((staff) => !staff.isPercussion);
+    const program = track.playbackInfo.program;
+    const vocal =
+      (program >= FIRST_VOCAL_PROGRAM && program <= LAST_VOCAL_PROGRAM) ||
+      VOCAL_NAME.test(track.name);
+    return vocal && staves.length > 0 ? [{ track, staves }] : [];
+  });
+}
+
+/** A stringed staff with 5 or more strings, one for each track. */
+function findGuitarTracks(
+  score: model.Score,
+  vocals: VocalTrack[],
+): GuitarTrack[] {
+  const vocalTracks = new Set(vocals.map(({ track }) => track));
+  return score.tracks.flatMap((track) => {
+    if (vocalTracks.has(track)) return [];
     const staff = track.staves.find(
       (candidate) =>
         candidate.isStringed && candidate.tuning.length >= GUITAR_MIN_STRINGS,
@@ -140,7 +176,22 @@ function findGuitarTracks(score: model.Score): GuitarTrack[] {
  * The bass channel that the import always picked, unless the pick is a guitar
  * track that no bass program names: a guitar is not the bass.
  */
-function pickBass(parsed: MidiFile, guitars: GuitarTrack[]): number | null {
+function pickBass(
+  allNotes: MidiFile,
+  guitars: GuitarTrack[],
+  vocals: VocalTrack[],
+): number | null {
+  // A vocal track is never the bass, also when it is the only pitched track.
+  const vocalChannels = new Set(
+    vocals.flatMap(({ track }) => [
+      track.playbackInfo.primaryChannel,
+      track.playbackInfo.secondaryChannel,
+    ]),
+  );
+  const parsed = {
+    ...allNotes,
+    notes: allNotes.notes.filter((note) => !vocalChannels.has(note.channel)),
+  };
   const channel = pickBassChannel(parsed);
   if (channel === null) return null;
   const guitarChannels = new Set(
@@ -170,15 +221,7 @@ async function guitarChartsOf(
   fileHash: string,
 ): Promise<GuitarChart[]> {
   if (guitars.length === 0) return [];
-  const arrangement = midiToArrangement(parsed, NO_CHANNEL);
-  const grid = buildBassChart({
-    id: fileHash,
-    sourceFileName: shared.sourceFileName,
-    importedAt: shared.importedAt,
-    metadata: shared.metadata,
-    source: 'gp',
-    arrangement,
-  });
+  const { arrangement, grid } = songGrid(parsed, shared, fileHash);
   const toSeconds = tickToSeconds(parsed);
   const charts: GuitarChart[] = [];
   for (const { track, staff } of guitars) {
@@ -201,6 +244,108 @@ async function guitarChartsOf(
     );
   }
   return charts;
+}
+
+/** The bars and sections of the file, which all of its charts share. */
+function songGrid(
+  parsed: MidiFile,
+  shared: {
+    sourceFileName: string;
+    importedAt: string;
+    metadata: BassChartMetadata;
+  },
+  fileHash: string,
+) {
+  const arrangement = midiToArrangement(parsed, NO_CHANNEL);
+  const grid = buildBassChart({
+    id: fileHash,
+    sourceFileName: shared.sourceFileName,
+    importedAt: shared.importedAt,
+    metadata: shared.metadata,
+    source: 'gp',
+    arrangement,
+  });
+  return { arrangement, grid };
+}
+
+async function vocalChartsOf(
+  vocals: VocalTrack[],
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  shared: {
+    sourceFileName: string;
+    importedAt: string;
+    metadata: BassChartMetadata;
+  },
+  fileHash: string,
+): Promise<VocalChart[]> {
+  if (vocals.length === 0) return [];
+  const { arrangement, grid } = songGrid(parsed, shared, fileHash);
+  const toSeconds = tickToSeconds(parsed);
+  const charts: VocalChart[] = [];
+  for (const { track, staves } of vocals) {
+    const notes = staves.flatMap((staff) =>
+      vocalNotesOf(staff, generator, toSeconds),
+    );
+    if (notes.length === 0) continue;
+    charts.push(
+      buildVocalChart({
+        ...shared,
+        id: await partChartId(fileHash, 'vocals', track.index),
+        partName: track.name.trim() || `Vocal ${charts.length + 1}`,
+        trackIndex: track.index,
+        grid,
+        beats: arrangement.beats,
+        notes,
+      }),
+    );
+  }
+  return charts;
+}
+
+/** The melody of one staff, in playback order, with repeats expanded. */
+function vocalNotesOf(
+  staff: model.Staff,
+  generator: midi.MidiFileGenerator,
+  toSeconds: (tick: number) => number,
+): VocalNoteInput[] {
+  const notes: VocalNoteInput[] = [];
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        if (item.beat.voice.bar.staff !== staff || seen.has(item.beat.id))
+          continue;
+        seen.add(item.beat.id);
+        const start = Math.round(played.start + item.playbackStart);
+        const time = toSeconds(start);
+        const end = toSeconds(start + item.beat.playbackDuration);
+        const lyric = item.beat.lyrics?.find((line) => line.trim())?.trim();
+        for (const note of item.beat.notes) {
+          const pitch = note.calculateRealValue(
+            generator.applyTranspositionPitches,
+            true,
+          );
+          if (note.isTieDestination) {
+            const origin = [...notes]
+              .reverse()
+              .find((earlier) => earlier.midi === pitch);
+            if (origin) {
+              origin.sustain = Math.max(origin.sustain, end - origin.time);
+              continue;
+            }
+          }
+          notes.push({
+            time,
+            sustain: Math.max(0, end - time),
+            midi: pitch,
+            lyric: lyric ?? null,
+          });
+        }
+      }
+    }
+  }
+  return notes;
 }
 
 function techniquesOf(note: model.Note): GuitarTechnique[] {

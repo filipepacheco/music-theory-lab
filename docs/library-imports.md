@@ -49,6 +49,27 @@ with a guitar track and no bass or drums imports.
   client and in `/api/bass-charts`. `CHART_SYNC_FORMAT` is 3, so a device that
   skipped a guitar record reads it after the update.
 
+## Vocal charts
+
+Each GP track with General MIDI program 53, 54, or 55, or a name that contains
+"voc", "voz", or "voice", gives one vocal chart (`part: 'vocals'`), with the
+track name as its part name. A vocal track is never a guitar or the bass. A file
+with a vocal track and no bass or drums imports.
+
+- The chart keeps the melody notes (`midi`, `time`, `bar`, `beatInBar`) and the
+  lyric syllable of the beat (`lyric`, null when the score has none). All notes
+  stay, also notes that sound at once. A track with no lyrics imports with the
+  melody only.
+- Its id is a hash of the file hash, `vocals`, and the GP track index
+  (`partChartId`).
+- `VocalPartDetail` draws the notes on a pitch lane, bar by bar, with the note
+  name above each note and the lyrics under it. With "Mostrar graus" on, each
+  note shows its degree in the key of the bass chart of the same file
+  (`bassKeyOf`). Vocals never feed the bar analysis or the key. The dock keeps
+  the bass fretboard.
+- `parseVocalChart` (in `bassChartRecord.ts`) validates the chart on the client
+  and in `/api/bass-charts`. `CHART_SYNC_FORMAT` is 4.
+
 ## Transposition
 
 MIDI and GP charts without a linked recording have “−½ tom” and “+½ tom”

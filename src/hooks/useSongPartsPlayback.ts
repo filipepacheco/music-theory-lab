@@ -4,6 +4,13 @@ import type { BassChart } from '@/domain/bassChart';
 import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
 import { isBassChart, isDrumChart, type DrumChart } from '@/domain/drumChart';
 import { drumPlaybackHits } from '@/domain/drumPlaybackSchedule';
+import { isGuitarChart, type GuitarChart } from '@/domain/guitarChart';
+import {
+  guitarSynthNotes,
+  type GuitarSynthNote,
+} from '@/domain/guitarPlayback';
+import { isVocalChart, type VocalChart } from '@/domain/vocalChart';
+import { vocalSynthNotes, type VocalSynthNote } from '@/domain/vocalPlayback';
 import {
   muteControls,
   NO_MUTES,
@@ -24,8 +31,14 @@ import {
 } from '@/services/songPartsTransport';
 
 const SYNTH_VELOCITY = 0.6;
+const GUITAR_VELOCITY = 0.45;
+const VOCAL_VELOCITY = 0.35;
 
-const engineVoice: SongPartsVoice = {
+/** The voice of the engine. The key sets hold the mute keys of the charts. */
+const engineVoice = (
+  guitarKeys: ReadonlySet<string>,
+  vocalKeys: ReadonlySet<string>,
+): SongPartsVoice => ({
   prepare: async (bassMidi, samples) => {
     if (!(await ensureAudio())) throw new Error('audio unavailable');
     await Promise.all([
@@ -43,11 +56,38 @@ const engineVoice: SongPartsVoice = {
       note.transposeSemitones ?? 0,
     ),
   scheduleDrum: (hit, when) => playbackEngine.scheduleDrumHit(hit, when),
+  scheduleLane: (key, event, when) => {
+    if (vocalKeys.has(key)) {
+      const vocal = event as VocalSynthNote;
+      playbackEngine.scheduleVocalNote(
+        key,
+        vocal.midi,
+        VOCAL_VELOCITY,
+        vocal.seconds,
+        when,
+      );
+      return;
+    }
+    if (!guitarKeys.has(key)) return;
+    const note = event as GuitarSynthNote;
+    playbackEngine.scheduleGuitarNote(
+      key,
+      note.midi,
+      GUITAR_VELOCITY,
+      note.seconds,
+      when,
+    );
+  },
   stop: (part) => {
     if (part === undefined || part === 'bass') playbackEngine.stopBassNotes();
     if (part === undefined || part === 'drums') playbackEngine.stopDrumHits();
+    if (part === undefined) {
+      if (guitarKeys.size > 0) playbackEngine.stopGuitarNotes();
+      if (vocalKeys.size > 0) playbackEngine.stopVocalNotes();
+    } else if (guitarKeys.has(part)) playbackEngine.stopGuitarNotes(part);
+    else if (vocalKeys.has(part)) playbackEngine.stopVocalNotes(part);
   },
-};
+});
 
 export interface SongPartsPlayback {
   active: boolean;
@@ -97,11 +137,24 @@ async function findPair(
         }
       : null;
   }
+  const openGuitar =
+    openPart === 'guitar' ? charts.find((c) => c.id === openId) : undefined;
   for (const bass of charts.filter((c) => c.part === 'bass')) {
-    if ((await partChartId(bass.id, 'drums')) === openId)
+    const drumId = await partChartId(bass.id, 'drums');
+    if (drumId === openId)
       return {
         bassId: bass.id,
         drumId: openId,
+        laneIds: await sameFileLaneIds(bass.id, charts),
+      };
+    if (
+      openGuitar?.trackIndex !== undefined &&
+      ids.has(drumId) &&
+      (await partChartId(bass.id, 'guitar', openGuitar.trackIndex)) === openId
+    )
+      return {
+        bassId: bass.id,
+        drumId,
         laneIds: await sameFileLaneIds(bass.id, charts),
       };
   }
@@ -124,6 +177,8 @@ export function useSongPartsPlayback(
   const [loaded, setLoaded] = useState<{
     bass: BassChart | null;
     drums: DrumChart | null;
+    guitars: GuitarChart[];
+    vocals: VocalChart[];
     partnerRecording: boolean;
   } | null>(null);
   const [openRecording, setOpenRecording] = useState(true);
@@ -175,26 +230,38 @@ export function useSongPartsPlayback(
 
   const bassId = pair?.bassId ?? null;
   const drumId = pair?.drumId ?? null;
+  const laneKey = pair?.laneIds.join(',') ?? '';
   useEffect(() => {
     setLoaded(null);
     if (!bassId || !drumId) return;
     let live = true;
     void (async () => {
-      const [bass, drums] = await Promise.all([
+      const [bass, drums, lanes] = await Promise.all([
         rocksmithLibrary.getChart(bassId),
         rocksmithLibrary.getChart(drumId),
+        Promise.all(
+          (laneKey ? laneKey.split(',') : []).map((id) =>
+            rocksmithLibrary.getChart(id),
+          ),
+        ),
       ]);
       if (!live) return;
       setLoaded({
         bass: bass && isBassChart(bass) ? bass : null,
         drums: drums && isDrumChart(drums) ? drums : null,
+        guitars: lanes.flatMap((chart) =>
+          chart && isGuitarChart(chart) ? [chart] : [],
+        ),
+        vocals: lanes.flatMap((chart) =>
+          chart && isVocalChart(chart) ? [chart] : [],
+        ),
         partnerRecording: false,
       });
     })().catch(() => {});
     return () => {
       live = false;
     };
-  }, [bassId, drumId]);
+  }, [bassId, drumId, laneKey]);
 
   const partnerId = openId === bassId ? drumId : bassId;
   const hasLoaded = loaded !== null;
@@ -243,7 +310,9 @@ export function useSongPartsPlayback(
   const drumsChart = loaded?.drums ?? null;
   const active =
     !!pair &&
-    (openId === pair.bassId || openId === pair.drumId) &&
+    (openId === pair.bassId ||
+      openId === pair.drumId ||
+      pair.laneIds.includes(openId ?? '')) &&
     !!bassChart &&
     !!drumsChart &&
     !loaded?.partnerRecording &&
@@ -270,6 +339,25 @@ export function useSongPartsPlayback(
   bassNotesRef.current = bassNotes;
   const drumsRef = useRef(drumsChart);
   drumsRef.current = drumsChart;
+  const guitarCharts = loaded?.guitars;
+  const guitarsRef = useRef(guitarCharts);
+  guitarsRef.current = guitarCharts;
+  const vocalCharts = loaded?.vocals;
+  const vocalsRef = useRef(vocalCharts);
+  vocalsRef.current = vocalCharts;
+  const vocalSound = (vocalCharts ?? [])
+    .map(
+      (chart) =>
+        `${chart.id}:${chart.notes.map((n) => `${n.time}.${n.midi}`).join(',')}`,
+    )
+    .join(';');
+  // A new chart object with the same notes keeps the clock.
+  const guitarSound = (guitarCharts ?? [])
+    .map(
+      (chart) =>
+        `${chart.id}:${chart.notes.map((n) => `${n.time}.${n.midi}`).join(',')}`,
+    )
+    .join(';');
 
   useEffect(() => {
     const previous = wasActive.current ? stateRef.current : null;
@@ -278,22 +366,46 @@ export function useSongPartsPlayback(
     const bass = bassRef.current;
     const drums = drumsRef.current;
     if (!active || !bass || !drums) return;
+    const guitars = guitarsRef.current ?? [];
+    const vocals = vocalsRef.current ?? [];
+    const keys = [
+      'bass',
+      'drums',
+      ...guitars.map((chart) => chart.id),
+      ...vocals.map((chart) => chart.id),
+    ];
     const transport = createSongPartsTransport(
       {
         bass: bassNotesRef.current,
         drums: drumPlaybackHits(drums.hits),
+        lanes: [
+          ...guitars.map((chart) => ({
+            key: chart.id,
+            events: guitarSynthNotes(chart.notes) as { time: number }[],
+          })),
+          ...vocals.map((chart) => ({
+            key: chart.id,
+            events: vocalSynthNotes(chart.notes) as { time: number }[],
+          })),
+        ],
         durationSeconds: Math.max(
           bass.songLengthSeconds,
           drums.songLengthSeconds,
+          ...guitars.map((chart) => chart.songLengthSeconds),
+          ...vocals.map((chart) => chart.songLengthSeconds),
         ),
       },
-      engineVoice,
+      engineVoice(
+        new Set(guitars.map((chart) => chart.id)),
+        new Set(vocals.map((chart) => chart.id)),
+      ),
       () =>
         partsSounding({
           open: openPartRef.current ?? 'bass',
           sameFile: true,
           recording: false,
           mutes: mutesRef.current,
+          keys,
         }),
       setState,
     );
@@ -306,7 +418,7 @@ export function useSongPartsPlayback(
       transport.dispose();
       if (transportRef.current === transport) transportRef.current = null;
     };
-  }, [active, bassId, drumId, shift, voicing, bassSound]);
+  }, [active, bassId, drumId, shift, voicing, bassSound, guitarSound, vocalSound]);
 
   const toggleMute = useCallback((part: PlaybackPart) => {
     mutesRef.current = {
@@ -325,7 +437,6 @@ export function useSongPartsPlayback(
     pause: () => transportRef.current?.pause(),
     seek: (seconds) => transportRef.current?.seek(seconds),
   };
-  const laneKey = pair?.laneIds.join(',') ?? '';
   const controls = useMemo(
     () =>
       muteControls(

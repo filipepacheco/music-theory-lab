@@ -3,6 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
 import { fixtureGuitarChart } from '@/domain/guitarChartFixture';
+import { fixtureVocalChart } from '@/domain/vocalChartFixture';
 import {
   isNewerChartRecord,
   parseBassChartRecord,
@@ -724,7 +725,13 @@ describe('incremental chart synchronization', () => {
     { openPitches: [35, 40, 45, 50, 55, 59, 64], capo: 2 },
   );
 
-  it('keeps format version 3 only while the client reads no record of a fourth chart type', () => {
+  const vocalChart = fixtureVocalChart(2, [
+    { bar: 0, beat: 0, midi: 64, lyric: 'Hel-' },
+    { bar: 0, beat: 0, midi: 67, lyric: 'Hel-' },
+    { bar: 1, beat: 1, midi: 62 },
+  ]);
+
+  it('keeps format version 4 only while the client reads no record of a fifth chart type', () => {
     expect({
       format: CHART_SYNC_FORMAT,
       readsDrumCharts:
@@ -739,13 +746,75 @@ describe('incremental chart synchronization', () => {
           updatedAt: '2026-10-05T10:00:00.000Z',
           chart: guitarChart,
         }) !== null,
+      readsVocalCharts:
+        parseBassChartRecord({
+          id: vocalChart.id,
+          updatedAt: '2026-10-05T10:00:00.000Z',
+          chart: vocalChart,
+        }) !== null,
       readsOtherParts: parseBassChartRecord(unread) !== null,
     }).toEqual({
-      format: 3,
+      format: 4,
       readsDrumCharts: true,
       readsGuitarCharts: true,
+      readsVocalCharts: true,
       readsOtherParts: false,
     });
+  });
+
+  it('a vocal chart reaches a second device through the chart route, and back, like a drum chart', async () => {
+    const { remote, first } = await library(2);
+    const second = device();
+    await sync(second, remote);
+    expect(await second.getChart(vocalChart.id)).toBeNull();
+
+    await first.save(vocalChart, null);
+    await sync(first, remote);
+    expect(remote.record(vocalChart.id)?.chart).toEqual(vocalChart);
+    remote.reads.length = 0;
+    await sync(second, remote);
+    expect(remote.reads).toEqual([{ after: 2, ids: [vocalChart.id] }]);
+    expect(await second.getChart(vocalChart.id)).toEqual(vocalChart);
+    expect(
+      (await second.listSummaries()).find((item) => item.id === vocalChart.id),
+    ).toMatchObject({
+      part: 'vocals',
+      partName: 'Voz',
+      trackIndex: 2,
+      noteCount: 3,
+      tuning: null,
+    });
+
+    await second.remove(vocalChart.id);
+    await sync(second, remote);
+    await sync(first, remote);
+    expect(await first.getChart(vocalChart.id)).toBeNull();
+    expect(await first.listCharts()).toHaveLength(2);
+  });
+
+  it('a device that skipped a vocal record with format version 3 reads it after the update', async () => {
+    const { remote, first } = await library(2);
+    const storage = memoryStorage();
+    const local = device();
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage, 3),
+    );
+    await first.save(vocalChart, null);
+    await sync(first, remote);
+    const key = 'music-theory-lab-chart-sync';
+    const stored = JSON.parse(storage.items.get(key)!);
+    storage.items.set(key, JSON.stringify({ ...stored, counter: 3 }));
+
+    remote.reads.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect(remote.reads[0].after).toBe(0);
+    expect(await local.getChart(vocalChart.id)).toEqual(vocalChart);
   });
 
   it('a guitar chart reaches a second device through the chart route, and back', async () => {

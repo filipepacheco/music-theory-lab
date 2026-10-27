@@ -2,7 +2,6 @@ import { memo, useEffect, useRef } from 'react';
 import { DEGREE_COLORS } from '@/components/library/BassTabBar';
 import { STANDARD_OPEN_MIDI } from '@/domain/bassChart';
 import type { ChordTone } from '@/domain/bassHarmony';
-import { useBassSynth } from '@/hooks/useBassSynth';
 
 export interface FretPosition {
   string: number;
@@ -10,7 +9,15 @@ export interface FretPosition {
 }
 
 interface Props {
-  tuning: number[];
+  /** Offset of each bass string from standard tuning. */
+  tuning?: number[];
+  /**
+   * The absolute open pitch of each string, lowest first. A guitar chart
+   * gives it, with any number of strings; it replaces `tuning`.
+   */
+  openPitches?: number[];
+  /** Plays the note of a pressed fret, in the sound of the part. */
+  onPlayNote: (midi: number) => void;
   fretCount: number;
   rootPitchClass: number | null;
   tones: ChordTone[];
@@ -18,8 +25,7 @@ interface Props {
   noteNames: readonly string[];
 }
 
-const STRING_COUNT = 4;
-const DISPLAY_ORDER = [3, 2, 1, 0];
+const BASS_STRINGS = 4;
 const FRET_MARKERS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24]);
 const ON_HIGHLIGHT = 'var(--color-on-accent)';
 
@@ -28,14 +34,15 @@ function mod12(n: number): number {
 }
 
 function ChartFretboard({
-  tuning,
+  tuning = [],
+  openPitches,
+  onPlayNote,
   fretCount,
   rootPitchClass,
   tones,
   active,
   noteNames,
 }: Props) {
-  const { playBassNote } = useBassSynth();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const activeKey = active.map((p) => `${p.string}-${p.fret}`).join(',');
@@ -57,10 +64,14 @@ function ChartFretboard({
       behavior: 'smooth',
     });
   }, [activeKey]);
-  const openMidi = Array.from(
-    { length: STRING_COUNT },
-    (_, s) => STANDARD_OPEN_MIDI[s] + (tuning[s] ?? 0),
-  );
+  const openMidi =
+    openPitches ??
+    Array.from(
+      { length: BASS_STRINGS },
+      (_, s) => STANDARD_OPEN_MIDI[s] + (tuning[s] ?? 0),
+    );
+  // The highest string is the top row.
+  const displayOrder = openMidi.map((_, s) => openMidi.length - 1 - s);
   const toneAt = (pitchClass: number) =>
     rootPitchClass === null
       ? undefined
@@ -81,7 +92,7 @@ function ChartFretboard({
             </div>
           ))}
         </div>
-        {DISPLAY_ORDER.map((string, row) => (
+        {displayOrder.map((string, row) => (
           <div
             key={string}
             className="grid"
@@ -103,7 +114,7 @@ function ChartFretboard({
                   key={fret}
                   type="button"
                   data-pos={`${string}-${fret}`}
-                  onPointerDown={() => playBassNote(midi)}
+                  onPointerDown={() => onPlayNote(midi)}
                   aria-label={`${noteNames[pitchClass]}${tone ? ` (${tone.label})` : ''}, corda ${noteNames[mod12(openMidi[string])]}, casa ${fret}${isActive ? ', tocando agora' : ''}`}
                   className={`relative h-8 flex items-center justify-center cursor-pointer ${
                     fret === 0
@@ -112,7 +123,7 @@ function ChartFretboard({
                   }`}
                 >
                   <span className="absolute inset-x-0 top-1/2 h-px bg-string" />
-                  {row === DISPLAY_ORDER.length - 1 &&
+                  {row === displayOrder.length - 1 &&
                     FRET_MARKERS.has(fret) && (
                       <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-text-muted opacity-40" />
                     )}

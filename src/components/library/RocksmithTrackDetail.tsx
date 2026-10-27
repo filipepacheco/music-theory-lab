@@ -68,6 +68,7 @@ import {
   type MusicalKey,
 } from '@/domain/bassHarmony';
 import { bassCrossoverHz, type BassMixMode } from '@/domain/bassMix';
+import { useBassSynth } from '@/hooks/useBassSynth';
 import { useBassSynthPlayback } from '@/hooks/useBassSynthPlayback';
 import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import { NOTE_NAMES } from '@/constants/notes';
@@ -172,6 +173,7 @@ export default function RocksmithTrackDetail({
 }: Props) {
   const kickBeats = useSameFileKick(originalChart.id, songCharts);
   const guitars = useSameFileGuitars(songCharts);
+  const { playBassNote } = useBassSynth();
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const practice = usePracticeSettings(originalChart.id, settingsKey);
   const [fingering, setFingering] = useState('original');
@@ -774,6 +776,7 @@ export default function RocksmithTrackDetail({
             tones={tones}
             active={activePositions}
             noteNames={noteNames}
+            onPlayNote={playBassNote}
           />
         ),
       }}

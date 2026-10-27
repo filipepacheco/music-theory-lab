@@ -38,9 +38,9 @@ const SYNC_STATE_KEY = 'music-theory-lab-chart-sync';
 /**
  * Each chart kind that the client starts to read adds one: a device that
  * skipped a record of the new kind then reads every record again.
- * 2: drum charts. 3: guitar charts.
+ * 2: drum charts. 3: guitar charts. 4: vocal charts.
  */
-export const CHART_SYNC_FORMAT = 3;
+export const CHART_SYNC_FORMAT = 4;
 
 function isChartVersion(value: unknown): boolean {
   return (
