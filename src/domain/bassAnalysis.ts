@@ -1,6 +1,7 @@
 import { CHORD_TYPES } from '@/constants/chords';
 import { NOTE_NAMES } from '@/constants/notes';
 import type { BassChart, BassChartNote } from '@/domain/bassChart';
+import type { GuitarChart } from '@/domain/guitarChart';
 
 export type NoteRole =
   | 'chordTone'
@@ -43,6 +44,8 @@ export interface ChordEvidence {
   fifth: 'diminished' | 'perfect' | 'augmented' | null;
   seventh: 'diminished' | 'minor' | 'major' | 'both' | null;
   chordType: string | null;
+  /** True when the guitar gave a tone that the bass did not play. */
+  guitar?: true;
 }
 
 export interface MelodicMotion {
@@ -114,7 +117,41 @@ function isStep(semitones: number): boolean {
   return size === 1 || size === 2;
 }
 
-export function analyzeBassChart(chart: BassChart): BarAnalysis[] {
+/**
+ * The pitch classes of the guitar chords of each bar. Only beats where the
+ * guitar sounds 2 or more pitches at once count, and only charts of the
+ * same file as the bass chart.
+ */
+function guitarChordPitches(
+  chart: BassChart,
+  guitars: readonly GuitarChart[],
+): number[][] {
+  const perBar = chart.bars.map(() => [] as number[]);
+  for (const guitar of guitars) {
+    if (guitar.sourceFileName !== chart.sourceFileName) continue;
+    const beats = new Map<string, { bar: number; pitches: Set<number> }>();
+    for (const note of guitar.notes) {
+      const midi = soundingMidi(note);
+      if (midi === null || !perBar[note.bar]) continue;
+      const key = `${note.bar}:${Math.round(note.time * 1000)}`;
+      const entry = beats.get(key) ?? { bar: note.bar, pitches: new Set() };
+      entry.pitches.add(midi);
+      beats.set(key, entry);
+    }
+    for (const { bar, pitches } of beats.values()) {
+      if (pitches.size < 2) continue;
+      for (const midi of pitches) perBar[bar].push(pitchClass(midi));
+    }
+  }
+  return perBar;
+}
+
+export function analyzeBassChart(
+  chart: BassChart | null,
+  guitars: readonly GuitarChart[] = [],
+): BarAnalysis[] {
+  if (!chart) return [];
+  const guitarPitches = guitarChordPitches(chart, guitars);
   const sounding = chart.notes.map(soundingMidi);
   const beatSeconds = chart.bars.map(
     (bar) => (bar.endTime - bar.startTime) / bar.beatCount,
@@ -159,7 +196,14 @@ export function analyzeBassChart(chart: BassChart): BarAnalysis[] {
       .filter((index) => roles[index] === 'chordTone')
       .map(intervalOf)
       .filter((interval): interval is number => interval !== null);
-    const evidence = readEvidence(root === null ? [] : [0, ...harmonic]);
+    let evidence = readEvidence(root === null ? [] : [0, ...harmonic]);
+    if (root !== null && guitarPitches[bar].length > 0) {
+      const fromGuitar = guitarPitches[bar].map((pc) => pitchClass(pc - root));
+      const combined = readEvidence([0, ...harmonic, ...fromGuitar]);
+      if (combined.intervals.length > evidence.intervals.length) {
+        evidence = { ...combined, guitar: true };
+      }
+    }
     const notes = indexes.map((index): AnalyzedNote => {
       const interval = intervalOf(index);
       return {
@@ -516,9 +560,10 @@ const SEVENTH_TEXT = {
 } as const;
 
 export function describeEvidence(evidence: ChordEvidence): string {
-  return [
+  const text = [
     evidence.third ? THIRD_TEXT[evidence.third] : 'sem 3ª',
     evidence.fifth ? FIFTH_TEXT[evidence.fifth] : 'sem 5ª',
     evidence.seventh ? SEVENTH_TEXT[evidence.seventh] : 'sem 7ª',
   ].join(' · ');
+  return evidence.guitar ? `${text} (com a guitarra)` : text;
 }
