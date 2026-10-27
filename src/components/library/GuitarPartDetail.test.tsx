@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import BassTabBar from '@/components/library/BassTabBar';
 import GuitarPartDetail from '@/components/library/GuitarPartDetail';
+import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { notesByBar } from '@/domain/bassChart';
 import {
@@ -168,6 +169,113 @@ describe('guitar part of the song detail', () => {
     expect(labels[0]).toBe('R/3/5');
     fireEvent.click(toggle);
     expect(degreeTexts()).toHaveLength(0);
+  });
+});
+
+function partsAt(seconds: number, toggleMute = vi.fn()): SongPartsPlayback {
+  return {
+    active: true,
+    audio: {
+      ready: true,
+      playing: true,
+      duration: 4,
+      currentSeconds: seconds,
+      play: vi.fn(async () => {}),
+      pause: vi.fn(),
+      seek: vi.fn(),
+    },
+    mutes: { bass: false, drums: false, [GUITAR_KEY]: false },
+    controls: [
+      { key: 'bass', label: 'Baixo' },
+      { key: 'drums', label: 'Bateria' },
+      { key: GUITAR_KEY, label: 'Guitarra 1 - Rhythm' },
+    ],
+    toggleMute,
+    reportBass: vi.fn(),
+    reportRecording: vi.fn(),
+  };
+}
+const GUITAR_KEY = 'e'.repeat(64);
+
+const cell = (string: number, fret: number) =>
+  document.querySelector(
+    `button[data-pos="${string}-${fret}"]`,
+  ) as HTMLButtonElement;
+
+describe('dock fretboard of the guitar chart', () => {
+  it('draws the 7 strings of a 7-string track with its tuning', () => {
+    part(
+      fixtureGuitarChart(2, chord.slice(0, 1), {
+        openPitches: [35, 40, 45, 50, 55, 59, 64],
+      }),
+    );
+    const open = [...document.querySelectorAll('button[data-pos$="-0"]')];
+    expect(open).toHaveLength(7);
+    expect(
+      [0, 1, 2, 3, 4, 5, 6].map(
+        (string) =>
+          /corda (\S+),/.exec(
+            cell(string, 0).getAttribute('aria-label') ?? '',
+          )?.[1],
+      ),
+    ).toEqual(['B', 'E', 'A', 'D', 'G', 'B', 'E']);
+  });
+
+  it('draws the 6 strings of a standard guitar, and the note of a fret', () => {
+    part();
+    expect(document.querySelectorAll('button[data-pos$="-0"]')).toHaveLength(6);
+    // string 2 (D, 50) at fret 2 is E.
+    expect(cell(2, 2).getAttribute('aria-label')).toMatch(/^E,/);
+  });
+
+  it('counts the frets from the capo', () => {
+    part(fixtureGuitarChart(2, chord.slice(0, 1), { capo: 2 }));
+    // string 0 (E, 40) with the capo on fret 2 sounds F# at fret 0.
+    expect(cell(0, 0).getAttribute('aria-label')).toMatch(/^F#,/);
+  });
+
+  it('lights the sounding note on its string and fret', () => {
+    render(
+      <GuitarPartDetail
+        chart={fixtureGuitarChart(2, chord)}
+        parts={partsAt(0.1)}
+        onRemove={vi.fn()}
+      />,
+    );
+    const lit = [...document.querySelectorAll('button[data-pos]')].filter(
+      (item) => item.getAttribute('aria-label')?.includes('tocando agora'),
+    );
+    expect(lit.map((item) => item.getAttribute('data-pos')).sort()).toEqual([
+      '1-3',
+      '2-2',
+      '3-0',
+    ]);
+  });
+
+  it('lights nothing when no note sounds', () => {
+    render(
+      <GuitarPartDetail
+        chart={fixtureGuitarChart(2, chord)}
+        onRemove={vi.fn()}
+      />,
+    );
+    expect(document.body.innerHTML).not.toContain('tocando agora');
+  });
+
+  it('has a mute for each part, the guitar named with its part name', () => {
+    const toggleMute = vi.fn();
+    render(
+      <GuitarPartDetail
+        chart={fixtureGuitarChart(2, chord)}
+        parts={partsAt(0.1, toggleMute)}
+        onRemove={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Silenciar guitarra 1 - rhythm' }),
+    );
+    expect(toggleMute).toHaveBeenCalledWith(GUITAR_KEY);
+    expect(toggleMute).toHaveBeenCalledTimes(1);
   });
 });
 
