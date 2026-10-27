@@ -25,6 +25,30 @@ view is available. Guitar Pro's full articulation notation is not preserved.
 Only the bass part feeds these analyses. The file's other instrument parts
 are not additional harmony evidence.
 
+## Guitar charts
+
+Each GP track with a stringed staff of 5 or more strings that is not the bass
+track gives one guitar chart (`part: 'guitar'`), with the track name as its
+part name. Keys, strings, winds, and other instruments give no chart. A file
+with a guitar track and no bass or drums imports.
+
+- A guitar is not the bass: when the bass pick falls on a guitar track with no
+  General MIDI bass program, the pick is made again without the guitar tracks.
+- The chart keeps `strings`, `openPitches` (absolute MIDI, lowest string
+  first, GP transposition removed), and `capo`. Each note keeps its GP string
+  (0 is the lowest) and its fret, counted from the capo as in Guitar Pro:
+  `midi = openPitches[string] + capo + fret`. Notes are read from the score,
+  not from the MIDI export, so no fingering is guessed.
+- Its id is a hash of the file hash, `guitar`, and the GP track index
+  (`partChartId`). Bass and drum ids do not change, so a reimport keeps their
+  linked audio and settings.
+- `GuitarPartDetail` reuses `BassTabBar` with `strings` and `bends`. It shows a
+  "Capo n" tag, stacks the notes of a beat, and shows degrees with "Mostrar
+  graus" from the bar analysis of the guitar line.
+- `parseGuitarChart` (in `bassChartRecord.ts`) validates the chart on the
+  client and in `/api/bass-charts`. `CHART_SYNC_FORMAT` is 3, so a device that
+  skipped a guitar record reads it after the update.
+
 ## Transposition
 
 MIDI and GP charts without a linked recording have “−½ tom” and “+½ tom”

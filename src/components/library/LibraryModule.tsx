@@ -3,6 +3,7 @@ import LibraryTrackDetail from './LibraryTrackDetail';
 import RocksmithChartList from './RocksmithChartList';
 import RocksmithTrackDetail from './RocksmithTrackDetail';
 import DrumPartDetail from '@/components/library/DrumPartDetail';
+import GuitarPartDetail from '@/components/library/GuitarPartDetail';
 import { fetchLibraryIndex, type LibraryIndexEntry } from './libraryData';
 import { useSongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import { useRocksmithCharts } from '@/hooks/useRocksmithCharts';
@@ -21,6 +22,7 @@ import {
   type ChartSummary,
 } from '@/domain/chartSummary';
 import { isDrumChart } from '@/domain/drumChart';
+import { isGuitarChart } from '@/domain/guitarChart';
 import Frame from '@/components/shared/Frame';
 import '@/components/library/libraryLayout.css';
 import { useLibraryRoute } from '@/components/library/useLibraryRoute';
@@ -382,6 +384,16 @@ export default function LibraryModule() {
               settingsKey={settingsKey}
               chart={selectedChart}
               parts={songParts}
+              onRemove={() => {
+                navigate({ screen: 'list' });
+                void remove(selectedChart.id);
+              }}
+            />
+          ) : selectedChart && isGuitarChart(selectedChart) ? (
+            <GuitarPartDetail
+              key={selectedChart.id}
+              settingsKey={settingsKey}
+              chart={selectedChart}
               onRemove={() => {
                 navigate({ screen: 'list' });
                 void remove(selectedChart.id);

@@ -35,7 +35,12 @@ export type ChartSyncState = SyncState<ChartVersion>;
 export type ChartSyncStore = SyncStore<ChartVersion>;
 
 const SYNC_STATE_KEY = 'music-theory-lab-chart-sync';
-export const CHART_SYNC_FORMAT = 2;
+/**
+ * Each chart kind that the client starts to read adds one: a device that
+ * skipped a record of the new kind then reads every record again.
+ * 2: drum charts. 3: guitar charts.
+ */
+export const CHART_SYNC_FORMAT = 3;
 
 function isChartVersion(value: unknown): boolean {
   return (

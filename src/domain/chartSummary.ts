@@ -1,5 +1,6 @@
 import type { BassChartSource } from '@/domain/bassChart';
 import { isDrumChart, type Chart } from '@/domain/drumChart';
+import { isGuitarChart } from '@/domain/guitarChart';
 
 export type ChartPart = 'bass' | 'drums' | 'guitar' | 'vocals';
 
@@ -33,18 +34,38 @@ export interface ChartSummary {
 }
 
 export function summarizeChart(chart: Chart): ChartSummary {
-  const drums = isDrumChart(chart);
-  return {
+  const shared = {
     id: chart.id,
     title: chart.title,
     artist: chart.artist,
     source: chart.source ?? 'rocksmith',
-    part: drums ? 'drums' : 'bass',
     tempoBpm: chart.averageTempoBpm,
     durationSeconds: chart.songLengthSeconds,
     barCount: chart.bars.length,
-    noteCount: drums ? chart.hits.length : chart.notes.length,
-    tuning: drums ? null : [...chart.tuning],
     importedAt: chart.importedAt,
+  } as const;
+  if (isDrumChart(chart)) {
+    return {
+      ...shared,
+      part: 'drums',
+      noteCount: chart.hits.length,
+      tuning: null,
+    };
+  }
+  if (isGuitarChart(chart)) {
+    return {
+      ...shared,
+      part: 'guitar',
+      partName: chart.partName,
+      trackIndex: chart.trackIndex,
+      noteCount: chart.notes.length,
+      tuning: null,
+    };
+  }
+  return {
+    ...shared,
+    part: 'bass',
+    noteCount: chart.notes.length,
+    tuning: [...chart.tuning],
   };
 }

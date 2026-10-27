@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
+import { fixtureGuitarChart } from '@/domain/guitarChartFixture';
 import {
   isNewerChartRecord,
   parseBassChartRecord,
@@ -713,7 +714,17 @@ describe('incremental chart synchronization', () => {
     expect(remote.writes).toEqual([]);
   });
 
-  it('keeps format version 2 only while the client reads no record of a third chart type', () => {
+  const guitarChart = fixtureGuitarChart(
+    2,
+    [
+      { bar: 0, beat: 0, string: 0, fret: 3 },
+      { bar: 0, beat: 0, string: 1, fret: 2, techniques: ['bend'] },
+      { bar: 1, beat: 1, string: 6, fret: 5, slideToFret: 7 },
+    ],
+    { openPitches: [35, 40, 45, 50, 55, 59, 64], capo: 2 },
+  );
+
+  it('keeps format version 3 only while the client reads no record of a fourth chart type', () => {
     expect({
       format: CHART_SYNC_FORMAT,
       readsDrumCharts:
@@ -722,8 +733,74 @@ describe('incremental chart synchronization', () => {
           updatedAt: '2026-10-05T10:00:00.000Z',
           chart: drumChart,
         }) !== null,
+      readsGuitarCharts:
+        parseBassChartRecord({
+          id: guitarChart.id,
+          updatedAt: '2026-10-05T10:00:00.000Z',
+          chart: guitarChart,
+        }) !== null,
       readsOtherParts: parseBassChartRecord(unread) !== null,
-    }).toEqual({ format: 2, readsDrumCharts: true, readsOtherParts: false });
+    }).toEqual({
+      format: 3,
+      readsDrumCharts: true,
+      readsGuitarCharts: true,
+      readsOtherParts: false,
+    });
+  });
+
+  it('a guitar chart reaches a second device through the chart route, and back', async () => {
+    const { remote, first } = await library(2);
+    const second = device();
+    await sync(second, remote);
+    expect(await second.getChart(guitarChart.id)).toBeNull();
+
+    await first.save(guitarChart, null);
+    await sync(first, remote);
+    expect(remote.record(guitarChart.id)?.chart).toEqual(guitarChart);
+    remote.reads.length = 0;
+    await sync(second, remote);
+    expect(remote.reads).toEqual([{ after: 2, ids: [guitarChart.id] }]);
+    expect(await second.getChart(guitarChart.id)).toEqual(guitarChart);
+    expect(
+      (await second.listSummaries()).find((item) => item.id === guitarChart.id),
+    ).toMatchObject({
+      part: 'guitar',
+      partName: 'Guitarra 1',
+      trackIndex: 1,
+      noteCount: 3,
+    });
+    expect(await second.listCharts()).toHaveLength(3);
+
+    await second.remove(guitarChart.id);
+    await sync(second, remote);
+    await sync(first, remote);
+    expect(await first.getChart(guitarChart.id)).toBeNull();
+    expect(await first.listCharts()).toHaveLength(2);
+  });
+
+  it('a device that skipped a guitar record with format version 2 reads it after the update', async () => {
+    const { remote, first } = await library(2);
+    const storage = memoryStorage();
+    const local = device();
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage, 2),
+    );
+    await first.save(guitarChart, null);
+    await sync(first, remote);
+    const key = 'music-theory-lab-chart-sync';
+    const stored = JSON.parse(storage.items.get(key)!);
+    storage.items.set(key, JSON.stringify({ ...stored, counter: 3 }));
+
+    remote.reads.length = 0;
+    await synchronizeBassCharts(
+      local,
+      remote,
+      createChartSyncStore(() => storage),
+    );
+    expect(remote.reads[0].after).toBe(0);
+    expect(await local.getChart(guitarChart.id)).toEqual(guitarChart);
   });
 
   it('a drum chart reaches a second device through the chart route', async () => {
@@ -776,7 +853,7 @@ describe('incremental chart synchronization', () => {
     expect(remote.reads[0].after).toBe(0);
     expect(await local.getChart(drumChart.id)).toEqual(drumChart);
     expect(JSON.parse(storage.items.get(key)!)).toMatchObject({
-      format: 2,
+      format: CHART_SYNC_FORMAT,
       counter: 3,
     });
   });

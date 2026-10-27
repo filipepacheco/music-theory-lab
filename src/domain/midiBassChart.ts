@@ -14,6 +14,12 @@ const MAX_FRET = 24;
 const BEND_MASK = 0x1000;
 const WHOLE_SONG_SECTION = 'Música';
 
+/** True when the channel plays a General MIDI bass program (33-40). */
+export function hasBassProgram(midi: MidiFile, channel: number): boolean {
+  const program = midi.programs[channel] ?? 0;
+  return program >= FIRST_BASS_PROGRAM && program <= LAST_BASS_PROGRAM;
+}
+
 export function pickBassChannel(midi: MidiFile): number | null {
   const pitches = new Map<number, number[]>();
   for (const note of midi.notes) {

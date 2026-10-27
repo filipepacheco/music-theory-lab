@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LibraryAudio } from '@/components/library/useLibraryAudio';
 import type { BassChart } from '@/domain/bassChart';
 import type { ChartPart, ChartSummary } from '@/domain/chartSummary';
-import { isDrumChart, type DrumChart } from '@/domain/drumChart';
+import { isBassChart, isDrumChart, type DrumChart } from '@/domain/drumChart';
 import { drumPlaybackHits } from '@/domain/drumPlaybackSchedule';
 import {
   muteControls,
@@ -186,7 +186,7 @@ export function useSongPartsPlayback(
       ]);
       if (!live) return;
       setLoaded({
-        bass: bass && !isDrumChart(bass) ? bass : null,
+        bass: bass && isBassChart(bass) ? bass : null,
         drums: drums && isDrumChart(drums) ? drums : null,
         partnerRecording: false,
       });
