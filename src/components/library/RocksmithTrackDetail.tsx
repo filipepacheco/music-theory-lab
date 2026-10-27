@@ -17,6 +17,7 @@ import {
 import BarOctavePanel from '@/components/library/BarOctavePanel';
 import { usePracticeSettings } from '@/components/library/usePracticeSettings';
 import Segmented from '@/components/shared/Segmented';
+import { useSameFileGuitars } from '@/components/library/useSameFileGuitars';
 import { useSameFileKick } from '@/components/library/useSameFileKick';
 import type { ChartSummary } from '@/domain/chartSummary';
 import BassTabBar, {
@@ -171,6 +172,7 @@ export default function RocksmithTrackDetail({
   parts,
 }: Props) {
   const kickBeats = useSameFileKick(originalChart.id, songCharts);
+  const guitars = useSameFileGuitars(songCharts);
   const { playBassNote } = useBassSynth();
   const { audioState, attach, saveError } = useRocksmithAudio(originalChart.id);
   const practice = usePracticeSettings(originalChart.id, settingsKey);
@@ -274,12 +276,24 @@ export default function RocksmithTrackDetail({
   const noteTimes = useMemo(() => chart.notes.map((n) => n.time), [chart]);
   const barNotes = useMemo(() => notesByBar(chart), [chart]);
   const originalAnalysis = useMemo(
-    () => analyzeBassChart(originalChart),
-    [originalChart],
+    () => analyzeBassChart(originalChart, guitars),
+    [originalChart, guitars],
   );
   const analysis = useMemo(
-    () => (shift === 0 ? originalAnalysis : analyzeBassChart(chart)),
-    [chart, shift, originalAnalysis],
+    () =>
+      shift === 0
+        ? originalAnalysis
+        : analyzeBassChart(
+            chart,
+            guitars.map((guitar) => ({
+              ...guitar,
+              notes: guitar.notes.map((note) => ({
+                ...note,
+                midi: note.midi + shift,
+              })),
+            })),
+          ),
+    [chart, shift, originalAnalysis, guitars],
   );
   const summaries = useMemo(
     () =>
