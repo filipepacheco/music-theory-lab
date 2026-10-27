@@ -475,6 +475,36 @@ describe('useSongPartsPlayback with a vocal chart', () => {
     act(() => result.current.audio.pause());
   });
 
+  it('shifts the vocal and the guitar notes with the bass shift', async () => {
+    const { bass, vocal, all } = await songWithVocal();
+    const guitar = {
+      ...fixtureGuitarChart(2, [{ bar: 0, beat: 0, string: 2, fret: 2 }], {
+        partName: 'Guitarra 1',
+        trackIndex: 2,
+      }),
+      id: await partChartId(BASS_ID, 'guitar', 2),
+    };
+    library.charts.set(guitar.id, guitar);
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(bass.id, 'bass', [...all, summarizeChart(guitar)]),
+    );
+    act(() => result.current.reportRecording(bass.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    act(() => result.current.reportBass(bass, 3));
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    const vocalMidis = (
+      engine.scheduleVocalNote.mock.calls as unknown[][]
+    ).map((c) => c[1]);
+    expect(vocalMidis).toEqual([63, 67]);
+    expect(engine.scheduleGuitarNote.mock.calls[0][1]).toBe(
+      guitar.notes[0].midi + 3,
+    );
+    expect(vocal.notes.length).toBe(2);
+    act(() => result.current.audio.pause());
+  });
+
   it('cuts only the ringing vocal notes when the vocal is muted', async () => {
     const { bass, vocal, all } = await songWithVocal();
     const { result } = renderHook(() =>
