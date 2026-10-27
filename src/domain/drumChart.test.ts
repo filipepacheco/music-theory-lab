@@ -6,6 +6,7 @@ import {
   parseBassChart,
   parseBassChartRecord,
   parseChart,
+  hasUnknownChartKind,
   parseDrumChart,
 } from '@/domain/bassChartRecord';
 import { summarizeChart } from '@/domain/chartSummary';
@@ -168,6 +169,15 @@ describe('drum chart checks', () => {
   it('refuses a bass chart that names the part "drums"', () => {
     expect(parseChart({ ...bass, part: 'drums' })).toBeNull();
     expect(parseChart({ ...bass, part: 'bass' })).toBeNull();
+  });
+
+  it('refuses a chart of an unknown kind and names it unknown', () => {
+    const unknown = { ...drums, part: 'keys' };
+    expect(parseChart(unknown)).toBeNull();
+    expect(hasUnknownChartKind(unknown)).toBe(true);
+    expect(hasUnknownChartKind(drums)).toBe(false);
+    expect(hasUnknownChartKind(bass)).toBe(false);
+    expect(hasUnknownChartKind({ ...bass, part: 'bass' })).toBe(true);
   });
 
   it('a check that knows only bass charts refuses a drum chart', () => {

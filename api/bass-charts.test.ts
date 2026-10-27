@@ -199,7 +199,6 @@ describe('drum chart on the chart route', () => {
       { ...drums, tuning: [0, 0, 0, 0] },
       { ...drums, notes: chart.notes },
       { ...drums, audio: 'binary' },
-      { ...drums, part: 'keys' },
       { ...drums, hits: [] },
       { ...drums, hits: [{ ...hit, piece: 'cowbell' }] },
       { ...drums, hits: [{ ...hit, articulation: 'rimshot' }] },
@@ -219,6 +218,28 @@ describe('drum chart on the chart route', () => {
       (await write([record, { ...drumRecord, chart: bad[1] }])).status,
     ).toBe(400);
     expect((await request('GET')).body).toEqual([]);
+  });
+
+  it('skips a chart of an unknown kind and saves the other charts', async () => {
+    const id = 'c'.repeat(64);
+    const unknown = { ...drumRecord, id, chart: { ...drums, id, part: 'keys' } };
+    const result = await write([record, unknown, drumRecord]);
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ ok: true });
+    expect((result.body as { counters: unknown[] }).counters[1]).toBeNull();
+    expect((await rows()).map((row) => row.id).sort()).toEqual(
+      [record.id, drums.id].sort(),
+    );
+  });
+
+  it('still refuses a malformed chart of a known kind beside an unknown kind', async () => {
+    const unknown = { ...drumRecord, chart: { ...drums, part: 'keys' } };
+    const result = await write([
+      unknown,
+      { ...drumRecord, chart: { ...drums, hits: [] } },
+    ]);
+    expect(result.status).toBe(400);
+    expect(await rows()).toEqual([]);
   });
 
   it('refuses a drum chart with the id of a different record', async () => {

@@ -265,10 +265,41 @@ export function parseDrumChart(value: unknown): DrumChart | null {
   return value as unknown as DrumChart;
 }
 
+/** A chart with no `part` is a bass chart; otherwise `part` is its kind. */
+const PARSERS: Record<string, (value: unknown) => Chart | null> = {
+  drums: parseDrumChart,
+};
+
+const knownKind = (part: string) =>
+  Object.prototype.hasOwnProperty.call(PARSERS, part);
+
 export function parseChart(value: unknown): Chart | null {
-  return object(value) && 'part' in value
-    ? parseDrumChart(value)
-    : parseBassChart(value);
+  if (!object(value) || !('part' in value)) return parseBassChart(value);
+  const parser =
+    typeof value.part === 'string' && knownKind(value.part)
+      ? PARSERS[value.part]
+      : null;
+  return parser ? parser(value) : null;
+}
+
+/** True for a chart whose kind no parser knows: skipped, not malformed. */
+export function hasUnknownChartKind(value: unknown): boolean {
+  return (
+    object(value) &&
+    'part' in value &&
+    (typeof value.part !== 'string' || !knownKind(value.part))
+  );
+}
+
+/** True for a record of a valid shape that holds a chart of an unknown kind. */
+export function isUnknownKindRecord(value: unknown): boolean {
+  return (
+    object(value) &&
+    typeof value.id === 'string' &&
+    /^[a-f0-9]{64}$/.test(value.id) &&
+    timestamp(value.updatedAt) &&
+    hasUnknownChartKind(value.chart)
+  );
 }
 
 export function parseBassChartRecord(value: unknown): BassChartRecord | null {
