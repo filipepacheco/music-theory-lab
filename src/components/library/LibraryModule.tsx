@@ -394,6 +394,7 @@ export default function LibraryModule() {
               key={selectedChart.id}
               settingsKey={settingsKey}
               chart={selectedChart}
+              parts={songParts}
               onRemove={() => {
                 navigate({ screen: 'list' });
                 void remove(selectedChart.id);

@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DegreeLegend } from '@/components/library/BassPartPanels';
+import ChartFretboard from '@/components/library/ChartFretboard';
 import BassTabBar, {
   BAR_CHROME,
   BEAT_WIDTH,
@@ -17,11 +18,15 @@ import Tag from '@/components/shared/Tag';
 import { NOTE_NAMES } from '@/constants/notes';
 import { analyzeBassChart, type BarAnalysis } from '@/domain/bassAnalysis';
 import {
+  activeNoteIndexes,
   bassBarDrawing,
-  midiNoteName,
   type BassChartSection,
 } from '@/domain/bassChart';
-import { keyNoteNames, suggestKeys } from '@/domain/bassHarmony';
+import {
+  keyNoteNames,
+  suggestKeys,
+  type ChordTone,
+} from '@/domain/bassHarmony';
 import {
   guitarAsBassChart,
   guitarNotesByBar,
@@ -29,11 +34,29 @@ import {
   type GuitarChart,
 } from '@/domain/guitarChart';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
-
+import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 interface Props {
   chart: GuitarChart;
   settingsKey?: unknown;
   onRemove: () => void;
+  parts?: SongPartsPlayback;
+}
+
+const PREVIEW_KEY = 'fretboard-preview';
+
+// The engine loads on the first press, so the part opens with no audio code.
+async function previewNote(midi: number): Promise<void> {
+  const { ensureAudio, playbackEngine } = await import(
+    '@/services/playbackEngine'
+  );
+  if (!(await ensureAudio())) return;
+  playbackEngine.scheduleGuitarNote(
+    PREVIEW_KEY,
+    midi,
+    0.45,
+    0.8,
+    playbackEngine.now(),
+  );
 }
 
 const DEGREES_KEY = 'music-theory-lab:guitar-show-degrees';
@@ -53,18 +76,59 @@ function writeShowDegrees(on: boolean): void {
 }
 
 const NO_NOTES: readonly number[] = [];
+const NO_TONES: ChordTone[] = [];
 
 export default function GuitarPartDetail({
   chart,
   settingsKey,
   onRemove,
+  parts,
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
-  const audio = useLibraryAudio(audioUrl);
-  const hasPlayer = audioUrl !== null;
+  const recording = useLibraryAudio(audioUrl);
+  const together = audioState.status === 'missing' && !!parts?.active;
+  const audio = together && parts ? parts.audio : recording;
+  const reportRecording = parts?.reportRecording;
+  const recordingLinked = audioState.status !== 'missing';
+  const recordingKnown = audioState.status !== 'loading';
+  useEffect(() => {
+    if (recordingKnown) reportRecording?.(chart.id, recordingLinked);
+  }, [reportRecording, chart.id, recordingLinked, recordingKnown]);
+  const hasPlayer = audioUrl !== null || together;
   const cursor = useSongCursor(chart, audio, hasPlayer);
-  const { activeBar, seek } = cursor;
+  const { activeBar, seek, clock } = cursor;
+  const soundBars = useMemo(() => guitarAsBassChart(chart), [chart]);
+  const noteTimes = useMemo(() => chart.notes.map((n) => n.time), [chart]);
+  const activeKey = activeNoteIndexes(soundBars, noteTimes, clock).join(',');
+  const activeNotes = useMemo(
+    () => (activeKey ? activeKey.split(',').map(Number) : NO_NOTES),
+    [activeKey],
+  );
+  const activePositions = useMemo(
+    () =>
+      activeNotes.map((i) => ({
+        string: chart.notes[i].string,
+        fret: chart.notes[i].fret,
+      })),
+    [activeNotes, chart],
+  );
+  // The nut of the board is the capo: frets count from it.
+  const boardPitches = useMemo(
+    () => chart.openPitches.map((pitch) => pitch + chart.capo),
+    [chart],
+  );
+  const fretCount = useMemo(
+    () =>
+      Math.min(
+        24,
+        chart.notes.reduce(
+          (most, n) => Math.max(most, n.fret, n.slideToFret ?? 0),
+          12,
+        ),
+      ),
+    [chart],
+  );
   const [showDegrees, setShowDegrees] = useState(readShowDegrees);
 
   const barNotes = useMemo(() => guitarNotesByBar(chart), [chart]);
@@ -112,10 +176,6 @@ export default function GuitarPartDetail({
     [chart, barNotes, analysis],
   );
   const capoNote = chart.capo > 0 ? `capo na casa ${chart.capo}` : '';
-  const stringNames = [...chart.openPitches]
-    .reverse()
-    .map(midiNoteName)
-    .join(' ');
 
   return (
     <SongDetailFrame
@@ -133,6 +193,15 @@ export default function GuitarPartDetail({
       ]}
       audio={audio}
       hasPlayer={hasPlayer}
+      partMutes={
+        together && parts
+          ? {
+              mutes: parts.mutes,
+              onToggle: parts.toggleMute,
+              controls: parts.controls,
+            }
+          : undefined
+      }
       recording={{
         state: audioState,
         saveError,
@@ -175,7 +244,7 @@ export default function GuitarPartDetail({
           degreeLevels={layout.section}
           bar={chart.bars[barIndex]}
           notes={barNotes[barIndex] as IndexedNote[]}
-          activeNotes={NO_NOTES}
+          activeNotes={barIndex === activeBar ? activeNotes : NO_NOTES}
           playhead={cursor.playhead(barIndex)}
           onSeek={seek}
           analysis={analysis ? (analysis[barIndex] as BarAnalysis) : null}
@@ -202,9 +271,15 @@ export default function GuitarPartDetail({
           : `${chart.strings} cordas`,
         actions: null,
         panel: (
-          <p className="text-small text-text-muted">
-            Cordas, da mais aguda à mais grave: {stringNames}
-          </p>
+          <ChartFretboard
+            openPitches={boardPitches}
+            fretCount={fretCount}
+            rootPitchClass={null}
+            tones={NO_TONES}
+            active={activePositions}
+            noteNames={noteNames}
+            onPlayNote={(midi) => void previewNote(midi)}
+          />
         ),
       }}
     />
