@@ -154,7 +154,10 @@ export function useRocksmithCharts() {
   }, [refresh, synchronize]);
 
   const importFile = useCallback(
-    async (file: File): Promise<Chart | null> => {
+    async (
+      file: File,
+      reportFailure?: (message: string) => void,
+    ): Promise<Chart | null> => {
       setImportStatus({ state: 'importing', fileName: file.name });
       await new Promise((resolve) => setTimeout(resolve, 30));
       let importErrorMessage: (error: unknown) => string = () =>
@@ -185,12 +188,17 @@ export function useRocksmithCharts() {
         void synchronize();
         return chart;
       } catch (error) {
+        const reason =
+          error instanceof DOMException
+            ? 'Não foi possível salvar a importação neste navegador.'
+            : importErrorMessage(error);
+        reportFailure?.(reason);
         setImportStatus({
           state: 'error',
           message:
             error instanceof DOMException
-              ? 'Não foi possível salvar a importação neste navegador.'
-              : `${importErrorMessage(error)} Tipos aceitos: .gp, .psarc, .mid ou .midi.`,
+              ? reason
+              : `${reason} Tipos aceitos: .gp, .psarc, .mid ou .midi.`,
         });
         return null;
       }
