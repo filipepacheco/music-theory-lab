@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import ChartFretboard from '@/components/library/ChartFretboard';
 import SongDetailFrame, {
   songStats,
@@ -24,6 +24,7 @@ import {
 import { bassKeyOf } from '@/domain/vocalDegree';
 import { useBassSynth } from '@/hooks/useBassSynth';
 import { useRocksmithAudio } from '@/hooks/useRocksmithAudio';
+import type { SongPartsPlayback } from '@/hooks/useSongPartsPlayback';
 import Tag from '@/components/shared/Tag';
 
 interface Props {
@@ -31,6 +32,8 @@ interface Props {
   settingsKey?: unknown;
   /** The charts of the song, to find the bass chart of the same file. */
   songCharts?: readonly ChartSummary[];
+  /** Shared playback of the song, when no recording is linked. */
+  parts?: SongPartsPlayback;
   onRemove: () => void;
 }
 
@@ -60,12 +63,21 @@ export default function VocalPartDetail({
   settingsKey,
   songCharts = NO_CHARTS,
   onRemove,
+  parts,
 }: Props) {
   const { audioState, attach, saveError } = useRocksmithAudio(chart.id);
   const { playBassNote } = useBassSynth();
   const audioUrl = audioState.status === 'ready' ? audioState.url : null;
-  const audio = useLibraryAudio(audioUrl);
-  const hasPlayer = audioUrl !== null;
+  const recording = useLibraryAudio(audioUrl);
+  const together = audioState.status === 'missing' && !!parts?.active;
+  const audio = together && parts ? parts.audio : recording;
+  const reportRecording = parts?.reportRecording;
+  const recordingLinked = audioState.status !== 'missing';
+  const recordingKnown = audioState.status !== 'loading';
+  useEffect(() => {
+    if (recordingKnown) reportRecording?.(chart.id, recordingLinked);
+  }, [reportRecording, chart.id, recordingLinked, recordingKnown]);
+  const hasPlayer = audioUrl !== null || together;
   const cursor = useSongCursor(chart, audio, hasPlayer);
   const { activeBar, seek } = cursor;
   const [showDegrees, setShowDegrees] = useState(readShowDegrees);
@@ -112,6 +124,15 @@ export default function VocalPartDetail({
       ]}
       audio={audio}
       hasPlayer={hasPlayer}
+      partMutes={
+        together && parts
+          ? {
+              mutes: parts.mutes,
+              onToggle: parts.toggleMute,
+              controls: parts.controls,
+            }
+          : undefined
+      }
       recording={{
         state: audioState,
         saveError,

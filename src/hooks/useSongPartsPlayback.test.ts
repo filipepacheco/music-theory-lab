@@ -459,6 +459,22 @@ describe('useSongPartsPlayback with a vocal chart', () => {
     act(() => result.current.audio.pause());
   });
 
+  it('pairs a vocal chart that is the open part with the bass and the drums', async () => {
+    const { vocal, all } = await songWithVocal();
+    const { result } = renderHook(() =>
+      useSongPartsPlayback(vocal.id, 'vocals', all),
+    );
+    act(() => result.current.reportRecording(vocal.id, false));
+    await waitFor(() => expect(result.current.active).toBe(true));
+    expect(result.current.controls.some((c) => c.key === vocal.id)).toBe(true);
+    await act(async () => {
+      await result.current.audio.play();
+    });
+    expect(engine.scheduleBassNote).toHaveBeenCalled();
+    expect(engine.scheduleVocalNote).toHaveBeenCalled();
+    act(() => result.current.audio.pause());
+  });
+
   it('cuts only the ringing vocal notes when the vocal is muted', async () => {
     const { bass, vocal, all } = await songWithVocal();
     const { result } = renderHook(() =>
