@@ -119,8 +119,8 @@ function isStep(semitones: number): boolean {
 
 /**
  * The pitch classes of the guitar chords of each bar. Only beats where the
- * guitar sounds 2 or more pitches at once count, and only charts of the
- * same file as the bass chart.
+ * guitar sounds 2 or more pitches at once count. The caller passes only the
+ * charts of the same file as the bass chart (see `sameFileGuitarIds`).
  */
 function guitarChordPitches(
   chart: BassChart,
@@ -128,7 +128,6 @@ function guitarChordPitches(
 ): number[][] {
   const perBar = chart.bars.map(() => [] as number[]);
   for (const guitar of guitars) {
-    if (guitar.sourceFileName !== chart.sourceFileName) continue;
     const beats = new Map<string, { bar: number; pitches: Set<number> }>();
     for (const note of guitar.notes) {
       const midi = soundingMidi(note);
