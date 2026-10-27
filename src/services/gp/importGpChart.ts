@@ -3,10 +3,19 @@ import {
   buildBassChart,
   STANDARD_OPEN_MIDI,
   type BassChart,
+  type BassChartMetadata,
   type BassFretPosition,
 } from '@/domain/bassChart';
 import type { Chart, DrumDynamic } from '@/domain/drumChart';
 import {
+  buildGuitarChart,
+  GUITAR_MIN_STRINGS,
+  type GuitarChart,
+  type GuitarNoteInput,
+  type GuitarTechnique,
+} from '@/domain/guitarChart';
+import {
+  hasBassProgram,
   midiToArrangement,
   pickBassChannel,
   tickToSeconds,
@@ -28,6 +37,8 @@ import {
   type MidiFile,
   type MidiNote,
 } from '@/services/midi/midiFile';
+
+const NO_CHANNEL = -1;
 
 export function gpChartImportErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) return gpParseErrorMessage(error);
@@ -57,8 +68,15 @@ export async function importGpChart(
     const text = section?.text.trim() || section?.marker.trim();
     return text ? [{ tick: played.start, text }] : [];
   });
-  const channel = pickBassChannel(parsed);
-  if (channel === null && !hasDrumNotes(parsed)) throw new Error('no-parts');
+  const guitarTracks = findGuitarTracks(score);
+  const channel = pickBass(parsed, guitarTracks);
+  if (
+    channel === null &&
+    !hasDrumNotes(parsed) &&
+    guitarTracks.length === 0
+  ) {
+    throw new Error('no-parts');
+  }
 
   const fileHash = await sha256Hex(bytes);
   const fallback = metadataFromFileName(file.name);
@@ -90,7 +108,188 @@ export async function importGpChart(
     dynamicOf: scoreDynamics(generator),
   });
   if (drums) charts.push(drums);
+  const guitars = await guitarChartsOf(
+    guitarTracks,
+    parsed,
+    generator,
+    shared,
+    fileHash,
+  );
+  charts.push(...guitars);
+  if (charts.length === 0) throw new Error('no-parts');
   return { charts, audio: null };
+}
+
+interface GuitarTrack {
+  track: model.Track;
+  staff: model.Staff;
+}
+
+/** A stringed staff with 5 or more strings, one for each track. */
+function findGuitarTracks(score: model.Score): GuitarTrack[] {
+  return score.tracks.flatMap((track) => {
+    const staff = track.staves.find(
+      (candidate) =>
+        candidate.isStringed && candidate.tuning.length >= GUITAR_MIN_STRINGS,
+    );
+    return staff ? [{ track, staff }] : [];
+  });
+}
+
+/**
+ * The bass channel that the import always picked, unless the pick is a guitar
+ * track that no bass program names: a guitar is not the bass.
+ */
+function pickBass(parsed: MidiFile, guitars: GuitarTrack[]): number | null {
+  const channel = pickBassChannel(parsed);
+  if (channel === null) return null;
+  const guitarChannels = new Set(
+    guitars.flatMap(({ track }) => [
+      track.playbackInfo.primaryChannel,
+      track.playbackInfo.secondaryChannel,
+    ]),
+  );
+  if (!guitarChannels.has(channel) || hasBassProgram(parsed, channel)) {
+    return channel;
+  }
+  return pickBassChannel({
+    ...parsed,
+    notes: parsed.notes.filter((note) => !guitarChannels.has(note.channel)),
+  });
+}
+
+async function guitarChartsOf(
+  guitars: GuitarTrack[],
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  shared: {
+    sourceFileName: string;
+    importedAt: string;
+    metadata: BassChartMetadata;
+  },
+  fileHash: string,
+): Promise<GuitarChart[]> {
+  if (guitars.length === 0) return [];
+  const arrangement = midiToArrangement(parsed, NO_CHANNEL);
+  const grid = buildBassChart({
+    id: fileHash,
+    sourceFileName: shared.sourceFileName,
+    importedAt: shared.importedAt,
+    metadata: shared.metadata,
+    source: 'gp',
+    arrangement,
+  });
+  const toSeconds = tickToSeconds(parsed);
+  const charts: GuitarChart[] = [];
+  for (const { track, staff } of guitars) {
+    const notes = guitarNotesOf(staff, generator, toSeconds);
+    if (notes.length === 0) continue;
+    charts.push(
+      buildGuitarChart({
+        ...shared,
+        id: await partChartId(fileHash, 'guitar', track.index),
+        partName: track.name.trim() || `Guitarra ${charts.length + 1}`,
+        trackIndex: track.index,
+        grid,
+        beats: arrangement.beats,
+        openPitches: [...staff.tuning]
+          .reverse()
+          .map((pitch) => pitch - staff.transpositionPitch),
+        capo: staff.capo,
+        notes,
+      }),
+    );
+  }
+  return charts;
+}
+
+function techniquesOf(note: model.Note): GuitarTechnique[] {
+  const { beat } = note;
+  const found: [boolean, GuitarTechnique][] = [
+    [note.isDead, 'mute'],
+    [
+      note.accentuated === model.AccentuationType.Normal ||
+        note.accentuated === model.AccentuationType.Heavy,
+      'accent',
+    ],
+    [
+      note.isHammerPullDestination &&
+        !!note.hammerPullOrigin &&
+        note.fret > note.hammerPullOrigin.fret,
+      'hammerOn',
+    ],
+    [
+      note.isHammerPullDestination &&
+        !!note.hammerPullOrigin &&
+        note.fret <= note.hammerPullOrigin.fret,
+      'pullOff',
+    ],
+    [
+      note.slideOutType !== model.SlideOutType.None ||
+        note.slideInType !== model.SlideInType.None,
+      'slide',
+    ],
+    [note.harmonicType !== model.HarmonicType.None, 'harmonic'],
+    [note.isPalmMute, 'palmMute'],
+    [beat.slap, 'slap'],
+    [beat.pop, 'pop'],
+    [beat.tap, 'tap'],
+    [
+      note.vibrato !== model.VibratoType.None ||
+        beat.vibrato !== model.VibratoType.None,
+      'vibrato',
+    ],
+    [note.hasBend, 'bend'],
+    [beat.tremoloSpeed !== null, 'tremolo'],
+  ];
+  return found.flatMap(([present, technique]) => (present ? [technique] : []));
+}
+
+/** The notes of one staff, in playback order, with repeats expanded. */
+function guitarNotesOf(
+  staff: model.Staff,
+  generator: midi.MidiFileGenerator,
+  toSeconds: (tick: number) => number,
+): GuitarNoteInput[] {
+  const strings = staff.tuning.length;
+  const notes: GuitarNoteInput[] = [];
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        if (item.beat.voice.bar.staff !== staff || seen.has(item.beat.id))
+          continue;
+        seen.add(item.beat.id);
+        const start = Math.round(played.start + item.playbackStart);
+        const time = toSeconds(start);
+        const end = toSeconds(start + item.beat.playbackDuration);
+        for (const note of item.beat.notes) {
+          if (!note.isStringed) continue;
+          // alphaTab counts the strings from the lowest, which is index 0.
+          const string = note.string - 1;
+          if (string < 0 || string >= strings) continue;
+          if (note.isTieDestination) {
+            const origin = [...notes]
+              .reverse()
+              .find((earlier) => earlier.string === string);
+            if (origin) {
+              origin.sustain = Math.max(origin.sustain, end - origin.time);
+            }
+            continue;
+          }
+          notes.push({
+            time,
+            sustain: Math.max(0, end - time),
+            string,
+            fret: note.fret,
+            slideToFret: note.slideTarget ? note.slideTarget.fret : null,
+            techniques: techniquesOf(note),
+          });
+        }
+      }
+    }
+  }
+  return notes;
 }
 
 function bassChartOf(

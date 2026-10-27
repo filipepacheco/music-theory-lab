@@ -4,6 +4,12 @@ import {
   type BassTechnique,
 } from './bassChart.js';
 import {
+  GUITAR_MAX_CAPO,
+  GUITAR_MAX_STRINGS,
+  GUITAR_MIN_STRINGS,
+  type GuitarChart,
+} from './guitarChart.js';
+import {
   DRUM_ARTICULATIONS,
   DRUM_CHART_PIECES,
   DRUM_DYNAMICS,
@@ -265,9 +271,85 @@ export function parseDrumChart(value: unknown): DrumChart | null {
   return value as unknown as DrumChart;
 }
 
+const GUITAR_FIELDS = [
+  'part',
+  'partName',
+  'trackIndex',
+  'strings',
+  'openPitches',
+  'capo',
+  'notes',
+];
+
+export function parseGuitarChart(value: unknown): GuitarChart | null {
+  if (!object(value) || value.part !== 'guitar') return null;
+  if (!validSharedFields(value, GUITAR_FIELDS)) return null;
+  const { openPitches } = value;
+  if (
+    value.source !== 'gp' ||
+    typeof value.partName !== 'string' ||
+    !integer(value.trackIndex) ||
+    value.trackIndex < 0 ||
+    !integer(value.strings) ||
+    value.strings < GUITAR_MIN_STRINGS ||
+    value.strings > GUITAR_MAX_STRINGS ||
+    !Array.isArray(openPitches) ||
+    openPitches.length !== value.strings ||
+    !openPitches.every(
+      (pitch) => integer(pitch) && pitch >= 0 && pitch <= 127,
+    ) ||
+    !integer(value.capo) ||
+    value.capo < 0 ||
+    value.capo > GUITAR_MAX_CAPO ||
+    !Array.isArray(value.notes) ||
+    value.notes.length === 0 ||
+    value.notes.length > 200_000
+  )
+    return null;
+
+  const bars = value.bars as unknown[];
+  const strings = value.strings;
+  const open = openPitches as number[];
+  const capo = value.capo;
+  if (
+    !value.notes.every(
+      (note, i, notes) =>
+        object(note) &&
+        finite(note.time) &&
+        note.time >= 0 &&
+        (i === 0 || note.time >= notes[i - 1].time) &&
+        finite(note.endTime) &&
+        note.endTime >= note.time &&
+        integer(note.string) &&
+        note.string >= 0 &&
+        note.string < strings &&
+        integer(note.fret) &&
+        note.fret >= 0 &&
+        integer(note.midi) &&
+        note.midi >= 0 &&
+        note.midi <= 127 &&
+        note.midi === open[note.string] + capo + note.fret &&
+        finite(note.sustain) &&
+        note.sustain >= 0 &&
+        integer(note.bar) &&
+        note.bar >= 0 &&
+        note.bar < bars.length &&
+        finite(note.beatInBar) &&
+        note.beatInBar >= 0 &&
+        (note.slideToFret === null ||
+          (integer(note.slideToFret) && note.slideToFret >= 0)) &&
+        Array.isArray(note.techniques) &&
+        note.techniques.every((t) => techniques.has(t)),
+    )
+  )
+    return null;
+  return value as unknown as GuitarChart;
+}
+
 /** A chart with no `part` is a bass chart; otherwise `part` is its kind. */
 const PARSERS: Record<string, (value: unknown) => Chart | null> = {
   drums: parseDrumChart,
+  guitar: parseGuitarChart,
 };
 
 const knownKind = (part: string) =>

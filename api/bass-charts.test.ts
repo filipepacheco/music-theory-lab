@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Client } from '@libsql/client';
 import { fixtureChart } from '@/domain/bassChartFixture';
 import { fixtureDrumChart } from '@/domain/drumChartFixture';
+import { fixtureGuitarChart } from '@/domain/guitarChartFixture';
 
 const state = vi.hoisted(() => ({ client: null as Client | null }));
 vi.mock('@libsql/client', async (importOriginal) => {
@@ -246,6 +247,65 @@ describe('drum chart on the chart route', () => {
     const result = await write([{ ...drumRecord, id: 'b'.repeat(64) }]);
     expect(result.status).toBe(400);
     expect(await rows()).toEqual([]);
+  });
+});
+
+describe('guitar chart on the chart route', () => {
+  const guitar = fixtureGuitarChart(
+    2,
+    [
+      { bar: 0, beat: 0, string: 0, fret: 3 },
+      { bar: 0, beat: 0, string: 1, fret: 2, techniques: ['bend'] },
+      { bar: 1, beat: 1, string: 6, fret: 5, slideToFret: 7 },
+    ],
+    { openPitches: [35, 40, 45, 50, 55, 59, 64], capo: 2 },
+  );
+  const guitarRecord = {
+    id: guitar.id,
+    updatedAt: '2026-10-05T10:00:00.000Z',
+    chart: guitar,
+  };
+
+  it('gives a guitar chart of one device to a second device, in the same table', async () => {
+    expect((await write([record, drumRecord, guitarRecord])).status).toBe(200);
+    const page = await readAfter(0);
+    expect(page.records).toEqual([record, drumRecord, guitarRecord]);
+    const stored = (await rows()).find((row) => row.id === guitar.id)!;
+    expect(JSON.parse(String(stored.chart))).toEqual(guitar);
+  });
+
+  it('keeps a deletion record of a guitar chart against a stale upload', async () => {
+    await write([guitarRecord]);
+    const deletion = { ...guitarRecord, chart: null };
+    await write([deletion], 'second');
+    await write([guitarRecord], 'offline');
+    expect((await request('GET')).body).toEqual([deletion]);
+  });
+
+  it('refuses a malformed guitar chart and writes nothing', async () => {
+    const note = guitar.notes[0];
+    const bad: unknown[] = [
+      { ...guitar, partName: 3 },
+      { ...guitar, strings: 4, openPitches: [40, 45, 50, 55] },
+      { ...guitar, openPitches: [35, 40, 45] },
+      { ...guitar, capo: -1 },
+      { ...guitar, tuning: [0, 0, 0, 0] },
+      { ...guitar, audio: 'binary' },
+      { ...guitar, notes: [] },
+      { ...guitar, notes: [{ ...note, string: 7 }] },
+      { ...guitar, notes: [{ ...note, midi: note.midi + 1 }] },
+      { ...guitar, notes: [{ ...note, techniques: ['whammy'] }] },
+      { ...guitar, notes: [{ ...note, bar: 9 }] },
+      { ...guitar, bars: [] },
+    ];
+    for (const [index, item] of bad.entries()) {
+      const result = await write([{ ...guitarRecord, chart: item }]);
+      expect([index, result.status]).toEqual([index, 400]);
+    }
+    expect(
+      (await write([record, { ...guitarRecord, chart: bad[0] }])).status,
+    ).toBe(400);
+    expect((await request('GET')).body).toEqual([]);
   });
 });
 

@@ -39,6 +39,10 @@ interface Props {
   kickBeats?: readonly number[];
   octave?: number;
   selected?: boolean;
+  /** Strings of the tab: 4 for a bass, the strings of the track for a guitar. */
+  strings?: number;
+  /** Draws the bend of a note, as the guitar tab does. */
+  bends?: boolean;
 }
 
 export const FUNCTION_COLORS: Record<HarmonicFunction, string> = {
@@ -91,8 +95,12 @@ const FRET_FONT_SIZE = 11;
 const DEGREE_FONT_SIZE = 10;
 const PAD_TOP = 9;
 const LINE_GAP = 12;
-const STRING_COUNT = 4;
-const HEIGHT = PAD_TOP * 2 + LINE_GAP * (STRING_COUNT - 1);
+export const BASS_STRING_COUNT = 4;
+
+/** The height of the strings of a tab, for a count of strings. */
+function tabHeight(strings: number): number {
+  return PAD_TOP * 2 + LINE_GAP * (strings - 1);
+}
 const DEGREE_LANE = 12;
 const KICK_LANE = 14;
 const KICK_RADIUS = 3.5;
@@ -122,10 +130,14 @@ export function RepeatSign({ x, y }: { x: number; y: number }) {
   );
 }
 
-export function noteLabel(note: BassChartNote): string {
+/** `bends` adds the "b" of a bend, which the guitar tab draws and the bass tab does not. */
+export function noteLabel(note: BassChartNote, bends = false): string {
   const base = note.techniques.includes('mute') ? 'x' : String(note.fret);
-  if (note.slideToFret === null) return base;
-  return `${base}${note.slideToFret > note.fret ? '/' : '\\'}`;
+  const slid =
+    note.slideToFret === null
+      ? base
+      : `${base}${note.slideToFret > note.fret ? '/' : '\\'}`;
+  return bends && note.techniques.includes('bend') ? `${slid}b` : slid;
 }
 
 const CHAR_EM = 0.6;
@@ -134,16 +146,18 @@ export const LABEL_GAP = 4;
 export function barLabelLanes(
   notes: IndexedNote[],
   analysis: BarAnalysis | null,
+  strings = BASS_STRING_COUNT,
+  bends = false,
 ): LabelLane[] {
   const lanes: LabelLane[] = [];
-  for (let string = 0; string < STRING_COUNT; string += 1) {
+  for (let string = 0; string < strings; string += 1) {
     lanes.push({
       charWidth: FRET_FONT_SIZE * CHAR_EM,
       labels: notes
         .filter(({ note }) => note.string === string)
         .map(({ note }) => ({
           beat: note.beatInBar,
-          chars: noteLabel(note).length,
+          chars: noteLabel(note, bends).length,
         })),
     });
   }
@@ -195,8 +209,8 @@ export function barDegreeLevels(
   );
 }
 
-function stringY(string: number): number {
-  return PAD_TOP + (STRING_COUNT - 1 - string) * LINE_GAP;
+function stringY(string: number, strings: number): number {
+  return PAD_TOP + (strings - 1 - string) * LINE_GAP;
 }
 
 function spokenKicks(beats: readonly number[]): string {
@@ -274,7 +288,10 @@ function BassTabBar({
   selected = false,
   degreeLevels,
   kickBeats,
+  strings = BASS_STRING_COUNT,
+  bends = false,
 }: Props) {
+  const HEIGHT = tabHeight(strings);
   const repeat = repeatOf !== undefined;
   const width = PAD_X * 2 + bar.beatCount * beatWidth;
   const isActive = playhead !== null;
@@ -303,8 +320,8 @@ function BassTabBar({
   const spoken = ({ note, index }: IndexedNote): string => {
     const degree = degreeOf(index);
     return degree
-      ? `${noteLabel(note)} (${degreeLabel(degree)})`
-      : noteLabel(note);
+      ? `${noteLabel(note, bends)} (${degreeLabel(degree)})`
+      : noteLabel(note, bends);
   };
   const uncertainty = barUncertainty(analysis, noteNames);
   const details = barDetails({
@@ -385,13 +402,13 @@ function BassTabBar({
             strokeDasharray="1 3"
           />
         ))}
-        {Array.from({ length: STRING_COUNT }, (_, string) => (
+        {Array.from({ length: strings }, (_, string) => (
           <line
             key={`string-${string}`}
             x1={0}
             x2={width}
-            y1={stringY(string)}
-            y2={stringY(string)}
+            y1={stringY(string, strings)}
+            y2={stringY(string, strings)}
             stroke="var(--color-string)"
             strokeOpacity={repeat ? 0.25 : 0.55}
           />
@@ -429,7 +446,7 @@ function BassTabBar({
               <text
                 key={index}
                 x={PAD_X + note.beatInBar * beatWidth + 1}
-                y={stringY(note.string)}
+                y={stringY(note.string, strings)}
                 dominantBaseline="central"
                 fontSize={FRET_FONT_SIZE}
                 fontWeight={
@@ -449,7 +466,7 @@ function BassTabBar({
                 strokeWidth={3}
                 paintOrder="stroke"
               >
-                {noteLabel(note)}
+                {noteLabel(note, bends)}
               </text>
             );
           })}
