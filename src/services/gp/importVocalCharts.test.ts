@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { exporter, importer } from '@coderline/alphatab';
-import { parseBassChartRecord, parseChart } from '@/domain/bassChartRecord';
+import {
+  parseBassChartRecord,
+  parseChart,
+  parseVocalChart,
+} from '@/domain/bassChartRecord';
 import { isBassChart, isDrumChart, type Chart } from '@/domain/drumChart';
 import { isGuitarChart } from '@/domain/guitarChart';
 import { isVocalChart, type VocalChart } from '@/domain/vocalChart';
@@ -214,5 +218,31 @@ describe('Guitar Pro import of vocal tracks', () => {
         chart,
       })?.chart,
     ).toEqual(chart);
+  });
+
+  it('makes the shared parser reject a malformed vocal chart built from alphaTex', async () => {
+    const [chart] = await vocals(vocalTrack('Voz'));
+    const note = chart.notes[0];
+    const bad: unknown[] = [
+      { ...chart, partName: 3 },
+      { ...chart, trackIndex: -1 },
+      { ...chart, source: 'midi' },
+      { ...chart, strings: 6 },
+      { ...chart, audio: 'binary' },
+      { ...chart, notes: [] },
+      { ...chart, notes: [{ ...note, midi: 130 }] },
+      { ...chart, notes: [{ ...note, midi: 60.5 }] },
+      { ...chart, notes: [{ ...note, lyric: 4 }] },
+      { ...chart, notes: [{ ...note, lyric: 'x'.repeat(201) }] },
+      { ...chart, notes: [{ ...note, string: 1 }] },
+      { ...chart, notes: [{ ...note, bar: 99 }] },
+      { ...chart, notes: [{ ...note, endTime: note.time - 1 }] },
+      { ...chart, notes: [chart.notes[2], chart.notes[0]] },
+      { ...chart, bars: [] },
+    ];
+    for (const value of bad) {
+      expect(parseVocalChart(value)).toBeNull();
+      expect(parseChart(value)).toBeNull();
+    }
   });
 });
