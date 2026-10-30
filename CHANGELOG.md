@@ -18,6 +18,9 @@
   1.75 times larger, and stays in view while the groove editor is open.
 - **Changed**: with the Instrumentos panel collapsed, the module takes the
   full width and the collapsed panel bar sits above it.
+- **Fixed**: a section note no longer shrinks to a column of single letters
+  beside a wide bar grid. In a narrow module the note and the groove chart go
+  under the bars; beside them only from 56rem up, with at least 20rem.
 
 ## 2026-10-22 - Bass tab player layout
 

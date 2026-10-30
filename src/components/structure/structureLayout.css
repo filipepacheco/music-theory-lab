@@ -26,15 +26,30 @@
 
 @container (min-width: 32rem) {
   .structure-section-content {
-    grid-template-columns: auto minmax(0, max-content) minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
+  /* The note and the groove chart go under the bars. */
   .structure-section-notes {
-    grid-column: auto;
+    grid-column: 2;
   }
 
   .structure-section-tools {
     flex-direction: column;
+  }
+}
+
+/*
+ * Beside the bars only when the module is wide: there the bars take their
+ * width and the note keeps a readable one, never a column of letters.
+ */
+@container (min-width: 56rem) {
+  .structure-section-content {
+    grid-template-columns: auto minmax(0, max-content) minmax(20rem, 1fr);
+  }
+
+  .structure-section-notes {
+    grid-column: auto;
   }
 }
 

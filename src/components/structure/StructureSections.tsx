@@ -331,14 +331,9 @@ function DroppableSection({
           ))}
         </div>
 
-        <div
-          className={`structure-section-notes min-w-0 self-stretch grid items-start gap-2 ${
-            section.groove
-              ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]'
-              : 'grid-cols-1'
-          }`}
-        >
-          <div className="min-w-0">
+        <div className="structure-section-notes min-w-0 self-stretch flex flex-wrap items-start gap-2">
+          {/* The note keeps a readable width; the chart wraps under it. */}
+          <div className="min-w-0 flex-1 basis-48 self-stretch">
             <SectionComment
               comment={section.comment ?? ''}
               onChange={(value) => onSetComment(section.id, value)}
