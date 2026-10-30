@@ -3,11 +3,9 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   grooveTotalStepCount,
-  grooveMeasureCount,
-  GROOVE_BEATS_PER_MEASURE,
   grooveRow,
 } from '@/constants/groove';
-import { grooveHasHits } from '@/domain/grooveSchedule';
+import { grooveHasHits, grooveMeasures } from '@/domain/grooveSchedule';
 import {
   dotsForTimeSignature,
   effectiveBarColor,
@@ -160,31 +158,6 @@ export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
 
 const GROOVE_ROW_GAP = 2;
 
-export function groovePdfMeasures(groove: GroovePattern): GroovePattern[] {
-  const steps = grooveTotalStepCount(groove.subdivision, 1);
-  return Array.from(
-    { length: grooveMeasureCount(groove.measureCount) },
-    (_, index) => {
-      const firstBeat = index * GROOVE_BEATS_PER_MEASURE;
-      const beats = Object.entries(groove.beats ?? {})
-        .map(([beat, own]) => [Number(beat) - firstBeat, own] as const)
-        .filter(([beat]) => beat >= 0 && beat < GROOVE_BEATS_PER_MEASURE);
-      const measure: GroovePattern = {
-        ...groove,
-        measureCount: 1,
-        beats: beats.length > 0 ? Object.fromEntries(beats) : undefined,
-      };
-      for (const piece of DRUM_PIECES) {
-        measure[piece.id] = grooveRow(groove, piece.id).slice(
-          index * steps,
-          (index + 1) * steps,
-        );
-      }
-      return measure;
-    },
-  );
-}
-
 type WrapText = (text: string, maxWidth: number) => string[];
 
 export function calcSectionLayout(
@@ -224,7 +197,7 @@ export function calcSectionLayout(
       cfg.barsTopOffset + barsH + (commentLines.length > 0 ? 2 + commentH : 0);
   }
   const hasGroove = groovePdfRows(section.groove).length > 0;
-  const measures = section.groove ? groovePdfMeasures(section.groove) : [];
+  const measures = section.groove ? grooveMeasures(section.groove) : [];
   const notation = measures[0] ? grooveNotationLayout(measures[0]) : null;
   const grooveAvailableW = commentBeside ? availableBesideW : colW;
   // Keep the compact screen proportions, shrinking only to fit the notes column.
@@ -293,7 +266,7 @@ async function renderGroove(
     import('svg2pdf.js'),
     import('react-dom/server'),
   ]);
-  const measures = groovePdfMeasures(groove);
+  const measures = grooveMeasures(groove);
   const rowHeight =
     (height - GROOVE_ROW_GAP * (measures.length - 1)) / measures.length;
   for (const [index, measure] of measures.entries()) {

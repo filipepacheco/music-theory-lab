@@ -14,6 +14,10 @@
   change load with these rows empty.
 - **Changed**: the groove player counts 96 ticks a measure instead of 32, so
   the straight and the triplet grids share one clock.
+- **Changed**: the groove chart of a section draws one measure per line,
+  1.75 times larger, and stays in view while the groove editor is open.
+- **Changed**: with the Instrumentos panel collapsed, the module takes the
+  full width and the collapsed panel bar sits above it.
 
 ## 2026-10-22 - Bass tab player layout
 

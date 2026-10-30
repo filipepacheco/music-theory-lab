@@ -1,3 +1,4 @@
+import { grooveMeasures } from '@/domain/grooveSchedule';
 import { describe, expect, it } from 'vitest';
 import { grooveNotationLayout } from '@/components/structure/GrooveChart';
 import { grooveTotalStepCount } from '@/constants/groove';
@@ -6,7 +7,6 @@ import {
   FORMATS,
   calcSectionLayout,
   groovePdfRows,
-  groovePdfMeasures,
   layoutSections,
 } from './exportStructurePdf';
 
@@ -150,9 +150,7 @@ describe('structure PDF groove export', () => {
       expect(layout.grooveX).toBe(layout.gridW + FORMATS[format].commentGap);
       expect(layout.grooveY).toBe(FORMATS[format].barsTopOffset);
       expect(layout.totalH).toBe(FORMATS[format].barsTopOffset + layout.barsH);
-      const notation = grooveNotationLayout(
-        groovePdfMeasures(section.groove)[0],
-      );
+      const notation = grooveNotationLayout(grooveMeasures(section.groove)[0]);
       expect(layout.grooveH).toBeCloseTo(
         (2 * layout.grooveW * notation.height) / notation.width + 2,
       );
@@ -190,7 +188,7 @@ describe('structure PDF groove export', () => {
     pattern.chimbal = Array(16).fill(false);
     pattern.bumbo[0] = true;
     pattern.caixa[11] = true;
-    const measures = groovePdfMeasures(pattern);
+    const measures = grooveMeasures(pattern);
     expect(measures).toHaveLength(2);
     expect(measures.map((m) => m.measureCount)).toEqual([1, 1]);
     expect(measures[0].bumbo[0]).toBe(true);

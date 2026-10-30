@@ -137,3 +137,27 @@ it('writes a triplet fill in the last beat of a sixteenth-note groove', () => {
   expect(markup).toContain('data-piece="tomAgudo"');
   expect(markup).not.toContain('data-rest');
 });
+
+it('draws one staff line per measure', () => {
+  const twoMeasures = (on: number[]) =>
+    Array.from({ length: 16 }, (_, step) => on.includes(step));
+  const markup = renderToStaticMarkup(
+    createElement(GrooveChart, {
+      groove: {
+        subdivision: '8n',
+        measureCount: 2,
+        bumbo: twoMeasures([0, 8]),
+        caixa: twoMeasures([4, 12]),
+        chimbal: twoMeasures([]),
+        beats: {
+          7: { subdivision: '8t', hits: { surdo: [true, true, true] } },
+        },
+      },
+      color: 'currentColor',
+      currentTick: 100,
+    }),
+  );
+  expect(markup.match(/<svg/g)).toHaveLength(2);
+  expect(markup.match(/data-tuplet/g)).toHaveLength(1);
+  expect(markup).toContain('>2</text>');
+});

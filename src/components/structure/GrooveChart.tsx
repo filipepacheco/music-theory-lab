@@ -2,9 +2,12 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   GROOVE_SUBDIVISIONS,
+  GROOVE_TICKS_PER_MEASURE,
+  grooveMeasureCount,
 } from '@/constants/groove';
 import {
   grooveBeats,
+  grooveMeasures,
   grooveStepAtTick,
   type GrooveBeatView,
 } from '@/domain/grooveSchedule';
@@ -17,6 +20,8 @@ export interface GrooveChartProps {
   currentTick?: number;
   print?: boolean;
   firstMeasure?: number;
+  /** The drawn size against the natural one. */
+  scale?: number;
 }
 
 /** The ink of the notation: one neutral colour, as in a printed chart. */
@@ -126,10 +131,37 @@ export function grooveNotationLayout(groove: GroovePattern) {
   });
 }
 
-export function GrooveChart(props: GrooveChartProps) {
+/** How much larger than its natural size the chart of a section is drawn. */
+const SCREEN_SCALE = 1.75;
+
+/** The chart of a section groove: one staff line per measure. */
+export function GrooveChart({
+  groove,
+  currentTick = -1,
+  ...props
+}: GrooveChartProps) {
+  const totalTicks =
+    GROOVE_TICKS_PER_MEASURE * grooveMeasureCount(groove.measureCount);
+  const tick =
+    currentTick >= 0
+      ? ((currentTick % totalTicks) + totalTicks) % totalTicks
+      : -1;
   return (
-    <div className="min-w-0 max-w-full overflow-x-auto scrollbar-none">
-      <GrooveNotation {...props} />
+    <div className="min-w-0 max-w-full flex flex-col gap-1">
+      {grooveMeasures(groove).map((measure, index) => (
+        <GrooveNotation
+          key={index}
+          {...props}
+          groove={measure}
+          firstMeasure={index + 1}
+          scale={SCREEN_SCALE}
+          currentTick={
+            Math.floor(tick / GROOVE_TICKS_PER_MEASURE) === index
+              ? tick - index * GROOVE_TICKS_PER_MEASURE
+              : -1
+          }
+        />
+      ))}
     </div>
   );
 }
@@ -140,6 +172,7 @@ export function GrooveNotation({
   currentTick = -1,
   print = false,
   firstMeasure = 1,
+  scale = 1,
 }: GrooveChartProps) {
   const layout = grooveNotationLayout(groove);
   const INK = print ? '#222222' : SCREEN_INK;
@@ -179,7 +212,7 @@ export function GrooveNotation({
     <svg
       xmlns="http://www.w3.org/2000/svg"
       className="block w-auto max-w-full h-auto"
-      style={{ width: layout.width }}
+      style={{ width: layout.width * scale }}
       viewBox={`0 0 ${layout.width} ${layout.height}`}
       role="img"
       aria-label={label}

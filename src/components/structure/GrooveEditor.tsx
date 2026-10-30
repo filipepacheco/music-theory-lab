@@ -82,8 +82,8 @@ export function GrooveEditor({
 
   return (
     <div className="flex flex-col gap-2 border-t border-border-default pt-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             disabled={!hasGrooveHits && !isPlaying}
             onClick={(e) => {
@@ -158,7 +158,7 @@ export function GrooveEditor({
         </div>
       </div>
 
-      <div className="flex items-start gap-1 overflow-x-auto pb-0.5">
+      <div className="flex items-start gap-1">
         <div className="flex flex-col gap-[3px] shrink-0">
           <span className="h-5 w-14 font-mono text-micro text-text-muted flex items-center">
             Tempo
@@ -172,79 +172,90 @@ export function GrooveEditor({
             </span>
           ))}
         </div>
-        {beats.map((view) => (
-          <div
-            key={view.beat}
-            className="flex flex-col gap-[3px] shrink-0"
-            style={{
-              marginLeft:
-                view.beat > 0 && view.beat % GROOVE_BEATS_PER_MEASURE === 0
-                  ? '10px'
-                  : '3px',
-            }}
-          >
-            <select
-              value={view.subdivision}
-              aria-label={`Resolução do tempo ${view.beat + 1}`}
-              title={
-                view.own
-                  ? 'Este tempo tem resolução própria'
-                  : 'Resolução do tempo: igual à do groove'
-              }
-              onPointerDown={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                e.stopPropagation();
-                setFocusedSection(section.id);
-                setGrooveBeatSubdivision(
-                  section.id,
-                  view.beat,
-                  e.target.value as GrooveSubdivision,
-                );
-              }}
-              className={`h-5 bg-bg-tertiary border px-0.5 text-micro cursor-pointer ${
-                view.own
-                  ? 'border-border-strong text-text-primary'
-                  : 'border-border-default text-text-muted'
-              }`}
-            >
-              {GROOVE_SUBDIVISIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {(view.beat % GROOVE_BEATS_PER_MEASURE) + 1} ·{' '}
-                  {option.shortLabel}
-                </option>
-              ))}
-            </select>
-            {DRUM_PIECES.map((piece) => (
-              <div key={piece.id} className="flex gap-[3px]">
-                {Array.from({ length: view.stepsPerBeat }, (_, step) => {
-                  const active = view.hits[step].includes(piece.id);
-                  return (
-                    <button
-                      key={step}
-                      type="button"
-                      aria-label={`${DRUM_NAMES[piece.id]}, tempo ${view.beat + 1}, nota ${step + 1}`}
-                      aria-pressed={active}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleGrooveHit(section.id, piece.id, view.beat, step);
-                      }}
-                      className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 cursor-pointer"
-                      style={{
-                        backgroundColor: active
-                          ? color
-                          : 'var(--color-bg-tertiary)',
-                        border:
-                          step === 0
-                            ? '1px solid var(--color-border-default)'
-                            : '1px solid transparent',
-                      }}
-                    />
-                  );
-                })}
+        <div className="flex-1 min-w-0 overflow-x-auto pb-0.5">
+          <div className="flex min-w-max">
+            {beats.map((view) => (
+              <div
+                key={view.beat}
+                className="flex flex-col gap-[3px] shrink-0"
+                style={{
+                  marginLeft:
+                    view.beat === 0
+                      ? undefined
+                      : view.beat % GROOVE_BEATS_PER_MEASURE === 0
+                        ? '10px'
+                        : '3px',
+                }}
+              >
+                <select
+                  value={view.subdivision}
+                  aria-label={`Resolução do tempo ${view.beat + 1}`}
+                  title={
+                    view.own
+                      ? 'Este tempo tem resolução própria'
+                      : 'Resolução do tempo: igual à do groove'
+                  }
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setFocusedSection(section.id);
+                    setGrooveBeatSubdivision(
+                      section.id,
+                      view.beat,
+                      e.target.value as GrooveSubdivision,
+                    );
+                  }}
+                  className={`h-5 bg-bg-tertiary border px-0.5 text-micro cursor-pointer ${
+                    view.own
+                      ? 'border-border-strong text-text-primary'
+                      : 'border-border-default text-text-muted'
+                  }`}
+                >
+                  {GROOVE_SUBDIVISIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {(view.beat % GROOVE_BEATS_PER_MEASURE) + 1} ·{' '}
+                      {option.shortLabel}
+                    </option>
+                  ))}
+                </select>
+                {DRUM_PIECES.map((piece) => (
+                  <div key={piece.id} className="flex gap-[3px]">
+                    {Array.from({ length: view.stepsPerBeat }, (_, step) => {
+                      const active = view.hits[step].includes(piece.id);
+                      return (
+                        <button
+                          key={step}
+                          type="button"
+                          aria-label={`${DRUM_NAMES[piece.id]}, tempo ${view.beat + 1}, nota ${step + 1}`}
+                          aria-pressed={active}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleGrooveHit(
+                              section.id,
+                              piece.id,
+                              view.beat,
+                              step,
+                            );
+                          }}
+                          className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 cursor-pointer"
+                          style={{
+                            backgroundColor: active
+                              ? color
+                              : 'var(--color-bg-tertiary)',
+                            border:
+                              step === 0
+                                ? '1px solid var(--color-border-default)'
+                                : '1px solid transparent',
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );

@@ -6,6 +6,9 @@ import {
   grooveBeatCount,
   grooveBeatRow,
   grooveBeatSubdivision,
+  grooveMeasureCount,
+  grooveRow,
+  grooveTotalStepCount,
   grooveStepsPerBeat,
   grooveTuplet,
 } from '@/constants/groove';
@@ -47,6 +50,32 @@ export function grooveBeats(groove: GroovePattern): GrooveBeatView[] {
           rows.filter(({ row }) => row[step]).map(({ piece }) => piece),
         ),
       };
+    },
+  );
+}
+
+/** A groove cut into its measures, each a one-measure groove. */
+export function grooveMeasures(groove: GroovePattern): GroovePattern[] {
+  const steps = grooveTotalStepCount(groove.subdivision, 1);
+  return Array.from(
+    { length: grooveMeasureCount(groove.measureCount) },
+    (_, index) => {
+      const firstBeat = index * GROOVE_BEATS_PER_MEASURE;
+      const beats = Object.entries(groove.beats ?? {})
+        .map(([beat, own]) => [Number(beat) - firstBeat, own] as const)
+        .filter(([beat]) => beat >= 0 && beat < GROOVE_BEATS_PER_MEASURE);
+      const measure: GroovePattern = {
+        ...groove,
+        measureCount: 1,
+        beats: beats.length > 0 ? Object.fromEntries(beats) : undefined,
+      };
+      for (const piece of DRUM_PIECES) {
+        measure[piece.id] = grooveRow(groove, piece.id).slice(
+          index * steps,
+          (index + 1) * steps,
+        );
+      }
+      return measure;
     },
   );
 }
