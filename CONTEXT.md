@@ -114,16 +114,17 @@ _Avoid_: beat, rhythm
 **Fill**:
 A bar of a [[drum-chart]] section whose kick, snare, or hi-hat pattern differs
 from the section [[groove]]. The grid marks it. A bar that differs only in
-other [[drum-piece]]s, or that has none of the three, is not a fill.
+other [[drum-piece]]s, or that has no kick, snare, or hi-hat, is not a fill.
 _Avoid_: break, variation
 
 **Drum piece**:
 One element of the drum kit, and one row of a drum grid or a [[groove]] grid.
-The groove grid has eight: `bumbo` (kick), `caixa` (snare), `chimbal`
+Both grids have the same eight: `bumbo` (kick), `caixa` (snare), `chimbal`
 (hi-hat), `tomAgudo` (high tom), `tomMedio` (mid tom), `surdo` (floor tom),
-`ride`, and `crash`. A [[drum-chart]] has nine: those three, `tomAgudo` (high tom),
-`tomMedio` (mid tom), `surdo` (floor tom), `pratoAtaque` (crash),
-`pratoConducao` (ride), and `outros` (all other [[general-midi]] numbers). A
+and the two cymbals. The cymbals have two keys for the same pieces:
+`pratoAtaque` (crash) and `pratoConducao` (ride) in a [[drum-chart]], `crash`
+and `ride` in a [[groove]]. A drum-chart adds a ninth, `outros` (all other
+[[general-midi]] numbers). A
 piece can have an articulation: cross-stick on the snare; closed, open, or
 pedal on the hi-hat; china or splash on the crash; bell on the ride. Each
 piece list is a constant, so new pieces are an addition rather than a
