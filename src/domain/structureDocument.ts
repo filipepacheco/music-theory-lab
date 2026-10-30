@@ -222,12 +222,12 @@ function beatContents(groove: GroovePattern): BeatContent[] {
       return {
         subdivision: base,
         own: false,
-        rows: beatRows(baseSteps, (piece) =>
-          grooveRow(groove, piece).slice(
-            beat * baseSteps,
-            (beat + 1) * baseSteps,
-          ),
-        ),
+        rows: beatRows(baseSteps, (piece) => {
+          const row: unknown = groove[piece];
+          return Array.isArray(row)
+            ? row.slice(beat * baseSteps, (beat + 1) * baseSteps)
+            : undefined;
+        }),
       };
     },
   );
@@ -271,7 +271,12 @@ function buildGroove(
   return groove;
 }
 
-function normalizedGroove(groove: GroovePattern): GroovePattern {
+/**
+ * A groove in its canonical shape: every row at full length, and only the
+ * beats with a known resolution of their own in `beats`. It accepts a stored
+ * groove of any age or shape, so loads run it before anything reads the beats.
+ */
+export function normalizedGroove(groove: GroovePattern): GroovePattern {
   return buildGroove(
     baseSubdivision(groove),
     grooveMeasureCount(groove.measureCount),

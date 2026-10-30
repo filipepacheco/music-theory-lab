@@ -42,7 +42,7 @@ The Lighthouse components are the `lh-*` classes in `src/styles/lighthouse.css`.
 | `Button` | `[ label ]`. `variant="primary"` for the one filled action. |
 | `Tag` | `<WORD>`. |
 | `Field` | A text input with an optional prompt glyph. |
-| `Select` | A native select. |
+| `Select` | A native select. The `is-set` class marks one whose value overrides an inherited default. |
 | `Segmented` | One choice of a few. |
 | `Callout` | A note with a glyph in its gutter. |
 

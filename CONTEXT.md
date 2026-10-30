@@ -105,12 +105,12 @@ and any beat can take its own (a triplet fill on beat 4 of a sixteenth-note
 groove); such a beat keeps its hits in `beats`, not in the base rows. One groove
 per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
-The section preview renders a compact standard-style percussion chart.
-A [[drum-chart]] section has a groove too, worked out and not stored: the
+The section preview renders a standard-style percussion chart, one measure a
+line, and keeps it in view while the groove editor is open. A [[drum-chart]] section has a groove too, worked out and not stored: the
 section groove is the kick, snare, and hi-hat bar pattern that the section
 repeats most (the first one on a tie). The section header draws it with the same
-chart.
-_Avoid_: beat, rhythm
+chart. "Beat" here means a beat of the measure, never the groove itself.
+_Avoid_: beat (for the pattern), rhythm
 
 **Fill**:
 A bar of a [[drum-chart]] section whose kick, snare, or hi-hat pattern differs

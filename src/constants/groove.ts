@@ -150,7 +150,7 @@ export function grooveBeatRow(
   const own = groove.beats?.[beat];
   const steps = grooveStepsPerBeat(grooveBeatSubdivision(groove, beat));
   const source = own
-    ? (own.hits[piece] ?? [])
+    ? (own.hits?.[piece] ?? [])
     : grooveRow(groove, piece).slice(beat * steps, (beat + 1) * steps);
   return Array.from({ length: steps }, (_, step) => source[step] === true);
 }
