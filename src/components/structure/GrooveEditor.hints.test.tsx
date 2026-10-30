@@ -22,7 +22,33 @@ it('shows full drum names before and after tapping the groove grid', () => {
   for (const name of ['Bumbo', 'Caixa', 'Chimbal']) {
     const label = view.getByText(name);
     expect(label.closest('[hidden], [aria-hidden="true"]')).toBeNull();
-    fireEvent.click(view.getByRole('button', { name: `${name} 1` }));
+    fireEvent.click(
+      view.getByRole('button', { name: `${name}, tempo 1, nota 1` }),
+    );
     expect(view.getByText(name).isConnected).toBe(true);
   }
+});
+
+it('offers a resolution for each beat of the groove', () => {
+  const view = render(
+    <GrooveEditor
+      section={{ id: 'section', name: 'Parte 1', color: 'blue', barIds: [] }}
+      color="var(--color-accent)"
+      groovePlayer={{
+        play: vi.fn(),
+        stop: vi.fn(),
+        isPlaying: false,
+        playingSectionId: null,
+        currentTick: 0,
+      }}
+    />,
+  );
+  for (const beat of [1, 2, 3, 4]) {
+    expect(
+      view.getByRole('combobox', { name: `Resolução do tempo ${beat}` }),
+    ).toBeTruthy();
+  }
+  expect(
+    view.getAllByRole('button', { name: /^Caixa, tempo 4, nota/ }),
+  ).toHaveLength(4);
 });

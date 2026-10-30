@@ -428,6 +428,10 @@ textarea.lh-input {
   font: var(--type-ui);
   cursor: pointer;
 }
+.lh-select.is-set > select {
+  border-color: var(--fog-bright);
+  color: var(--fog-bright);
+}
 .lh-select > select:disabled {
   color: var(--fog-dim);
   opacity: 0.6;

@@ -97,30 +97,35 @@ _Avoid_: annotation, verse/chorus detection, semantic sections
 
 **Groove**:
 The main drum pattern of a structure section: a configurable subdivision grid
-over three drum pieces, drawn on the section as a memory aid for what the
+over eight drum pieces, drawn on the section as a memory aid for what the
 section's rhythm is. The supported grid resolutions cover quarter, eighth,
-sixteenth, and thirty-second notes across one or two 4/4 measures. One groove
+sixteenth, and thirty-second notes, plus eighth-note triplets and sixteenth-note
+sextuplets, across one or two 4/4 measures. The groove has a base resolution,
+and any beat can take its own (a triplet fill on beat 4 of a sixteenth-note
+groove); such a beat keeps its hits in `beats`, not in the base rows. One groove
 per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
-The section preview renders a compact standard-style percussion chart.
-A [[drum-chart]] section has a groove too, worked out and not stored: the
+The section preview renders a standard-style percussion chart, one measure a
+line, and keeps it in view while the groove editor is open. A [[drum-chart]] section has a groove too, worked out and not stored: the
 section groove is the kick, snare, and hi-hat bar pattern that the section
 repeats most (the first one on a tie). The section header draws it with the same
-chart.
-_Avoid_: beat, rhythm
+chart. "Beat" here means a beat of the measure, never the groove itself.
+_Avoid_: beat (for the pattern), rhythm
 
 **Fill**:
 A bar of a [[drum-chart]] section whose kick, snare, or hi-hat pattern differs
 from the section [[groove]]. The grid marks it. A bar that differs only in
-other [[drum-piece]]s, or that has none of the three, is not a fill.
+other [[drum-piece]]s, or that has no kick, snare, or hi-hat, is not a fill.
 _Avoid_: break, variation
 
 **Drum piece**:
 One element of the drum kit, and one row of a drum grid or a [[groove]] grid.
-The groove grid has three: `bumbo` (kick), `caixa` (snare), and `chimbal`
-(hi-hat). A [[drum-chart]] has nine: those three, `tomAgudo` (high tom),
-`tomMedio` (mid tom), `surdo` (floor tom), `pratoAtaque` (crash),
-`pratoConducao` (ride), and `outros` (all other [[general-midi]] numbers). A
+Both grids have the same eight: `bumbo` (kick), `caixa` (snare), `chimbal`
+(hi-hat), `tomAgudo` (high tom), `tomMedio` (mid tom), `surdo` (floor tom),
+and the two cymbals. The cymbals have two keys for the same pieces:
+`pratoAtaque` (crash) and `pratoConducao` (ride) in a [[drum-chart]], `crash`
+and `ride` in a [[groove]]. A drum-chart adds a ninth, `outros` (all other
+[[general-midi]] numbers). A
 piece can have an articulation: cross-stick on the snare; closed, open, or
 pedal on the hi-hat; china or splash on the crash; bell on the ride. Each
 piece list is a constant, so new pieces are an addition rather than a

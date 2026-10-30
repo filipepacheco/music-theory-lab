@@ -235,7 +235,11 @@ interface GrooveSample {
 const DRUM_SAMPLE_BASE_URL = `${import.meta.env.BASE_URL}drum-samples/`;
 const GROOVE_SAMPLE_BASE_URL = DRUM_SAMPLE_BASE_URL;
 
-function createGrooveSample(sample: DrumSampleId, mixDb: number): GrooveSample {
+function createGrooveSample(
+  sample: DrumSampleId,
+  mixDb: number,
+  playbackRate = 1,
+): GrooveSample {
   let resolveReady: (loaded: boolean) => void = () => {};
   const ready = new Promise<boolean>((resolve) => {
     resolveReady = resolve;
@@ -244,6 +248,7 @@ function createGrooveSample(sample: DrumSampleId, mixDb: number): GrooveSample {
     url: `${GROOVE_SAMPLE_BASE_URL}${sample}.flac`,
     volume: DRUM_SAMPLE_TRIM_DB[sample] + mixDb,
     fadeOut: 0.015,
+    playbackRate,
     onload: () => resolveReady(true),
     onerror: () => resolveReady(false),
   }).connect(reverb);
@@ -254,6 +259,12 @@ const grooveSamples: Record<DrumPiece, GrooveSample> = {
   bumbo: createGrooveSample('kick', -3),
   caixa: createGrooveSample('snare', -4),
   chimbal: createGrooveSample('hihat-closed', -2),
+  // The same tom samples and pitches as the drum charts of the Biblioteca.
+  tomAgudo: createGrooveSample('tom-high', -3),
+  tomMedio: createGrooveSample('tom-low', -3, 1.12),
+  surdo: createGrooveSample('tom-low', -3, 0.84),
+  ride: createGrooveSample('ride', -4),
+  crash: createGrooveSample('crash', -6),
 };
 
 const grooveSamplesReady = Promise.all(

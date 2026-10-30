@@ -62,6 +62,12 @@ html body,
     position: sticky;
     top: 6rem;
   }
+  /* A collapsed panel gives its column to the module and waits above it. */
+  .instrument-workspace.is-collapsed {
+    position: relative;
+    top: auto;
+    order: -1;
+  }
 }
 
 .module-workspace {

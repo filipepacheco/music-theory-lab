@@ -1,5 +1,6 @@
 import { SECTION_COLORS, SECTION_LABELS } from '@/constants/songSections';
 import { STRUCTURE_PALETTE } from '@/constants/structureColors';
+import { normalizedGroove } from '@/domain/structureDocument';
 import type { GroovePattern, StructureBar, StructureSection } from '@/types';
 
 export interface LegacySection {
@@ -14,9 +15,18 @@ export interface LegacySection {
   groove?: GroovePattern;
 }
 
+/** A stored groove, normalized, or none when it is not an object. */
+function loadedGroove(groove: unknown): GroovePattern | undefined {
+  if (typeof groove !== 'object' || groove === null || Array.isArray(groove)) {
+    return undefined;
+  }
+  return normalizedGroove(groove as GroovePattern);
+}
+
 export function migrateSection(raw: LegacySection): StructureSection {
   if (raw.name !== undefined && raw.color !== undefined) {
-    return raw as StructureSection;
+    if (raw.groove === undefined) return raw as StructureSection;
+    return { ...(raw as StructureSection), groove: loadedGroove(raw.groove) };
   }
   const sectionType = raw.type ?? 'custom';
   return {
@@ -32,7 +42,7 @@ export function migrateSection(raw: LegacySection): StructureSection {
     barIds: raw.barIds,
     repeatOf: raw.repeatOf,
     comment: raw.comment,
-    groove: raw.groove,
+    groove: loadedGroove(raw.groove),
   };
 }
 

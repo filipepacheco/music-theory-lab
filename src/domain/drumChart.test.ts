@@ -83,10 +83,15 @@ describe('drum piece map', () => {
     ]);
   });
 
-  it('leaves the groove grid of the Estrutura module with its three drum pieces', () => {
+  it('leaves the groove grid of the Estrutura module with its eight drum pieces', () => {
     expect(DRUM_PIECES.map((piece) => piece.id)).toEqual([
+      'crash',
+      'ride',
       'chimbal',
+      'tomAgudo',
+      'tomMedio',
       'caixa',
+      'surdo',
       'bumbo',
     ]);
   });

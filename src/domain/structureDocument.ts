@@ -3,8 +3,11 @@ import {
   DEFAULT_GROOVE_MEASURE_COUNT,
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
-  grooveStepCount,
+  GROOVE_SUBDIVISIONS,
+  grooveBeatCount,
   grooveMeasureCount,
+  grooveRow,
+  grooveStepsPerBeat,
   grooveTotalStepCount,
 } from '@/constants/groove';
 import type {
@@ -88,7 +91,14 @@ export interface StructureDocumentModule {
     document: StructureDocument,
     sectionId: string,
     piece: DrumPiece,
+    beat: number,
     step: number,
+  ): StructureDocument;
+  setGrooveBeatSubdivision(
+    document: StructureDocument,
+    sectionId: string,
+    beat: number,
+    subdivision: GrooveSubdivision,
   ): StructureDocument;
   setGrooveSubdivision(
     document: StructureDocument,
@@ -145,29 +155,133 @@ function emptyGroove(
   measureCount: GrooveMeasureCount = DEFAULT_GROOVE_MEASURE_COUNT,
 ): GroovePattern {
   const stepCount = grooveTotalStepCount(subdivision, measureCount);
-  return {
+  const groove: GroovePattern = {
     subdivision,
     measureCount,
-    bumbo: Array(stepCount).fill(false),
-    caixa: Array(stepCount).fill(false),
-    chimbal: Array(stepCount).fill(false),
+    bumbo: [],
+    caixa: [],
+    chimbal: [],
   };
+  for (const piece of DRUM_PIECES) {
+    groove[piece.id] = Array(stepCount).fill(false);
+  }
+  return groove;
 }
 
-function normalizedGroove(groove: GroovePattern): GroovePattern {
-  const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
-  const measureCount = grooveMeasureCount(groove.measureCount);
-  const normalized = emptyGroove(subdivision, measureCount);
-  const stepCount = grooveTotalStepCount(subdivision, measureCount);
+/** The resolution and the hits of one beat of a groove. */
+interface BeatContent {
+  subdivision: GrooveSubdivision;
+  /** True when the beat has its own resolution, not the base one. */
+  own: boolean;
+  rows: Record<DrumPiece, boolean[]>;
+}
+
+function isGrooveSubdivision(value: unknown): value is GrooveSubdivision {
+  return GROOVE_SUBDIVISIONS.some((option) => option.id === value);
+}
+
+function baseSubdivision(groove: GroovePattern): GrooveSubdivision {
+  return isGrooveSubdivision(groove.subdivision)
+    ? groove.subdivision
+    : DEFAULT_GROOVE_SUBDIVISION;
+}
+
+function beatRows(
+  steps: number,
+  read: (piece: DrumPiece) => unknown,
+): Record<DrumPiece, boolean[]> {
+  const rows = {} as Record<DrumPiece, boolean[]>;
   for (const piece of DRUM_PIECES) {
-    const row = groove[piece.id];
-    if (Array.isArray(row)) {
-      for (let step = 0; step < stepCount; step++) {
-        normalized[piece.id][step] = row[step] === true;
-      }
-    }
+    const row = read(piece.id);
+    rows[piece.id] = Array.from(
+      { length: steps },
+      (_, step) => Array.isArray(row) && row[step] === true,
+    );
   }
-  return normalized;
+  return rows;
+}
+
+/** Each beat of a groove as stored, with unknown or missing data dropped. */
+function beatContents(groove: GroovePattern): BeatContent[] {
+  const base = baseSubdivision(groove);
+  const baseSteps = grooveStepsPerBeat(base);
+  return Array.from(
+    { length: grooveBeatCount(groove.measureCount) },
+    (_, beat) => {
+      const own = groove.beats?.[beat];
+      if (own && isGrooveSubdivision(own.subdivision)) {
+        return {
+          subdivision: own.subdivision,
+          own: true,
+          rows: beatRows(
+            grooveStepsPerBeat(own.subdivision),
+            (piece) => own.hits?.[piece],
+          ),
+        };
+      }
+      return {
+        subdivision: base,
+        own: false,
+        rows: beatRows(baseSteps, (piece) => {
+          const row: unknown = groove[piece];
+          return Array.isArray(row)
+            ? row.slice(beat * baseSteps, (beat + 1) * baseSteps)
+            : undefined;
+        }),
+      };
+    },
+  );
+}
+
+/** A beat row at another resolution: the hits that fall on its grid. */
+function resampleBeatRow(row: boolean[], steps: number): boolean[] {
+  const target: boolean[] = Array(steps).fill(false);
+  row.forEach((hit, step) => {
+    const scaled = step * steps;
+    if (hit && scaled % row.length === 0) target[scaled / row.length] = true;
+  });
+  return target;
+}
+
+/**
+ * A groove from the content of its beats. A beat at the base resolution, or
+ * not marked as its own, goes to the base rows; any other keeps its own entry.
+ */
+function buildGroove(
+  subdivision: GrooveSubdivision,
+  measureCount: GrooveMeasureCount,
+  contents: BeatContent[],
+): GroovePattern {
+  const groove = emptyGroove(subdivision, measureCount);
+  const steps = grooveStepsPerBeat(subdivision);
+  const beatCount = grooveBeatCount(measureCount);
+  contents.slice(0, beatCount).forEach((content, beat) => {
+    if (content.own && content.subdivision !== subdivision) {
+      groove.beats = {
+        ...groove.beats,
+        [beat]: { subdivision: content.subdivision, hits: content.rows },
+      };
+      return;
+    }
+    for (const piece of DRUM_PIECES) {
+      const row = resampleBeatRow(content.rows[piece.id], steps);
+      grooveRow(groove, piece.id).splice(beat * steps, steps, ...row);
+    }
+  });
+  return groove;
+}
+
+/**
+ * A groove in its canonical shape: every row at full length, and only the
+ * beats with a known resolution of their own in `beats`. It accepts a stored
+ * groove of any age or shape, so loads run it before anything reads the beats.
+ */
+export function normalizedGroove(groove: GroovePattern): GroovePattern {
+  return buildGroove(
+    baseSubdivision(groove),
+    grooveMeasureCount(groove.measureCount),
+    beatContents(groove),
+  );
 }
 
 function resampleGroove(
@@ -175,29 +289,7 @@ function resampleGroove(
   subdivision: GrooveSubdivision,
   measureCount = grooveMeasureCount(groove.measureCount),
 ): GroovePattern {
-  const source = normalizedGroove(groove);
-  const target = emptyGroove(subdivision, measureCount);
-  const sourceStepCount = grooveStepCount(source.subdivision);
-  const targetStepCount = grooveStepCount(subdivision);
-  const sourceMeasureCount = grooveMeasureCount(source.measureCount);
-  const measuresToCopy = Math.min(sourceMeasureCount, measureCount);
-
-  for (const piece of DRUM_PIECES) {
-    for (let measure = 0; measure < measuresToCopy; measure++) {
-      for (let sourceStep = 0; sourceStep < sourceStepCount; sourceStep++) {
-        const sourceIndex = measure * sourceStepCount + sourceStep;
-        if (!source[piece.id][sourceIndex]) continue;
-
-        const scaledStep = sourceStep * targetStepCount;
-        if (scaledStep % sourceStepCount === 0) {
-          const targetIndex = measure * targetStepCount;
-          target[piece.id][targetIndex + scaledStep / sourceStepCount] = true;
-        }
-      }
-    }
-  }
-
-  return target;
+  return buildGroove(subdivision, measureCount, beatContents(groove));
 }
 
 export function createStructureDocumentModule(
@@ -300,15 +392,7 @@ export function createStructureDocumentModule(
         barIds: newBars.map((bar) => bar.id),
         comment: source.comment,
         barsPerRow: source.barsPerRow,
-        groove: sourceGroove
-          ? {
-              subdivision: sourceGroove.subdivision,
-              measureCount: sourceGroove.measureCount,
-              bumbo: [...sourceGroove.bumbo],
-              caixa: [...sourceGroove.caixa],
-              chimbal: [...sourceGroove.chimbal],
-            }
-          : undefined,
+        groove: sourceGroove ? normalizedGroove(sourceGroove) : undefined,
       };
       const insertIndex = document.sections.indexOf(source) + 1;
       const sections = [...document.sections];
@@ -365,17 +449,45 @@ export function createStructureDocumentModule(
       ),
     }),
 
-    toggleGrooveHit: (document, sectionId, piece, step) => {
+    toggleGrooveHit: (document, sectionId, piece, beat, step) => {
       const section = document.sections.find((item) => item.id === sectionId);
       if (!section) return document;
-      const groove = normalizedGroove(section.groove ?? emptyGroove());
-      if (
-        step < 0 ||
-        step >= grooveTotalStepCount(groove.subdivision, groove.measureCount)
-      ) {
-        return document;
+      const source = section.groove ?? emptyGroove();
+      const contents = beatContents(source);
+      const row = contents[beat]?.rows[piece];
+      if (!row || step < 0 || step >= row.length) return document;
+      row[step] = !row[step];
+      const groove = buildGroove(
+        baseSubdivision(source),
+        grooveMeasureCount(source.measureCount),
+        contents,
+      );
+      return {
+        bars: document.bars,
+        sections: document.sections.map((item) =>
+          item.id === sectionId ? { ...item, groove } : item,
+        ),
+      };
+    },
+
+    setGrooveBeatSubdivision: (document, sectionId, beat, subdivision) => {
+      const section = document.sections.find((item) => item.id === sectionId);
+      if (!section || !isGrooveSubdivision(subdivision)) return document;
+      const source = normalizedGroove(section.groove ?? emptyGroove());
+      const contents = beatContents(source);
+      const content = contents[beat];
+      if (!content) return document;
+      const steps = grooveStepsPerBeat(subdivision);
+      for (const piece of DRUM_PIECES) {
+        content.rows[piece.id] = resampleBeatRow(content.rows[piece.id], steps);
       }
-      groove[piece][step] = !groove[piece][step];
+      content.subdivision = subdivision;
+      content.own = subdivision !== source.subdivision;
+      const groove = buildGroove(
+        source.subdivision,
+        grooveMeasureCount(source.measureCount),
+        contents,
+      );
       return {
         bars: document.bars,
         sections: document.sections.map((item) =>

@@ -333,7 +333,7 @@ function DroppableSection({
 
         <div
           className={`structure-section-notes min-w-0 self-stretch grid items-start gap-2 ${
-            !grooveOpen && section.groove
+            section.groove
               ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]'
               : 'grid-cols-1'
           }`}
@@ -345,7 +345,7 @@ function DroppableSection({
             />
           </div>
 
-          {!grooveOpen && section.groove && (
+          {section.groove && (
             <button
               type="button"
               onClick={(e) => {

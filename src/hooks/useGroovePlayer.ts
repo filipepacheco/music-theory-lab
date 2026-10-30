@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
 import { DEFAULT_GROOVE_SUBDIVISION } from '@/constants/groove';
 import {
-  grooveHits,
+  grooveHasHits,
   grooveHitsAtTick,
-  grooveStepDuration,
+  grooveTickDuration,
 } from '@/domain/grooveSchedule';
 import { stopScheduledMetronomes } from '@/hooks/useMetronome';
 import {
@@ -82,8 +82,7 @@ export function useGroovePlayer(): GroovePlayer {
 
   const play = useCallback(
     async (groove: GroovePattern, bpm: number) => {
-      const hits = grooveHits(groove);
-      if (!hits.some((step) => step.length > 0)) return;
+      if (!grooveHasHits(groove)) return;
 
       stop();
 
@@ -113,7 +112,7 @@ export function useGroovePlayer(): GroovePlayer {
         token !== tokenRef.current ||
         useAppStore.getState().focusedSectionId !== sectionId ||
         !latestGroove ||
-        !grooveHits(latestGroove).some((step) => step.length > 0)
+        !grooveHasHits(latestGroove)
       ) {
         if (token === tokenRef.current) stop();
         return;
@@ -125,28 +124,25 @@ export function useGroovePlayer(): GroovePlayer {
       playingRef.current = true;
       playingSectionIdRef.current = sectionId;
 
-      const loop = new Tone.Loop(
-        (time) => {
-          if (!playingRef.current || tokenRef.current !== token) return;
+      const loop = new Tone.Loop((time) => {
+        if (!playingRef.current || tokenRef.current !== token) return;
 
-          const currentGroove = grooveRef.current;
-          if (!currentGroove) return;
+        const currentGroove = grooveRef.current;
+        if (!currentGroove) return;
 
-          const tick = tickRef.current;
-          for (const piece of grooveHitsAtTick(currentGroove.groove, tick)) {
-            playbackEngine.playGrooveHit(piece, time);
+        const tick = tickRef.current;
+        for (const piece of grooveHitsAtTick(currentGroove.groove, tick)) {
+          playbackEngine.playGrooveHit(piece, time);
+        }
+
+        Tone.getDraw().schedule(() => {
+          if (playingRef.current && tokenRef.current === token) {
+            setCurrentTick(tick);
           }
+        }, time);
 
-          Tone.getDraw().schedule(() => {
-            if (playingRef.current && tokenRef.current === token) {
-              setCurrentTick(tick);
-            }
-          }, time);
-
-          tickRef.current += 1;
-        },
-        grooveStepDuration(bpm, '32n'),
-      );
+        tickRef.current += 1;
+      }, grooveTickDuration(bpm));
 
       loopRef.current = loop;
       loop.start(0);

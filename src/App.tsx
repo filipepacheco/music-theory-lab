@@ -36,7 +36,7 @@ export default function App() {
 
       <main
         className={`px-4 sm:px-6 lg:px-8 py-6 app-workspace gap-8 max-w-full ${
-          showInstruments ? '' : 'is-single'
+          showInstruments && instrumentsPanelOpen ? '' : 'is-single'
         }`}
       >
         <div className="module-workspace">

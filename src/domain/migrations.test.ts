@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { migrateSection, migrateStructureData } from './migrations';
-import type { StructureBar } from '@/types';
+import type { GroovePattern, StructureBar } from '@/types';
 
 const bar = (id: string): StructureBar => ({
   id,
@@ -57,7 +57,47 @@ describe('migrateSection', () => {
       groove,
     });
 
-    expect(migrated.groove).toEqual(groove);
+    expect(migrated.groove).toMatchObject(groove);
+    expect(migrated.groove?.surdo).toEqual(Array(8).fill(false));
+  });
+
+  it('drops malformed beats of a stored groove', () => {
+    const migrated = migrateSection({
+      id: 's1',
+      name: 'A',
+      color: '#000000',
+      barIds: [],
+      groove: {
+        subdivision: '4n',
+        bumbo: [true, false, false, false],
+        caixa: 'x',
+        chimbal: [],
+        beats: {
+          0: 'triplet',
+          1: { subdivision: '8t' },
+          2: { subdivision: '5n', hits: { caixa: [true] } },
+        },
+      } as unknown as GroovePattern,
+    });
+
+    expect(migrated.groove?.bumbo).toEqual([true, false, false, false]);
+    expect(migrated.groove?.caixa).toEqual(Array(4).fill(false));
+    expect(Object.keys(migrated.groove?.beats ?? {})).toEqual(['1']);
+    expect(migrated.groove?.beats?.[1].hits.caixa).toEqual(
+      Array(3).fill(false),
+    );
+  });
+
+  it('drops a stored groove that is not an object', () => {
+    const migrated = migrateSection({
+      id: 's1',
+      name: 'A',
+      color: '#000000',
+      barIds: [],
+      groove: 'groove' as unknown as GroovePattern,
+    });
+
+    expect(migrated.groove).toBeUndefined();
   });
 });
 
