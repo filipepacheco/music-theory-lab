@@ -62,7 +62,17 @@ export type GrooveSubdivision = '4n' | '8n' | '8t' | '16n' | '16t' | '32n';
 
 export type GrooveMeasureCount = 1 | 2;
 
+/** The hits of each drum piece, one entry a step. */
+export type GrooveRows = Partial<Record<DrumPiece, boolean[]>>;
+
+/** One beat written at a resolution other than the base of its groove. */
+export interface GrooveBeat {
+  subdivision: GrooveSubdivision;
+  hits: GrooveRows;
+}
+
 export interface GroovePattern {
+  /** The base resolution: of every beat that has no entry in `beats`. */
   subdivision: GrooveSubdivision;
   measureCount?: GrooveMeasureCount;
   bumbo: boolean[];
@@ -74,6 +84,12 @@ export interface GroovePattern {
   surdo?: boolean[];
   ride?: boolean[];
   crash?: boolean[];
+  /**
+   * Beats with their own resolution, by beat index across the measures (a
+   * triplet fill in a sixteenth-note groove). The base rows have no hit in
+   * such a beat.
+   */
+  beats?: Record<number, GrooveBeat>;
 }
 
 export interface StructureBar {
@@ -230,7 +246,17 @@ export interface AppState {
     sectionId: string,
     barsPerRow: number | undefined,
   ) => void;
-  toggleGrooveHit: (sectionId: string, piece: DrumPiece, step: number) => void;
+  toggleGrooveHit: (
+    sectionId: string,
+    piece: DrumPiece,
+    beat: number,
+    step: number,
+  ) => void;
+  setGrooveBeatSubdivision: (
+    sectionId: string,
+    beat: number,
+    subdivision: GrooveSubdivision,
+  ) => void;
   setGrooveSubdivision: (
     sectionId: string,
     subdivision: GrooveSubdivision,

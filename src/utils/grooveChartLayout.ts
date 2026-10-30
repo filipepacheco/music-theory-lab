@@ -1,5 +1,6 @@
 import {
   DEFAULT_GROOVE_SUBDIVISION,
+  GROOVE_BEATS_PER_MEASURE,
   grooveMeasureCount,
   grooveStepCount,
   grooveStepsPerBeat,
@@ -21,6 +22,7 @@ export interface GrooveChartLayout {
   totalSteps: number;
   stepsPerBeat: number;
   measureWidth: number;
+  beatWidth: number;
   labelWidth: number;
   width: number;
   height: number;
@@ -35,6 +37,8 @@ export interface GrooveChartLayout {
   stepX: (step: number) => number;
   measureX: (measure: number) => number;
   beatX: (measure: number, beat: number) => number;
+  /** The left edge of a beat, by its index across the measures. */
+  beatStartX: (beat: number) => number;
 }
 
 export function grooveChartLayout(
@@ -46,8 +50,15 @@ export function grooveChartLayout(
   const stepsPerMeasure = grooveStepCount(subdivision);
   const totalSteps = grooveTotalStepCount(subdivision, measureCount);
   const stepsPerBeat = grooveStepsPerBeat(subdivision);
+  const finestStepsPerBeat = Math.max(
+    stepsPerBeat,
+    ...Object.values(groove.beats ?? {}).map((beat) =>
+      grooveStepsPerBeat(beat.subdivision),
+    ),
+  );
   const measureWidth =
-    options.measureWidth ?? (subdivision === '32n' ? 184 : 168);
+    options.measureWidth ?? (finestStepsPerBeat >= 8 ? 184 : 168);
+  const beatWidth = measureWidth / GROOVE_BEATS_PER_MEASURE;
   const labelWidth = options.labelWidth ?? 30;
   const staffTop = options.staffTop ?? 23;
   const staffSpacing = options.staffSpacing ?? 6;
@@ -63,6 +74,7 @@ export function grooveChartLayout(
     totalSteps,
     stepsPerBeat,
     measureWidth,
+    beatWidth,
     labelWidth,
     width: staffRight,
     height,
@@ -92,5 +104,6 @@ export function grooveChartLayout(
     measureX: (measure) => staffLeft + measure * measureWidth,
     beatX: (measure, beat) =>
       staffLeft + measure * measureWidth + (beat / 4) * measureWidth,
+    beatStartX: (beat) => staffLeft + beat * beatWidth,
   };
 }

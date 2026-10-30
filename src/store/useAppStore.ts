@@ -498,13 +498,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ structureSections: next.sections });
   },
 
-  toggleGrooveHit: (sectionId, piece, step) => {
+  toggleGrooveHit: (sectionId, piece, beat, step) => {
     const { structureBars, structureSections } = get();
     const next = structureDocument.toggleGrooveHit(
       { bars: structureBars, sections: structureSections },
       sectionId,
       piece,
+      beat,
       step,
+    );
+    set({ structureSections: next.sections });
+  },
+
+  setGrooveBeatSubdivision: (sectionId, beat, subdivision) => {
+    const { structureBars, structureSections } = get();
+    const next = structureDocument.setGrooveBeatSubdivision(
+      { bars: structureBars, sections: structureSections },
+      sectionId,
+      beat,
+      subdivision,
     );
     set({ structureSections: next.sections });
   },

@@ -2,11 +2,12 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   GROOVE_SUBDIVISIONS,
-  GROOVE_TICKS_PER_MEASURE,
-  grooveMeasureCount,
-  grooveTuplet,
 } from '@/constants/groove';
-import { grooveHits } from '@/domain/grooveSchedule';
+import {
+  grooveBeats,
+  grooveStepAtTick,
+  type GrooveBeatView,
+} from '@/domain/grooveSchedule';
 import { grooveChartLayout } from '@/utils/grooveChartLayout';
 import type { DrumPiece, GroovePattern } from '@/types';
 
@@ -57,27 +58,50 @@ interface NoteStem {
   fullBeat: boolean;
 }
 
+/** The beats beamed together: one beat, or two beats of straight eighths. */
+interface BeamGroup {
+  firstBeat: number;
+  stepsPerBeat: number;
+  tuplet?: number;
+  /** The pieces hit on each step of the group. */
+  hits: DrumPiece[][];
+}
+
+function beamGroups(views: GrooveBeatView[]): BeamGroup[] {
+  const groups: BeamGroup[] = [];
+  for (let index = 0; index < views.length; index += 1) {
+    const view = views[index];
+    const next = views[index + 1];
+    const pair =
+      view.subdivision === '8n' &&
+      next?.subdivision === '8n' &&
+      view.beat % 2 === 0;
+    groups.push({
+      firstBeat: view.beat,
+      stepsPerBeat: view.stepsPerBeat,
+      tuplet: view.tuplet,
+      hits: pair ? [...view.hits, ...next.hits] : view.hits,
+    });
+    if (pair) index += 1;
+  }
+  return groups;
+}
+
 /**
  * The stems of one beam group. A note lasts to the next hit of its group;
  * the last note lasts to the end of its own beat, because a beat with no hit
  * gets its own rest. A tuplet note is drawn with the value it stands for: a
  * triplet eighth as an eighth, a sextuplet sixteenth as a sixteenth.
  */
-function groupStems(
-  hits: DrumPiece[][],
-  start: number,
-  end: number,
-  stepsPerBeat: number,
-  tuplet: number | undefined,
-): NoteStem[] {
+function groupStems({ hits, stepsPerBeat, tuplet }: BeamGroup): NoteStem[] {
   const notatedStepsPerBeat = tuplet ? (stepsPerBeat * 2) / 3 : stepsPerBeat;
   const steps: number[] = [];
-  for (let step = start; step < end; step += 1) {
-    if ((hits[step]?.length ?? 0) > 0) steps.push(step);
+  for (let step = 0; step < hits.length; step += 1) {
+    if (hits[step].length > 0) steps.push(step);
   }
   return steps.map((step, index) => {
     const beatEnd = (Math.floor(step / stepsPerBeat) + 1) * stepsPerBeat;
-    const stop = steps[index + 1] ?? Math.min(end, beatEnd);
+    const stop = steps[index + 1] ?? beatEnd;
     const fullBeat = step % stepsPerBeat === 0 && stop - step === stepsPerBeat;
     const quarters = fullBeat ? 1 : (stop - step) / notatedStepsPerBeat;
     const level = Math.floor(Math.log2(quarters));
@@ -96,7 +120,9 @@ export function grooveNotationLayout(groove: GroovePattern) {
     labelWidth: CLEF_WIDTH,
     staffTop: STAFF_TOP,
     staffSpacing: STAFF_SPACING,
-    height: grooveTuplet(groove.subdivision) ? HEIGHT + TUPLET_HEIGHT : HEIGHT,
+    height: grooveBeats(groove).some((view) => view.tuplet)
+      ? HEIGHT + TUPLET_HEIGHT
+      : HEIGHT,
   });
 }
 
@@ -120,33 +146,33 @@ export function GrooveNotation({
   const muted = print ? '#666666' : 'var(--color-text-muted)';
   const secondary = print ? '#555555' : 'var(--color-text-secondary)';
   const font = print ? 'courier' : 'var(--font-mono)';
-  const hits = grooveHits(groove);
-  const tuplet = grooveTuplet(groove.subdivision);
-  const totalTicks =
-    GROOVE_TICKS_PER_MEASURE * grooveMeasureCount(groove.measureCount);
-  const normalizedTick = ((currentTick % totalTicks) + totalTicks) % totalTicks;
-  const ticksPerStep = totalTicks / layout.totalSteps;
-  const activeStep =
-    currentTick >= 0 ? Math.floor(normalizedTick / ticksPerStep) : -1;
-  const headRx = Math.min(3.6, layout.stepWidth * 0.38);
+  const views = grooveBeats(groove);
+  const active =
+    currentTick >= 0 ? grooveStepAtTick(groove, currentTick) : null;
+  const activeStepWidth = active
+    ? layout.beatWidth / views[active.beat].stepsPerBeat
+    : 0;
+  const finestStepWidth =
+    layout.beatWidth / Math.max(...views.map((view) => view.stepsPerBeat));
+  const headRx = Math.min(3.6, finestStepWidth * 0.38);
   const headRy = headRx * 0.72;
   const crossHalf = headRx * 0.9;
   const beamY = layout.staffBottom + STEM_BELOW;
-  const stemX = (step: number) => layout.stepX(step) - headRx + 0.4;
-  const groupSize =
-    layout.stepsPerBeat === 2 ? layout.stepsPerBeat * 2 : layout.stepsPerBeat;
   const tupletY = beamY + TUPLET_HEIGHT;
-  const groups = Array.from(
-    { length: layout.totalSteps / groupSize },
-    (_, group) =>
-      groupStems(
-        hits,
-        group * groupSize,
-        (group + 1) * groupSize,
-        layout.stepsPerBeat,
-        tuplet,
-      ),
-  );
+  const groups = beamGroups(views).map((group) => {
+    const stepWidth = layout.beatWidth / group.stepsPerBeat;
+    const left = layout.beatStartX(group.firstBeat);
+    return {
+      ...group,
+      stepWidth,
+      left,
+      stems: groupStems(group).map((stem) => ({
+        ...stem,
+        x: left + (stem.step + 0.5) * stepWidth,
+      })),
+    };
+  });
+  const stemX = (x: number) => x - headRx + 0.4;
   const label = `Chart de bateria, ${layout.measureCount} ${layout.measureCount === 1 ? 'compasso' : 'compassos'}, resolução ${resolutionLabel(groove)}`;
 
   return (
@@ -225,19 +251,25 @@ export function GrooveNotation({
         />
       ))}
 
-      {activeStep >= 0 && activeStep < layout.totalSteps && (
+      {active && (
         <>
           <rect
-            x={layout.stepStartX(activeStep)}
+            x={layout.beatStartX(active.beat) + active.step * activeStepWidth}
             y={layout.staffTop - 8}
-            width={layout.stepWidth}
+            width={activeStepWidth}
             height={beamY - layout.staffTop + 10}
             fill={color}
             opacity={0.12}
           />
           <line
-            x1={layout.stepX(activeStep)}
-            x2={layout.stepX(activeStep)}
+            x1={
+              layout.beatStartX(active.beat) +
+              (active.step + 0.5) * activeStepWidth
+            }
+            x2={
+              layout.beatStartX(active.beat) +
+              (active.step + 0.5) * activeStepWidth
+            }
             y1={layout.staffTop - 9}
             y2={beamY + 3}
             stroke={color}
@@ -248,40 +280,32 @@ export function GrooveNotation({
         </>
       )}
 
-      {Array.from({ length: layout.measureCount }, (_, measure) =>
-        Array.from({ length: 4 }, (_, beat) => {
-          const start =
-            measure * layout.stepsPerMeasure + beat * layout.stepsPerBeat;
-          const hasHit = Array.from(
-            { length: layout.stepsPerBeat },
-            (_, offset) => hits[start + offset]?.length ?? 0,
-          ).some(Boolean);
-          if (hasHit) return null;
-          return (
-            <path
-              key={`rest-${measure}-${beat}`}
-              data-rest
-              d={quarterRestPath(
-                layout.beatX(measure, beat) + layout.measureWidth / 8,
-                layout.staffTop + layout.staffSpacing * 2,
-              )}
-              fill="none"
-              stroke={INK}
-              strokeWidth={1.1}
-              strokeLinecap="round"
-            />
-          );
-        }),
-      )}
+      {views.map((view) => {
+        if (view.hits.some((pieces) => pieces.length > 0)) return null;
+        return (
+          <path
+            key={`rest-${view.beat}`}
+            data-rest
+            d={quarterRestPath(
+              layout.beatStartX(view.beat) + layout.beatWidth / 2,
+              layout.staffTop + layout.staffSpacing * 2,
+            )}
+            fill="none"
+            stroke={INK}
+            strokeWidth={1.1}
+            strokeLinecap="round"
+          />
+        );
+      })}
 
-      {groups.map((stems, group) =>
+      {groups.map(({ stems, stepWidth }, group) =>
         stems.map((stem, index) => {
           const prev = stems[index - 1];
           const next = stems[index + 1];
           const alone = !(prev?.beams || next?.beams);
           return Array.from({ length: stem.beams }, (_, level) => {
             const y = beamY - level * BEAM_GAP;
-            const x = stemX(stem.step);
+            const x = stemX(stem.x);
             const key = `beam-${group}-${stem.step}-${level}`;
             if (alone) {
               return (
@@ -302,7 +326,7 @@ export function GrooveNotation({
                   key={key}
                   data-beam
                   x1={x}
-                  x2={stemX(next.step)}
+                  x2={stemX(next.x)}
                   y1={y}
                   y2={y}
                   stroke={INK}
@@ -312,7 +336,7 @@ export function GrooveNotation({
             }
             if (prev && prev.beams > level) return null;
             // A short beam that points to the note it belongs with.
-            const stub = Math.min(5, layout.stepWidth * 0.6);
+            const stub = Math.min(5, stepWidth * 0.6);
             const toward = prev ? -stub : stub;
             return (
               <line
@@ -330,47 +354,53 @@ export function GrooveNotation({
         }),
       )}
 
-      {tuplet !== undefined &&
-        groups.map((stems, group) => {
-          if (stems.length === 0) return null;
-          if (stems.length === 1 && stems[0].fullBeat) return null;
-          const start = layout.stepStartX(group * groupSize);
-          const end = layout.stepStartX((group + 1) * groupSize);
-          return (
-            <text
-              key={`tuplet-${group}`}
-              data-tuplet
-              x={(start + end) / 2}
-              y={tupletY}
-              textAnchor="middle"
-              fill={INK}
-              fontFamily={font}
-              fontSize={7}
-              fontStyle="italic"
-              fontWeight="600"
-            >
-              {tuplet}
-            </text>
-          );
-        })}
-
-      {groups.flat().map((stem) => {
-        const x = layout.stepX(stem.step);
-        const top = Math.min(
-          ...stem.pieces.map((piece) => layout.noteY[piece]),
-        );
+      {groups.map(({ stems, tuplet, left }, group) => {
+        if (tuplet === undefined || stems.length === 0) return null;
+        if (stems.length === 1 && stems[0].fullBeat) return null;
         return (
-          <g key={`note-${stem.step}`} data-step={stem.step}>
-            <line
-              x1={stemX(stem.step)}
-              x2={stemX(stem.step)}
-              y1={top}
-              y2={beamY + BEAM_WIDTH / 2}
-              stroke={INK}
-              strokeWidth={0.9}
-            />
-            {DRUM_PIECES.filter((piece) => stem.pieces.includes(piece.id)).map(
-              (piece) => {
+          <text
+            key={`tuplet-${group}`}
+            data-tuplet
+            x={left + layout.beatWidth / 2}
+            y={tupletY}
+            textAnchor="middle"
+            fill={INK}
+            fontFamily={font}
+            fontSize={7}
+            fontStyle="italic"
+            fontWeight="600"
+          >
+            {tuplet}
+          </text>
+        );
+      })}
+
+      {groups
+        .flatMap(({ stems, firstBeat }) =>
+          stems.map((stem) => ({ ...stem, firstBeat })),
+        )
+        .map((stem) => {
+          const x = stem.x;
+          const top = Math.min(
+            ...stem.pieces.map((piece) => layout.noteY[piece]),
+          );
+          return (
+            <g
+              key={`note-${stem.firstBeat}-${stem.step}`}
+              data-beat={stem.firstBeat}
+              data-step={stem.step}
+            >
+              <line
+                x1={stemX(x)}
+                x2={stemX(x)}
+                y1={top}
+                y2={beamY + BEAM_WIDTH / 2}
+                stroke={INK}
+                strokeWidth={0.9}
+              />
+              {DRUM_PIECES.filter((piece) =>
+                stem.pieces.includes(piece.id),
+              ).map((piece) => {
                 const y = layout.noteY[piece.id];
                 return (
                   <g key={piece.id} data-piece={piece.id}>
@@ -413,11 +443,10 @@ export function GrooveNotation({
                     )}
                   </g>
                 );
-              },
-            )}
-          </g>
-        );
-      })}
+              })}
+            </g>
+          );
+        })}
 
       <text
         x={2}

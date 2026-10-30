@@ -73,7 +73,13 @@ describe('structure document', () => {
     const module = createStructureDocumentModule();
 
     it('creates a 16-step pattern with one hit on first toggle', () => {
-      const result = module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0);
+      const result = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        0,
+        0,
+      );
 
       const groove = result.sections[0].groove;
       expect(groove?.subdivision).toBe('16n');
@@ -85,31 +91,45 @@ describe('structure document', () => {
     });
 
     it('toggles a hit off again without removing the pattern', () => {
-      const withHit = module.toggleGrooveHit(baseDocument, 'intro', 'caixa', 4);
-      const result = module.toggleGrooveHit(withHit, 'intro', 'caixa', 4);
+      const withHit = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'caixa',
+        1,
+        0,
+      );
+      const result = module.toggleGrooveHit(withHit, 'intro', 'caixa', 1, 0);
 
       expect(result.sections[0].groove?.caixa[4]).toBe(false);
       expect(result.sections[0].groove).toBeDefined();
     });
 
     it('ignores out-of-range steps', () => {
-      const result = module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 16);
+      const result = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        4,
+        0,
+      );
 
       expect(result.sections[0].groove).toBeUndefined();
     });
 
     it('changes resolution while preserving aligned hits', () => {
       const withHits = module.toggleGrooveHit(
-        module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0),
+        module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0, 0),
         'intro',
         'bumbo',
+        0,
         1,
       );
       const withDownbeat = module.toggleGrooveHit(
         withHits,
         'intro',
         'bumbo',
-        4,
+        1,
+        0,
       );
       const result = module.setGrooveSubdivision(withDownbeat, 'intro', '8n');
 
@@ -138,10 +158,11 @@ describe('structure document', () => {
         2,
       );
       const withHits = module.toggleGrooveHit(
-        module.toggleGrooveHit(twoMeasures, 'intro', 'bumbo', 0),
+        module.toggleGrooveHit(twoMeasures, 'intro', 'bumbo', 0, 0),
         'intro',
         'bumbo',
-        16,
+        4,
+        0,
       );
 
       expect(withHits.sections[0].groove?.bumbo).toHaveLength(32);
@@ -155,10 +176,11 @@ describe('structure document', () => {
 
     it('keeps the beat starts when switching to triplets', () => {
       const withHits = module.toggleGrooveHit(
-        module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 4),
+        module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 1, 0),
         'intro',
         'bumbo',
-        6,
+        1,
+        2,
       );
       const result = module.setGrooveSubdivision(withHits, 'intro', '8t');
       const bumbo = result.sections[0].groove?.bumbo;
@@ -195,7 +217,7 @@ describe('structure document', () => {
             : section,
         ),
       };
-      const result = module.toggleGrooveHit(legacy, 'intro', 'crash', 0);
+      const result = module.toggleGrooveHit(legacy, 'intro', 'crash', 0, 0);
       const groove = result.sections[0].groove;
 
       expect(groove?.crash?.[0]).toBe(true);
@@ -203,12 +225,90 @@ describe('structure document', () => {
       expect(groove?.bumbo[0]).toBe(true);
     });
 
+    it('writes a triplet fill in one beat of a sixteenth-note groove', () => {
+      const withKick = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        3,
+        0,
+      );
+      const triplet = module.setGrooveBeatSubdivision(
+        withKick,
+        'intro',
+        3,
+        '8t',
+      );
+      const result = module.toggleGrooveHit(triplet, 'intro', 'caixa', 3, 2);
+      const groove = result.sections[0].groove;
+
+      expect(groove?.subdivision).toBe('16n');
+      expect(groove?.bumbo).toHaveLength(16);
+      expect(groove?.bumbo[12]).toBe(false);
+      expect(groove?.beats?.[3]?.subdivision).toBe('8t');
+      expect(groove?.beats?.[3]?.hits.bumbo).toEqual([true, false, false]);
+      expect(groove?.beats?.[3]?.hits.caixa).toEqual([false, false, true]);
+      expect(groove?.beats?.[0]).toBeUndefined();
+    });
+
+    it('returns a beat to the base resolution with its aligned hits', () => {
+      const sextuplet = module.setGrooveBeatSubdivision(
+        baseDocument,
+        'intro',
+        1,
+        '16t',
+      );
+      const withHits = module.toggleGrooveHit(
+        module.toggleGrooveHit(sextuplet, 'intro', 'caixa', 1, 0),
+        'intro',
+        'caixa',
+        1,
+        3,
+      );
+      const withOdd = module.toggleGrooveHit(withHits, 'intro', 'caixa', 1, 1);
+      const result = module.setGrooveBeatSubdivision(
+        withOdd,
+        'intro',
+        1,
+        '16n',
+      );
+      const groove = result.sections[0].groove;
+
+      expect(groove?.beats).toBeUndefined();
+      expect(groove?.caixa.slice(4, 8)).toEqual([true, false, true, false]);
+    });
+
+    it('keeps own beats when the base resolution or the length changes', () => {
+      const triplet = module.setGrooveBeatSubdivision(
+        module.setGrooveMeasureCount(baseDocument, 'intro', 2),
+        'intro',
+        6,
+        '8t',
+      );
+      const withHit = module.toggleGrooveHit(triplet, 'intro', 'caixa', 6, 1);
+
+      const eighths = module.setGrooveSubdivision(withHit, 'intro', '8n');
+      expect(eighths.sections[0].groove?.beats?.[6]?.hits.caixa).toEqual([
+        false,
+        true,
+        false,
+      ]);
+
+      const asBase = module.setGrooveSubdivision(withHit, 'intro', '8t');
+      expect(asBase.sections[0].groove?.beats).toBeUndefined();
+      expect(asBase.sections[0].groove?.caixa[19]).toBe(true);
+
+      const oneMeasure = module.setGrooveMeasureCount(withHit, 'intro', 1);
+      expect(oneMeasure.sections[0].groove?.beats).toBeUndefined();
+    });
+
     it('clears the whole pattern', () => {
       const withHit = module.toggleGrooveHit(
         baseDocument,
         'intro',
         'chimbal',
-        8,
+        2,
+        0,
       );
       const result = module.clearGroove(withHit, 'intro');
 
@@ -216,7 +316,13 @@ describe('structure document', () => {
     });
 
     it('copies the groove when duplicating a section', () => {
-      const withHit = module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 0);
+      const withHit = module.toggleGrooveHit(
+        baseDocument,
+        'intro',
+        'bumbo',
+        0,
+        0,
+      );
       const result = module.duplicateSection(withHit, 'intro', '4/4');
 
       expect(result?.sections[1].groove?.bumbo[0]).toBe(true);

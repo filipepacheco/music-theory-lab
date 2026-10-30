@@ -1,14 +1,12 @@
 import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
+  GROOVE_BEATS_PER_MEASURE,
   GROOVE_MEASURE_COUNTS,
   GROOVE_SUBDIVISIONS,
   grooveMeasureCount,
-  grooveRow,
-  grooveStepCount,
-  grooveStepsPerBeat,
-  grooveTotalStepCount,
 } from '@/constants/groove';
+import { grooveBeats, grooveHasHits } from '@/domain/grooveSchedule';
 import type { GroovePlayer } from '@/hooks/useGroovePlayer';
 import { useAppStore } from '@/store/useAppStore';
 import { GrooveChart } from '@/components/structure/GrooveChart';
@@ -32,10 +30,6 @@ const DRUM_NAMES: Record<DrumPiece, string> = {
   crash: 'Ataque',
 };
 
-function hasAnyHit(groove: GroovePattern): boolean {
-  return DRUM_PIECES.some((piece) => grooveRow(groove, piece.id).some(Boolean));
-}
-
 export function GroovePreview({
   groove,
   color,
@@ -45,7 +39,7 @@ export function GroovePreview({
   color: string;
   currentTick?: number;
 }) {
-  if (!groove || !hasAnyHit(groove)) return null;
+  if (!groove || !grooveHasHits(groove)) return null;
 
   return (
     <GrooveChart groove={groove} color={color} currentTick={currentTick} />
@@ -64,16 +58,25 @@ export function GrooveEditor({
   const toggleGrooveHit = useAppStore((s) => s.toggleGrooveHit);
   const clearGroove = useAppStore((s) => s.clearGroove);
   const setGrooveSubdivision = useAppStore((s) => s.setGrooveSubdivision);
+  const setGrooveBeatSubdivision = useAppStore(
+    (s) => s.setGrooveBeatSubdivision,
+  );
   const setGrooveMeasureCount = useAppStore((s) => s.setGrooveMeasureCount);
   const structureBpm = useAppStore((s) => s.structureBpm);
   const setFocusedSection = useAppStore((s) => s.setFocusedSection);
 
-  const hasGrooveHits = section.groove ? hasAnyHit(section.groove) : false;
+  const hasGrooveHits = section.groove ? grooveHasHits(section.groove) : false;
   const subdivision = section.groove?.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
   const measureCount = grooveMeasureCount(section.groove?.measureCount);
-  const stepsPerMeasure = grooveStepCount(subdivision);
-  const stepCount = grooveTotalStepCount(subdivision, measureCount);
-  const stepsPerBeat = grooveStepsPerBeat(subdivision);
+  const beats = grooveBeats(
+    section.groove ?? {
+      subdivision,
+      measureCount,
+      bumbo: [],
+      caixa: [],
+      chimbal: [],
+    },
+  );
   const isPlaying =
     groovePlayer.isPlaying && groovePlayer.playingSectionId === section.id;
 
@@ -102,7 +105,7 @@ export function GrooveEditor({
           <span className="lh-label">Groove</span>
           <select
             value={subdivision}
-            aria-label="Resolução do groove"
+            aria-label="Resolução base do groove"
             onPointerDown={(e) => e.stopPropagation()}
             onChange={(e) => {
               e.stopPropagation();
@@ -155,51 +158,94 @@ export function GrooveEditor({
         </div>
       </div>
 
-      {DRUM_PIECES.map((piece) => (
-        <div key={piece.id} className="flex items-center gap-1">
-          <span className="w-14 shrink-0 font-mono text-small text-text-muted">
-            {DRUM_NAMES[piece.id]}
+      <div className="flex items-start gap-1 overflow-x-auto pb-0.5">
+        <div className="flex flex-col gap-[3px] shrink-0">
+          <span className="h-5 w-14 font-mono text-micro text-text-muted flex items-center">
+            Tempo
           </span>
-          <div className="flex-1 min-w-0 overflow-x-auto pb-0.5">
-            <div className="flex gap-[3px] min-w-max">
-              {Array.from({ length: stepCount }, (_, step) => {
-                const active = section.groove
-                  ? grooveRow(section.groove, piece.id)[step] === true
-                  : false;
-                return (
-                  <button
-                    key={step}
-                    type="button"
-                    aria-label={`${DRUM_NAMES[piece.id]} ${step + 1}`}
-                    aria-pressed={active}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleGrooveHit(section.id, piece.id, step);
-                    }}
-                    className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 cursor-pointer"
-                    style={{
-                      backgroundColor: active
-                        ? color
-                        : 'var(--color-bg-tertiary)',
-                      marginLeft:
-                        step > 0 && step % stepsPerMeasure === 0
-                          ? '10px'
-                          : step % stepsPerBeat === 0
-                            ? '6px'
-                            : undefined,
-                      border:
-                        step % stepsPerMeasure === 0 ||
-                        step % stepsPerBeat === 0
-                          ? '1px solid var(--color-border-default)'
-                          : '1px solid transparent',
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div>
+          {DRUM_PIECES.map((piece) => (
+            <span
+              key={piece.id}
+              className="h-4 sm:h-5 w-14 flex items-center font-mono text-small text-text-muted"
+            >
+              {DRUM_NAMES[piece.id]}
+            </span>
+          ))}
         </div>
-      ))}
+        {beats.map((view) => (
+          <div
+            key={view.beat}
+            className="flex flex-col gap-[3px] shrink-0"
+            style={{
+              marginLeft:
+                view.beat > 0 && view.beat % GROOVE_BEATS_PER_MEASURE === 0
+                  ? '10px'
+                  : '3px',
+            }}
+          >
+            <select
+              value={view.subdivision}
+              aria-label={`Resolução do tempo ${view.beat + 1}`}
+              title={
+                view.own
+                  ? 'Este tempo tem resolução própria'
+                  : 'Resolução do tempo: igual à do groove'
+              }
+              onPointerDown={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                e.stopPropagation();
+                setFocusedSection(section.id);
+                setGrooveBeatSubdivision(
+                  section.id,
+                  view.beat,
+                  e.target.value as GrooveSubdivision,
+                );
+              }}
+              className={`h-5 bg-bg-tertiary border px-0.5 text-micro cursor-pointer ${
+                view.own
+                  ? 'border-border-strong text-text-primary'
+                  : 'border-border-default text-text-muted'
+              }`}
+            >
+              {GROOVE_SUBDIVISIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {(view.beat % GROOVE_BEATS_PER_MEASURE) + 1} ·{' '}
+                  {option.shortLabel}
+                </option>
+              ))}
+            </select>
+            {DRUM_PIECES.map((piece) => (
+              <div key={piece.id} className="flex gap-[3px]">
+                {Array.from({ length: view.stepsPerBeat }, (_, step) => {
+                  const active = view.hits[step].includes(piece.id);
+                  return (
+                    <button
+                      key={step}
+                      type="button"
+                      aria-label={`${DRUM_NAMES[piece.id]}, tempo ${view.beat + 1}, nota ${step + 1}`}
+                      aria-pressed={active}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleGrooveHit(section.id, piece.id, view.beat, step);
+                      }}
+                      className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 cursor-pointer"
+                      style={{
+                        backgroundColor: active
+                          ? color
+                          : 'var(--color-bg-tertiary)',
+                        border:
+                          step === 0
+                            ? '1px solid var(--color-border-default)'
+                            : '1px solid transparent',
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -4,8 +4,10 @@ import {
   DRUM_PIECES,
   grooveTotalStepCount,
   grooveMeasureCount,
+  GROOVE_BEATS_PER_MEASURE,
   grooveRow,
 } from '@/constants/groove';
+import { grooveHasHits } from '@/domain/grooveSchedule';
 import {
   dotsForTimeSignature,
   effectiveBarColor,
@@ -152,7 +154,8 @@ export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
     ),
   }));
 
-  return rows.some((row) => row.hits.some(Boolean)) ? rows : [];
+  // A groove whose only hits are in beats of their own resolution still prints.
+  return grooveHasHits(groove) ? rows : [];
 }
 
 const GROOVE_ROW_GAP = 2;
@@ -162,7 +165,15 @@ export function groovePdfMeasures(groove: GroovePattern): GroovePattern[] {
   return Array.from(
     { length: grooveMeasureCount(groove.measureCount) },
     (_, index) => {
-      const measure: GroovePattern = { ...groove, measureCount: 1 };
+      const firstBeat = index * GROOVE_BEATS_PER_MEASURE;
+      const beats = Object.entries(groove.beats ?? {})
+        .map(([beat, own]) => [Number(beat) - firstBeat, own] as const)
+        .filter(([beat]) => beat >= 0 && beat < GROOVE_BEATS_PER_MEASURE);
+      const measure: GroovePattern = {
+        ...groove,
+        measureCount: 1,
+        beats: beats.length > 0 ? Object.fromEntries(beats) : undefined,
+      };
       for (const piece of DRUM_PIECES) {
         measure[piece.id] = grooveRow(groove, piece.id).slice(
           index * steps,

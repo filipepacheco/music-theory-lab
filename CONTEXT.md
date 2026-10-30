@@ -100,8 +100,9 @@ The main drum pattern of a structure section: a configurable subdivision grid
 over eight drum pieces, drawn on the section as a memory aid for what the
 section's rhythm is. The supported grid resolutions cover quarter, eighth,
 sixteenth, and thirty-second notes, plus eighth-note triplets and sixteenth-note
-sextuplets, across one or two 4/4 measures. A resolution applies to the whole
-groove; a groove cannot mix straight and triplet beats. One groove
+sextuplets, across one or two 4/4 measures. The groove has a base resolution,
+and any beat can take its own (a triplet fill on beat 4 of a sixteenth-note
+groove); such a beat keeps its hits in `beats`, not in the base rows. One groove
 per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
 The section preview renders a compact standard-style percussion chart.

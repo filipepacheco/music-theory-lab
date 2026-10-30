@@ -120,3 +120,37 @@ export const DRUM_PIECES: { id: DrumPiece; label: string }[] = [
 export function grooveRow(groove: GroovePattern, piece: DrumPiece): boolean[] {
   return groove[piece] ?? [];
 }
+
+export const GROOVE_BEATS_PER_MEASURE = 4;
+
+export function grooveBeatCount(
+  measureCount: GrooveMeasureCount | undefined,
+): number {
+  return GROOVE_BEATS_PER_MEASURE * grooveMeasureCount(measureCount);
+}
+
+/** The resolution of one beat: its own, or the base of the groove. */
+export function grooveBeatSubdivision(
+  groove: GroovePattern,
+  beat: number,
+): GrooveSubdivision {
+  return (
+    groove.beats?.[beat]?.subdivision ??
+    groove.subdivision ??
+    DEFAULT_GROOVE_SUBDIVISION
+  );
+}
+
+/** The hits of one piece in one beat, one entry a step of that beat. */
+export function grooveBeatRow(
+  groove: GroovePattern,
+  beat: number,
+  piece: DrumPiece,
+): boolean[] {
+  const own = groove.beats?.[beat];
+  const steps = grooveStepsPerBeat(grooveBeatSubdivision(groove, beat));
+  const source = own
+    ? (own.hits[piece] ?? [])
+    : grooveRow(groove, piece).slice(beat * steps, (beat + 1) * steps);
+  return Array.from({ length: steps }, (_, step) => source[step] === true);
+}

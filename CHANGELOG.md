@@ -5,8 +5,9 @@
 - **Added**: two triplet resolutions for the groove of a structure section:
   "1/8T · Tercinas de colcheia" (3 steps a beat) and "1/16T · Sextinas"
   (6 steps a beat). The chart beams each tuplet beat and writes its 3 or 6.
-  A resolution applies to the whole groove, so one groove cannot mix straight
-  and triplet beats.
+  Each beat also has its own resolution select, so a fill can put a triplet
+  or a sextuplet on the snare and toms in one beat of a straight groove.
+  Changing a beat's resolution keeps the hits that fall on its new grid.
 - **Added**: five rows in the groove editor: Ataque (crash), Condução (ride),
   Tom 1, Tom 2, and Surdo. They play the Virtuosity Drums samples and sit at
   their standard drum-notation places in the chart. Grooves saved before this

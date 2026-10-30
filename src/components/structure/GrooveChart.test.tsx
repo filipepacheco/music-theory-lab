@@ -108,3 +108,32 @@ it('draws a hit that fills a triplet beat as a plain quarter', () => {
   expect(markup).not.toContain('data-tuplet');
   expect(markup).not.toContain('data-flag');
 });
+
+it('writes a triplet fill in the last beat of a sixteenth-note groove', () => {
+  const sixteenths = (on: number[]) =>
+    Array.from({ length: 16 }, (_, step) => on.includes(step));
+  const markup = renderToStaticMarkup(
+    createElement(GrooveChart, {
+      groove: {
+        subdivision: '16n',
+        measureCount: 1,
+        bumbo: sixteenths([0, 8]),
+        caixa: sixteenths([4]),
+        chimbal: sixteenths([0, 2, 4, 6, 8, 10]),
+        beats: {
+          3: {
+            subdivision: '8t',
+            hits: {
+              caixa: [true, true, false],
+              tomAgudo: [false, false, true],
+            },
+          },
+        },
+      },
+      color: 'currentColor',
+    }),
+  );
+  expect(markup.match(/data-tuplet/g)).toHaveLength(1);
+  expect(markup).toContain('data-piece="tomAgudo"');
+  expect(markup).not.toContain('data-rest');
+});

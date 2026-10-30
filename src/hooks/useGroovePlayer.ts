@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
 import { DEFAULT_GROOVE_SUBDIVISION } from '@/constants/groove';
 import {
-  grooveHits,
+  grooveHasHits,
   grooveHitsAtTick,
   grooveTickDuration,
 } from '@/domain/grooveSchedule';
@@ -82,8 +82,7 @@ export function useGroovePlayer(): GroovePlayer {
 
   const play = useCallback(
     async (groove: GroovePattern, bpm: number) => {
-      const hits = grooveHits(groove);
-      if (!hits.some((step) => step.length > 0)) return;
+      if (!grooveHasHits(groove)) return;
 
       stop();
 
@@ -113,7 +112,7 @@ export function useGroovePlayer(): GroovePlayer {
         token !== tokenRef.current ||
         useAppStore.getState().focusedSectionId !== sectionId ||
         !latestGroove ||
-        !grooveHits(latestGroove).some((step) => step.length > 0)
+        !grooveHasHits(latestGroove)
       ) {
         if (token === tokenRef.current) stop();
         return;

@@ -6,7 +6,8 @@ import type {
   GrooveSubdivision,
 } from '@/types';
 import {
-  grooveHits,
+  grooveBeats,
+  grooveHasHits,
   grooveHitsAtTick,
   grooveStepDuration,
   grooveTickDuration,
@@ -24,6 +25,10 @@ function emptyGroove(
     chimbal: Array(grooveTotalStepCount(subdivision, measureCount)).fill(false),
   };
 }
+
+/** The hits of every step, beat after beat. */
+const grooveHits = (groove: GroovePattern) =>
+  grooveBeats(groove).flatMap((view) => view.hits);
 
 describe('groove schedule', () => {
   it('returns hits aligned to each grid step', () => {
@@ -99,5 +104,33 @@ describe('groove schedule', () => {
     expect(grooveHits(groove)[16]).toEqual(['bumbo']);
     expect(grooveHitsAtTick(groove, 96)).toEqual(['bumbo']);
     expect(grooveHitsAtTick(groove, 186)).toEqual(['chimbal']);
+  });
+
+  it('plays a triplet beat inside a sixteenth-note groove', () => {
+    const groove = emptyGroove('16n');
+    groove.bumbo[0] = true;
+    groove.beats = {
+      3: {
+        subdivision: '8t',
+        hits: { caixa: [true, true, true], tomAgudo: [false, false, true] },
+      },
+    };
+
+    const views = grooveBeats(groove);
+    expect(views.map((view) => view.stepsPerBeat)).toEqual([4, 4, 4, 3]);
+    expect(views[3].tuplet).toBe(3);
+    expect(views[3].own).toBe(true);
+    expect(grooveHitsAtTick(groove, 0)).toEqual(['bumbo']);
+    expect(grooveHitsAtTick(groove, 72)).toEqual(['caixa']);
+    expect(grooveHitsAtTick(groove, 80)).toEqual(['caixa']);
+    expect(grooveHitsAtTick(groove, 88)).toEqual(['tomAgudo', 'caixa']);
+    expect(grooveHitsAtTick(groove, 78)).toEqual([]);
+  });
+
+  it('counts the hits of beats with their own resolution', () => {
+    const groove = emptyGroove('16n');
+    expect(grooveHasHits(groove)).toBe(false);
+    groove.beats = { 1: { subdivision: '16t', hits: { surdo: [true] } } };
+    expect(grooveHasHits(groove)).toBe(true);
   });
 });
