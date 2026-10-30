@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-30 - Groove triplets, toms, and cymbals
+
+- **Added**: two triplet resolutions for the groove of a structure section:
+  "1/8T · Tercinas de colcheia" (3 steps a beat) and "1/16T · Sextinas"
+  (6 steps a beat). The chart beams each tuplet beat and writes its 3 or 6.
+  A resolution applies to the whole groove, so one groove cannot mix straight
+  and triplet beats.
+- **Added**: five rows in the groove editor: Ataque (crash), Condução (ride),
+  Tom 1, Tom 2, and Surdo. They play the Virtuosity Drums samples and sit at
+  their standard drum-notation places in the chart. Grooves saved before this
+  change load with these rows empty.
+- **Changed**: the groove player counts 96 ticks a measure instead of 32, so
+  the straight and the triplet grids share one clock.
+
 ## 2026-10-22 - Bass tab player layout
 
 - **Changed**: the Biblioteca uses the full width of the page. The

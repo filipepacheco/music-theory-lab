@@ -4,6 +4,7 @@ import {
   GROOVE_MEASURE_COUNTS,
   GROOVE_SUBDIVISIONS,
   grooveMeasureCount,
+  grooveRow,
   grooveStepCount,
   grooveStepsPerBeat,
   grooveTotalStepCount,
@@ -12,6 +13,7 @@ import type { GroovePlayer } from '@/hooks/useGroovePlayer';
 import { useAppStore } from '@/store/useAppStore';
 import { GrooveChart } from '@/components/structure/GrooveChart';
 import type {
+  DrumPiece,
   GrooveMeasureCount,
   GroovePattern,
   GrooveSubdivision,
@@ -19,14 +21,19 @@ import type {
 } from '@/types';
 import Button from '@/components/shared/Button';
 
-const DRUM_NAMES = {
+const DRUM_NAMES: Record<DrumPiece, string> = {
   bumbo: 'Bumbo',
   caixa: 'Caixa',
   chimbal: 'Chimbal',
+  tomAgudo: 'Tom 1',
+  tomMedio: 'Tom 2',
+  surdo: 'Surdo',
+  ride: 'Condução',
+  crash: 'Ataque',
 };
 
 function hasAnyHit(groove: GroovePattern): boolean {
-  return DRUM_PIECES.some((piece) => groove[piece.id].some(Boolean));
+  return DRUM_PIECES.some((piece) => grooveRow(groove, piece.id).some(Boolean));
 }
 
 export function GroovePreview({
@@ -156,7 +163,9 @@ export function GrooveEditor({
           <div className="flex-1 min-w-0 overflow-x-auto pb-0.5">
             <div className="flex gap-[3px] min-w-max">
               {Array.from({ length: stepCount }, (_, step) => {
-                const active = section.groove?.[piece.id][step] ?? false;
+                const active = section.groove
+                  ? grooveRow(section.groove, piece.id)[step] === true
+                  : false;
                 return (
                   <button
                     key={step}

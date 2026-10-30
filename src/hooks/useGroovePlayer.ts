@@ -4,7 +4,7 @@ import { DEFAULT_GROOVE_SUBDIVISION } from '@/constants/groove';
 import {
   grooveHits,
   grooveHitsAtTick,
-  grooveStepDuration,
+  grooveTickDuration,
 } from '@/domain/grooveSchedule';
 import { stopScheduledMetronomes } from '@/hooks/useMetronome';
 import {
@@ -125,28 +125,25 @@ export function useGroovePlayer(): GroovePlayer {
       playingRef.current = true;
       playingSectionIdRef.current = sectionId;
 
-      const loop = new Tone.Loop(
-        (time) => {
-          if (!playingRef.current || tokenRef.current !== token) return;
+      const loop = new Tone.Loop((time) => {
+        if (!playingRef.current || tokenRef.current !== token) return;
 
-          const currentGroove = grooveRef.current;
-          if (!currentGroove) return;
+        const currentGroove = grooveRef.current;
+        if (!currentGroove) return;
 
-          const tick = tickRef.current;
-          for (const piece of grooveHitsAtTick(currentGroove.groove, tick)) {
-            playbackEngine.playGrooveHit(piece, time);
+        const tick = tickRef.current;
+        for (const piece of grooveHitsAtTick(currentGroove.groove, tick)) {
+          playbackEngine.playGrooveHit(piece, time);
+        }
+
+        Tone.getDraw().schedule(() => {
+          if (playingRef.current && tokenRef.current === token) {
+            setCurrentTick(tick);
           }
+        }, time);
 
-          Tone.getDraw().schedule(() => {
-            if (playingRef.current && tokenRef.current === token) {
-              setCurrentTick(tick);
-            }
-          }, time);
-
-          tickRef.current += 1;
-        },
-        grooveStepDuration(bpm, '32n'),
-      );
+        tickRef.current += 1;
+      }, grooveTickDuration(bpm));
 
       loopRef.current = loop;
       loop.start(0);

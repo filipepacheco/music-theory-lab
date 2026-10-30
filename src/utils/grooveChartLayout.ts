@@ -71,11 +71,19 @@ export function grooveChartLayout(
     staffTop,
     staffBottom,
     staffSpacing,
-    // The places of standard drum notation: the hi-hat in the space above
-    // the staff, the snare in the third space, the kick in the first space.
+    // The places of standard drum notation: the crash on the ledger line
+    // above the staff, the hi-hat in the space above it, the ride on the top
+    // line, the high tom in the top space, the mid tom on the fourth line,
+    // the snare in the third space, the floor tom in the second space, the
+    // kick in the first space.
     noteY: {
+      crash: staffTop - staffSpacing,
       chimbal: staffTop - staffSpacing * 0.5,
+      ride: staffTop,
+      tomAgudo: staffTop + staffSpacing * 0.5,
+      tomMedio: staffTop + staffSpacing,
       caixa: staffTop + staffSpacing * 1.5,
+      surdo: staffTop + staffSpacing * 2.5,
       bumbo: staffTop + staffSpacing * 3.5,
     },
     stepWidth,

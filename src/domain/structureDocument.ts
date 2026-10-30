@@ -5,6 +5,7 @@ import {
   DRUM_PIECES,
   grooveStepCount,
   grooveMeasureCount,
+  grooveRow,
   grooveTotalStepCount,
 } from '@/constants/groove';
 import type {
@@ -145,13 +146,17 @@ function emptyGroove(
   measureCount: GrooveMeasureCount = DEFAULT_GROOVE_MEASURE_COUNT,
 ): GroovePattern {
   const stepCount = grooveTotalStepCount(subdivision, measureCount);
-  return {
+  const groove: GroovePattern = {
     subdivision,
     measureCount,
-    bumbo: Array(stepCount).fill(false),
-    caixa: Array(stepCount).fill(false),
-    chimbal: Array(stepCount).fill(false),
+    bumbo: [],
+    caixa: [],
+    chimbal: [],
   };
+  for (const piece of DRUM_PIECES) {
+    groove[piece.id] = Array(stepCount).fill(false);
+  }
+  return groove;
 }
 
 function normalizedGroove(groove: GroovePattern): GroovePattern {
@@ -161,9 +166,10 @@ function normalizedGroove(groove: GroovePattern): GroovePattern {
   const stepCount = grooveTotalStepCount(subdivision, measureCount);
   for (const piece of DRUM_PIECES) {
     const row = groove[piece.id];
+    const target = grooveRow(normalized, piece.id);
     if (Array.isArray(row)) {
       for (let step = 0; step < stepCount; step++) {
-        normalized[piece.id][step] = row[step] === true;
+        target[step] = row[step] === true;
       }
     }
   }
@@ -183,15 +189,17 @@ function resampleGroove(
   const measuresToCopy = Math.min(sourceMeasureCount, measureCount);
 
   for (const piece of DRUM_PIECES) {
+    const sourceRow = grooveRow(source, piece.id);
+    const targetRow = grooveRow(target, piece.id);
     for (let measure = 0; measure < measuresToCopy; measure++) {
       for (let sourceStep = 0; sourceStep < sourceStepCount; sourceStep++) {
         const sourceIndex = measure * sourceStepCount + sourceStep;
-        if (!source[piece.id][sourceIndex]) continue;
+        if (!sourceRow[sourceIndex]) continue;
 
         const scaledStep = sourceStep * targetStepCount;
         if (scaledStep % sourceStepCount === 0) {
           const targetIndex = measure * targetStepCount;
-          target[piece.id][targetIndex + scaledStep / sourceStepCount] = true;
+          targetRow[targetIndex + scaledStep / sourceStepCount] = true;
         }
       }
     }
@@ -300,15 +308,7 @@ export function createStructureDocumentModule(
         barIds: newBars.map((bar) => bar.id),
         comment: source.comment,
         barsPerRow: source.barsPerRow,
-        groove: sourceGroove
-          ? {
-              subdivision: sourceGroove.subdivision,
-              measureCount: sourceGroove.measureCount,
-              bumbo: [...sourceGroove.bumbo],
-              caixa: [...sourceGroove.caixa],
-              chimbal: [...sourceGroove.chimbal],
-            }
-          : undefined,
+        groove: sourceGroove ? normalizedGroove(sourceGroove) : undefined,
       };
       const insertIndex = document.sections.indexOf(source) + 1;
       const sections = [...document.sections];
@@ -375,7 +375,8 @@ export function createStructureDocumentModule(
       ) {
         return document;
       }
-      groove[piece][step] = !groove[piece][step];
+      const row = grooveRow(groove, piece);
+      row[step] = !row[step];
       return {
         bars: document.bars,
         sections: document.sections.map((item) =>

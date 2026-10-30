@@ -38,10 +38,11 @@ describe('structure PDF groove export', () => {
 
     const rows = groovePdfRows(pattern);
 
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(8);
     expect(rows.find((row) => row.piece === 'bumbo')?.hits[0]).toBe(true);
     expect(rows.find((row) => row.piece === 'caixa')?.hits[3]).toBe(true);
     expect(rows.find((row) => row.piece === 'chimbal')?.hits).toHaveLength(8);
+    expect(rows.find((row) => row.piece === 'crash')?.hits).toHaveLength(8);
   });
 
   it('keeps a groove-only section in the exported layout', () => {

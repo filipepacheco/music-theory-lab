@@ -4,6 +4,7 @@ import {
   DRUM_PIECES,
   grooveTotalStepCount,
   grooveMeasureCount,
+  grooveRow,
 } from '@/constants/groove';
 import {
   dotsForTimeSignature,
@@ -147,7 +148,7 @@ export function groovePdfRows(groove?: GroovePattern): GroovePdfRow[] {
     piece: piece.id,
     label: piece.label,
     hits: Array.from({ length: stepCount }, (_, step) =>
-      Boolean(groove[piece.id][step]),
+      Boolean(grooveRow(groove, piece.id)[step]),
     ),
   }));
 
@@ -160,13 +161,16 @@ export function groovePdfMeasures(groove: GroovePattern): GroovePattern[] {
   const steps = grooveTotalStepCount(groove.subdivision, 1);
   return Array.from(
     { length: grooveMeasureCount(groove.measureCount) },
-    (_, index) => ({
-      ...groove,
-      measureCount: 1,
-      bumbo: groove.bumbo.slice(index * steps, (index + 1) * steps),
-      caixa: groove.caixa.slice(index * steps, (index + 1) * steps),
-      chimbal: groove.chimbal.slice(index * steps, (index + 1) * steps),
-    }),
+    (_, index) => {
+      const measure: GroovePattern = { ...groove, measureCount: 1 };
+      for (const piece of DRUM_PIECES) {
+        measure[piece.id] = grooveRow(groove, piece.id).slice(
+          index * steps,
+          (index + 1) * steps,
+        );
+      }
+      return measure;
+    },
   );
 }
 

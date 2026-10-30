@@ -153,6 +153,56 @@ describe('structure document', () => {
       expect(result.sections[0].groove?.bumbo[8]).toBe(true);
     });
 
+    it('keeps the beat starts when switching to triplets', () => {
+      const withHits = module.toggleGrooveHit(
+        module.toggleGrooveHit(baseDocument, 'intro', 'bumbo', 4),
+        'intro',
+        'bumbo',
+        6,
+      );
+      const result = module.setGrooveSubdivision(withHits, 'intro', '8t');
+      const bumbo = result.sections[0].groove?.bumbo;
+
+      expect(bumbo).toHaveLength(12);
+      expect(bumbo?.[3]).toBe(true);
+      expect(bumbo?.filter(Boolean)).toHaveLength(1);
+    });
+
+    it('adds a ride or crash hit to a groove saved without those rows', () => {
+      const legacy = {
+        ...baseDocument,
+        sections: baseDocument.sections.map((section) =>
+          section.id === 'intro'
+            ? {
+                ...section,
+                groove: {
+                  subdivision: '8n' as const,
+                  measureCount: 1 as const,
+                  bumbo: [
+                    true,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                  ],
+                  caixa: Array(8).fill(false),
+                  chimbal: Array(8).fill(false),
+                },
+              }
+            : section,
+        ),
+      };
+      const result = module.toggleGrooveHit(legacy, 'intro', 'crash', 0);
+      const groove = result.sections[0].groove;
+
+      expect(groove?.crash?.[0]).toBe(true);
+      expect(groove?.ride).toHaveLength(8);
+      expect(groove?.bumbo[0]).toBe(true);
+    });
+
     it('clears the whole pattern', () => {
       const withHit = module.toggleGrooveHit(
         baseDocument,

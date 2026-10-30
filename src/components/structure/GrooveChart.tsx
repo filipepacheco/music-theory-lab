@@ -2,7 +2,9 @@ import {
   DEFAULT_GROOVE_SUBDIVISION,
   DRUM_PIECES,
   GROOVE_SUBDIVISIONS,
-  grooveTotalStepCount,
+  GROOVE_TICKS_PER_MEASURE,
+  grooveMeasureCount,
+  grooveTuplet,
 } from '@/constants/groove';
 import { grooveHits } from '@/domain/grooveSchedule';
 import { grooveChartLayout } from '@/utils/grooveChartLayout';
@@ -20,13 +22,17 @@ export interface GrooveChartProps {
 const SCREEN_INK = 'var(--color-text-primary)';
 /** Room at the left of the staff for the percussion clef and the 4/4. */
 const CLEF_WIDTH = 26;
-const STAFF_TOP = 18;
+const STAFF_TOP = 22;
 const STAFF_SPACING = 6;
 /** How far under the bottom staff line the stems end, at the first beam. */
 const STEM_BELOW = 12;
 const BEAM_GAP = 3.2;
 const BEAM_WIDTH = 2;
-const HEIGHT = 70;
+const HEIGHT = 74;
+/** Extra room under the beams for the 3 or the 6 of a tuplet. */
+const TUPLET_HEIGHT = 8;
+/** The pieces drawn with a cross head instead of a filled one. */
+const CROSS_HEADS: readonly DrumPiece[] = ['chimbal', 'ride', 'crash'];
 
 function resolutionLabel(groove: GroovePattern): string {
   const subdivision = groove.subdivision ?? DEFAULT_GROOVE_SUBDIVISION;
@@ -47,19 +53,24 @@ interface NoteStem {
   /** Beams of the note: 1 for an eighth, 2 for a sixteenth, 0 for longer. */
   beams: number;
   dotted: boolean;
+  /** The note fills its whole beat, so a tuplet beat is a plain quarter. */
+  fullBeat: boolean;
 }
 
 /**
  * The stems of one beam group. A note lasts to the next hit of its group;
  * the last note lasts to the end of its own beat, because a beat with no hit
- * gets its own rest.
+ * gets its own rest. A tuplet note is drawn with the value it stands for: a
+ * triplet eighth as an eighth, a sextuplet sixteenth as a sixteenth.
  */
 function groupStems(
   hits: DrumPiece[][],
   start: number,
   end: number,
   stepsPerBeat: number,
+  tuplet: number | undefined,
 ): NoteStem[] {
+  const notatedStepsPerBeat = tuplet ? (stepsPerBeat * 2) / 3 : stepsPerBeat;
   const steps: number[] = [];
   for (let step = start; step < end; step += 1) {
     if ((hits[step]?.length ?? 0) > 0) steps.push(step);
@@ -67,13 +78,15 @@ function groupStems(
   return steps.map((step, index) => {
     const beatEnd = (Math.floor(step / stepsPerBeat) + 1) * stepsPerBeat;
     const stop = steps[index + 1] ?? Math.min(end, beatEnd);
-    const quarters = (stop - step) / stepsPerBeat;
+    const fullBeat = step % stepsPerBeat === 0 && stop - step === stepsPerBeat;
+    const quarters = fullBeat ? 1 : (stop - step) / notatedStepsPerBeat;
     const level = Math.floor(Math.log2(quarters));
     return {
       step,
       pieces: hits[step],
       beams: quarters >= 1 ? 0 : -level,
       dotted: quarters / 2 ** level === 1.5,
+      fullBeat,
     };
   });
 }
@@ -83,7 +96,7 @@ export function grooveNotationLayout(groove: GroovePattern) {
     labelWidth: CLEF_WIDTH,
     staffTop: STAFF_TOP,
     staffSpacing: STAFF_SPACING,
-    height: HEIGHT,
+    height: grooveTuplet(groove.subdivision) ? HEIGHT + TUPLET_HEIGHT : HEIGHT,
   });
 }
 
@@ -108,7 +121,9 @@ export function GrooveNotation({
   const secondary = print ? '#555555' : 'var(--color-text-secondary)';
   const font = print ? 'courier' : 'var(--font-mono)';
   const hits = grooveHits(groove);
-  const totalTicks = grooveTotalStepCount('32n', groove.measureCount);
+  const tuplet = grooveTuplet(groove.subdivision);
+  const totalTicks =
+    GROOVE_TICKS_PER_MEASURE * grooveMeasureCount(groove.measureCount);
   const normalizedTick = ((currentTick % totalTicks) + totalTicks) % totalTicks;
   const ticksPerStep = totalTicks / layout.totalSteps;
   const activeStep =
@@ -120,6 +135,7 @@ export function GrooveNotation({
   const stemX = (step: number) => layout.stepX(step) - headRx + 0.4;
   const groupSize =
     layout.stepsPerBeat === 2 ? layout.stepsPerBeat * 2 : layout.stepsPerBeat;
+  const tupletY = beamY + TUPLET_HEIGHT;
   const groups = Array.from(
     { length: layout.totalSteps / groupSize },
     (_, group) =>
@@ -128,6 +144,7 @@ export function GrooveNotation({
         group * groupSize,
         (group + 1) * groupSize,
         layout.stepsPerBeat,
+        tuplet,
       ),
   );
   const label = `Chart de bateria, ${layout.measureCount} ${layout.measureCount === 1 ? 'compasso' : 'compassos'}, resolução ${resolutionLabel(groove)}`;
@@ -313,6 +330,30 @@ export function GrooveNotation({
         }),
       )}
 
+      {tuplet !== undefined &&
+        groups.map((stems, group) => {
+          if (stems.length === 0) return null;
+          if (stems.length === 1 && stems[0].fullBeat) return null;
+          const start = layout.stepStartX(group * groupSize);
+          const end = layout.stepStartX((group + 1) * groupSize);
+          return (
+            <text
+              key={`tuplet-${group}`}
+              data-tuplet
+              x={(start + end) / 2}
+              y={tupletY}
+              textAnchor="middle"
+              fill={INK}
+              fontFamily={font}
+              fontSize={7}
+              fontStyle="italic"
+              fontWeight="600"
+            >
+              {tuplet}
+            </text>
+          );
+        })}
+
       {groups.flat().map((stem) => {
         const x = layout.stepX(stem.step);
         const top = Math.min(
@@ -333,7 +374,18 @@ export function GrooveNotation({
                 const y = layout.noteY[piece.id];
                 return (
                   <g key={piece.id} data-piece={piece.id}>
-                    {piece.id === 'chimbal' ? (
+                    {piece.id === 'crash' && (
+                      <line
+                        data-ledger
+                        x1={x - headRx - 2}
+                        x2={x + headRx + 2}
+                        y1={y}
+                        y2={y}
+                        stroke={muted}
+                        strokeWidth={0.7}
+                      />
+                    )}
+                    {CROSS_HEADS.includes(piece.id) ? (
                       <path
                         d={`M ${x - crossHalf} ${y - crossHalf} L ${x + crossHalf} ${y + crossHalf} M ${x + crossHalf} ${y - crossHalf} L ${x - crossHalf} ${y + crossHalf}`}
                         stroke={INK}
@@ -374,7 +426,7 @@ export function GrooveNotation({
         fontFamily={font}
         fontSize={7}
       >
-        x chimbal · meio caixa · baixo bumbo · {resolutionLabel(groove)}
+        x pratos · meio caixa · baixo bumbo · {resolutionLabel(groove)}
       </text>
     </svg>
   );

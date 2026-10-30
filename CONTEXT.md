@@ -97,9 +97,11 @@ _Avoid_: annotation, verse/chorus detection, semantic sections
 
 **Groove**:
 The main drum pattern of a structure section: a configurable subdivision grid
-over three drum pieces, drawn on the section as a memory aid for what the
+over eight drum pieces, drawn on the section as a memory aid for what the
 section's rhythm is. The supported grid resolutions cover quarter, eighth,
-sixteenth, and thirty-second notes across one or two 4/4 measures. One groove
+sixteenth, and thirty-second notes, plus eighth-note triplets and sixteenth-note
+sextuplets, across one or two 4/4 measures. A resolution applies to the whole
+groove; a groove cannot mix straight and triplet beats. One groove
 per section; toggling steps, changing resolution, and changing measure count
 go through the `structureDocument` commands and persist in the section's JSON.
 The section preview renders a compact standard-style percussion chart.
@@ -117,8 +119,9 @@ _Avoid_: break, variation
 
 **Drum piece**:
 One element of the drum kit, and one row of a drum grid or a [[groove]] grid.
-The groove grid has three: `bumbo` (kick), `caixa` (snare), and `chimbal`
-(hi-hat). A [[drum-chart]] has nine: those three, `tomAgudo` (high tom),
+The groove grid has eight: `bumbo` (kick), `caixa` (snare), `chimbal`
+(hi-hat), `tomAgudo` (high tom), `tomMedio` (mid tom), `surdo` (floor tom),
+`ride`, and `crash`. A [[drum-chart]] has nine: those three, `tomAgudo` (high tom),
 `tomMedio` (mid tom), `surdo` (floor tom), `pratoAtaque` (crash),
 `pratoConducao` (ride), and `outros` (all other [[general-midi]] numbers). A
 piece can have an articulation: cross-stick on the snare; closed, open, or

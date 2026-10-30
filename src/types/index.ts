@@ -48,9 +48,17 @@ export interface Song {
 
 export type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
 
-export type DrumPiece = 'bumbo' | 'caixa' | 'chimbal';
+export type DrumPiece =
+  | 'bumbo'
+  | 'caixa'
+  | 'chimbal'
+  | 'tomAgudo'
+  | 'tomMedio'
+  | 'surdo'
+  | 'ride'
+  | 'crash';
 
-export type GrooveSubdivision = '4n' | '8n' | '16n' | '32n';
+export type GrooveSubdivision = '4n' | '8n' | '8t' | '16n' | '16t' | '32n';
 
 export type GrooveMeasureCount = 1 | 2;
 
@@ -60,6 +68,12 @@ export interface GroovePattern {
   bumbo: boolean[];
   caixa: boolean[];
   chimbal: boolean[];
+  /** Absent in grooves saved before the tom and cymbal rows existed. */
+  tomAgudo?: boolean[];
+  tomMedio?: boolean[];
+  surdo?: boolean[];
+  ride?: boolean[];
+  crash?: boolean[];
 }
 
 export interface StructureBar {
