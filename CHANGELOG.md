@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-16 - Rocksmith audio with the standard codebooks
+
+- **Fixed**: some custom Rocksmith songs (for example "The Man Who Sold the
+  World") imported with no sound. Their song stream needs the standard Vorbis
+  codebooks, and the import always used aoTuV 6.03, so the browser could not
+  decode the audio. The import now decodes the start of the converted audio
+  and falls back to the standard set when the aoTuV output fails. Reimport the
+  `.psarc` file to get the audio of an existing chart.
+
 ## 2026-11-16 - Guitar Pro legato notes and their marks
 
 - **Fixed**: a Guitar Pro import lost the target note of each legato slide

@@ -142,7 +142,7 @@ async function extractSongAudio(
   if (wems.length === 0) return null;
   try {
     const { wemToOgg } = await import('@/services/rocksmith/wemAudio');
-    const ogg = wemToOgg(wems[0].bytes);
+    const ogg = await wemToOgg(wems[0].bytes);
     return {
       blob: new Blob([ogg], { type: 'audio/ogg' }),
       fileName: `${title}.ogg`,

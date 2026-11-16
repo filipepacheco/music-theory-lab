@@ -14,7 +14,7 @@ Accepts Rocksmith 2014 `.psarc` packages, entirely in the browser.
 | `domain/bassChart.ts` | Keeps the hardest difficulty level of each phrase. Places notes on the beat grid of the chart (12 ticks per beat). Merges consecutive Rocksmith sections. |
 | `services/rocksmithLibrary.ts` | Charts and audio persist only in IndexedDB. |
 
-- `wemAudio.ts` must use the aoTuV 6.03 codebooks. The standard set gives packet errors and short audio.
+- The stream does not say its codebook set. Official packages need aoTuV 6.03; some custom songs need the standard set. `wemAudio.ts` tries aoTuV first, decodes the first 64 KB (whole Ogg pages) with `@wasm-audio-decoders/ogg-vorbis`, and falls back to the standard set on any decode error.
 - The user can attach an audio file of their own (for example MP3 where Ogg is not supported).
 
 ## MIDI bass import
