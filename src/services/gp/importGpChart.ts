@@ -4,6 +4,7 @@ import {
   STANDARD_OPEN_MIDI,
   type BassChart,
   type BassFretPosition,
+  type BassTechnique,
 } from '@/domain/bassChart';
 import type { Chart, DrumDynamic } from '@/domain/drumChart';
 import {
@@ -28,6 +29,8 @@ import {
   type MidiFile,
   type MidiNote,
 } from '@/services/midi/midiFile';
+
+const DEFAULT_VELOCITY = 95;
 
 export function gpChartImportErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) return gpParseErrorMessage(error);
@@ -119,6 +122,7 @@ function bassChartOf(
         channels.has(note.channel) ? { ...note, channel } : note,
       ),
     };
+    bass = withLegatoSlideTargets(bass, generator, track, channel);
   }
 
   const staff = track?.staves.find(
@@ -137,6 +141,7 @@ function bassChartOf(
     ...input,
     arrangement: midiToArrangement(bass, channel, importedTuning),
   });
+  if (track) markScoreTechniques(chart, bass, generator, track);
   if (staff && importedTuning) {
     chart.originalFingering = recoverOriginalFingering(
       chart,
@@ -146,6 +151,66 @@ function bassChartOf(
     );
   }
   return chart;
+}
+
+/**
+ * alphaTab's MIDI export plays the target of a legato slide as a pitch bend
+ * on the slide's first note, with no note of its own. Add those targets from
+ * the score so that the chart keeps every written note.
+ */
+function withLegatoSlideTargets(
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  track: model.Track,
+  channel: number,
+): MidiFile {
+  const notes = parsed.notes;
+  const added: MidiNote[] = [];
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        const { beat } = item;
+        if (beat.voice.bar.staff.track !== track || seen.has(beat.id)) continue;
+        seen.add(beat.id);
+        const startTick = Math.round(played.start + item.playbackStart);
+        for (const note of beat.notes) {
+          if (
+            note.isTieDestination ||
+            note.slideOrigin?.slideOutType !== model.SlideOutType.Legato
+          )
+            continue;
+          // The slide's first note keeps sounding under the bend.
+          const sounding = [...notes]
+            .reverse()
+            .find(
+              (candidate) =>
+                candidate.channel === channel &&
+                candidate.startTick < startTick &&
+                candidate.endTick > startTick,
+            );
+          added.push({
+            channel,
+            pitch: note.calculateRealValue(
+              generator.applyTranspositionPitches,
+              true,
+            ),
+            velocity: sounding?.velocity ?? DEFAULT_VELOCITY,
+            startTick,
+            endTick: startTick + beat.playbackDuration,
+            bent: note.hasBend,
+          });
+        }
+      }
+    }
+  }
+  if (added.length === 0) return parsed;
+  return {
+    ...parsed,
+    notes: [...notes, ...added].sort(
+      (a, b) => a.startTick - b.startTick || a.pitch - b.pitch,
+    ),
+  };
 }
 
 function scoreDynamics(
@@ -184,6 +249,91 @@ function scoreDynamics(
     note.channel === DRUM_CHANNEL
       ? (marked.get(`${note.startTick}:${note.pitch}`)?.shift() ?? 'normal')
       : 'normal';
+}
+
+const MAX_FRET = 24;
+
+interface ScoreTechnique {
+  techniques: BassTechnique[];
+  slideSemitones: number | null;
+  /** The MIDI export plays a slide with the pitch wheel, not a bend. */
+  writtenBend: boolean;
+}
+
+/**
+ * The MIDI export keeps no articulation. Read hammer-ons, pull-offs and
+ * pitched slides from the score and put them on the chart notes, matched by
+ * onset and pitch. A hammer-on or pull-off marks its second note, as in
+ * Rocksmith; a slide marks its first note and the fret it slides to.
+ */
+function markScoreTechniques(
+  chart: BassChart,
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  track: model.Track,
+): void {
+  const toSeconds = tickToSeconds(parsed);
+  const pitchOf = (note: model.Note) =>
+    note.calculateRealValue(generator.applyTranspositionPitches, true);
+  const marks = new Map<string, ScoreTechnique[]>();
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        const { beat } = item;
+        if (beat.voice.bar.staff.track !== track || seen.has(beat.id)) continue;
+        seen.add(beat.id);
+        const time = toSeconds(Math.round(played.start + item.playbackStart));
+        for (const note of beat.notes) {
+          if (note.isTieDestination) continue;
+          const pitch = pitchOf(note);
+          const mark: ScoreTechnique = {
+            techniques: [],
+            slideSemitones: null,
+            writtenBend: note.hasBend,
+          };
+          const origin = note.hammerPullOrigin;
+          if (origin) {
+            mark.techniques.push(
+              pitchOf(origin) < pitch ? 'hammerOn' : 'pullOff',
+            );
+          }
+          const target = note.slideTarget;
+          if (
+            target &&
+            (note.slideOutType === model.SlideOutType.Shift ||
+              note.slideOutType === model.SlideOutType.Legato)
+          ) {
+            mark.techniques.push('slide');
+            mark.slideSemitones = pitchOf(target) - pitch;
+          }
+          const key = `${time}:${pitch}`;
+          const list = marks.get(key) ?? [];
+          list.push(mark);
+          marks.set(key, list);
+        }
+      }
+    }
+  }
+  for (const note of chart.notes) {
+    const mark = marks.get(`${note.time}:${note.midi}`)?.shift();
+    if (!mark || mark.techniques.length === 0) continue;
+    note.techniques = [
+      ...new Set([
+        ...note.techniques.filter(
+          (technique) =>
+            technique !== 'bend' ||
+            mark.writtenBend ||
+            mark.slideSemitones === null,
+        ),
+        ...mark.techniques,
+      ]),
+    ];
+    if (mark.slideSemitones !== null) {
+      const to = note.fret + mark.slideSemitones;
+      note.slideToFret = to >= 0 && to <= MAX_FRET ? to : null;
+    }
+  }
 }
 
 function recoverOriginalFingering(

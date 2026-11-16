@@ -6,7 +6,8 @@ not accepted by this flow.
 
 Guitar Pro scores are parsed with alphaTab and exported internally to MIDI
 in playback order, including repeats, alternate endings, ties, and tempo
-changes. The existing MIDI bass-channel selector and arrangement adapter
+changes. The MIDI export plays the target of a legato slide as a pitch bend,
+so the import adds those notes back from the score. The existing MIDI bass-channel selector and arrangement adapter
 then build the same `BassChart` used by MIDI and Rocksmith. Degrees, key
 suggestions, harmonic functions, cadence analysis, tabs, the fretboard and
 sampled-bass playback all consume that chart. Bass notes on Guitar Pro's
@@ -21,7 +22,8 @@ Older GP imports need to be reimported once to recover their positions from
 the source file. Reimporting updates the same chart without removing linked
 audio. If any note cannot be matched faithfully to a plain string/fret position
 (for example, generated ornament notes or harmonics), only the suggested
-view is available. Guitar Pro's full articulation notation is not preserved.
+view is available. Hammer-ons, pull-offs, and pitched slides come from the
+score; Guitar Pro's other articulation notation is not preserved.
 Only the bass part feeds these analyses. The file's other instrument parts
 are not additional harmony evidence.
 
