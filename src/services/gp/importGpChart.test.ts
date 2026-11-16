@@ -139,6 +139,29 @@ describe('Biblioteca Guitar Pro import', () => {
     ]);
   });
 
+  it('marks hammer-ons, pull-offs, and slides from the score', async () => {
+    const { chart } = await importBass(
+      file(gp(score(':8 5.3{h} 7.3{h} 5.3 7.3{ss} 9.3 9.3{sl} 7.3 r'))),
+    );
+    expect(
+      chart.notes.map((note) => [
+        note.techniques,
+        note.slideToFret === null ? null : note.slideToFret - note.fret,
+      ]),
+    ).toEqual([
+      [[], null],
+      [['hammerOn'], null],
+      [['pullOff'], null],
+      [['slide'], 2],
+      [[], null],
+      [['slide'], -2],
+      [[], null],
+    ]);
+    const written = withOriginalGpFingering(chart);
+    expect(written.notes[3]).toMatchObject({ fret: 7, slideToFret: 9 });
+    expect(written.notes[5]).toMatchObject({ fret: 9, slideToFret: 7 });
+  });
+
   it('does not advertise invented original positions for harmonic pitches', async () => {
     const original = score();
     const note =

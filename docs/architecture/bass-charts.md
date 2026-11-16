@@ -81,4 +81,5 @@ The circle (`domain/circleOfFifths.ts`):
 - The "por linha" picker of each section sets the bars on a line (`sectionRows`, counted from the first bar of the section). It is saved for each chart and section in localStorage.
 - Bars shrink to 80% to keep that length. When it still does not fit, a divisor is used (`fittedBarsPerRow`: 8 → 4), so the lines start on the same bars of each phrase.
 - "Marcar repetições" (saved in localStorage): in such a section, a bar with the same tab as the bar right above it is drawn empty under a bar-repeat sign. `barsRepeatingAbove` compares meter, beats, strings, frets, slides, and techniques. Sustain is not drawn, so it is not compared. A bar with no notes never counts.
+- A slur arcs over each hammer-on and pull-off, from the note before it on the same string (from the bar's left edge when that note is in the bar before). A slide writes `/` or `\` after its first fret.
 - "Acompanhar a reprodução" centres the playing bar between the app header and the dock.

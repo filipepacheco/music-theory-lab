@@ -122,6 +122,18 @@ export function RepeatSign({ x, y }: { x: number; y: number }) {
   );
 }
 
+const LEGATO_WORDS: Partial<Record<string, string>> = {
+  hammerOn: 'hammer-on',
+  pullOff: 'pull-off',
+};
+
+export function spokenTechnique(note: BassChartNote): string {
+  const word = note.techniques
+    .map((technique) => LEGATO_WORDS[technique])
+    .find(Boolean);
+  return word ? `${word} ` : '';
+}
+
 export function noteLabel(note: BassChartNote): string {
   const base = note.techniques.includes('mute') ? 'x' : String(note.fret);
   if (note.slideToFret === null) return base;
@@ -193,6 +205,51 @@ export function barDegreeLevels(
       (p) => p.level + 1,
     ),
   );
+}
+
+const ARC_LIFT = 6;
+const ARC_HEIGHT = 5;
+
+function labelCentreX(note: BassChartNote, beatWidth: number): number {
+  return (
+    PAD_X +
+    note.beatInBar * beatWidth +
+    1 +
+    (noteLabel(note).length * CHAR_EM * FRET_FONT_SIZE) / 2
+  );
+}
+
+/**
+ * A slur over each hammer-on and pull-off, from the note before it on the
+ * same string. When that note is in the previous bar, the slur starts at the
+ * bar's left edge.
+ */
+export function legatoArcs(
+  notes: IndexedNote[],
+  beatWidth: number,
+): { index: number; technique: 'hammerOn' | 'pullOff'; d: string }[] {
+  return notes.flatMap(({ note, index }) => {
+    const technique = note.techniques.includes('hammerOn')
+      ? 'hammerOn'
+      : note.techniques.includes('pullOff')
+        ? 'pullOff'
+        : null;
+    if (!technique) return [];
+    const before = notes
+      .filter(
+        (other) =>
+          other.note.string === note.string &&
+          other.note.beatInBar < note.beatInBar,
+      )
+      .pop();
+    const x1 = before ? labelCentreX(before.note, beatWidth) : 0;
+    const x2 = labelCentreX(note, beatWidth);
+    const y = stringY(note.string) - ARC_LIFT;
+    const top = Math.max(1, y - ARC_HEIGHT);
+    const r = (value: number) => Math.round(value * 10) / 10;
+    const d = `M ${r(x1)} ${y} Q ${r((x1 + x2) / 2)} ${2 * top - y} ${r(x2)} ${y}`;
+    return [{ index, technique, d }];
+  });
 }
 
 function stringY(string: number): number {
@@ -302,9 +359,8 @@ function BassTabBar({
   const svgHeight = HEIGHT + kickLane + (analysis ? DEGREE_LANE * levels : 0);
   const spoken = ({ note, index }: IndexedNote): string => {
     const degree = degreeOf(index);
-    return degree
-      ? `${noteLabel(note)} (${degreeLabel(degree)})`
-      : noteLabel(note);
+    const label = `${spokenTechnique(note)}${noteLabel(note)}`;
+    return degree ? `${label} (${degreeLabel(degree)})` : label;
   };
   const uncertainty = barUncertainty(analysis, noteNames);
   const details = barDetails({
@@ -417,6 +473,20 @@ function BassTabBar({
                 cy={HEIGHT + KICK_LANE / 2 - 2}
                 r={KICK_RADIUS}
                 fill="var(--color-text-primary)"
+              />
+            ))}
+          </g>
+        )}
+        {!repeat && (
+          <g data-legato aria-hidden>
+            {legatoArcs(notes, beatWidth).map((arc) => (
+              <path
+                key={arc.index}
+                data-legato-arc={arc.technique}
+                d={arc.d}
+                fill="none"
+                stroke="var(--color-text-secondary)"
+                strokeWidth={1}
               />
             ))}
           </g>

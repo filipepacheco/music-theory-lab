@@ -1,12 +1,15 @@
 # Changelog
 
-## 2026-11-16 - Guitar Pro legato slides keep their notes
+## 2026-11-16 - Guitar Pro legato notes and their marks
 
 - **Fixed**: a Guitar Pro import lost the target note of each legato slide
   (for example `2/3\2/3`). alphaTab's MIDI export plays that note as a pitch
   bend on the first note, with no note of its own. The import now adds those
   notes from the score, and the first note of the slide no longer reads as a
   bend. Reimport the `.gp` file to recover the notes of an existing chart.
+- **Added**: the tab draws a slur over each hammer-on and pull-off. A Guitar
+  Pro import now reads hammer-ons, pull-offs, and slides from the score, so a
+  slide also shows its `/` or `\` mark. Rocksmith charts get the slurs too.
 
 ## 2026-10-30 - Groove triplets, toms, and cymbals
 
