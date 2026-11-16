@@ -29,6 +29,8 @@ import {
   type MidiNote,
 } from '@/services/midi/midiFile';
 
+const DEFAULT_VELOCITY = 95;
+
 export function gpChartImportErrorMessage(error: unknown): string {
   if (error instanceof GpParseError) return gpParseErrorMessage(error);
   if (error instanceof Error && error.message === 'no-parts') {
@@ -119,6 +121,7 @@ function bassChartOf(
         channels.has(note.channel) ? { ...note, channel } : note,
       ),
     };
+    bass = withLegatoSlideTargets(bass, generator, track, channel);
   }
 
   const staff = track?.staves.find(
@@ -146,6 +149,69 @@ function bassChartOf(
     );
   }
   return chart;
+}
+
+/**
+ * alphaTab's MIDI export plays the target of a legato slide as a pitch bend
+ * on the slide's first note, with no note of its own. Add those targets from
+ * the score so that the chart keeps every written note.
+ */
+function withLegatoSlideTargets(
+  parsed: MidiFile,
+  generator: midi.MidiFileGenerator,
+  track: model.Track,
+  channel: number,
+): MidiFile {
+  const notes = parsed.notes.map((note) => ({ ...note }));
+  const added: MidiNote[] = [];
+  for (const played of generator.tickLookup.masterBars) {
+    const seen = new Set<number>();
+    for (let slice = played.firstBeat; slice; slice = slice.nextBeat) {
+      for (const item of slice.highlightedBeats) {
+        const { beat } = item;
+        if (beat.voice.bar.staff.track !== track || seen.has(beat.id)) continue;
+        seen.add(beat.id);
+        const startTick = Math.round(played.start + item.playbackStart);
+        for (const note of beat.notes) {
+          const origin = note.slideOrigin;
+          if (
+            note.isTieDestination ||
+            origin?.slideOutType !== model.SlideOutType.Legato
+          )
+            continue;
+          // The slide's first note sounds under the bend. The slide is not a
+          // written bend, so drop the bend flag that the pitch wheel gave it.
+          const sounding = [...notes]
+            .reverse()
+            .find(
+              (candidate) =>
+                candidate.channel === channel &&
+                candidate.startTick < startTick &&
+                candidate.endTick > startTick,
+            );
+          if (sounding && !origin.hasBend) sounding.bent = false;
+          added.push({
+            channel,
+            pitch: note.calculateRealValue(
+              generator.applyTranspositionPitches,
+              true,
+            ),
+            velocity: sounding?.velocity ?? DEFAULT_VELOCITY,
+            startTick,
+            endTick: startTick + beat.playbackDuration,
+            bent: note.hasBend,
+          });
+        }
+      }
+    }
+  }
+  if (added.length === 0) return parsed;
+  return {
+    ...parsed,
+    notes: [...notes, ...added].sort(
+      (a, b) => a.startTick - b.startTick || a.pitch - b.pitch,
+    ),
+  };
 }
 
 function scoreDynamics(

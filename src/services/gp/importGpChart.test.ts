@@ -116,6 +116,29 @@ describe('Biblioteca Guitar Pro import', () => {
     expect(chart.originalFingering).toEqual([{ string: 1, fret: 7 }]);
   });
 
+  it('keeps the target notes of legato slides, which the MIDI export plays as pitch bends', async () => {
+    const { chart } = await importBass(
+      file(gp(score(':16 2.3{sl} 3.3{sl} 2.3{sl} 3.3 :4 2.3 r r'))),
+    );
+    expect(chart.notes.some((note) => note.techniques.includes('bend'))).toBe(
+      false,
+    );
+    expect(chart.notes.map((note) => [note.beatInBar, note.fret])).toEqual([
+      [0, 2],
+      [0.25, 3],
+      [0.5, 2],
+      [0.75, 3],
+      [1, 2],
+    ]);
+    expect(chart.originalFingering).toEqual([
+      { string: 1, fret: 2 },
+      { string: 1, fret: 3 },
+      { string: 1, fret: 2 },
+      { string: 1, fret: 3 },
+      { string: 1, fret: 2 },
+    ]);
+  });
+
   it('does not advertise invented original positions for harmonic pitches', async () => {
     const original = score();
     const note =
